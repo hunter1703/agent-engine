@@ -4,7 +4,7 @@
 committed files — safe to commit because the only credential-bearing fields are `${VAR}`-style
 placeholders, not real values:
 
-- `SQL.json`'s `jdbcPassword` is `${NEON_JDBC_PASSWORD}` (host and user are plain committed text
+- `SQL.json`'s `password` is `${NEON_JDBC_PASSWORD}` (host and user are plain committed text
   — not secret by themselves).
 - `values.yaml`'s `infra.mongodb.uri` embeds `${MONGO_ATLAS_USER}` and `${MONGO_ATLAS_PASSWORD}`
   (host and app name are plain committed text).

@@ -1,7 +1,7 @@
 [
   {
     "id": "DEFAULT_MODELS:DEFAULT_MODELS:default",
-    "_t": "com.agentengine.util.mongodb.infra.DefaultModelsConfig",
+    "_t": "com.agentengine.util.agents.beans.config.DefaultModelsConfig",
     "type": "DEFAULT_MODELS",
     "category": "DEFAULT_MODELS",
     "titleModelId": "gemma4",

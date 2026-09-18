@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.tools.notebook;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.infra.notebook.Notebook;
 import com.agentengine.agent.infra.notebook.NotebookRepository;
@@ -8,7 +9,6 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.exception.DuplicateAssetException;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;

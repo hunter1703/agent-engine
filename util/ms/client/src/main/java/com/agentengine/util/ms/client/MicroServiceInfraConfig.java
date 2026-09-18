@@ -1,6 +1,6 @@
 package com.agentengine.util.ms.client;
 
-import com.agentengine.util.mongodb.infra.InfraConfig;
+import com.agentengine.util.infra.InfraConfig;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 /**

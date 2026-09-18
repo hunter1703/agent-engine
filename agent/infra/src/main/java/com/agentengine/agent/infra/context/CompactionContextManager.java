@@ -2,7 +2,6 @@ package com.agentengine.agent.infra.context;
 
 import static com.agentengine.agent.infra.utils.ContentUtils.estimateTokens;
 
-import com.agentengine.agent.infra.factories.model.ModelProvider;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -11,6 +10,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.scripts.TemplateUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;

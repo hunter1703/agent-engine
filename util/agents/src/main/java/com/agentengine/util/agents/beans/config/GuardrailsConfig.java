@@ -1,8 +1,8 @@
 package com.agentengine.util.agents.beans.config;
 
-import com.agentengine.util.common.builder.annotations.UiBoolean;
-import com.agentengine.util.common.builder.annotations.UiField;
-import com.agentengine.util.common.builder.annotations.UiSelect;
+import com.agentengine.util.agents.builder.annotations.UiBoolean;
+import com.agentengine.util.agents.builder.annotations.UiField;
+import com.agentengine.util.agents.builder.annotations.UiSelect;
 import java.util.ArrayList;
 import java.util.List;
 

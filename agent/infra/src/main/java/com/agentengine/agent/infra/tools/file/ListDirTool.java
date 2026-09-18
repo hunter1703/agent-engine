@@ -1,11 +1,11 @@
 package com.agentengine.agent.infra.tools.file;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.ExceptionUtils;
-import com.agentengine.util.common.annotations.ToolArg;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

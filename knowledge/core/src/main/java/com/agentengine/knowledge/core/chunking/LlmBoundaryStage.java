@@ -1,8 +1,8 @@
 package com.agentengine.knowledge.core.chunking;
 
-import com.agentengine.agent.infra.factories.model.ModelProvider;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.chunking.ChunkingStage;
+import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;

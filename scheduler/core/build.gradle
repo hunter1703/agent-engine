@@ -6,10 +6,12 @@ group = 'com.agentengine.scheduler'
 
 dependencies {
     implementation project(':scheduler:api')
-    implementation project(':agent:jobs')
+    implementation project(':util:infra')
+    runtimeOnly project(':agent:jobs')
     implementation project(':util:common')
     implementation project(':util:mongodb')
-    implementation project(':util:ms:server')
+    implementation libs.cron.utils
+    runtimeOnly project(':util:ms:server')
     implementation project(':util:pekko')
 
     implementation platform(libs.quarkus.bom)

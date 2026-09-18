@@ -1,14 +1,14 @@
 package com.agentengine.agent.core.session;
 
-import com.agentengine.agent.infra.factories.model.ModelProvider;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
+import com.agentengine.util.agents.beans.config.DefaultModelsConfig;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.mongodb.infra.DefaultModelsConfig;
-import com.agentengine.util.mongodb.infra.InfraConfigService;
+import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.common.cache.CacheBuilder;

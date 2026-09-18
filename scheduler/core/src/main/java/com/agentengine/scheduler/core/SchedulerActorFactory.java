@@ -8,7 +8,7 @@ import com.agentengine.scheduler.core.actor.SchedulerActor;
 import com.agentengine.scheduler.core.actor.TriggerReconcilerActor;
 import com.agentengine.scheduler.core.config.JobTagConfig;
 import com.agentengine.util.common.config.ApplicationConfig;
-import com.agentengine.util.mongodb.infra.InfraConfigService;
+import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import io.quarkus.arc.Unremovable;
 import io.quarkus.runtime.StartupEvent;

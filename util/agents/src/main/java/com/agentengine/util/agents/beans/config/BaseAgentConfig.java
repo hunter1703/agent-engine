@@ -1,8 +1,20 @@
 package com.agentengine.util.agents.beans.config;
 
+import com.agentengine.util.agents.builder.annotations.*;
+import com.agentengine.util.agents.builder.annotations.UiAccess;
+import com.agentengine.util.agents.builder.annotations.UiAccessLevel;
+import com.agentengine.util.agents.builder.annotations.UiConditionOperator;
+import com.agentengine.util.agents.builder.annotations.UiField;
+import com.agentengine.util.agents.builder.annotations.UiLookup;
+import com.agentengine.util.agents.builder.annotations.UiRule;
+import com.agentengine.util.agents.builder.annotations.UiRuleEffect;
+import com.agentengine.util.agents.builder.annotations.UiSection;
+import com.agentengine.util.agents.builder.annotations.UiSelect;
+import com.agentengine.util.agents.builder.annotations.UiStep;
+import com.agentengine.util.agents.builder.annotations.UiSteps;
+import com.agentengine.util.agents.builder.annotations.UiText;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.NamedEntity;
-import com.agentengine.util.common.builder.annotations.*;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.Valid;

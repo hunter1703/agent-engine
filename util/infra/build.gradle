@@ -1,0 +1,13 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+dependencies {
+    api project(':util:common')
+    implementation project(':util:distributed')
+    api libs.mongodb.bson
+
+    implementation libs.slf4j.api
+    implementation libs.guava
+    compileOnly libs.jakarta.annotation.api
+}

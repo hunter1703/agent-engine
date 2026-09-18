@@ -1,11 +1,11 @@
 package com.agentengine.agent.infra.guardrails;
 
-import com.agentengine.agent.infra.factories.model.ModelProvider;
+import com.agentengine.util.agents.beans.config.DefaultModelsConfig;
 import com.agentengine.util.agents.beans.config.GuardrailRuleType;
 import com.agentengine.util.agents.beans.config.OutputRelevanceGuardrailRule;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.mongodb.infra.DefaultModelsConfig;
-import com.agentengine.util.mongodb.infra.InfraConfigService;
+import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 

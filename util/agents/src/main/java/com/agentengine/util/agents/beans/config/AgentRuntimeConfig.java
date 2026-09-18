@@ -1,8 +1,8 @@
 package com.agentengine.util.agents.beans.config;
 
-import com.agentengine.util.common.builder.annotations.UiBoolean;
-import com.agentengine.util.common.builder.annotations.UiField;
-import com.agentengine.util.common.builder.annotations.UiNumber;
+import com.agentengine.util.agents.builder.annotations.UiBoolean;
+import com.agentengine.util.agents.builder.annotations.UiField;
+import com.agentengine.util.agents.builder.annotations.UiNumber;
 
 public class AgentRuntimeConfig {
   @UiField(label = "Resumable", step = "runtime", order = 10)

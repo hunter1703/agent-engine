@@ -4,12 +4,13 @@ import static com.agentengine.interfaces.rest.handlers.catalog.InvokeAgentJobAss
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
+import com.agentengine.agent.api.model.AgentFileDetails;
 import com.agentengine.agent.api.model.MessagePart;
 import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
+import com.agentengine.auth.ContextAware;
 import com.agentengine.catalog.api.services.AgentService;
-import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
@@ -220,9 +221,10 @@ public class AgentRestAPI {
   private static UserMessage extractUserMessage(final RunAgentInput request) {
     final List<Message> msgs = request.messages();
     final List<MessagePart> parts = new ArrayList<>();
-    final List<FileDetails> knowledgeFiles = new ArrayList<>();
+    final List<AgentFileDetails> knowledgeFiles = new ArrayList<>();
     for (final Context context : CollectionUtils.nullSafeList(request.context())) {
-      knowledgeFiles.add(JsonUtils.fromJson(context.value(), FileDetails.class));
+      knowledgeFiles.add(
+          new AgentFileDetails(JsonUtils.fromJson(context.value(), FileDetails.class)));
     }
     for (final Message msg : CollectionUtils.nullSafeList(msgs)) {
       if (msg instanceof com.agui.community.core.message.UserMessage aguiUserMessage) {

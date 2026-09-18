@@ -1,10 +1,10 @@
 package com.agentengine.util.agents.beans.config;
 
-import com.agentengine.util.common.builder.annotations.UiField;
-import com.agentengine.util.common.builder.annotations.UiNumber;
-import com.agentengine.util.common.builder.annotations.UiRule;
-import com.agentengine.util.common.builder.annotations.UiRuleEffect;
-import com.agentengine.util.common.builder.annotations.UiSelect;
+import com.agentengine.util.agents.builder.annotations.UiField;
+import com.agentengine.util.agents.builder.annotations.UiNumber;
+import com.agentengine.util.agents.builder.annotations.UiRule;
+import com.agentengine.util.agents.builder.annotations.UiRuleEffect;
+import com.agentengine.util.agents.builder.annotations.UiSelect;
 
 public class OrchestratorParallelConfig {
   private static final String DEFAULT_AGGREGATION_POLICY =

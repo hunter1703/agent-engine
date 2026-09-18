@@ -1,5 +1,6 @@
 package com.agentengine.interfaces.rest.exception;
 
+import com.agentengine.util.cloudstorage.CloudStorageException;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
@@ -12,7 +13,6 @@ import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
 
 @Provider
 public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
@@ -65,11 +65,11 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
           .build();
     }
 
-    if (exception instanceof AwsServiceException awsEx) {
-      final int status = awsEx.statusCode();
-      LOG.error("AWS service call failed with status {}", status, awsEx);
+    if (exception instanceof CloudStorageException storageEx) {
+      final int status = storageEx.getStatusCode();
+      LOG.error("Cloud storage call failed with status {}", status, storageEx);
       return Response.status(status)
-          .entity(new ErrorResponse(String.valueOf(status), awsEx.awsErrorDetails().errorMessage()))
+          .entity(new ErrorResponse(String.valueOf(status), storageEx.getMessage()))
           .build();
     }
 

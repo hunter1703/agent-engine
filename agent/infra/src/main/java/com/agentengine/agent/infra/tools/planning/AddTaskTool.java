@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.tools.planning;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.beans.Task;
@@ -10,7 +11,6 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
 import java.util.Map;

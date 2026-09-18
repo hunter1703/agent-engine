@@ -1,11 +1,23 @@
 [
   {
     "id": "SQL:SQL_SERVER:default",
-    "_t": "com.agentengine.util.mongodb.infra.SQLInfraConfig",
+    "_t": "com.agentengine.util.sql.SQLServerInfraConfig",
     "type": "SQL_SERVER",
     "category": "SQL",
-    "jdbcUrl": "jdbc:postgresql://ep-damp-hall-b3465we4.c-4.ap-southeast-1.aws.neon.tech/agent_engine_events?sslmode=require",
-    "jdbcUser": "agent_engine_events_owner",
-    "jdbcPassword": "${NEON_JDBC_PASSWORD}"
+    "engine": "POSTGRES",
+    "host": "ep-damp-hall-b3465we4.c-4.ap-southeast-1.aws.neon.tech",
+    "username": "agent_engine_events_owner",
+    "password": "${NEON_JDBC_PASSWORD}",
+    "properties": {
+      "sslmode": "require"
+    }
+  },
+  {
+    "id": "SQL:PEKKO:default",
+    "_t": "com.agentengine.util.sql.SQLClientInfraConfig",
+    "type": "PEKKO",
+    "category": "SQL",
+    "serverId": "default",
+    "database": "agent_engine_events"
   }
 ]

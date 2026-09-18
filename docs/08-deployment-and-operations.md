@@ -85,9 +85,15 @@ Secure persistence model:
 
 Encryption details:
 
-- AES/GCM/NoPadding, 256-bit key (base64 in infra config)
-- ciphertext stored with the prefix `enc::`
-- key source: `INFRA.InfraConfig` with `type=encryption`
+- AES/GCM/NoPadding, 256-bit key
+- ciphertext is `encr_<keyVersion>_<base64>`; `<keyVersion>` names the key config that encrypted it
+- key versions: `ENCRYPTION_KEY:<keyVersion>` (`EncryptionKeyInfraConfig`), one per
+  version, kept so existing values still decrypt
+- `provider` is `KEY` (base64 `key`) or `OCI_KMS` (`keyId`, `cryptoEndpoint`, and a `wrappedKey`
+  that the Vault unwraps via instance principal, so no key material is stored in plaintext)
+- `ENCRYPTION_CLIENT:DEFAULT` (`EncryptionClientInfraConfig`) has a `serverId`, the id of the
+  key config new values are encrypted with
+- rotate by adding a key version and pointing the client's `serverId` at it
 
 Helper script:
 

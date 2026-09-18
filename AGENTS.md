@@ -56,7 +56,11 @@ docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
 | `internal`                                                    | **Internal service** — internal/ops REST endpoints (Mongo, scheduler introspection)                        |
 | `chaos:api`, `chaos:core`                                     | Fault-injection / chaos-experiment framework. Not a deployed service — run standalone against the stack   |
 | `util:common`                                                 | Cross-module utility classes (queries, updates, exceptions, collections)                                    |
-| `util:mongodb`                                                | MongoDB client factory, codec registry, encryption                                                          |
+| `util:infra`                                                  | Infra config model and lookup — `InfraConfig`, client/server configs, `InfraConfigService`                  |
+| `util:mongodb`                                                | MongoDB client factory, codec registry, infra config store                                                  |
+| `util:crypto`                                                 | `EncryptionService`, versioned key configs, KMS key loading                                                 |
+| `util:sql`                                                    | SQL server/client infra configs                                                                             |
+| `util:models`                                                | Chat and embedding model factories, model provider cache, LLM wrappers and the text tool-call parser      |
 | `util:vectordb`                                               | Qdrant-backed vector store abstraction                                                                      |
 | `util:cloudstorage`                                           | Cloud object storage client                                                                                 |
 | `util:ms:client`, `util:ms:server`                            | gRPC microservice transport (client dispatch, server wiring)                                                |
@@ -184,8 +188,13 @@ the reader and the runtime equally.
 7. NEVER use `var`. Always declare the actual type, including for local variables, loop
    variables, and record deconstruction patterns.
 8. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.
-9. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin.
-10. Document REST endpoints with MicroProfile OpenAPI annotations.
+9. Never type a field of a serialized or deserialized bean (Mongo documents, config beans, JSON DTOs)
+   as an enum. Keep it a `String` and parse it with the enum's parser (rule 8) where it is used:
+   an enum field fails to load the moment a stored or received value is not in the current list —
+   after a value is removed or renamed, or written by a newer version — where a `String` degrades
+   to `UNKNOWN` and the code handles it.
+10. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin.
+11. Document REST endpoints with MicroProfile OpenAPI annotations.
 
 ### Comment Philosophy
 

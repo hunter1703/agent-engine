@@ -1,0 +1,19 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+dependencies {
+    implementation platform(libs.quarkus.bom)
+
+    implementation project(':util:common')
+    api project(':util:infra')
+
+    compileOnly libs.jakarta.inject.api
+    compileOnly libs.jakarta.enterprise.cdi.api
+    implementation libs.guava
+    implementation libs.slf4j.api
+
+    implementation libs.oci.keymanagement
+    implementation libs.oci.common
+    implementation libs.oci.common.httpclient.jersey3
+}

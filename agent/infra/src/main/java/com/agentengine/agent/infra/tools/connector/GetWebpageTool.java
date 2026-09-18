@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.tools.connector;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.tools.Tool;
@@ -9,7 +10,6 @@ import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.beans.FileDetails;
 import com.google.adk.tools.ToolContext;
 import java.util.List;

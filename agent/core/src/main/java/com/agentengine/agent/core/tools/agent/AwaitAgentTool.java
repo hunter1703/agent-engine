@@ -1,10 +1,10 @@
 package com.agentengine.agent.core.tools.agent;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
 import java.time.Duration;

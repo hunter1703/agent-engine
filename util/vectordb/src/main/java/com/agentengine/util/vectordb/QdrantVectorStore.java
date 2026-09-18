@@ -16,19 +16,22 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
   private static final Logger LOG = LoggerFactory.getLogger(QdrantVectorStore.class);
 
   private final String collection;
+  private final VectorStoreClientType clientType;
   private final VectorDbClientFactory clientFactory;
 
   protected QdrantVectorStore(
       final String collection,
+      final VectorStoreClientType clientType,
       final VectorDbClientFactory clientFactory,
       final BiFunction<String, String, float[]> embeddingGenerator) {
     super(embeddingGenerator);
     this.collection = collection;
+    this.clientType = clientType;
     this.clientFactory = clientFactory;
   }
 
   private QdrantHttpClient client() {
-    return clientFactory.getClient();
+    return clientFactory.getClient(clientType);
   }
 
   protected abstract Map<String, Object> toPayload(T entity);

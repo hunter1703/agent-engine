@@ -1,0 +1,28 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+dependencies {
+    implementation project(':util:common')
+    implementation project(':util:infra')
+    implementation project(':util:agents')
+    implementation project(':util:scripts')
+    implementation project(':catalog:api')
+
+    // BaseLlm, LlmResponse, Content appear in the public API
+    api libs.google.adk
+    api libs.google.genai
+
+    implementation platform(libs.langchain4j.bom)
+    implementation libs.langchain4j.core
+    implementation libs.langchain4j.open.ai
+    implementation libs.langchain4j.ollama
+    implementation libs.langchain4j.http.client.jdk
+
+    implementation libs.rxjava
+    implementation libs.slf4j.api
+
+    // Annotation-only APIs: compile-time markers, runtime provided by Quarkus
+    compileOnly libs.jakarta.inject.api
+    compileOnly libs.jakarta.enterprise.cdi.api
+}

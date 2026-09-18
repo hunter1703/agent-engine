@@ -1,12 +1,12 @@
 package com.agentengine.agent.core.tools.agent.community;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.api.services.CommunityRegistry;
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolArg;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

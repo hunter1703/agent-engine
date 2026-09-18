@@ -1,9 +1,9 @@
 package com.agentengine.util.agents.beans.config;
 
-import com.agentengine.util.common.builder.annotations.UiField;
-import com.agentengine.util.common.builder.annotations.UiRule;
-import com.agentengine.util.common.builder.annotations.UiRuleEffect;
-import com.agentengine.util.common.builder.annotations.UiSelect;
+import com.agentengine.util.agents.builder.annotations.UiField;
+import com.agentengine.util.agents.builder.annotations.UiRule;
+import com.agentengine.util.agents.builder.annotations.UiRuleEffect;
+import com.agentengine.util.agents.builder.annotations.UiSelect;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 

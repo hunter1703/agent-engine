@@ -1,10 +1,25 @@
 [
   {
     "id": "VECTOR:VECTOR_SERVER:default",
-    "_t": "com.agentengine.util.vectordb.VectorDatabaseInfraConfig",
+    "_t": "com.agentengine.util.vectordb.VectorServerInfraConfig",
     "type": "VECTOR_SERVER",
     "category": "VECTOR",
     "host": "qdrant-local.infra.svc.cluster.local",
-    "httpPort": 6333
+    "httpPort": 6333,
+    "grpcPort": 6334
+  },
+  {
+    "id": "VECTOR:KNOWLEDGE:default",
+    "_t": "com.agentengine.util.vectordb.VectorClientInfraConfig",
+    "type": "KNOWLEDGE",
+    "category": "VECTOR",
+    "serverId": "default"
+  },
+  {
+    "id": "VECTOR:MEMORY:default",
+    "_t": "com.agentengine.util.vectordb.VectorClientInfraConfig",
+    "type": "MEMORY",
+    "category": "VECTOR",
+    "serverId": "default"
   }
 ]

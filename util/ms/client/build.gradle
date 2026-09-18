@@ -5,7 +5,7 @@ plugins {
 
 dependencies {
     implementation project(':util:common')
-    implementation project(':util:mongodb')
+    implementation project(':util:infra')
 
     implementation libs.grpc.stub
     implementation libs.grpc.protobuf
@@ -16,7 +16,6 @@ dependencies {
     implementation libs.quarkus.arc
     implementation libs.rxjava
     implementation libs.slf4j.api
-    implementation libs.jackson.databind
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

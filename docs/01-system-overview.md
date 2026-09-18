@@ -25,7 +25,7 @@ From `settings.gradle`:
 - `knowledge`, `knowledge:api`, `knowledge:core`
 - `connectors:core`
 - `interfaces:rest`
-- `util:common`, `util:mongodb`, `util:vectordb`, `util:cloudstorage`, `util:ms`, `util:ms:client`, `util:agents`, `util:pekko`
+- `util:common`, `util:infra`, `util:mongodb`, `util:crypto`, `util:sql`, `util:models`, `util:vectordb`, `util:cloudstorage`, `util:ms`, `util:ms:client`, `util:agents`, `util:pekko`
 
 Practical meaning:
 

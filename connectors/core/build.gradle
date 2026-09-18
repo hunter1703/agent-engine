@@ -6,12 +6,13 @@ group = 'com.agentengine.connectors'
 
 dependencies {
     implementation project(':connectors:api')
+    implementation project(':util:crypto')
     implementation project(':connectors:infra')
-    implementation project(':connectors:http')
+    runtimeOnly project(':connectors:http')
     implementation project(':util:common')
     implementation project(':util:distributed')
     implementation project(':util:scripts')
-    implementation project(':util:ms:server')
+    runtimeOnly project(':util:ms:server')
     implementation project(':util:mongodb')
 
     implementation platform(libs.quarkus.bom)
@@ -25,8 +26,6 @@ dependencies {
     implementation libs.jakarta.enterprise.cdi.api
     implementation libs.jakarta.inject.api
     implementation libs.slf4j.api
-    implementation libs.groovy
-    implementation libs.okhttp
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

@@ -2,8 +2,7 @@ package com.agentengine.util.cloudstorage;
 
 import com.agentengine.util.cloudstorage.oracle.OracleCloudStorage;
 import com.agentengine.util.cloudstorage.s3.S3CloudStorage;
-import com.agentengine.util.common.service.CloudStorageService;
-import com.agentengine.util.mongodb.infra.InfraConfigService;
+import com.agentengine.util.infra.InfraConfigService;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
@@ -27,10 +26,12 @@ public class CloudStorageServiceProducer {
             CloudStorageInfraConfig.TYPE,
             CloudStorageInfraConfig.CONFIG_ID);
     final CloudStorageInfraConfig.Provider provider =
-        config == null ? CloudStorageInfraConfig.Provider.S3 : config.getProvider();
-    return switch (provider) {
-      case ORACLE -> new OracleCloudStorage(infraConfigService);
-      default -> new S3CloudStorage(infraConfigService);
-    };
+        config == null ? CloudStorageInfraConfig.Provider.S3 : config.providerType();
+    final CloudStorageService storage =
+        switch (provider) {
+          case ORACLE -> new OracleCloudStorage(infraConfigService);
+          default -> new S3CloudStorage(infraConfigService);
+        };
+    return new DelegatingCloudStorageService(storage);
   }
 }

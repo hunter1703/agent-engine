@@ -1,7 +1,8 @@
 package com.agentengine.util.cloudstorage;
 
 import com.agentengine.util.common.Secure;
-import com.agentengine.util.mongodb.infra.InfraConfig;
+import com.agentengine.util.infra.InfraConfig;
+import java.util.Locale;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.cloudstorage.CloudStorageInfraConfig")
@@ -10,7 +11,7 @@ public class CloudStorageInfraConfig extends InfraConfig {
   public static final String CATEGORY = "CLOUDSTORAGE";
   public static final String CONFIG_ID = "default";
 
-  private Provider provider = Provider.S3;
+  private String provider = Provider.S3.name();
   private String region = "us-east-1";
   private String defaultBucket = "agent-assets";
   private String endpointUrl = "http://localhost:4566";
@@ -29,12 +30,16 @@ public class CloudStorageInfraConfig extends InfraConfig {
   @Secure private String privateKey;
   @Secure private String passPhrase;
 
-  public Provider getProvider() {
+  public String getProvider() {
     return provider;
   }
 
-  public void setProvider(final Provider provider) {
+  public void setProvider(final String provider) {
     this.provider = provider;
+  }
+
+  public Provider providerType() {
+    return Provider.valueOfOrUnknown(provider);
   }
 
   public String getRegion() {
@@ -156,7 +161,7 @@ public class CloudStorageInfraConfig extends InfraConfig {
 
     public static Provider valueOfOrUnknown(final String value) {
       try {
-        return Provider.valueOf(value);
+        return Provider.valueOf(value.trim().toUpperCase(Locale.ROOT));
       } catch (final IllegalArgumentException | NullPointerException e) {
         return UNKNOWN;
       }

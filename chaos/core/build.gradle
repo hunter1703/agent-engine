@@ -6,7 +6,6 @@ group = 'com.agentengine.chaos'
 
 dependencies {
     implementation project(':chaos:api')
-    implementation project(':util:common')
     implementation project(':util:pekko')
 
     implementation platform(libs.pekko.bom)

@@ -3,13 +3,13 @@ package com.agentengine.util.cloudstorage.oracle;
 import static com.oracle.bmc.objectstorage.model.CreatePreauthenticatedRequestDetails.AccessType.ObjectRead;
 
 import com.agentengine.util.cloudstorage.CloudStorageInfraConfig;
+import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.cloudstorage.CloudStorageServiceProducer;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FileUtils.BucketKey;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
-import com.agentengine.util.common.service.CloudStorageService;
-import com.agentengine.util.mongodb.infra.InfraConfigService;
+import com.agentengine.util.infra.InfraConfigService;
 import com.oracle.bmc.Region;
 import com.oracle.bmc.auth.BasicAuthenticationDetailsProvider;
 import com.oracle.bmc.auth.InstancePrincipalsAuthenticationDetailsProvider;

@@ -1,12 +1,12 @@
 package com.agentengine.agent.infra.tools.notebook;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 

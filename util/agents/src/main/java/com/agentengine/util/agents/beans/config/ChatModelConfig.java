@@ -1,10 +1,10 @@
 package com.agentengine.util.agents.beans.config;
 
-import com.agentengine.util.common.builder.annotations.UiBoolean;
-import com.agentengine.util.common.builder.annotations.UiField;
-import com.agentengine.util.common.builder.annotations.UiNumber;
-import com.agentengine.util.common.builder.annotations.UiPreset;
-import com.agentengine.util.common.builder.annotations.UiText;
+import com.agentengine.util.agents.builder.annotations.UiBoolean;
+import com.agentengine.util.agents.builder.annotations.UiField;
+import com.agentengine.util.agents.builder.annotations.UiNumber;
+import com.agentengine.util.agents.builder.annotations.UiPreset;
+import com.agentengine.util.agents.builder.annotations.UiText;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.List;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;

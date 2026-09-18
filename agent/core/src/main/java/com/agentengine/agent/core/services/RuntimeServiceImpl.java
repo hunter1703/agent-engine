@@ -2,6 +2,7 @@ package com.agentengine.agent.core.services;
 
 import static com.agentengine.util.common.Defaults.STREAMING_BATCH_SIZE;
 
+import com.agentengine.agent.api.model.AgentFileDetails;
 import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
@@ -29,18 +30,17 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
+import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FileUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
-import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
-import com.agentengine.util.common.service.CloudStorageService;
 import com.agui.community.core.event.Event;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
@@ -176,9 +176,9 @@ public class RuntimeServiceImpl implements RuntimeService {
       return message;
     }
 
-    final List<FileDetails> toIndex = new ArrayList<>();
-    final List<FileDetails> knowledgeFiles = new ArrayList<>();
-    for (final FileDetails fileDetails : grants.knowledgeFiles()) {
+    final List<AgentFileDetails> toIndex = new ArrayList<>();
+    final List<AgentFileDetails> knowledgeFiles = new ArrayList<>();
+    for (final AgentFileDetails fileDetails : grants.knowledgeFiles()) {
       if (needsIndexing(fileDetails)) {
         toIndex.add(fileDetails);
       } else {
@@ -210,8 +210,8 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   /** Whether a text attachment is over {@link #INDEXING_THRESHOLD_BYTES} once its size is known. */
-  private boolean needsIndexing(final FileDetails fileDetails) {
-    if (!FileUtils.isTextFile(fileDetails)) {
+  private boolean needsIndexing(final AgentFileDetails fileDetails) {
+    if (!FileUtils.isTextFile(fileDetails.toFileDetails())) {
       return false;
     }
     final long size =
@@ -221,10 +221,10 @@ public class RuntimeServiceImpl implements RuntimeService {
     return size > INDEXING_THRESHOLD_BYTES;
   }
 
-  private Knowledge indexAsKnowledge(final String agentId, final FileDetails fileDetails) {
+  private Knowledge indexAsKnowledge(final String agentId, final AgentFileDetails fileDetails) {
     final IndexRequest request = new IndexRequest();
     request.setAgentId(agentId);
-    request.setFileDetails(fileDetails);
+    request.setFileDetails(fileDetails.toFileDetails());
     request.setTitle(fileDetails.name());
     request.setWaitForCompletion(true);
     return knowledgeService.create(request);

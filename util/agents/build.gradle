@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation project(':util:common')
+    implementation project(':util:infra')
     implementation project(':util:mongodb')
 
     api libs.ag.ui.core
@@ -20,7 +21,6 @@ dependencies {
     compileOnly libs.mongodb.bson
 
     implementation libs.google.adk
-    implementation libs.google.adk.langchain4j
     implementation libs.slf4j.api
 
     testImplementation libs.junit.jupiter

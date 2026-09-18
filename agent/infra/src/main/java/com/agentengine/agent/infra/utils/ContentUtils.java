@@ -77,45 +77,6 @@ public final class ContentUtils {
     return StringUtils.estimateTokens(content.text());
   }
 
-  public static boolean isEmptyPart(final Content content) {
-    if (content == null) {
-      return true;
-    }
-    return content.parts().orElse(List.of()).stream().allMatch(ContentUtils::isEmptyPart);
-  }
-
-  public static boolean isEmptyPart(final Part part) {
-    return part == null
-        || (part.functionCall().isEmpty()
-            && part.functionResponse().isEmpty()
-            && part.codeExecutionResult().isEmpty()
-            && part.executableCode().isEmpty()
-            && part.fileData().isEmpty()
-            && part.inlineData().isEmpty()
-            && part.mediaResolution().isEmpty()
-            && part.videoMetadata().isEmpty()
-            && part.thoughtSignature().isEmpty()
-            && StringUtils.isBlank(part.text().orElse(null)));
-  }
-
-  public static boolean isFunctionCall(final Part part, final String toolName) {
-    return part.functionCall().map(call -> toolName.equals(call.name().orElse(null))).orElse(false);
-  }
-
-  public static boolean isFunctionResponse(final Part part, final String toolName) {
-    return part.functionResponse()
-        .map(response -> toolName.equals(response.name().orElse(null)))
-        .orElse(false);
-  }
-
-  public static List<Part> getToolCallParts(final Content content) {
-    return content == null
-        ? List.of()
-        : content.parts().orElse(List.of()).stream()
-            .filter(part -> part.functionCall().isPresent())
-            .toList();
-  }
-
   public static List<Part> getToolResponseParts(final Content content) {
     return content == null
         ? List.of()

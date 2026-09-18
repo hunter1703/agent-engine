@@ -8,14 +8,15 @@ dependencies {
     // Links every service that owns collections so a single deployment can apply all indexes.
     // Pekko stays dormant here: agent and scheduler host actors only where
     // `agent-engine.pekko.enabled` is set, which this service does not set.
-    implementation project(':agent:core')
-    implementation project(':catalog:core')
-    implementation project(':connectors:core')
-    implementation project(':knowledge:core')
+    runtimeOnly project(':agent:core')
+    implementation project(':util:infra')
+    runtimeOnly project(':catalog:core')
+    runtimeOnly project(':connectors:core')
+    runtimeOnly project(':knowledge:core')
     implementation project(':scheduler:api')
-    implementation project(':scheduler:core')
-    implementation project(':util:common')
+    runtimeOnly project(':scheduler:core')
     implementation project(':util:mongodb')
+    implementation project(':util:pekko')
 
     implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.arc

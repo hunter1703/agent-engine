@@ -1,11 +1,11 @@
 package com.agentengine.util.agents.beans.config;
 
-import com.agentengine.util.common.builder.annotations.UiAccess;
-import com.agentengine.util.common.builder.annotations.UiAccessLevel;
-import com.agentengine.util.common.builder.annotations.UiBoolean;
-import com.agentengine.util.common.builder.annotations.UiField;
-import com.agentengine.util.common.builder.annotations.UiSelect;
-import com.agentengine.util.common.builder.annotations.UiText;
+import com.agentengine.util.agents.builder.annotations.UiAccess;
+import com.agentengine.util.agents.builder.annotations.UiAccessLevel;
+import com.agentengine.util.agents.builder.annotations.UiBoolean;
+import com.agentengine.util.agents.builder.annotations.UiField;
+import com.agentengine.util.agents.builder.annotations.UiSelect;
+import com.agentengine.util.agents.builder.annotations.UiText;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.NotBlank;

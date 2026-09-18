@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra.tools.image;
 
-import com.agentengine.util.common.annotations.ToolArg;
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 

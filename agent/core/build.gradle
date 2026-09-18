@@ -6,15 +6,17 @@ group = 'com.agentengine.agent'
 
 dependencies {
     implementation project(':agent:api')
+    implementation project(':util:ms:client')
+    implementation project(':util:infra')
     implementation project(':agent:infra')
+    implementation project(':util:models')
     implementation project(':util:vectordb')
     implementation project(':knowledge:api')
     implementation project(':catalog:api')
     implementation project(':util:common')
     implementation project(':util:pekko')
-    implementation project(':util:mongodb')
     implementation project(':util:agents')
-    implementation project(':util:ms:server')
+    runtimeOnly project(':util:ms:server')
     implementation project(':connectors:api')
     implementation project(':util:cloudstorage')
 
@@ -25,14 +27,12 @@ dependencies {
     implementation libs.pekko.cluster.typed
     implementation libs.pekko.cluster.sharding.typed
     implementation libs.pekko.persistence.typed
-    implementation libs.pekko.persistence.jdbc
+    runtimeOnly libs.pekko.persistence.jdbc
     implementation libs.pekko.streams.typed
-    implementation libs.pekko.serialization.jackson
+    runtimeOnly libs.pekko.serialization.jackson
 
-    implementation libs.postgresql
+    runtimeOnly libs.postgresql
 
-    implementation platform(libs.langchain4j.bom)
-    implementation libs.langchain4j.core
 
     implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.arc
@@ -42,6 +42,8 @@ dependencies {
     implementation libs.quarkus.smallrye.health
 
     implementation libs.slf4j.api
+    implementation libs.flexmark.all
+    implementation libs.commonmark
     implementation libs.guava
     implementation libs.rxjava
     implementation libs.stateless4j

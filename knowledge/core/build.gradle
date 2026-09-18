@@ -6,14 +6,16 @@ group = 'com.agentengine.knowledge'
 
 dependencies {
     implementation project(':knowledge:api')
+    implementation project(':util:ms:client')
+    implementation project(':util:infra')
     implementation project(':util:common')
     implementation project(':util:agents')
     implementation project(':util:mongodb')
     implementation project(':util:vectordb')
-    implementation project(':util:ms:server')
+    runtimeOnly project(':util:ms:server')
     implementation project(':catalog:api')
     implementation project(':connectors:api')
-    implementation project(':agent:infra')
+    implementation project(':util:models')
     implementation project(':util:cloudstorage')
 
     implementation platform(libs.langchain4j.bom)

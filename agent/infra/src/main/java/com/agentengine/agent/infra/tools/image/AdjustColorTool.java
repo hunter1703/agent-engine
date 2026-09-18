@@ -1,11 +1,11 @@
 package com.agentengine.agent.infra.tools.image;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.ArrayList;
 import java.util.List;

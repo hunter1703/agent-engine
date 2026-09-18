@@ -8,7 +8,6 @@ public interface Constants {
     String SPAWN_AGENT = "spawn_agent";
     String SEND_MESSAGE = "send_message";
     String AGENT_TRANSFER = "transfer_to_agent";
-    String SAVE_ANSWER = "save_answer";
     String CREATE_PLAN = "create_plan";
     String UPDATE_PLAN = "update_plan";
     String ADD_TASK = "add_task";

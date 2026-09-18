@@ -16,7 +16,6 @@ public final class RunState {
   private int offTopicRetries;
   private int turnsUsed;
   private final Set<Signal<?>> signals = new HashSet<>();
-  private PendingAnswer pendingAnswer;
   private PendingNote pendingNote;
 
   public RunState() {}
@@ -125,20 +124,6 @@ public final class RunState {
     return signals.stream().anyMatch(Signal::requiresContinuation);
   }
 
-  public void enterAnswerMode(final String saveMessage, final long minSaveTokens) {
-    this.pendingAnswer = new PendingAnswer(saveMessage, minSaveTokens);
-  }
-
-  public boolean isInAnswerMode() {
-    return pendingAnswer != null;
-  }
-
-  public PendingAnswer consumeAnswerMode() {
-    final PendingAnswer result = pendingAnswer;
-    pendingAnswer = null;
-    return result;
-  }
-
   public void startNote(final String notebookId, final String noteTitle) {
     this.pendingNote = new PendingNote(notebookId, noteTitle);
   }
@@ -221,8 +206,6 @@ public final class RunState {
   private void addSignals(final Collection<Signal<?>> signals) {
     this.signals.addAll(CollectionUtils.nullSafeList(signals));
   }
-
-  public record PendingAnswer(String saveMessage, long minSaveTokens) {}
 
   public record PendingNote(String notebookId, String noteTitle) {}
 

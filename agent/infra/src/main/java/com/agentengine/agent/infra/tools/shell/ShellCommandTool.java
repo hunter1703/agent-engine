@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.tools.shell;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.annotations.ToolParam;
@@ -7,7 +8,6 @@ import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
-import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.io.BufferedReader;
 import java.io.IOException;

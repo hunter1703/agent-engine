@@ -1,6 +1,5 @@
 package com.agentengine.util.common.beans;
 
-import com.agentengine.util.common.annotations.ToolArg;
 import java.util.Objects;
 
 /**
@@ -10,41 +9,6 @@ import java.util.Objects;
  */
 public record FileDetails(
     String name, String source, StorageType type, String mimeType, long size) {
-
-  public FileDetails(
-      @ToolArg(
-              name = "name",
-              description =
-                  "Display name for the file, e.g. photo.jpg. Optional — leave blank if unknown.",
-              optional = true)
-          final String name,
-      @ToolArg(
-              name = "source",
-              description =
-                  "The complete storage location of the file. For CLOUDSTORAGE this is the full bucket/key e.g. 'agent-assets/2ec11fea6b814ddc91fc57829890e788'. Do not split, shorten, or modify this value.")
-          final String source,
-      @ToolArg(
-              name = "type",
-              description =
-                  "Where the file is stored — NOT the file format. This is not a MIME type.",
-              enums = {"CLOUDSTORAGE", "URL", "LOCAL", "UNKNOWN"})
-          final StorageType type,
-      @ToolArg(
-              name = "mimeType",
-              description = "MIME type of the file, e.g. image/jpeg or image/png.",
-              optional = true)
-          final String mimeType,
-      @ToolArg(
-              name = "size",
-              description = "File size in bytes. Use -1 if unknown.",
-              optional = true)
-          final long size) {
-    this.name = name;
-    this.source = source;
-    this.type = type;
-    this.mimeType = mimeType;
-    this.size = size;
-  }
 
   /** Original filename including extension, e.g. {@code photo.jpg}. */
   @Override

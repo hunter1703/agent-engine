@@ -1,11 +1,21 @@
 [
   {
     "id": "SQL:SQL_SERVER:default",
-    "_t": "com.agentengine.util.mongodb.infra.SQLInfraConfig",
+    "_t": "com.agentengine.util.sql.SQLServerInfraConfig",
     "type": "SQL_SERVER",
     "category": "SQL",
-    "jdbcUrl": "jdbc:postgresql://postgres-local.infra.svc.cluster.local:5432/agent_engine_events",
-    "jdbcUser": "postgres",
-    "jdbcPassword": ""
+    "engine": "POSTGRES",
+    "host": "postgres-local.infra.svc.cluster.local",
+    "port": 5432,
+    "username": "postgres",
+    "password": ""
+  },
+  {
+    "id": "SQL:PEKKO:default",
+    "_t": "com.agentengine.util.sql.SQLClientInfraConfig",
+    "type": "PEKKO",
+    "category": "SQL",
+    "serverId": "default",
+    "database": "agent_engine_events"
   }
 ]

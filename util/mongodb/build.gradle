@@ -6,6 +6,9 @@ dependencies {
     implementation platform(libs.quarkus.bom)
 
     implementation project(':util:common')
+    implementation project(':util:distributed')
+    implementation project(':util:infra')
+    implementation project(':util:crypto')
     api libs.mongodb.driver.sync
 
     implementation libs.quarkus.mongodb.client

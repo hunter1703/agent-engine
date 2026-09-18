@@ -4,7 +4,7 @@ import com.agentengine.interfaces.rest.dto.SchemaLookupRequest;
 import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.interfaces.rest.handlers.SchemaRequestHandler;
 import com.agentengine.interfaces.rest.services.BuilderDefinitionService;
-import com.agentengine.util.common.builder.BuilderMode;
+import com.agentengine.util.agents.builder.BuilderMode;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;

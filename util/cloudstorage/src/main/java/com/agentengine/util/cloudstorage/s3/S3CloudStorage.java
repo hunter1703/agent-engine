@@ -1,13 +1,13 @@
 package com.agentengine.util.cloudstorage.s3;
 
 import com.agentengine.util.cloudstorage.CloudStorageInfraConfig;
+import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.cloudstorage.CloudStorageServiceProducer;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FileUtils.BucketKey;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
-import com.agentengine.util.common.service.CloudStorageService;
-import com.agentengine.util.mongodb.infra.InfraConfigService;
+import com.agentengine.util.infra.InfraConfigService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;

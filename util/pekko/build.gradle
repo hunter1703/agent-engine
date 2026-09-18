@@ -10,7 +10,8 @@ dependencies {
     api libs.pekko.cluster.sharding.typed
 
     implementation project(':util:common')
-    implementation project(':util:mongodb')
+    implementation project(':util:infra')
+    implementation project(':util:sql')
 
     // Internal serialization only, not in public API
     compileOnly libs.mongodb.bson

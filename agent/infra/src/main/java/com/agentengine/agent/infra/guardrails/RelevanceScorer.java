@@ -2,11 +2,11 @@ package com.agentengine.agent.infra.guardrails;
 
 import static com.agentengine.util.common.JsonUtils.parseJsonPayload;
 
-import com.agentengine.agent.infra.factories.model.ModelProvider;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
+import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;

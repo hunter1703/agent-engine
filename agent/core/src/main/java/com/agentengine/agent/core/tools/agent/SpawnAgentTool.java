@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.tools.agent;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.api.model.MessagePart;
 import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.api.model.ResourceGrants;
@@ -16,7 +17,6 @@ import com.agentengine.agent.infra.utils.ToolUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.fasterxml.jackson.core.type.TypeReference;

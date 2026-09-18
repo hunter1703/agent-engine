@@ -1,8 +1,8 @@
 package com.agentengine.knowledge.core.chunking;
 
-import com.agentengine.agent.infra.factories.model.EmbeddingModelFactory;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.chunking.ChunkingStage;
+import com.agentengine.util.models.factories.EmbeddingModelFactory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import java.util.ArrayList;
 import java.util.List;

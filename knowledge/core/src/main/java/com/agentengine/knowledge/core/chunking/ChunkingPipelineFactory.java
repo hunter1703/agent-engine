@@ -1,16 +1,16 @@
 package com.agentengine.knowledge.core.chunking;
 
-import com.agentengine.agent.infra.factories.model.EmbeddingModelFactory;
-import com.agentengine.agent.infra.factories.model.ModelProvider;
 import com.agentengine.knowledge.api.chunking.ChunkingPipeline;
 import com.agentengine.knowledge.api.chunking.ChunkingStage;
 import com.agentengine.util.agents.beans.config.ChunkingStrategy;
 import com.agentengine.util.agents.beans.config.ChunkingType;
+import com.agentengine.util.agents.beans.config.DefaultModelsConfig;
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.mongodb.infra.DefaultModelsConfig;
-import com.agentengine.util.mongodb.infra.InfraConfigService;
+import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.models.factories.EmbeddingModelFactory;
+import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.function.Function;

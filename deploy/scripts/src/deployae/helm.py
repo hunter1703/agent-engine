@@ -31,8 +31,7 @@ class DeployContext:
     image_registry: str | None = None
     rollout_revision: str | None = None
     # Set only for tiers with no self-hosted mongodb chart (e.g. socialmedia, backed by
-    # MongoDB Atlas) — lets SetupInfraStage connect directly instead of port-forwarding to
-    # a self-hosted chart's Service that doesn't exist.
+    # MongoDB Atlas).
     mongodb_uri: str | None = None
 
 

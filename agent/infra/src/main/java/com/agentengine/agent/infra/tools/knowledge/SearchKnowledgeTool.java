@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.tools.knowledge;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.catalog.api.services.AgentService;
@@ -7,18 +8,17 @@ import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.agents.beans.config.DefaultModelsConfig;
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
-import com.agentengine.util.mongodb.infra.DefaultModelsConfig;
-import com.agentengine.util.mongodb.infra.InfraConfigService;
+import com.agentengine.util.infra.InfraConfigService;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
 import java.util.Map;

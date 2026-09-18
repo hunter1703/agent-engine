@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.tools;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.infra.utils.*;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -9,7 +10,6 @@ import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Utils;
-import com.agentengine.util.common.annotations.ToolArg;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;

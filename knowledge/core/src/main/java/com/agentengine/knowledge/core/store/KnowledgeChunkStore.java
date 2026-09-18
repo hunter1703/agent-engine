@@ -1,8 +1,8 @@
 package com.agentengine.knowledge.core.store;
 
-import com.agentengine.agent.infra.factories.model.EmbeddingModelFactory;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.models.factories.EmbeddingModelFactory;
 import com.agentengine.util.vectordb.QdrantVectorStore;
 import com.agentengine.util.vectordb.VectorDbClientFactory;
 import jakarta.inject.Inject;
@@ -32,6 +32,7 @@ public class KnowledgeChunkStore extends QdrantVectorStore<KnowledgeChunk> {
       final EmbeddingModelFactory embeddingModelFactory) {
     super(
         AssetClass.KNOWLEDGE_CHUNK,
+        KnowledgeVectorStoreClientType.KNOWLEDGE,
         clientFactory,
         (modelId, query) -> embeddingModelFactory.get(modelId).embed(query).content().vector());
   }

@@ -5,9 +5,9 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.EncryptionService;
 import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.LazyLoader;
+import com.agentengine.util.crypto.EncryptionService;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;

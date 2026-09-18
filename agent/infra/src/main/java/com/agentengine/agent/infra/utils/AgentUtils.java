@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.utils;
 
+import com.agentengine.agent.api.model.AgentFileDetails;
 import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.utils.NotebookUtils;
@@ -59,11 +60,11 @@ public final class AgentUtils {
         && resolvedGrants.grants().isEmpty()) {
       return null;
     }
-    final List<FileDetails> knowledgeFiles =
+    final List<AgentFileDetails> knowledgeFiles =
         CollectionUtils.nullSafeList(knowledgeSources).stream()
             .map(
                 source ->
-                    new FileDetails(
+                    new AgentFileDetails(
                         FileUtils.nameFromSource(source),
                         source,
                         FileDetails.StorageType.CLOUDSTORAGE,

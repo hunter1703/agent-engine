@@ -1,0 +1,10 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+dependencies {
+    implementation project(':util:common')
+    api project(':util:infra')
+
+    api libs.mongodb.bson
+}

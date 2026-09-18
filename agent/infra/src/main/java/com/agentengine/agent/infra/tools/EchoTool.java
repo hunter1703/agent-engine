@@ -1,12 +1,12 @@
 package com.agentengine.agent.infra.tools;
 
+import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.annotations.ToolParam;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolArg;
 import java.util.Map;
 
 @DiscoverableTool

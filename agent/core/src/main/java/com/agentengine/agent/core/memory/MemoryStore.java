@@ -1,7 +1,7 @@
 package com.agentengine.agent.core.memory;
 
-import com.agentengine.agent.infra.factories.model.EmbeddingModelFactory;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.models.factories.EmbeddingModelFactory;
 import com.agentengine.util.vectordb.QdrantVectorStore;
 import com.agentengine.util.vectordb.VectorDbClientFactory;
 import jakarta.inject.Inject;
@@ -23,6 +23,7 @@ public class MemoryStore extends QdrantVectorStore<Memory> {
       final EmbeddingModelFactory embeddingModelFactory) {
     super(
         AssetClass.MEMORY,
+        AgentVectorStoreClientType.MEMORY,
         clientFactory,
         (modelId, query) -> embeddingModelFactory.get(modelId).embed(query).content().vector());
   }

@@ -1,6 +1,7 @@
 package com.agentengine.util.mongodb.infra;
 
 import com.agentengine.util.common.validation.ValidationService;
+import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.mongodb.mongo.AbstractMongoRepository;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import jakarta.inject.Inject;

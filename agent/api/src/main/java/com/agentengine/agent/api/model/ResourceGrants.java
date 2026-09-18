@@ -1,7 +1,6 @@
 package com.agentengine.agent.api.model;
 
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.beans.Permission;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -11,13 +10,15 @@ import java.util.Map;
 import java.util.Set;
 
 public record ResourceGrants(
-    List<String> knowledgeIds, List<FileDetails> knowledgeFiles, NotebookGrants notebookGrants) {
+    List<String> knowledgeIds,
+    List<AgentFileDetails> knowledgeFiles,
+    NotebookGrants notebookGrants) {
 
   public static final ResourceGrants EMPTY = new ResourceGrants(null, null, null);
 
   public ResourceGrants(
       final List<String> knowledgeIds,
-      final List<FileDetails> knowledgeFiles,
+      final List<AgentFileDetails> knowledgeFiles,
       final NotebookGrants notebookGrants) {
     this.knowledgeIds = CollectionUtils.nullSafeList(knowledgeIds);
     this.knowledgeFiles = CollectionUtils.nullSafeList(knowledgeFiles);
@@ -25,7 +26,7 @@ public record ResourceGrants(
   }
 
   public List<String> knowledgeSources() {
-    return knowledgeFiles.stream().map(FileDetails::source).toList();
+    return knowledgeFiles.stream().map(AgentFileDetails::source).toList();
   }
 
   public ResourceGrants merge(final ResourceGrants incoming) {
@@ -34,7 +35,7 @@ public record ResourceGrants(
     }
     final Set<String> ids = new LinkedHashSet<>(knowledgeIds);
     ids.addAll(incoming.knowledgeIds());
-    final Set<FileDetails> files = new LinkedHashSet<>(knowledgeFiles);
+    final Set<AgentFileDetails> files = new LinkedHashSet<>(knowledgeFiles);
     files.addAll(incoming.knowledgeFiles());
     final Map<String, Permission> mergedNotebookGrants =
         new LinkedHashMap<>(notebookGrants.grants());
