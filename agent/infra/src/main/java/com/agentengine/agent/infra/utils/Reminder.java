@@ -1,5 +1,7 @@
 package com.agentengine.agent.infra.utils;
 
+import com.agentengine.agent.infra.tools.knowledge.ReadKnowledgeSourceTool;
+import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
 import com.agentengine.util.common.CollectionUtils;
 import java.util.List;
 import java.util.Map;
@@ -65,17 +67,30 @@ public record Reminder(String group, String id, String message, Map<String, Obje
           GROUP_KNOWLEDGE_IDS,
           GROUP_KNOWLEDGE_SOURCES);
 
-  private static final Map<String, String> TITLES =
+  private static final Map<String, GroupInfo> GROUPS =
       Map.of(
-          GROUP_ACTIVE_PLAN, "Active Plan",
-          GROUP_SPAWNED_AGENTS, "Pending Child Sessions",
-          GROUP_NOTEBOOK_GRANTS, "Notebook and note permissions",
-          GROUP_KNOWLEDGE_IDS, "Searchable Knowledge",
-          GROUP_KNOWLEDGE_SOURCES, "Full-Text Knowledge Sources");
+          GROUP_ACTIVE_PLAN, new GroupInfo("Active Plan"),
+          GROUP_SPAWNED_AGENTS, new GroupInfo("Pending Child Sessions"),
+          GROUP_NOTEBOOK_GRANTS, new GroupInfo("Notebook and note permissions"),
+          GROUP_KNOWLEDGE_IDS,
+              new GroupInfo(
+                  "Available to Search",
+                  "Search these with " + SearchKnowledgeTool.DESCRIPTOR.name() + "."),
+          GROUP_KNOWLEDGE_SOURCES,
+              new GroupInfo(
+                  "Available to Read",
+                  "Read these with " + ReadKnowledgeSourceTool.DESCRIPTOR.name() + "."));
 
   /** The section title a group renders as in the brief (see {@code ReminderPlugin}). */
   public static String title(final String group) {
-    return TITLES.getOrDefault(group, group.replace('_', ' '));
+    final GroupInfo info = GROUPS.get(group);
+    return info != null ? info.title() : group.replace('_', ' ');
+  }
+
+  /** The group-level instruction to render once per section, or {@code null} if none applies. */
+  public static String instruction(final String group) {
+    final GroupInfo info = GROUPS.get(group);
+    return info != null ? info.instruction() : null;
   }
 
   @Override
@@ -92,5 +107,11 @@ public record Reminder(String group, String id, String message, Map<String, Obje
   @Override
   public int hashCode() {
     return Objects.hash(group, id);
+  }
+
+  private record GroupInfo(String title, String instruction) {
+    private GroupInfo(final String title) {
+      this(title, null);
+    }
   }
 }

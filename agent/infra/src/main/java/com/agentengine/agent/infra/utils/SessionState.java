@@ -3,8 +3,6 @@ package com.agentengine.agent.infra.utils;
 import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.tools.beans.Plan;
-import com.agentengine.agent.infra.tools.knowledge.ReadKnowledgeSourceTool;
-import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
 import com.agentengine.agent.infra.tools.planning.PlanningUtils;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.services.KnowledgeService;
@@ -49,16 +47,7 @@ public final class SessionState {
 
   public void addKnowledgeSourceReminders(final Collection<String> sources) {
     for (final String source : CollectionUtils.nullSafeList(sources)) {
-      addReminder(
-          new Reminder(
-              Reminder.GROUP_KNOWLEDGE_SOURCES,
-              source,
-              "%s Use %s with %s='%s' to read it."
-                  .formatted(
-                      source,
-                      ReadKnowledgeSourceTool.DESCRIPTOR.name(),
-                      Constants.ToolArgs.SOURCE,
-                      source)));
+      addReminder(new Reminder(Reminder.GROUP_KNOWLEDGE_SOURCES, source, source));
     }
   }
 
@@ -125,14 +114,7 @@ public final class SessionState {
   public void addKnowledgeIdReminder(final String knowledgeId, final String hint) {
     final Reminder reminder =
         new Reminder(
-            Reminder.GROUP_KNOWLEDGE_IDS,
-            knowledgeId,
-            "%s Use %s with %s='%s' to search it."
-                .formatted(
-                    hint,
-                    SearchKnowledgeTool.DESCRIPTOR.name(),
-                    Constants.ToolArgs.KNOWLEDGE_ID,
-                    knowledgeId));
+            Reminder.GROUP_KNOWLEDGE_IDS, knowledgeId, "%s (id: %s)".formatted(hint, knowledgeId));
     addReminder(reminder);
   }
 
@@ -285,13 +267,7 @@ public final class SessionState {
       return "[AWAITED] agent : '%s', session_id : '%s', goal : '%s'"
           .formatted(agentId, childSessionId, goal);
     }
-    return "[NOT AWAITED] agent : '%s', session_id : '%s', goal : '%s'. Use %s with %s='%s' when you need its result."
-        .formatted(
-            agentId,
-            childSessionId,
-            goal,
-            Constants.ToolNames.AWAIT_AGENT,
-            Constants.ToolArgs.CHILD_SESSION_ID,
-            childSessionId);
+    return "[NOT AWAITED] agent : '%s', session_id : '%s', goal : '%s'. Use %s when you need its result."
+        .formatted(agentId, childSessionId, goal, Constants.ToolNames.AWAIT_AGENT);
   }
 }
