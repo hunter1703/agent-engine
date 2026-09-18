@@ -17,7 +17,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from deployae import helm, output
-from deployae.charts import REPO_ROOT, Chart
+from deployae.charts import CONFIGS_DIR, REPO_ROOT, Chart
 from deployae.stages import (
     BuildDockerImageStage,
     BuildGradleStage,
@@ -383,12 +383,19 @@ def build_stages(
         enabled=(infra_chart_enabled["mongodb"] or bool(ctx.mongodb_uri)) and not dry_run,
     )
     stages.append(setup_infra_stage)
+    # A tier with no self-hosted qdrant chart (e.g. socialmedia, backed by Qdrant Cloud) still
+    # runs this stage against its own VECTOR.json directly - see InitQdrantCollectionStage.
+    has_external_vector_config = (
+        CONFIGS_DIR / ctx.environment / "infra" / "VECTOR.json"
+    ).is_file() and not infra_chart_enabled["qdrant"]
     qdrant_collections_stage = InitQdrantCollectionStage(
         name="init-qdrant-collections",
-        depends_on=(infra_deploy_by_name["qdrant"],),
+        depends_on=(infra_deploy_by_name["qdrant"],) if infra_chart_enabled["qdrant"] else (),
         namespace_override=ctx.namespace,
         tier=ctx.tier,
-        enabled=infra_chart_enabled["qdrant"],
+        environment=ctx.environment,
+        external=has_external_vector_config,
+        enabled=(infra_chart_enabled["qdrant"] or has_external_vector_config) and not dry_run,
     )
     stages.append(qdrant_collections_stage)
     localstack_buckets_stage = EnsureLocalstackBucketsStage(

@@ -31,8 +31,9 @@ public final class QdrantHttpClient {
   private final HttpClient httpClient;
   private final ObjectMapper objectMapper;
 
-  public QdrantHttpClient(final String host, final int port, final String apiKey) {
-    this.baseUrl = String.format("http://%s:%d", host, port);
+  public QdrantHttpClient(
+      final String host, final int port, final String apiKey, final boolean tls) {
+    this.baseUrl = String.format("%s://%s:%d", tls ? "https" : "http", host, port);
     this.apiKey = apiKey;
     this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     this.objectMapper =

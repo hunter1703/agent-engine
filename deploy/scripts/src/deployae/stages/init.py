@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import subprocess
 import time
 from dataclasses import dataclass
@@ -10,8 +11,9 @@ from dataclasses import dataclass
 import httpx
 
 from deployae import kube
-from deployae.charts import Chart
+from deployae.charts import CONFIGS_DIR, Chart
 from deployae.stages.base import Stage
+from deployae.stages.seed import expand_json_vars
 
 DEFAULT_QDRANT_PORT = 6333
 DEFAULT_VECTOR_SIZE = 768
@@ -36,6 +38,12 @@ class _BootstrapStage(Stage):
 
 @dataclass(eq=False, kw_only=True)
 class InitQdrantCollectionStage(_BootstrapStage):
+    # True for a tier with no self-hosted qdrant chart (e.g. socialmedia, backed by Qdrant
+    # Cloud) - the environment's own VECTOR.json is read directly for connection details and
+    # connected to straight from wherever deployae runs, instead of port-forwarding to a
+    # self-hosted chart's in-cluster-only Service, which wouldn't resolve or exist here.
+    external: bool = False
+    environment: str | None = None
     port: int = DEFAULT_QDRANT_PORT
     vector_size: int = DEFAULT_VECTOR_SIZE
 
@@ -43,30 +51,46 @@ class InitQdrantCollectionStage(_BootstrapStage):
         await asyncio.to_thread(self._init)
 
     def _init(self) -> None:
+        if self.external:
+            with httpx.Client(timeout=30.0, **self._external_client_kwargs()) as client:
+                self._ensure_collection(client)
+            return
+
         namespace, service_name = self._resolve_target("qdrant", self.namespace_override, self.tier)
         with (
             kube.port_forward(namespace, service_name, self.port) as local_port,
             httpx.Client(base_url=f"http://127.0.0.1:{local_port}", timeout=30.0) as client,
         ):
-            for attempt in (1, 2):
-                try:
-                    existing = client.get("/collections/KnowledgeChunk")
-                    break
-                except (httpx.RequestError, httpx.TimeoutException):
-                    if attempt == 2:
-                        raise
-                    time.sleep(2)
+            self._ensure_collection(client)
 
-            if existing.status_code == 200 and "result" in existing.json():
-                print("KnowledgeChunk collection already exists")
-                return
-            response = client.put(
-                "/collections/KnowledgeChunk",
-                json={"vectors": {"size": self.vector_size, "distance": "Cosine"}},
-            )
-            if not response.is_success or response.json().get("status") != "ok":
-                raise RuntimeError(f"Failed to create KnowledgeChunk collection: {response.text}")
-            print("KnowledgeChunk collection created")
+    def _external_client_kwargs(self) -> dict:
+        vector_config_path = CONFIGS_DIR / self.environment / "infra" / "VECTOR.json"
+        config = json.loads(expand_json_vars(vector_config_path))[0]
+        scheme = "https" if config.get("tls") else "http"
+        base_url = f"{scheme}://{config['host']}:{config.get('httpPort', DEFAULT_QDRANT_PORT)}"
+        headers = {"api-key": config["apiKey"]} if config.get("apiKey") else {}
+        return {"base_url": base_url, "headers": headers}
+
+    def _ensure_collection(self, client: httpx.Client) -> None:
+        for attempt in (1, 2):
+            try:
+                existing = client.get("/collections/KnowledgeChunk")
+                break
+            except (httpx.RequestError, httpx.TimeoutException):
+                if attempt == 2:
+                    raise
+                time.sleep(2)
+
+        if existing.status_code == 200 and "result" in existing.json():
+            print("KnowledgeChunk collection already exists")
+            return
+        response = client.put(
+            "/collections/KnowledgeChunk",
+            json={"vectors": {"size": self.vector_size, "distance": "Cosine"}},
+        )
+        if not response.is_success or response.json().get("status") != "ok":
+            raise RuntimeError(f"Failed to create KnowledgeChunk collection: {response.text}")
+        print("KnowledgeChunk collection created")
 
 
 @dataclass(eq=False, kw_only=True)

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "VECTOR:VECTOR_SERVER:default",
+    "_t": "com.agentengine.util.vectordb.VectorDatabaseInfraConfig",
+    "type": "VECTOR_SERVER",
+    "category": "VECTOR",
+    "host": "aaeb3c8c-9a81-41b7-be01-07b1400f23a1.eu-central-1-0.aws.cloud.qdrant.io",
+    "httpPort": 6333,
+    "tls": true,
+    "apiKey": "${QDRANT_TOKEN}"
+  }
+]

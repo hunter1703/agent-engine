@@ -1,5 +1,6 @@
 package com.agentengine.util.vectordb;
 
+import com.agentengine.util.common.Secure;
 import com.agentengine.util.mongodb.infra.InfraConfig;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
@@ -19,7 +20,8 @@ public class VectorDatabaseInfraConfig extends InfraConfig {
 
   private String host = "localhost";
   private int httpPort = 6333;
-  private String apiKey = null;
+  @Secure private String apiKey = null;
+  private boolean tls = false;
 
   public String getHost() {
     return host;
@@ -43,5 +45,13 @@ public class VectorDatabaseInfraConfig extends InfraConfig {
 
   public void setApiKey(final String apiKey) {
     this.apiKey = apiKey;
+  }
+
+  public boolean isTls() {
+    return tls;
+  }
+
+  public void setTls(final boolean tls) {
+    this.tls = tls;
   }
 }

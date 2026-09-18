@@ -36,8 +36,9 @@ public class VectorDbClientFactory {
               final String host = config != null ? config.getHost() : "localhost";
               final int port = config != null ? config.getHttpPort() : 6333;
               final String apiKey = config != null ? config.getApiKey() : null;
+              final boolean tls = config != null && config.isTls();
               LOG.info("VectorDbClientFactory connecting to Qdrant HTTP at {}:{}", host, port);
-              return new QdrantHttpClient(host, port, apiKey);
+              return new QdrantHttpClient(host, port, apiKey, tls);
             });
   }
 
