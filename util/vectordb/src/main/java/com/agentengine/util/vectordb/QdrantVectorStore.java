@@ -15,8 +15,6 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
   private static final Logger LOG = LoggerFactory.getLogger(QdrantVectorStore.class);
 
-  private static final int DEFAULT_MAX_RESULTS = 10;
-
   private final String collection;
   private final VectorDbClientFactory clientFactory;
 
@@ -36,8 +34,6 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
   protected abstract Map<String, Object> toPayload(T entity);
 
   protected abstract T fromPayload(Map<String, Object> payload);
-
-  // ── VectorStore-specific ──────────────────────────────────────────────────
 
   @Override
   public long deleteByQuery(final Query query) {
@@ -110,12 +106,10 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     return PaginatedResult.create(results, page, null);
   }
 
-  // ── Repository<T> ─────────────────────────────────────────────────────────
-
   @Override
   public T save(final T entity) {
     final Map<String, Object> payload = toPayload(entity);
-    final Object vectorData = buildVectorData(entity);
+    final Object vectorData = buildNamedVectors(entity);
     final QdrantHttpClient.Point point =
         new QdrantHttpClient.Point(entity.getId(), vectorData, payload);
     final QdrantHttpClient.UpsertRequest request =
@@ -132,7 +126,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     final List<QdrantHttpClient.Point> points = new ArrayList<>(entities.size());
     for (final T entity : entities) {
       points.add(
-          new QdrantHttpClient.Point(entity.getId(), buildVectorData(entity), toPayload(entity)));
+          new QdrantHttpClient.Point(entity.getId(), buildNamedVectors(entity), toPayload(entity)));
     }
     client().upsert(collection, new QdrantHttpClient.UpsertRequest(points));
     return entities;
@@ -145,8 +139,6 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     client().delete(collection, request);
     return true;
   }
-
-  // ── Unsupported ReadRepository operations ─────────────────────────────────
 
   @Override
   public T insert(final T entity) {
@@ -217,10 +209,9 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
       final Collection<String> ids,
       final List<String> includeFields,
       final List<String> excludeFields) {
-    // Note: HTTP API doesn't support field projection like gRPC, so we ignore
-    // includeFields/excludeFields
     final QdrantHttpClient.RetrieveRequest request =
-        new QdrantHttpClient.RetrieveRequest(new ArrayList<>(ids), true);
+        new QdrantHttpClient.RetrieveRequest(
+            new ArrayList<>(ids), payloadSelector(includeFields, excludeFields));
     final QdrantHttpClient.RetrieveResponse response = client().retrieve(collection, request);
     final Map<String, T> result = new LinkedHashMap<>();
     for (final QdrantHttpClient.RetrievedPoint point : response.result()) {
@@ -228,6 +219,23 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
       result.put(entity.getId(), entity);
     }
     return result;
+  }
+
+  /**
+   * Qdrant takes either an include list or an exclude list, not both, so when both are given the
+   * excluded fields are dropped from the include list.
+   */
+  private static Object payloadSelector(
+      final List<String> includeFields, final List<String> excludeFields) {
+    if (CollectionUtils.isNotEmpty(includeFields)) {
+      final List<String> fields = new ArrayList<>(includeFields);
+      fields.removeAll(CollectionUtils.nullSafeList(excludeFields));
+      return fields;
+    }
+    if (CollectionUtils.isNotEmpty(excludeFields)) {
+      return Map.of("exclude", excludeFields);
+    }
+    return true;
   }
 
   @Override
@@ -238,19 +246,10 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   /**
-   * Builds vector data for Qdrant upsert. If entity has a single vector, returns a flat
-   * List<Float>. If entity has multiple named vectors, returns a Map<String, List<Float>>.
+   * Builds the vectors for a Qdrant upsert, always keyed by physical vector field name — the same
+   * name a semantic query addresses via {@code using}, so a collection needs its vectors declared
+   * by name whether an entity carries one vector or several.
    */
-  private static Object buildVectorData(final VectorEntity entity) {
-    final Map<String, float[]> vectors = entity.getVectors();
-    if (vectors.size() == 1) {
-      final float[] vec = vectors.values().iterator().next();
-      return toFloatList(vec);
-    } else {
-      return buildNamedVectors(entity);
-    }
-  }
-
   private static Map<String, List<Float>> buildNamedVectors(final VectorEntity entity) {
     final Map<String, float[]> vectors = entity.getVectors();
     final Map<String, List<Float>> result = new HashMap<>();
@@ -294,9 +293,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
       must.add(new QdrantHttpClient.Condition(filter.getField(), matchCondition));
     }
 
-    final QdrantHttpClient.Filter result =
-        must.isEmpty() ? null : new QdrantHttpClient.Filter(must, null);
-    return result;
+    return must.isEmpty() ? null : new QdrantHttpClient.Filter(must, null);
   }
 
   private static QdrantHttpClient.Filter buildQdrantFilter(final Filter filter) {

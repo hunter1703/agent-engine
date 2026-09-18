@@ -166,7 +166,7 @@ public final class QdrantHttpClient {
 
   public record PrefetchQuery(List<Float> query, String using, Integer limit) {}
 
-  public record RetrieveRequest(List<String> ids, Boolean withPayload) {}
+  public record RetrieveRequest(List<String> ids, Object withPayload) {}
 
   public record DeleteRequest(List<String> points, Filter filter) {}
 
