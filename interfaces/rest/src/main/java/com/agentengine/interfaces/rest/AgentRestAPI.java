@@ -220,10 +220,9 @@ public class AgentRestAPI {
   private static UserMessage extractUserMessage(final RunAgentInput request) {
     final List<Message> msgs = request.messages();
     final List<MessagePart> parts = new ArrayList<>();
-    final List<String> fileSources = new ArrayList<>();
+    final List<FileDetails> knowledgeFiles = new ArrayList<>();
     for (final Context context : CollectionUtils.nullSafeList(request.context())) {
-      final FileDetails fileDetails = JsonUtils.fromJson(context.value(), FileDetails.class);
-      fileSources.add(fileDetails.source());
+      knowledgeFiles.add(JsonUtils.fromJson(context.value(), FileDetails.class));
     }
     for (final Message msg : CollectionUtils.nullSafeList(msgs)) {
       if (msg instanceof com.agui.community.core.message.UserMessage aguiUserMessage) {
@@ -231,7 +230,7 @@ public class AgentRestAPI {
       }
     }
     if (CollectionUtils.isNotEmpty(parts)) {
-      return new UserMessage(parts, new ResourceGrants(null, fileSources, null));
+      return new UserMessage(parts, new ResourceGrants(null, knowledgeFiles, null));
     }
     throw new WebApplicationException("No user message found in messages array", 400);
   }

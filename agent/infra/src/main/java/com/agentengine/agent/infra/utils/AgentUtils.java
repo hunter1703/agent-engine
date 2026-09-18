@@ -11,8 +11,10 @@ import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.CompactionContextStrategyConfig;
 import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.FileUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Violation;
+import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.beans.Permission;
 import com.google.adk.agents.InvocationContext;
 import java.util.ArrayList;
@@ -57,7 +59,18 @@ public final class AgentUtils {
         && resolvedGrants.grants().isEmpty()) {
       return null;
     }
-    return new ResourceGrants(knowledgeIds, knowledgeSources, resolvedGrants);
+    final List<FileDetails> knowledgeFiles =
+        CollectionUtils.nullSafeList(knowledgeSources).stream()
+            .map(
+                source ->
+                    new FileDetails(
+                        FileUtils.nameFromSource(source),
+                        source,
+                        FileDetails.StorageType.CLOUDSTORAGE,
+                        null,
+                        -1L))
+            .toList();
+    return new ResourceGrants(knowledgeIds, knowledgeFiles, resolvedGrants);
   }
 
   /**

@@ -32,17 +32,17 @@ public interface CloudStorageService {
         UUID.randomUUID().toString().replace("-", ""), name, inputStream, contentLength, mediaType);
   }
 
-  /** Downloads the object at {@code key}, returning its byte stream and content type. */
-  Content download(String key);
+  /** Downloads the object at {@code source}, returning its byte stream and content type. */
+  Content download(String source);
 
   Content download(FileDetails fileDetails);
 
-  void delete(String key);
+  long getSize(String source);
+
+  void delete(String source);
 
   default void delete(FileDetails fileDetails) {
-    final String source = fileDetails.source();
-    final int sep = source.indexOf('/');
-    delete(source.substring(sep + 1));
+    delete(fileDetails.source());
   }
 
   String presignedGetUrl(FileDetails fileDetails, Duration validity);

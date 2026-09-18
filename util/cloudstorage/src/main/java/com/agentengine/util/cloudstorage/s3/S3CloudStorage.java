@@ -3,6 +3,7 @@ package com.agentengine.util.cloudstorage.s3;
 import com.agentengine.util.cloudstorage.CloudStorageInfraConfig;
 import com.agentengine.util.cloudstorage.CloudStorageServiceProducer;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.FileUtils.BucketKey;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
@@ -27,6 +28,7 @@ import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -143,11 +145,10 @@ public class S3CloudStorage implements CloudStorageService {
 
   @Override
   public Content download(final String source) {
-    final int index = source.indexOf("/");
-    final String key = index >= 0 ? source.substring(index + 1) : source;
-    final String bucket = index >= 0 ? source.substring(0, index) : defaultBucket;
+    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
     final ResponseInputStream<GetObjectResponse> response =
-        s3.getObject(GetObjectRequest.builder().bucket(bucket).key(key).build());
+        s3.getObject(
+            GetObjectRequest.builder().bucket(bucketKey.bucket()).key(bucketKey.key()).build());
     return new Content(response, response.response().contentType());
   }
 
@@ -157,8 +158,18 @@ public class S3CloudStorage implements CloudStorageService {
   }
 
   @Override
-  public void delete(final String key) {
-    s3.deleteObject(DeleteObjectRequest.builder().bucket(defaultBucket).key(key).build());
+  public long getSize(final String source) {
+    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
+    return s3.headObject(
+            HeadObjectRequest.builder().bucket(bucketKey.bucket()).key(bucketKey.key()).build())
+        .contentLength();
+  }
+
+  @Override
+  public void delete(final String source) {
+    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
+    s3.deleteObject(
+        DeleteObjectRequest.builder().bucket(bucketKey.bucket()).key(bucketKey.key()).build());
   }
 
   @Override

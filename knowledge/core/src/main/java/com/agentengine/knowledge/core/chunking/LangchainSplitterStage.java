@@ -31,6 +31,11 @@ public final class LangchainSplitterStage extends ChunkingStage {
   }
 
   @Override
+  protected boolean cpuBound() {
+    return true;
+  }
+
+  @Override
   public List<KnowledgeChunk> apply(final List<KnowledgeChunk> chunks) {
     final DocumentSplitter splitter =
         switch (type) {

@@ -98,7 +98,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
   }
 
   private void scheduleIndexing(final Knowledge knowledge) {
-    Thread.ofVirtual().start(() -> runIndexing(knowledge));
+    Thread.ofVirtual()
+        .name("knowledge-indexing-" + knowledge.getId())
+        .start(() -> runIndexing(knowledge));
   }
 
   private void runIndexing(final Knowledge knowledge) {

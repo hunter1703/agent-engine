@@ -5,6 +5,7 @@ import static com.oracle.bmc.objectstorage.model.CreatePreauthenticatedRequestDe
 import com.agentengine.util.cloudstorage.CloudStorageInfraConfig;
 import com.agentengine.util.cloudstorage.CloudStorageServiceProducer;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.FileUtils.BucketKey;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
@@ -24,10 +25,12 @@ import com.oracle.bmc.objectstorage.requests.CopyObjectRequest;
 import com.oracle.bmc.objectstorage.requests.CreatePreauthenticatedRequestRequest;
 import com.oracle.bmc.objectstorage.requests.DeleteObjectRequest;
 import com.oracle.bmc.objectstorage.requests.GetObjectRequest;
+import com.oracle.bmc.objectstorage.requests.HeadObjectRequest;
 import com.oracle.bmc.objectstorage.requests.ListObjectsRequest;
 import com.oracle.bmc.objectstorage.requests.PutObjectRequest;
 import com.oracle.bmc.objectstorage.responses.CreatePreauthenticatedRequestResponse;
 import com.oracle.bmc.objectstorage.responses.GetObjectResponse;
+import com.oracle.bmc.objectstorage.responses.HeadObjectResponse;
 import com.oracle.bmc.objectstorage.responses.ListObjectsResponse;
 import java.io.InputStream;
 import java.time.Duration;
@@ -130,15 +133,13 @@ public class OracleCloudStorage implements CloudStorageService {
 
   @Override
   public Content download(final String source) {
-    final int index = source.indexOf("/");
-    final String key = index >= 0 ? source.substring(index + 1) : source;
-    final String bucket = index >= 0 ? source.substring(0, index) : defaultBucket;
+    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
     final GetObjectResponse response =
         client.getObject(
             GetObjectRequest.builder()
                 .namespaceName(namespace)
-                .bucketName(bucket)
-                .objectName(key)
+                .bucketName(bucketKey.bucket())
+                .objectName(bucketKey.key())
                 .build());
     return new Content(response.getInputStream(), response.getContentType());
   }
@@ -149,12 +150,26 @@ public class OracleCloudStorage implements CloudStorageService {
   }
 
   @Override
-  public void delete(final String key) {
+  public long getSize(final String source) {
+    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
+    final HeadObjectResponse response =
+        client.headObject(
+            HeadObjectRequest.builder()
+                .namespaceName(namespace)
+                .bucketName(bucketKey.bucket())
+                .objectName(bucketKey.key())
+                .build());
+    return response.getContentLength();
+  }
+
+  @Override
+  public void delete(final String source) {
+    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
     client.deleteObject(
         DeleteObjectRequest.builder()
             .namespaceName(namespace)
-            .bucketName(defaultBucket)
-            .objectName(key)
+            .bucketName(bucketKey.bucket())
+            .objectName(bucketKey.key())
             .build());
   }
 

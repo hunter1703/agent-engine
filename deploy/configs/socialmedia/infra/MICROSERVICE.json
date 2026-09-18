@@ -18,6 +18,15 @@
     "port": 8080
   },
   {
+    "id": "MICROSERVICE:MICROSERVICE_SERVER:knowledge",
+    "_t": "com.agentengine.util.ms.client.MicroServiceInfraConfig",
+    "type": "MICROSERVICE_SERVER",
+    "category": "MICROSERVICE",
+    "serverId": "knowledge",
+    "host": "knowledge-socialmedia.agent-engine.svc.cluster.local",
+    "port": 8080
+  },
+  {
     "id": "MICROSERVICE:MICROSERVICE_SERVER:connectors",
     "_t": "com.agentengine.util.ms.client.MicroServiceInfraConfig",
     "type": "MICROSERVICE_SERVER",

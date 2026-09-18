@@ -2,6 +2,7 @@ package com.agentengine.scheduler.core.actor;
 
 import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.SchedulerConfigs;
+import com.agentengine.util.common.ThreadUtils;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.actor.AutoPassivableShardedEntityFactory;
@@ -10,7 +11,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.javadsl.Behaviors;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityContext;
@@ -53,7 +53,7 @@ public class JobRunnerActorFactory
     final int maxConcurrent =
         applicationConfig.getInt(MAX_CONCURRENT_JOBS_KEY, DEFAULT_MAX_CONCURRENT_JOBS);
     this.nodeLimiter = new ConcurrencyLimiter(_ -> maxConcurrent, Long.MAX_VALUE);
-    this.jobExecutor = Executors.newFixedThreadPool(maxConcurrent);
+    this.jobExecutor = ThreadUtils.newFixedThreadExecutor("job-runner-", maxConcurrent);
     this.heartbeatInterval = SchedulerConfigs.from(applicationConfig).heartbeatInterval();
   }
 

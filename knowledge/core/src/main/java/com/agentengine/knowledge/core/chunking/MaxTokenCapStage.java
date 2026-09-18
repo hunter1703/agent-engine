@@ -23,6 +23,11 @@ public final class MaxTokenCapStage extends ChunkingStage {
   }
 
   @Override
+  protected boolean cpuBound() {
+    return true;
+  }
+
+  @Override
   public List<KnowledgeChunk> apply(final List<KnowledgeChunk> chunks) {
     final int maxChars = maxTokensPerSegment * approxCharsPerToken;
     return ChunkUtils.splitChunks(

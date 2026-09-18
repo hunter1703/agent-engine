@@ -2,6 +2,7 @@ package com.agentengine.util.scripts.templated;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EnvUtils;
+import com.agentengine.util.common.ThreadUtils;
 import com.agentengine.util.scripts.exception.TemplateException;
 import groovy.lang.Binding;
 import groovy.lang.Script;
@@ -10,7 +11,6 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -18,8 +18,16 @@ import java.util.concurrent.TimeoutException;
 public class GroovyTemplate<T> implements Template<T> {
 
   private static final Duration EVALUATION_TIMEOUT = Duration.ofSeconds(10);
+
+  // CPU-bound script execution never yields its carrier, so this runs on its own bounded platform
+  // pool rather than virtual threads — those all share one JVM-wide carrier scheduler, and a burst
+  // of script evaluations would otherwise starve unrelated I/O-bound virtual-thread work.
+  private static final int MIN_EVALUATION_THREADS = 8;
+
   private static final ExecutorService EVALUATION_EXECUTOR =
-      Executors.newVirtualThreadPerTaskExecutor();
+      ThreadUtils.newFixedThreadExecutor(
+          "groovy-template-",
+          Math.max(MIN_EVALUATION_THREADS, Runtime.getRuntime().availableProcessors()));
 
   static {
     Runtime.getRuntime().addShutdownHook(new Thread(EVALUATION_EXECUTOR::shutdownNow));

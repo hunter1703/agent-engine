@@ -1,9 +1,7 @@
 package com.agentengine.util.agents.beans.config;
 
 public class ChunkingStrategy {
-
-  /** The chunking technique this stage applies. Defaults to {@link ChunkingType#PARAGRAPH}. */
-  private String type = ChunkingType.PARAGRAPH.name();
+  private String type = ChunkingType.RECURSIVE.name();
 
   private int maxSegmentSize = 512;
   private int maxOverlapSize = 50;

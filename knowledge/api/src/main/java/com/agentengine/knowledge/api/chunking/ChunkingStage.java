@@ -19,4 +19,13 @@ import java.util.List;
 public abstract class ChunkingStage {
 
   protected abstract List<KnowledgeChunk> apply(List<KnowledgeChunk> chunks);
+
+  /**
+   * Whether this stage is pure computation with no blocking I/O. The pipeline runs such stages on a
+   * dedicated platform thread pool, since a virtual thread never yields its carrier while
+   * computing.
+   */
+  protected boolean cpuBound() {
+    return false;
+  }
 }

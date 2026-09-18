@@ -2,6 +2,7 @@ package com.agentengine.agent.core.services;
 
 import static com.agentengine.util.common.Defaults.STREAMING_BATCH_SIZE;
 
+import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.core.session.ResumeResult;
@@ -18,6 +19,9 @@ import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.state.SessionTopology;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.SessionService;
+import com.agentengine.knowledge.api.beans.IndexRequest;
+import com.agentengine.knowledge.api.beans.Knowledge;
+import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.ResumeRequest;
@@ -25,13 +29,18 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
+import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.FileUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.service.CloudStorageService;
 import com.agui.community.core.event.Event;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
@@ -43,7 +52,9 @@ import io.reactivex.rxjava3.flowables.ConnectableFlowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.StructuredTaskScope.Subtask;
 import org.apache.pekko.Done;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.reactivestreams.Publisher;
@@ -58,21 +69,34 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private static final long COMPACTION_WINDOW_MILLIS = 100;
 
+  /**
+   * Attachments at or below this size are granted as a raw knowledge file (read whole, on demand).
+   * Larger text attachments are indexed instead, since a large file is both wasteful to hand the
+   * model in full and a better fit for semantic search.
+   */
+  private static final long INDEXING_THRESHOLD_BYTES = 5 * 1024;
+
   private final SessionActorFactory sessionActorFactory;
   private final SessionEventChannel eventChannel;
   private final SessionService sessionService;
   private final SessionEventsRepository sessionEventsRepository;
+  private final KnowledgeService knowledgeService;
+  private final CloudStorageService cloudStorageService;
 
   @Inject
   public RuntimeServiceImpl(
       final SessionActorFactory sessionActorFactory,
       final SessionEventChannel eventChannel,
       final SessionService sessionService,
-      final SessionEventsRepository sessionEventsRepository) {
+      final SessionEventsRepository sessionEventsRepository,
+      final KnowledgeService knowledgeService,
+      final CloudStorageService cloudStorageService) {
     this.sessionActorFactory = sessionActorFactory;
     this.eventChannel = eventChannel;
     this.sessionService = sessionService;
     this.sessionEventsRepository = sessionEventsRepository;
+    this.knowledgeService = knowledgeService;
+    this.cloudStorageService = cloudStorageService;
   }
 
   @Override
@@ -130,10 +154,11 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private void startTurn(final String agentId, final String sessionId, final UserMessage message) {
     LOG.debug("Starting session {}:{}", agentId, sessionId);
+    final UserMessage resolvedMessage = resolveKnowledgeFiles(agentId, message);
     sessionActorFactory
         .entityRef(sessionId)
         .<StartSessionResult>ask(
-            replyTo -> new StartCommand(new UniqueRecord<>(message), replyTo),
+            replyTo -> new StartCommand(new UniqueRecord<>(resolvedMessage), replyTo),
             SessionActorFactory.ASK_TIMEOUT)
         .whenComplete(
             (result, ex) -> {
@@ -143,6 +168,66 @@ public class RuntimeServiceImpl implements RuntimeService {
                 LOG.debug("Session {}:{} start result: {}", agentId, sessionId, result);
               }
             });
+  }
+
+  private UserMessage resolveKnowledgeFiles(final String agentId, final UserMessage message) {
+    final ResourceGrants grants = message.grants();
+    if (grants == null || CollectionUtils.isEmpty(grants.knowledgeFiles())) {
+      return message;
+    }
+
+    final List<FileDetails> toIndex = new ArrayList<>();
+    final List<FileDetails> knowledgeFiles = new ArrayList<>();
+    for (final FileDetails fileDetails : grants.knowledgeFiles()) {
+      if (needsIndexing(fileDetails)) {
+        toIndex.add(fileDetails);
+      } else {
+        knowledgeFiles.add(fileDetails);
+      }
+    }
+
+    final List<Callable<String>> indexing =
+        toIndex.stream()
+            .<Callable<String>>map(
+                fileDetails -> () -> indexAsKnowledge(agentId, fileDetails).getId())
+            .toList();
+    final List<String> knowledgeIds = new ArrayList<>(grants.knowledgeIds());
+    final List<StructuredConcurrencyUtils.TaskOutcome<String>> outcomes =
+        StructuredConcurrencyUtils.runConcurrentlyUntil("knowledge-indexing", indexing, _ -> false);
+    for (final StructuredConcurrencyUtils.TaskOutcome<String> outcome : outcomes) {
+      if (outcome.state() == Subtask.State.SUCCESS) {
+        knowledgeIds.add(outcome.value());
+      } else {
+        LOG.warn(
+            "Indexing failed for {}; dropping it from the message's grants",
+            toIndex.get(outcome.index()).source(),
+            outcome.error());
+      }
+    }
+
+    return new UserMessage(
+        message.parts(), new ResourceGrants(knowledgeIds, knowledgeFiles, grants.notebookGrants()));
+  }
+
+  /** Whether a text attachment is over {@link #INDEXING_THRESHOLD_BYTES} once its size is known. */
+  private boolean needsIndexing(final FileDetails fileDetails) {
+    if (!FileUtils.isTextFile(fileDetails)) {
+      return false;
+    }
+    final long size =
+        fileDetails.size() < 1
+            ? cloudStorageService.getSize(fileDetails.source())
+            : fileDetails.size();
+    return size > INDEXING_THRESHOLD_BYTES;
+  }
+
+  private Knowledge indexAsKnowledge(final String agentId, final FileDetails fileDetails) {
+    final IndexRequest request = new IndexRequest();
+    request.setAgentId(agentId);
+    request.setFileDetails(fileDetails);
+    request.setTitle(fileDetails.name());
+    request.setWaitForCompletion(true);
+    return knowledgeService.create(request);
   }
 
   @Override
