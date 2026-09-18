@@ -1,6 +1,5 @@
 package com.agentengine.agent.infra.tools.knowledge;
 
-import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.catalog.api.services.AgentService;
@@ -30,7 +29,6 @@ import java.util.Map;
  * <p>The search can be scoped to a specific knowledge item (via {@code knowledgeId}) or to all
  * knowledge indexed for the current agent. Results are ranked by vector similarity.
  */
-@DiscoverableTool
 public final class SearchKnowledgeTool extends Tool {
 
   /** Embedding-model additional key expected by {@code VectorStore.rewriteSemanticFilter}. */

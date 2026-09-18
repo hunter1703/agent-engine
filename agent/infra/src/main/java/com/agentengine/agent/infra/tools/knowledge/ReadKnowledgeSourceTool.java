@@ -1,6 +1,5 @@
 package com.agentengine.agent.infra.tools.knowledge;
 
-import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.agent.infra.utils.ExtendedRunConfig;
@@ -18,8 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 
-/** Fetches a granted knowledge source's content on demand; grants are never delivered eagerly. */
-@DiscoverableTool
 public final class ReadKnowledgeSourceTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(

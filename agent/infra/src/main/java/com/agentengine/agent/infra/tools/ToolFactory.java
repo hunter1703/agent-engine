@@ -1,7 +1,13 @@
 package com.agentengine.agent.infra.tools;
 
+import com.agentengine.agent.infra.tools.knowledge.ReadKnowledgeSourceTool;
+import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
+import com.agentengine.catalog.api.services.AgentService;
+import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.beans.config.ToolsConfig;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.service.CloudStorageService;
+import com.agentengine.util.mongodb.infra.InfraConfigService;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;
 import jakarta.inject.Inject;
@@ -14,14 +20,35 @@ import java.util.Map;
 public final class ToolFactory {
 
   private final ToolService toolService;
+  private final CloudStorageService cloudStorageService;
+  private final KnowledgeService knowledgeService;
+  private final AgentService agentService;
+  private final InfraConfigService infraConfigService;
 
   @Inject
-  public ToolFactory(final ToolService toolService) {
+  public ToolFactory(
+      final ToolService toolService,
+      final CloudStorageService cloudStorageService,
+      final KnowledgeService knowledgeService,
+      final AgentService agentService,
+      final InfraConfigService infraConfigService) {
     this.toolService = toolService;
+    this.cloudStorageService = cloudStorageService;
+    this.knowledgeService = knowledgeService;
+    this.agentService = agentService;
+    this.infraConfigService = infraConfigService;
   }
 
   public HumanInTheLoopTool getHITLTool() {
     return new HumanInTheLoopTool();
+  }
+
+  public BaseTool getReadKnowledgeSourceTool() {
+    return new ReadKnowledgeSourceTool(cloudStorageService);
+  }
+
+  public BaseTool getSearchKnowledgeTool() {
+    return new SearchKnowledgeTool(knowledgeService, agentService, infraConfigService);
   }
 
   public List<BaseTool> buildTools(final List<ToolsConfig> toolConfigs) {

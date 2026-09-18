@@ -11,6 +11,7 @@ import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
 import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.plugins.*;
+import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.catalog.api.services.SessionService;
@@ -47,6 +48,7 @@ public class RunnerFactory {
   private final MemoryService memoryService;
   private final NotebookRepository notebookRepository;
   private final NotesRepository notesRepository;
+  private final ToolFactory toolFactory;
 
   public RunnerFactory(
       AgentService agentService,
@@ -58,7 +60,8 @@ public class RunnerFactory {
       final KnowledgeService knowledgeService,
       final MemoryService memoryService,
       final NotebookRepository notebookRepository,
-      final NotesRepository notesRepository) {
+      final NotesRepository notesRepository,
+      final ToolFactory toolFactory) {
     this.agentService = agentService;
     this.agentProvider = agentProvider;
     this.contextManagerProvider = contextManagerProvider;
@@ -69,6 +72,7 @@ public class RunnerFactory {
     this.memoryService = memoryService;
     this.notebookRepository = notebookRepository;
     this.notesRepository = notesRepository;
+    this.toolFactory = toolFactory;
   }
 
   public SessionRunner buildRunner(
@@ -160,6 +164,7 @@ public class RunnerFactory {
             new GuardrailPlugin(policies),
             new ContextManagementPlugin(contextManagers),
             new NotebookPlugin(notesRepository, agentsWithNotebook),
+            new KnowledgeAccessPlugin(toolFactory),
             new ReminderPlugin(),
             new PlanningPlugin(),
             new ResponseValidationPlugin());
