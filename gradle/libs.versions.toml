@@ -31,6 +31,7 @@ hamcrest = "3.0"
 testcontainers = "1.20.6"
 testcontainers-redis = "2.2.4"
 aws-sdk = "2.31.0"
+oci-sdk = "3.80.3"
 toxiproxy-java = "2.1.7"
 wiremock = "3.9.1"
 fabric8-kubernetes-client = "6.13.4"
@@ -176,6 +177,12 @@ wiremock = { group = "org.wiremock", name = "wiremock", version.ref = "wiremock"
 # AWS SDK v2
 aws-s3 = { group = "software.amazon.awssdk", name = "s3", version.ref = "aws-sdk" }
 aws-sts = { group = "software.amazon.awssdk", name = "sts", version.ref = "aws-sdk" }
+
+# OCI Java SDK
+oci-objectstorage = { group = "com.oracle.oci.sdk", name = "oci-java-sdk-objectstorage", version.ref = "oci-sdk" }
+oci-common = { group = "com.oracle.oci.sdk", name = "oci-java-sdk-common", version.ref = "oci-sdk" }
+oci-common-httpclient-jersey3 = { group = "com.oracle.oci.sdk", name = "oci-java-sdk-common-httpclient-jersey3", version.ref = "oci-sdk" }
+oci-core = { group = "com.oracle.oci.sdk", name = "oci-java-sdk-core", version.ref = "oci-sdk" }
 
 # AG-UI
 ag-ui-core = { group = "com.ag-ui.community", name = "java-core", version.ref = "ag-ui" }

@@ -8,8 +8,15 @@ dependencies {
     implementation project(':util:common')
     implementation project(':util:mongodb')
 
-    // Exposed in public API (S3Client, S3Presigner, S3 request/response types in CloudStorageService)
+    // api, not implementation: interfaces:rest's HTTPStatusExceptionMapper catches
+    // AwsServiceException without declaring its own dependency on it, relying on this
+    // transitively bringing in aws-core.
     api libs.aws.s3
+
+    implementation libs.oci.objectstorage
+    implementation libs.oci.common
+    implementation libs.oci.common.httpclient.jersey3
+    implementation libs.oci.core
 
     implementation libs.quarkus.arc
 

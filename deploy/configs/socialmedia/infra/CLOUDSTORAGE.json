@@ -4,11 +4,10 @@
     "_t": "com.agentengine.util.cloudstorage.CloudStorageInfraConfig",
     "type": "CLOUDSTORAGE",
     "category": "CLOUDSTORAGE",
-    "endpointUrl": "https://bmt6upkvrhpm.compat.objectstorage.ap-mumbai-1.oraclecloud.com",
+    "provider": "ORACLE",
     "region": "ap-mumbai-1",
-    "accessKeyId": "${OCI_OBJECTSTORAGE_ACCESS_KEY}",
-    "secretAccessKey": "${OCI_OBJECTSTORAGE_SECRET_KEY}",
-    "defaultBucket": "agentengine",
-    "chunkedEncodingEnabled": false
+    "namespace": "bmt6upkvrhpm",
+    "useInstancePrincipal": true,
+    "defaultBucket": "agentengine"
   }
 ]

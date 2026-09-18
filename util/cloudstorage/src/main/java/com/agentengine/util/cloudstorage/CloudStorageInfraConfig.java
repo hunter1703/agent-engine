@@ -10,23 +10,31 @@ public class CloudStorageInfraConfig extends InfraConfig {
   public static final String CATEGORY = "CLOUDSTORAGE";
   public static final String CONFIG_ID = "default";
 
-  private String endpointUrl = "http://localhost:4566";
+  private Provider provider = Provider.S3;
   private String region = "us-east-1";
+  private String defaultBucket = "agent-assets";
+  private String endpointUrl = "http://localhost:4566";
   private String accessKeyId = "test";
   @Secure private String secretAccessKey = "test";
-  private String defaultBucket = "agent-assets";
   private boolean pathStyleAccess = true;
   // AWS SDK's own default. Some S3-compatible providers (e.g. OCI Object Storage) return
   // "501 AWS chunked encoding not supported" for the SDK's default streaming-signed uploads
   // and need this set to false.
   private boolean chunkedEncodingEnabled = true;
+  private String namespace;
+  private boolean useInstancePrincipal = false;
+  private String tenantId;
+  private String userId;
+  private String fingerprint;
+  @Secure private String privateKey;
+  @Secure private String passPhrase;
 
-  public String getEndpointUrl() {
-    return endpointUrl;
+  public Provider getProvider() {
+    return provider;
   }
 
-  public void setEndpointUrl(final String endpointUrl) {
-    this.endpointUrl = endpointUrl;
+  public void setProvider(final Provider provider) {
+    this.provider = provider;
   }
 
   public String getRegion() {
@@ -35,6 +43,22 @@ public class CloudStorageInfraConfig extends InfraConfig {
 
   public void setRegion(final String region) {
     this.region = region;
+  }
+
+  public String getDefaultBucket() {
+    return defaultBucket;
+  }
+
+  public void setDefaultBucket(final String defaultBucket) {
+    this.defaultBucket = defaultBucket;
+  }
+
+  public String getEndpointUrl() {
+    return endpointUrl;
+  }
+
+  public void setEndpointUrl(final String endpointUrl) {
+    this.endpointUrl = endpointUrl;
   }
 
   public String getAccessKeyId() {
@@ -53,14 +77,6 @@ public class CloudStorageInfraConfig extends InfraConfig {
     this.secretAccessKey = secretAccessKey;
   }
 
-  public String getDefaultBucket() {
-    return defaultBucket;
-  }
-
-  public void setDefaultBucket(final String defaultBucket) {
-    this.defaultBucket = defaultBucket;
-  }
-
   public boolean isPathStyleAccess() {
     return pathStyleAccess;
   }
@@ -75,5 +91,75 @@ public class CloudStorageInfraConfig extends InfraConfig {
 
   public void setChunkedEncodingEnabled(final boolean chunkedEncodingEnabled) {
     this.chunkedEncodingEnabled = chunkedEncodingEnabled;
+  }
+
+  public String getNamespace() {
+    return namespace;
+  }
+
+  public void setNamespace(final String namespace) {
+    this.namespace = namespace;
+  }
+
+  public boolean isUseInstancePrincipal() {
+    return useInstancePrincipal;
+  }
+
+  public void setUseInstancePrincipal(final boolean useInstancePrincipal) {
+    this.useInstancePrincipal = useInstancePrincipal;
+  }
+
+  public String getTenantId() {
+    return tenantId;
+  }
+
+  public void setTenantId(final String tenantId) {
+    this.tenantId = tenantId;
+  }
+
+  public String getUserId() {
+    return userId;
+  }
+
+  public void setUserId(final String userId) {
+    this.userId = userId;
+  }
+
+  public String getFingerprint() {
+    return fingerprint;
+  }
+
+  public void setFingerprint(final String fingerprint) {
+    this.fingerprint = fingerprint;
+  }
+
+  public String getPrivateKey() {
+    return privateKey;
+  }
+
+  public void setPrivateKey(final String privateKey) {
+    this.privateKey = privateKey;
+  }
+
+  public String getPassPhrase() {
+    return passPhrase;
+  }
+
+  public void setPassPhrase(final String passPhrase) {
+    this.passPhrase = passPhrase;
+  }
+
+  public enum Provider {
+    S3,
+    ORACLE,
+    UNKNOWN;
+
+    public static Provider valueOfOrUnknown(final String value) {
+      try {
+        return Provider.valueOf(value);
+      } catch (final IllegalArgumentException | NullPointerException e) {
+        return UNKNOWN;
+      }
+    }
   }
 }
