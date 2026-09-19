@@ -12,6 +12,8 @@ import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.CronUtils;
 import com.agentengine.scheduler.core.SchedulerUtils;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.context.Context;
+import com.agentengine.util.common.context.UserContext;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.pekko.PekkoSerializable;
@@ -116,8 +118,12 @@ public class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Command> {
       return fail(command);
     }
 
+    final UserContext userContext = trigger.getJobDefinition().getUserContext();
+    final Context jobContext = new Context(entityId, userContext);
     getContext()
-        .pipeToSelf(CompletableFuture.supplyAsync(job::run, jobExecutor), Command.RunFinished::new);
+        .pipeToSelf(
+            CompletableFuture.supplyAsync(() -> jobContext.get(job::run), jobExecutor),
+            Command.RunFinished::new);
     return running(command);
   }
 

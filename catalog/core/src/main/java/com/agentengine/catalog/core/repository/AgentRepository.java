@@ -1,7 +1,6 @@
 package com.agentengine.catalog.core.repository;
 
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.validation.ValidationService;
 import com.agentengine.util.mongodb.mongo.AbstractMongoRepository;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
@@ -13,6 +12,6 @@ public class AgentRepository extends AbstractMongoRepository<BaseAgentConfig> {
   @Inject
   public AgentRepository(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, AssetClass.AGENT, BaseAgentConfig.class, validationService);
+    super(mongoClientFactory, "CATALOG", BaseAgentConfig.class, validationService);
   }
 }

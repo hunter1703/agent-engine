@@ -4,7 +4,6 @@ import com.agentengine.scheduler.api.models.TriggerDefinition;
 import com.agentengine.scheduler.api.models.TriggerStatus;
 import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
@@ -14,7 +13,7 @@ import com.agentengine.util.common.query.Sort;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.validation.ValidationService;
-import com.agentengine.util.mongodb.mongo.AbstractMongoRepository;
+import com.agentengine.util.mongodb.mongo.GlobalMongoRepository;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -23,7 +22,7 @@ import java.util.Collection;
 import java.util.List;
 
 @Singleton
-public class TriggerDefinitionRepositoryImpl extends AbstractMongoRepository<TriggerDefinition>
+public class TriggerDefinitionRepositoryImpl extends GlobalMongoRepository<TriggerDefinition>
     implements TriggerDefinitionRepository {
 
   private static final List<Object> TERMINAL_STATUSES =
@@ -40,11 +39,7 @@ public class TriggerDefinitionRepositoryImpl extends AbstractMongoRepository<Tri
   @Inject
   public TriggerDefinitionRepositoryImpl(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(
-        mongoClientFactory,
-        AssetClass.TRIGGER_DEFINITION,
-        TriggerDefinition.class,
-        validationService);
+    super(mongoClientFactory, "SCHEDULER", TriggerDefinition.class, validationService);
   }
 
   @Override

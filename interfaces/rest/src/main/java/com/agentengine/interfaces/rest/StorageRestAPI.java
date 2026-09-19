@@ -2,7 +2,7 @@ package com.agentengine.interfaces.rest;
 
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 
-import com.agentengine.interfaces.rest.filter.ContextAware;
+import com.agentengine.auth.ContextAware;
 import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.common.beans.FileDetails;
 import io.smallrye.common.annotation.RunOnVirtualThread;

@@ -6,14 +6,21 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @BsonDiscriminator(value = "com.agentengine.util.agents.beans.config.DefaultModelsConfig")
 public class DefaultModelsConfig extends InfraConfig {
   public static final String TYPE = "DEFAULT_MODELS";
-  public static final String CATEGORY = "DEFAULT_MODELS";
-  public static final String CONFIG_ID = "default";
 
   private String titleModelId;
   private String compactionModelId;
   private String evaluatorModelId;
   private String embeddingModelId;
   private String chatModelId;
+
+  public DefaultModelsConfig() {
+    setType(TYPE);
+  }
+
+  @Override
+  public String getId() {
+    return TYPE;
+  }
 
   public String getTitleModelId() {
     return titleModelId;

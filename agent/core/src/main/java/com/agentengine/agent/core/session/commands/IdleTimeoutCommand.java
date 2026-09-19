@@ -8,4 +8,4 @@ import com.agentengine.util.pekko.actor.IdlePassivationInterceptor;
  * period of inactivity. The interceptor recognizes and swallows it before it ever reaches {@link
  * SessionActor}'s command handler — it is not a real command in the session's own vocabulary.
  */
-public record IdleTimeoutCommand() implements SessionCommand {}
+public final class IdleTimeoutCommand extends SessionCommand {}

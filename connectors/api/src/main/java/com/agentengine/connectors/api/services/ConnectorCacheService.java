@@ -4,7 +4,6 @@ import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.query.Page;
-import com.agentengine.util.distributed.CacheTag;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.common.cache.CacheBuilder;
@@ -28,7 +27,7 @@ public class ConnectorCacheService {
     this.connectionsCache =
         new DistributedCache<>(
             CONNECTION_IDS_CACHE_NAME,
-            Set.of(CacheTag.CONNECTIONS),
+            Set.of(ConnectionCacheTag.CONNECTIONS),
             CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS),
             appName -> {
               final List<Connection> result =

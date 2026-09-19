@@ -1,9 +1,8 @@
 [
   {
-    "id": "CLOUDSTORAGE:CLOUDSTORAGE:default",
+    "id": "CLOUDSTORAGE:default",
     "_t": "com.agentengine.util.cloudstorage.CloudStorageInfraConfig",
     "type": "CLOUDSTORAGE",
-    "category": "CLOUDSTORAGE",
     "provider": "ORACLE",
     "region": "ap-mumbai-1",
     "namespace": "bmt6upkvrhpm",

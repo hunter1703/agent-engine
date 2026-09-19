@@ -1,10 +1,10 @@
 package com.agentengine.agent.infra.tools.connector;
 
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
+import com.agentengine.connectors.api.services.ConnectionCacheTag;
 import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.distributed.CacheTag;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.common.cache.CacheBuilder;
@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
  * user once connections carry RBAC, so one user's cached declaration must never leak into
  * another's.
  *
- * <p>Tagged {@link CacheTag#CONNECTIONS} alongside {@code ConnectorCacheService}'s own
+ * <p>Tagged {@link ConnectionCacheTag#CONNECTIONS} alongside {@code ConnectorCacheService}'s own
  * connection-id and connector-metadata caches, but since a {@code CacheCategory.CONNECTIONS}
  * invalidation broadcast only clears the customer-scoped entry for a key (see {@link
  * DistributedCache}'s class doc), a user-scoped entry here doesn't get evicted the moment a
@@ -47,7 +47,7 @@ public class ConnectorToolDeclarationCache {
     this.cache =
         new DistributedCache<>(
             "TOOL_DECLARATION_CACHE",
-            Set.of(CacheTag.CONNECTIONS),
+            Set.of(ConnectionCacheTag.CONNECTIONS),
             CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS),
             this::build,
             cacheManager);

@@ -10,6 +10,8 @@ import com.agentengine.scheduler.api.store.JobDefinitionRepository;
 import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.CronUtils;
 import com.agentengine.scheduler.core.SchedulerUtils;
+import com.agentengine.util.common.context.Context;
+import com.agentengine.util.common.context.UserContext;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import io.quarkus.arc.Unremovable;
@@ -35,6 +37,7 @@ public class SchedulerServiceImpl implements SchedulerService {
 
   @Override
   public String schedule(final JobDefinition jobDefinition) {
+    jobDefinition.setUserContext(Context.getUserContext().orElse(UserContext.SYSTEM));
     createTrigger(jobDefinitionRepository.save(jobDefinition));
     return jobDefinition.getId();
   }

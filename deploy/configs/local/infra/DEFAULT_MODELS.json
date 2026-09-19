@@ -1,9 +1,7 @@
 [
   {
-    "id": "DEFAULT_MODELS:DEFAULT_MODELS:default",
     "_t": "com.agentengine.util.agents.beans.config.DefaultModelsConfig",
     "type": "DEFAULT_MODELS",
-    "category": "DEFAULT_MODELS",
     "titleModelId": "gemma4",
     "compactionModelId": "gemma4",
     "evaluatorModelId": "gemma4",

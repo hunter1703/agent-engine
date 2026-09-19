@@ -6,6 +6,7 @@ plugins {
 dependencies {
     implementation project(':util:common')
     implementation project(':util:infra')
+    implementation project(':util:distributed')
 
     implementation libs.grpc.stub
     implementation libs.grpc.protobuf

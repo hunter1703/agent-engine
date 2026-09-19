@@ -3,6 +3,7 @@ package com.agentengine.util.mongodb.infra;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
+import com.agentengine.util.infra.InfraCacheTag;
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.infra.InfraConfigService;
 import com.google.common.cache.CacheBuilder;
@@ -11,6 +12,7 @@ import jakarta.inject.Singleton;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Singleton
 public class InfraConfigServiceImpl implements InfraConfigService {
@@ -19,15 +21,18 @@ public class InfraConfigServiceImpl implements InfraConfigService {
   private static final Duration CACHE_TTL = Duration.ofMinutes(5);
 
   private final InfraMongoRepository repository;
+  private final DistributedCacheManager cacheManager;
   private final DistributedCache<InfraConfig> cache;
 
   @Inject
   public InfraConfigServiceImpl(
       final InfraMongoRepository repository, final DistributedCacheManager cacheManager) {
     this.repository = repository;
+    this.cacheManager = cacheManager;
     this.cache =
         new DistributedCache<>(
             CACHE_NAME,
+            Set.of(InfraCacheTag.INFRA_CONFIG),
             CacheBuilder.newBuilder().maximumSize(256).expireAfterWrite(CACHE_TTL),
             repository::findById,
             cacheManager);
@@ -36,9 +41,8 @@ public class InfraConfigServiceImpl implements InfraConfigService {
 
   @Override
   @SuppressWarnings("unchecked")
-  public <T extends InfraConfig> T findById(
-      final String configCategory, final String configType, final String configId) {
-    return (T) cache.get(configCategory + ":" + configType + ":" + configId);
+  public <T extends InfraConfig> T findById(final String id) {
+    return (T) cache.get(id);
   }
 
   @Override
@@ -56,7 +60,7 @@ public class InfraConfigServiceImpl implements InfraConfigService {
         config.setVersion(existing.getVersion());
       }
       saved.add(repository.save(config));
-      cache.invalidateAll(false);
+      cacheManager.invalidateAll(InfraCacheTag.INFRA_CONFIG);
     }
     return saved;
   }

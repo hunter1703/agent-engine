@@ -6,7 +6,7 @@ import com.agentengine.scheduler.core.actor.ConcurrencyLimiter;
 import com.agentengine.scheduler.core.actor.JobRunnerActorFactory;
 import com.agentengine.scheduler.core.actor.SchedulerActor;
 import com.agentengine.scheduler.core.actor.TriggerReconcilerActor;
-import com.agentengine.scheduler.core.config.JobTagConfig;
+import com.agentengine.scheduler.core.config.JobTagSettings;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.pekko.ActorSystemProvider;
@@ -68,8 +68,7 @@ public class SchedulerActorFactory {
     final ConcurrencyLimiter concurrencyLimiter =
         new ConcurrencyLimiter(
             tag -> {
-              final JobTagConfig config =
-                  infraConfigService.findById(JobTagConfig.CATEGORY, JobTagConfig.TYPE, tag);
+              final JobTagSettings config = infraConfigService.get(JobTagSettings.TYPE + ":" + tag);
               return (config == null || config.getMaxConcurrent() <= 0)
                   ? Integer.MAX_VALUE
                   : config.getMaxConcurrent();

@@ -2,7 +2,6 @@ package com.agentengine.util.distributed;
 
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.context.Context;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
@@ -10,6 +9,7 @@ import jakarta.annotation.PostConstruct;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -53,11 +53,25 @@ public class DistributedCache<V> {
       final CacheBuilder<Object, Object> delegate,
       final Function<String, ? extends V> loader,
       final DistributedCacheManager cacheManager) {
+    this(cacheName, tags, delegate, loader, null, cacheManager);
+  }
+
+  public DistributedCache(
+      final String cacheName,
+      final Set<CacheTag> tags,
+      final CacheBuilder<Object, Object> delegate,
+      final Function<String, ? extends V> loader,
+      final Consumer<? super V> removalListener,
+      final DistributedCacheManager cacheManager) {
     this.cacheName = cacheName;
     this.tags = CollectionUtils.nullSafeSet(tags);
     this.cacheManager = cacheManager;
+    final Function<String, ? extends V> namespacedLoader =
+        namespacedKey -> loader.apply(unwrapKey(namespacedKey));
     this.localCache =
-        new Cache<>(delegate, namespacedKey -> loader.apply(unwrapKey(namespacedKey)));
+        removalListener == null
+            ? new Cache<>(delegate, namespacedLoader)
+            : new Cache<>(delegate, namespacedLoader, removalListener);
   }
 
   @PostConstruct
@@ -154,13 +168,10 @@ public class DistributedCache<V> {
   }
 
   private static String customerId() {
-    return Context.current()
-        .map(Context::customerId)
-        .filter(StringUtils::isNotBlank)
-        .orElse(UNSCOPED);
+    return Context.customerId().map(String::valueOf).orElse(UNSCOPED);
   }
 
   private static String userId() {
-    return Context.current().map(Context::userId).filter(StringUtils::isNotBlank).orElse(UNSCOPED);
+    return Context.userId().map(String::valueOf).orElse(UNSCOPED);
   }
 }

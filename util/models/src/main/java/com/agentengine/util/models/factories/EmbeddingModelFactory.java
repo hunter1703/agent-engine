@@ -1,12 +1,11 @@
 package com.agentengine.util.models.factories;
 
 import com.agentengine.catalog.api.services.ModelService;
-import com.agentengine.util.agents.beans.config.DefaultModelsConfig;
 import com.agentengine.util.agents.beans.config.EmbeddingModelConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
+import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.RefCountedCache;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.infra.InfraConfigService;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
@@ -25,7 +24,7 @@ import org.slf4j.LoggerFactory;
  *
  * <ol>
  *   <li>The provided {@code modelId} if non-blank
- *   <li>{@link DefaultModelsConfig#getEmbeddingModelId()} from infra config
+ *   <li>{@link DefaultModelsRepository#getEmbeddingModelId()}
  * </ol>
  *
  * <p>The resolved ID is used to load an {@link EmbeddingModelConfig} from {@link ModelService},
@@ -39,12 +38,12 @@ public class EmbeddingModelFactory {
   private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(2);
 
   private final RefCountedCache<String, EmbeddingModel> cache;
-  private final InfraConfigService infraConfigService;
+  private final DefaultModelsRepository defaultModelsRepository;
 
   @Inject
   public EmbeddingModelFactory(
-      final ModelService modelService, final InfraConfigService infraConfigService) {
-    this.infraConfigService = infraConfigService;
+      final ModelService modelService, final DefaultModelsRepository defaultModelsRepository) {
+    this.defaultModelsRepository = defaultModelsRepository;
     this.cache =
         RefCountedCache.<String, EmbeddingModel>builder()
             .name("model-provider")
@@ -84,10 +83,7 @@ public class EmbeddingModelFactory {
     if (StringUtils.isNotBlank(modelId)) {
       return modelId;
     }
-    final DefaultModelsConfig defaults =
-        infraConfigService.findById(
-            DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
-    return defaults != null ? defaults.getEmbeddingModelId() : null;
+    return defaultModelsRepository.getEmbeddingModelId();
   }
 
   private static EmbeddingModel build(final EmbeddingModelConfig config) {

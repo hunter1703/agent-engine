@@ -5,6 +5,7 @@ plugins {
 group = 'com.agentengine.interfaces'
 
 dependencies {
+    implementation project(':auth')
     implementation project(':catalog:api')
     implementation project(':agent:api')
     implementation project(':scheduler:api')

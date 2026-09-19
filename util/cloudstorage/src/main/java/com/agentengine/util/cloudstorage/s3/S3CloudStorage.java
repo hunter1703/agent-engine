@@ -40,7 +40,7 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
  * AWS S3, or a provider's own S3-compatibility API).
  *
  * <p>Configuration is loaded from the infra MongoDB store via {@link InfraConfigService} using
- * {@link CloudStorageInfraConfig#CATEGORY} / {@link CloudStorageInfraConfig#CONFIG_ID}.
+ * {@link CloudStorageInfraConfig#TYPE} / {@link CloudStorageInfraConfig#CONFIG_ID}.
  *
  * <p>Start LocalStack locally:
  *
@@ -65,9 +65,7 @@ public class S3CloudStorage implements CloudStorageService {
   public S3CloudStorage(final InfraConfigService infraConfigService) {
     final CloudStorageInfraConfig config =
         infraConfigService.findById(
-            CloudStorageInfraConfig.CATEGORY,
-            CloudStorageInfraConfig.TYPE,
-            CloudStorageInfraConfig.CONFIG_ID);
+            CloudStorageInfraConfig.TYPE, CloudStorageInfraConfig.CONFIG_ID);
     final StaticCredentialsProvider credentials =
         StaticCredentialsProvider.create(
             AwsBasicCredentials.create(config.getAccessKeyId(), config.getSecretAccessKey()));

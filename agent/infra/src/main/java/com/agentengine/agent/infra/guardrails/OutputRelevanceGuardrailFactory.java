@@ -44,10 +44,7 @@ public final class OutputRelevanceGuardrailFactory
   private String resolveDefaultModelId() {
     try {
       final DefaultModelsConfig defaults =
-          infraConfigService.findById(
-              DefaultModelsConfig.CATEGORY,
-              DefaultModelsConfig.TYPE,
-              DefaultModelsConfig.CONFIG_ID);
+          infraConfigService.findById(DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
       return defaults == null ? null : defaults.getEvaluatorModelId();
     } catch (Exception ex) {
       return null;

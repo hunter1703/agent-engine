@@ -39,19 +39,10 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
 
   public AbstractMongoRepository(
       final MongoClientFactory mongoClientFactory,
-      final String collectionName,
+      final String store,
       final Class<T> entityClass,
       final ValidationService validationService) {
-    this(mongoClientFactory, "AGENT_ENGINE", collectionName, entityClass, validationService);
-  }
-
-  public AbstractMongoRepository(
-      final MongoClientFactory mongoClientFactory,
-      final String databaseName,
-      final String collectionName,
-      final Class<T> entityClass,
-      final ValidationService validationService) {
-    super(mongoClientFactory, databaseName, collectionName, entityClass);
+    super(mongoClientFactory, store, entityClass);
     this.validationService = validationService;
   }
 

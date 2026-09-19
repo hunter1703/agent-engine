@@ -9,6 +9,9 @@ include 'catalog:core'
 
 include 'interfaces:rest'
 
+include 'auth'
+include 'tenancy'
+
 include 'agent:api'
 include 'agent:infra'
 include 'agent:core'

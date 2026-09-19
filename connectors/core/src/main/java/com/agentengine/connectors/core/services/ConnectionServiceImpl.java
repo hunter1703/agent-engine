@@ -8,6 +8,7 @@ import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.beans.ConnectorResult;
 import com.agentengine.connectors.api.beans.CredentialsConfig;
 import com.agentengine.connectors.api.constants.ConnectorConstants;
+import com.agentengine.connectors.api.services.ConnectionCacheTag;
 import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.connectors.core.ConnectionRepository;
@@ -20,7 +21,6 @@ import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.crypto.EncryptionService;
-import com.agentengine.util.distributed.CacheTag;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.distributed.DistributedLockManager;
 import com.agentengine.util.scripts.TemplateUtils;
@@ -108,7 +108,8 @@ public class ConnectionServiceImpl implements ConnectionService {
     }
     encryptSensitiveInputs(connection);
     final Connection saved = connectionRepository.save(connection);
-    distributedCacheManager.broadcastInvalidation(CacheTag.CONNECTIONS.name(), saved.getAppName());
+    distributedCacheManager.broadcastInvalidation(
+        ConnectionCacheTag.CONNECTIONS.name(), saved.getAppName());
     return saved;
   }
 
@@ -230,7 +231,7 @@ public class ConnectionServiceImpl implements ConnectionService {
         encryptSensitiveInputs(connectionFromDB);
         Connection saved = connectionRepository.save(connectionFromDB);
         distributedCacheManager.broadcastInvalidation(
-            CacheTag.CONNECTIONS.name(), saved.getAppName());
+            ConnectionCacheTag.CONNECTIONS.name(), saved.getAppName());
         return saved;
       } catch (Exception e) {
         LOG.error("Failed to refresh connection {}", connection.getId(), e);

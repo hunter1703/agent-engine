@@ -40,6 +40,15 @@ public class DistributedCacheManager {
     }
   }
 
+  /** Clears every cache registered under {@code tag}, on this node and on every other node. */
+  public void invalidateAll(final CacheTag tag) {
+    for (final DistributedCache<?> cache :
+        CollectionUtils.nullSafeList(tagVsCaches.get(tag.name()))) {
+      cache.invalidateAll(true);
+    }
+    broadcastInvalidation(tag.name(), "*");
+  }
+
   public void broadcastInvalidation(final String tag, final String key) {
     jgroupsService.broadcast(EventCategory.CACHE_EVICTION, tag + ":" + key);
   }

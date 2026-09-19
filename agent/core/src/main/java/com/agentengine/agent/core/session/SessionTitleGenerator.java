@@ -41,9 +41,7 @@ public class SessionTitleGenerator {
             _ -> {
               final DefaultModelsConfig defaultModelConfig =
                   infraConfigService.findById(
-                      DefaultModelsConfig.CATEGORY,
-                      DefaultModelsConfig.TYPE,
-                      DefaultModelsConfig.CONFIG_ID);
+                      DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
               if (defaultModelConfig == null) {
                 throw new IllegalStateException(
                     "Default models config not found. Ensure infra configs are seeded before starting the runtime.");

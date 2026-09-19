@@ -1,12 +1,15 @@
 package com.agentengine.agent.core.session.state;
 
+import com.agentengine.util.common.context.UserContext;
 import com.agentengine.util.pekko.PekkoSerializable;
 
-public record SessionTopology(String sessionId, String agentId, SessionRole role)
+public record SessionTopology(
+    String sessionId, String agentId, SessionRole role, UserContext ownerContext)
     implements PekkoSerializable {
 
-  public static SessionTopology root(final String agentId, final String sessionId) {
-    return new SessionTopology(sessionId, agentId, new SessionRole.Root());
+  public static SessionTopology root(
+      final String agentId, final String sessionId, final UserContext userContext) {
+    return new SessionTopology(sessionId, agentId, new SessionRole.Root(), userContext);
   }
 
   public static SessionTopology child(
@@ -14,9 +17,13 @@ public record SessionTopology(String sessionId, String agentId, SessionRole role
       final String sessionId,
       final String rootSessionId,
       final String parentSessionId,
-      final String parentAgentId) {
+      final String parentAgentId,
+      final UserContext userContext) {
     return new SessionTopology(
-        sessionId, agentId, new SessionRole.Child(rootSessionId, parentSessionId, parentAgentId));
+        sessionId,
+        agentId,
+        new SessionRole.Child(rootSessionId, parentSessionId, parentAgentId),
+        userContext);
   }
 
   public String rootSessionId() {

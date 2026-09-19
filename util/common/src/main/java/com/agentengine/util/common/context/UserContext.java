@@ -8,7 +8,8 @@ import java.util.Objects;
  * that type's own guidance, so a future identity field never means touching every place that only
  * cares about {@code requestId}.
  */
-public record UserContext(String customerId, String userId) {
+public record UserContext(Integer customerId, Integer userId) {
+  public static final UserContext SYSTEM = new UserContext(-1, -1);
 
   public UserContext {
     Objects.requireNonNull(customerId, "customerId");

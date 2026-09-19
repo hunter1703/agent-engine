@@ -23,3 +23,6 @@ call in the workflow.
 variables yourself (`NEON_JDBC_PASSWORD`, `MONGO_ATLAS_USER`, `MONGO_ATLAS_PASSWORD`) and run the
 same `envsubst` commands the workflow does before invoking `deployae` — see
 `.github/workflows/deploy.yml`'s "Resolve secret placeholders" step for the exact commands.
+
+`infra/MONGO.json`'s `uri` is `${INFRA_MONGODB_URI}`, the same variable the services read for the infra
+Mongo; export it before running `deployae` manually.

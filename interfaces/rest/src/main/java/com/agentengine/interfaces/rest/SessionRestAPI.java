@@ -4,8 +4,8 @@ import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
 import com.agentengine.agent.api.services.RuntimeService;
+import com.agentengine.auth.ContextAware;
 import com.agentengine.catalog.api.services.SessionService;
-import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FlowableUtils;

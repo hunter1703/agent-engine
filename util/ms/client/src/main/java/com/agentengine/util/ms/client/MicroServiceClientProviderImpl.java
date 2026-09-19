@@ -108,8 +108,7 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
             cls -> {
               final String serverId = cls.getAnnotation(MicroService.class).value();
               final MicroServiceInfraConfig config =
-                  infraConfigService.findById(
-                      MicroServiceInfraConfig.CATEGORY, MicroServiceInfraConfig.TYPE, serverId);
+                  infraConfigService.findById(MicroServiceInfraConfig.TYPE, serverId);
               final String host = config != null ? config.getHost() : DEFAULT_HOST;
               final int port = config != null ? config.getPort() : DEFAULT_PORT;
               LOG.debug("Resolved endpoint for server '{}': {}:{}", serverId, host, port);

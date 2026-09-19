@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest;
 
+import com.agentengine.auth.ContextAware;
 import com.agentengine.interfaces.rest.dto.SchemaLookupRequest;
-import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.interfaces.rest.handlers.SchemaRequestHandler;
 import com.agentengine.interfaces.rest.services.BuilderDefinitionService;
 import com.agentengine.util.agents.builder.BuilderMode;

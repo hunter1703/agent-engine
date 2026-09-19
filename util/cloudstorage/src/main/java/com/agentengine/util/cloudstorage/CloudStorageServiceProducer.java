@@ -22,9 +22,7 @@ public class CloudStorageServiceProducer {
   public CloudStorageService cloudStorageService(final InfraConfigService infraConfigService) {
     final CloudStorageInfraConfig config =
         infraConfigService.findById(
-            CloudStorageInfraConfig.CATEGORY,
-            CloudStorageInfraConfig.TYPE,
-            CloudStorageInfraConfig.CONFIG_ID);
+            CloudStorageInfraConfig.TYPE, CloudStorageInfraConfig.CONFIG_ID);
     final CloudStorageInfraConfig.Provider provider =
         config == null ? CloudStorageInfraConfig.Provider.S3 : config.providerType();
     final CloudStorageService storage =

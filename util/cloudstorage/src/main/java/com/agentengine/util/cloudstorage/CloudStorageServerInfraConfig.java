@@ -5,15 +5,12 @@ import com.agentengine.util.infra.InfraConfig;
 import java.util.Locale;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@BsonDiscriminator(value = "com.agentengine.util.cloudstorage.CloudStorageInfraConfig")
-public class CloudStorageInfraConfig extends InfraConfig {
-  public static final String TYPE = "CLOUDSTORAGE";
-  public static final String CATEGORY = "CLOUDSTORAGE";
-  public static final String CONFIG_ID = "default";
+@BsonDiscriminator(value = "com.agentengine.util.cloudstorage.CloudStorageServerInfraConfig")
+public class CloudStorageServerInfraConfig extends InfraConfig {
+  public static final String TYPE = "CLOUDSTORAGE_SERVER";
 
   private String provider = Provider.S3.name();
   private String region = "us-east-1";
-  private String defaultBucket = "agent-assets";
   private String endpointUrl = "http://localhost:4566";
   private String accessKeyId = "test";
   @Secure private String secretAccessKey = "test";
@@ -29,6 +26,15 @@ public class CloudStorageInfraConfig extends InfraConfig {
   private String fingerprint;
   @Secure private String privateKey;
   @Secure private String passPhrase;
+
+  public CloudStorageServerInfraConfig() {
+    setType(TYPE);
+  }
+
+  @Override
+  public String getId() {
+    return TYPE + ":" + getServerId();
+  }
 
   public String getProvider() {
     return provider;
@@ -48,14 +54,6 @@ public class CloudStorageInfraConfig extends InfraConfig {
 
   public void setRegion(final String region) {
     this.region = region;
-  }
-
-  public String getDefaultBucket() {
-    return defaultBucket;
-  }
-
-  public void setDefaultBucket(final String defaultBucket) {
-    this.defaultBucket = defaultBucket;
   }
 
   public String getEndpointUrl() {

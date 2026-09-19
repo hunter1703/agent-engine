@@ -6,8 +6,8 @@ import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.agents.beans.config.DefaultModelsConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
@@ -16,7 +16,6 @@ import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.Query;
-import com.agentengine.util.infra.InfraConfigService;
 import com.google.adk.apps.App;
 import com.google.adk.memory.BaseMemoryService;
 import com.google.adk.memory.MemoryEntry;
@@ -60,19 +59,19 @@ public class MemoryService implements BaseMemoryService {
   private final SessionEventsRepository sessionEventsRepository;
   private final AgentProvider agentProvider;
   private final MemoryStore memoryStore;
-  private final InfraConfigService infraConfigService;
+  private final DefaultModelsRepository defaultModelsRepository;
 
   public MemoryService(
       final CommunityRegistry communityRegistry,
       final SessionEventsRepository sessionEventsRepository,
       final AgentProvider agentProvider,
       final MemoryStore memoryStore,
-      final InfraConfigService infraConfigService) {
+      final DefaultModelsRepository defaultModelsRepository) {
     this.communityRegistry = communityRegistry;
     this.sessionEventsRepository = sessionEventsRepository;
     this.agentProvider = agentProvider;
     this.memoryStore = memoryStore;
-    this.infraConfigService = infraConfigService;
+    this.defaultModelsRepository = defaultModelsRepository;
   }
 
   @Override
@@ -108,7 +107,7 @@ public class MemoryService implements BaseMemoryService {
                               .content(Content.fromParts(Part.fromText(memory.getText())))
                               .build())
                   .toList();
-          return SearchMemoryResponse.builder().setMemories(entries).build();
+          return SearchMemoryResponse.builder().memories(entries).build();
         });
   }
 
@@ -124,13 +123,7 @@ public class MemoryService implements BaseMemoryService {
 
   private List<Memory> semanticMemorySearch(
       final String agentId, final String userId, final String queryText, final int limit) {
-    final String embeddingModelId =
-        infraConfigService
-            .<DefaultModelsConfig>findById(
-                DefaultModelsConfig.CATEGORY,
-                DefaultModelsConfig.TYPE,
-                DefaultModelsConfig.CONFIG_ID)
-            .getEmbeddingModelId();
+    final String embeddingModelId = defaultModelsRepository.getEmbeddingModelId();
     if (StringUtils.isBlank(embeddingModelId)) {
       return List.of();
     }

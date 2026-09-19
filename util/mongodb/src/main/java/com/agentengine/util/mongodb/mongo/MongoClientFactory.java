@@ -8,14 +8,19 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.crypto.EncryptionService;
+import com.agentengine.util.distributed.DistributedCacheManager;
+import com.agentengine.util.infra.InfraClientFactory;
+import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.mongodb.infra.MongoClientInfraConfig;
+import com.agentengine.util.mongodb.infra.MongoServerInfraConfig;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
 import org.bson.codecs.Codec;
@@ -27,31 +32,49 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Singleton
-public class MongoClientFactory {
+// ApplicationScoped, not Singleton: the infra config service is built on this factory, and this
+// factory reads the client configs through the infra config service.
+@ApplicationScoped
+public class MongoClientFactory
+    extends InfraClientFactory<MongoClientInfraConfig, MongoServerInfraConfig, MongoClient> {
   private static final Logger LOG = LoggerFactory.getLogger(MongoClientFactory.class);
   private final MongoClientSupport mongoClientSupport;
-  private final LazyLoader<MongoClient> client;
+  private final EncryptionService encryptionService;
+  private final Instance<Codec<?>> customCodecs;
+  private final LazyLoader<MongoClient> infraClient;
 
   @Inject
   public MongoClientFactory(
+      InfraConfigService infraConfigService,
+      DistributedCacheManager cacheManager,
       MongoClientSupport mongoClientSupport,
       EncryptionService encryptionService,
       Instance<Codec<?>> customCodecs) {
+    super(
+        infraConfigService, cacheManager, MongoClientInfraConfig.TYPE, MongoServerInfraConfig.TYPE);
     this.mongoClientSupport = mongoClientSupport;
-    this.client =
-        new LazyLoader<>(
-            () ->
-                MongoClients.create(
-                    buildClientSettings(
-                        EnvUtils.getInfraMongoUri(),
-                        getBsonDiscriminators(this.mongoClientSupport),
-                        encryptionService,
-                        customCodecs)));
+    this.encryptionService = encryptionService;
+    this.customCodecs = customCodecs;
+    this.infraClient = new LazyLoader<>(() -> create(EnvUtils.getInfraMongoUri()));
   }
 
-  public MongoClient getClient() {
-    return client.get();
+  public MongoClient getInfraClient() {
+    return infraClient.get();
+  }
+
+  public MongoClient getClient(final String store, final Integer customerId) {
+    return get(infraConfigService.get(MongoClientInfraConfig.TYPE + ":" + store + ":" + customerId));
+  }
+
+  @Override
+  protected MongoClient create(final MongoServerInfraConfig serverConfig) {
+    return create(serverConfig.getUri());
+  }
+
+  private MongoClient create(final String uri) {
+    return MongoClients.create(
+        buildClientSettings(
+            uri, getBsonDiscriminators(mongoClientSupport), encryptionService, customCodecs));
   }
 
   private static List<String> getBsonDiscriminators(final MongoClientSupport mongoClientSupport) {

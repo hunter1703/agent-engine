@@ -7,6 +7,8 @@ dependencies {
 
     implementation project(':util:common')
     api project(':util:infra')
+    implementation project(':util:distributed')
+    implementation libs.guava
 
     implementation libs.aws.s3
 

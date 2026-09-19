@@ -67,9 +67,7 @@ public class OracleCloudStorage implements CloudStorageService {
   public OracleCloudStorage(final InfraConfigService infraConfigService) {
     final CloudStorageInfraConfig config =
         infraConfigService.findById(
-            CloudStorageInfraConfig.CATEGORY,
-            CloudStorageInfraConfig.TYPE,
-            CloudStorageInfraConfig.CONFIG_ID);
+            CloudStorageInfraConfig.TYPE, CloudStorageInfraConfig.CONFIG_ID);
     this.client = buildClient(config);
     this.region = config.getRegion();
     this.namespace = config.getNamespace();

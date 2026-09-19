@@ -1,4 +1,4 @@
-package com.agentengine.interfaces.rest.filter;
+package com.agentengine.auth;
 
 import com.agentengine.util.common.context.Context;
 import jakarta.annotation.Priority;
@@ -7,11 +7,6 @@ import jakarta.interceptor.AroundInvoke;
 import jakarta.interceptor.Interceptor;
 import jakarta.interceptor.InvocationContext;
 
-/**
- * Re-enters the {@link Context} parked by {@link AuthFilter} in {@link RequestContextProvider},
- * wrapping the resource method invocation — the one point in the request pipeline that owns the
- * call as a single block — so {@code Context.current()} is visible for its whole body.
- */
 @ContextAware
 @Interceptor
 @Priority(Interceptor.Priority.APPLICATION)
