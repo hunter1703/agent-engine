@@ -9,6 +9,7 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.query.Sort;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.mongodb.infra.MongoClientInfraConfig;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
@@ -32,6 +33,10 @@ public final class MongoUtils {
   public static final String FIELD_MONGO_ID = "_id";
 
   private MongoUtils() {}
+
+  public static String clientId(final String store, final Integer customerId) {
+    return MongoClientInfraConfig.TYPE + ":" + store + (customerId == null ? "" : ":" + customerId);
+  }
 
   public static Bson toBsonUpdate(final Update update) {
     Objects.requireNonNull(update, "update");

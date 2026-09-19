@@ -1,13 +1,12 @@
 package com.agentengine.util.cloudstorage.s3;
 
-import com.agentengine.util.cloudstorage.CloudStorageInfraConfig;
+import com.agentengine.util.cloudstorage.AbstractCloudStorageService;
+import com.agentengine.util.cloudstorage.CloudStorageServerInfraConfig;
 import com.agentengine.util.cloudstorage.CloudStorageService;
-import com.agentengine.util.cloudstorage.CloudStorageServiceProducer;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FileUtils.BucketKey;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
-import com.agentengine.util.infra.InfraConfigService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -15,6 +14,8 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+
+import com.agentengine.util.infra.InfraConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -39,20 +40,13 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
  * {@link CloudStorageService} backed by any S3-compatible object store (LocalStack for local dev,
  * AWS S3, or a provider's own S3-compatibility API).
  *
- * <p>Configuration is loaded from the infra MongoDB store via {@link InfraConfigService} using
- * {@link CloudStorageInfraConfig#CATEGORY} / {@link CloudStorageInfraConfig#CONFIG_ID}.
- *
  * <p>Start LocalStack locally:
  *
  * <pre>
  *   docker run --rm -p 4566:4566 localstack/localstack
  * </pre>
- *
- * <p>Constructed directly by {@link CloudStorageServiceProducer} rather than injected — not a CDI
- * bean itself, since which {@link CloudStorageService} implementation backs a given deployment is a
- * runtime config choice, not a compile-time one.
  */
-public class S3CloudStorage implements CloudStorageService {
+public class S3CloudStorage extends AbstractCloudStorageService {
 
   private static final Logger log = LoggerFactory.getLogger(S3CloudStorage.class);
 
@@ -60,15 +54,10 @@ public class S3CloudStorage implements CloudStorageService {
 
   private final S3Client s3;
   private final S3Presigner presigner;
-  private final String defaultBucket;
 
-  public S3CloudStorage(final InfraConfigService infraConfigService) {
-    final CloudStorageInfraConfig config =
-        infraConfigService.findById(
-            CloudStorageInfraConfig.CATEGORY,
-            CloudStorageInfraConfig.TYPE,
-            CloudStorageInfraConfig.CONFIG_ID);
-    final StaticCredentialsProvider credentials =
+  public S3CloudStorage(final CloudStorageServerInfraConfig config, final InfraConfigService infraConfigService) {
+      super(infraConfigService);
+      final StaticCredentialsProvider credentials =
         StaticCredentialsProvider.create(
             AwsBasicCredentials.create(config.getAccessKeyId(), config.getSecretAccessKey()));
     final URI endpoint = URI.create(config.getEndpointUrl());
@@ -91,11 +80,8 @@ public class S3CloudStorage implements CloudStorageService {
             .region(region)
             .credentialsProvider(credentials)
             .serviceConfiguration(
-                S3Configuration.builder()
-                    .pathStyleAccessEnabled(config.isPathStyleAccess())
-                    .build())
+                S3Configuration.builder().pathStyleAccessEnabled(config.isPathStyleAccess()).build())
             .build();
-    this.defaultBucket = config.getDefaultBucket();
   }
 
   @Override
@@ -121,7 +107,7 @@ public class S3CloudStorage implements CloudStorageService {
     try {
       s3.putObject(
           PutObjectRequest.builder()
-              .bucket(defaultBucket)
+              .bucket(bucket())
               .key(key)
               .contentType(mediaType)
               .metadata(CollectionUtils.nullSafeMap(metadata))
@@ -137,7 +123,7 @@ public class S3CloudStorage implements CloudStorageService {
     }
     return new FileDetails(
         name,
-        defaultBucket + "/" + key,
+            bucket() + "/" + key,
         FileDetails.StorageType.CLOUDSTORAGE,
         mediaType,
         contentLength);
@@ -145,7 +131,7 @@ public class S3CloudStorage implements CloudStorageService {
 
   @Override
   public Content download(final String source) {
-    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
+    final BucketKey bucketKey = BucketKey.parse(source, bucket());
     final ResponseInputStream<GetObjectResponse> response =
         s3.getObject(
             GetObjectRequest.builder().bucket(bucketKey.bucket()).key(bucketKey.key()).build());
@@ -159,7 +145,7 @@ public class S3CloudStorage implements CloudStorageService {
 
   @Override
   public long getSize(final String source) {
-    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
+    final BucketKey bucketKey = BucketKey.parse(source, bucket());
     return s3.headObject(
             HeadObjectRequest.builder().bucket(bucketKey.bucket()).key(bucketKey.key()).build())
         .contentLength();
@@ -167,21 +153,20 @@ public class S3CloudStorage implements CloudStorageService {
 
   @Override
   public void delete(final String source) {
-    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
+    final BucketKey bucketKey = BucketKey.parse(source, bucket());
     s3.deleteObject(
         DeleteObjectRequest.builder().bucket(bucketKey.bucket()).key(bucketKey.key()).build());
   }
 
   @Override
   public String presignedGetUrl(final FileDetails fileDetails, final Duration validity) {
-    final String source = fileDetails.source();
-    final int sep = source.indexOf('/');
-    final String key = sep >= 0 ? source.substring(sep + 1) : source;
+    final BucketKey bucketKey = BucketKey.parse(fileDetails.source(), bucket());
     return presigner
         .presignGetObject(
             GetObjectPresignRequest.builder()
                 .signatureDuration(validity)
-                .getObjectRequest(request -> request.bucket(defaultBucket).key(key))
+                .getObjectRequest(
+                    request -> request.bucket(bucketKey.bucket()).key(bucketKey.key()))
                 .build())
         .url()
         .toString();
@@ -191,7 +176,7 @@ public class S3CloudStorage implements CloudStorageService {
   public List<String> list(final String keyPrefix) {
     return s3
         .listObjectsV2Paginator(
-            ListObjectsV2Request.builder().bucket(defaultBucket).prefix(keyPrefix).build())
+            ListObjectsV2Request.builder().bucket(bucket()).prefix(keyPrefix).build())
         .stream()
         .flatMap(page -> page.contents().stream())
         .map(S3Object::key)
@@ -201,11 +186,12 @@ public class S3CloudStorage implements CloudStorageService {
   @Override
   public FileDetails copy(
       final FileDetails source, final String name, final String destinationKey) {
+    final BucketKey sourceBucketKey = BucketKey.parse(source.source(), bucket());
     final CopyObjectRequest request =
         CopyObjectRequest.builder()
-            .sourceBucket(defaultBucket)
-            .sourceKey(source.source())
-            .destinationBucket(defaultBucket)
+            .sourceBucket(sourceBucketKey.bucket())
+            .sourceKey(sourceBucketKey.key())
+            .destinationBucket(bucket())
             .destinationKey(destinationKey)
             .build();
     s3.copyObject(request);
@@ -215,5 +201,11 @@ public class S3CloudStorage implements CloudStorageService {
         FileDetails.StorageType.CLOUDSTORAGE,
         source.mimeType(),
         source.size());
+  }
+
+  @Override
+  public void close() {
+    s3.close();
+    presigner.close();
   }
 }

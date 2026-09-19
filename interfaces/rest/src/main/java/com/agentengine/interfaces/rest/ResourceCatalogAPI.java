@@ -1,11 +1,11 @@
 package com.agentengine.interfaces.rest;
 
 import com.agentengine.interfaces.rest.dto.AssetRequest;
-import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.interfaces.rest.handlers.catalog.AssetHandler;
 import com.agentengine.interfaces.rest.handlers.catalog.NamedAssetHandler;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.NamedEntity;
+import com.agentengine.util.context.ContextAware;
 import com.agentengine.util.common.query.PaginatedResult;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;

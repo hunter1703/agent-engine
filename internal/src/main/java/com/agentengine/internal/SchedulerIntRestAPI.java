@@ -2,6 +2,7 @@ package com.agentengine.internal;
 
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
+import com.agentengine.util.context.ContextAware;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.Consumes;
@@ -22,6 +23,7 @@ import jakarta.ws.rs.core.Response;
  * unlike the agent-scoped {@code /v1/agent/{agentId}/schedule} endpoint, which only ever creates
  * {@code InvokeAgentJob} definitions on the caller's behalf.
  */
+@ContextAware
 @Path("/scheduler")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)

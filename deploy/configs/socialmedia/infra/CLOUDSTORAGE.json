@@ -1,13 +1,18 @@
 [
   {
-    "id": "CLOUDSTORAGE:CLOUDSTORAGE:default",
-    "_t": "com.agentengine.util.cloudstorage.CloudStorageInfraConfig",
-    "type": "CLOUDSTORAGE",
-    "category": "CLOUDSTORAGE",
+    "_t": "com.agentengine.util.cloudstorage.CloudStorageServerInfraConfig",
+    "type": "CLOUDSTORAGE_SERVER",
+    "serverId": "default",
     "provider": "ORACLE",
     "region": "ap-mumbai-1",
     "namespace": "bmt6upkvrhpm",
-    "useInstancePrincipal": true,
-    "defaultBucket": "agentengine"
+    "useInstancePrincipal": true
+  },
+  {
+    "_t": "com.agentengine.util.cloudstorage.CloudStorageClientInfraConfig",
+    "type": "CLOUDSTORAGE_CLIENT",
+    "customerId": 1,
+    "serverId": "default",
+    "bucket": "agentengine_1"
   }
 ]

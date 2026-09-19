@@ -2,9 +2,8 @@ package com.agentengine.util.pekko;
 
 import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.mongodb.infra.InfraConfigService;
-import com.agentengine.util.mongodb.infra.SQLInfraConfig;
 import com.agentengine.util.pekko.actor.ShardedEntityDefinition;
+import com.agentengine.util.pekko.persistence.InfraSlickDatabaseProvider;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValueFactory;
@@ -41,7 +40,6 @@ public class ActorSystemProvider {
   /** Observers that spawn actors must order themselves after this. */
   public static final int ACTOR_SYSTEM_STARTUP_PRIORITY = 100;
 
-  private final InfraConfigService infraConfigService;
   private final Instance<ShardedEntityDefinition> entityDefinitions;
   private final PekkoJsonCodecFactory jsonCodecFactory;
   private volatile ActorSystem<SpawnProtocol.Command> system;
@@ -50,10 +48,8 @@ public class ActorSystemProvider {
 
   @Inject
   public ActorSystemProvider(
-      final InfraConfigService infraConfigService,
       final Instance<ShardedEntityDefinition> entityDefinitions,
       final PekkoJsonCodecFactory jsonCodecFactory) {
-    this.infraConfigService = infraConfigService;
     this.entityDefinitions = entityDefinitions;
     this.jsonCodecFactory = jsonCodecFactory;
   }
@@ -76,11 +72,8 @@ public class ActorSystemProvider {
       LOG.info("Pekko is disabled (PEKKO_CLUSTER is not set); no ActorSystem will be created");
       return;
     }
-    final SQLInfraConfig sqlConfig =
-        infraConfigService.findById(
-            SQLInfraConfig.CATEGORY, SQLInfraConfig.TYPE, SQLInfraConfig.DEFAULT_CONFIG_ID);
     LOG.info("Creating ActorSystem '{}'", pekkoCluster);
-    final Config config = buildConfig(sqlConfig, pekkoCluster);
+    final Config config = buildConfig(pekkoCluster);
     final ActorSystemSetup setup =
         ActorSystemSetup.create(
             BootstrapSetup.create(config),
@@ -121,42 +114,36 @@ public class ActorSystemProvider {
     return sharding.entityRefFor(key, id);
   }
 
-  private Config buildConfig(final SQLInfraConfig sqlConfig, final String pekkoCluster) {
+  private Config buildConfig(final String pekkoCluster) {
     final String podIp = EnvUtils.getPodIp();
     final String canonicalHostname = StringUtils.isNotBlank(podIp) ? podIp : EnvUtils.getHostname();
-    final String jdbcUrl = sqlConfig.getJdbcUrl();
-    final String jdbcUser = sqlConfig.getJdbcUser();
-    final String jdbcPassword = sqlConfig.getJdbcPassword();
     final Config baseConfig =
         ConfigFactory.parseFile(new File(PEKKO_BASE_CONF_PATH))
             .withFallback(ConfigFactory.defaultReference())
             .resolve();
-    // Static structure is in the base config; dynamic/sensitive values are overlaid via withValue
-    // so they are never present in a logged HOCON string.
-    return baseConfig
+    final Config withCluster =
+        baseConfig
+            .withValue(
+                "pekko.remote.artery.canonical.hostname",
+                ConfigValueFactory.fromAnyRef(canonicalHostname))
+            .withValue(
+                "pekko.remote.artery.canonical.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
+            .withValue("pekko.remote.artery.bind.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
+            .withValue(
+                "pekko.management.http.hostname", ConfigValueFactory.fromAnyRef(canonicalHostname))
+            .withValue(
+                "pekko.management.http.bind-hostname", ConfigValueFactory.fromAnyRef("0.0.0.0"))
+            .withValue(
+                "pekko.cluster.roles", ConfigValueFactory.fromIterable(List.of(pekkoCluster)))
+            .withValue(
+                "pekko.discovery.kubernetes-api.pod-label-selector",
+                // A node's role is its Pekko cluster identity (pekko.cluster in the chart), so this
+                // scopes bootstrap discovery to peers of that same cluster.
+                ConfigValueFactory.fromAnyRef(PEKKO_CLUSTER_LABEL_KEY + "=" + pekkoCluster));
+    return withCluster
         .withValue(
-            "pekko.remote.artery.canonical.hostname",
-            ConfigValueFactory.fromAnyRef(canonicalHostname))
-        .withValue("pekko.remote.artery.canonical.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
-        .withValue("pekko.remote.artery.bind.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
-        .withValue(
-            "pekko.management.http.hostname", ConfigValueFactory.fromAnyRef(canonicalHostname))
-        .withValue("pekko.management.http.bind-hostname", ConfigValueFactory.fromAnyRef("0.0.0.0"))
-        .withValue("pekko.cluster.roles", ConfigValueFactory.fromIterable(List.of(pekkoCluster)))
-        .withValue(
-            "pekko.discovery.kubernetes-api.pod-label-selector",
-            // A node's role is its Pekko cluster identity (pekko.cluster in the chart), so this
-            // scopes bootstrap discovery to peers of that same cluster.
-            ConfigValueFactory.fromAnyRef(PEKKO_CLUSTER_LABEL_KEY + "=" + pekkoCluster))
-        .withValue(
-            "pekko-persistence-jdbc.shared-databases.slick.db.url",
-            ConfigValueFactory.fromAnyRef(jdbcUrl))
-        .withValue(
-            "pekko-persistence-jdbc.shared-databases.slick.db.user",
-            ConfigValueFactory.fromAnyRef(jdbcUser))
-        .withValue(
-            "pekko-persistence-jdbc.shared-databases.slick.db.password",
-            ConfigValueFactory.fromAnyRef(jdbcPassword))
+            "pekko-persistence-jdbc.database-provider-fqcn",
+            ConfigValueFactory.fromAnyRef(InfraSlickDatabaseProvider.class.getName()))
         .withFallback(ConfigFactory.load())
         .resolve();
   }

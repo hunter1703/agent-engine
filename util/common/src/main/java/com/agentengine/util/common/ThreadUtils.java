@@ -1,5 +1,6 @@
 package com.agentengine.util.common;
 
+import com.agentengine.util.context.ContextualExecutor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -14,19 +15,21 @@ public final class ThreadUtils {
     final String resolvedPrefix =
         StringUtils.isBlank(namePrefix) ? DEFAULT_PREFIX : namePrefix.trim();
     final ThreadFactory factory = Thread.ofVirtual().name(resolvedPrefix, 0).factory();
-    return Executors.newThreadPerTaskExecutor(factory);
+    return new ContextualExecutor(Executors.newThreadPerTaskExecutor(factory));
   }
 
   public static ExecutorService newFixedThreadExecutor(final String namePrefix, final int size) {
     final String resolvedPrefix =
         StringUtils.isBlank(namePrefix) ? DEFAULT_PREFIX : namePrefix.trim();
     final AtomicInteger counter = new AtomicInteger();
-    return Executors.newFixedThreadPool(
-        size,
-        runnable -> {
-          final Thread thread = new Thread(runnable, resolvedPrefix + counter.getAndIncrement());
-          thread.setDaemon(true);
-          return thread;
-        });
+    return new ContextualExecutor(
+        Executors.newFixedThreadPool(
+            size,
+            runnable -> {
+              final Thread thread =
+                  new Thread(runnable, resolvedPrefix + counter.getAndIncrement());
+              thread.setDaemon(true);
+              return thread;
+            }));
   }
 }

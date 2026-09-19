@@ -2,6 +2,7 @@ package com.agentengine.agent.core.tools.agent;
 
 import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.core.session.SessionActor;
+import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.commands.SelfCommand.AwaitChildCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.events.RunResult;
@@ -44,8 +45,9 @@ public class AbstractAgentTool extends Tool {
   }
 
   protected EntityRef<SessionCommand> actorRef(final ToolContext toolContext) {
+    final String sessionId = ToolUtils.sessionId(toolContext);
     return actorSystemProvider.entityRefFor(
-        SessionActor.TYPE_KEY, ToolUtils.sessionId(toolContext));
+        SessionActor.TYPE_KEY, SessionActorFactory.entityId(sessionId));
   }
 
   protected static String buildFullMessage(final String goal, final String message) {

@@ -2,7 +2,6 @@ package com.agentengine.catalog.core.repository;
 
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.validation.ValidationService;
 import com.agentengine.util.mongodb.mongo.AbstractMongoRepository;
@@ -15,7 +14,7 @@ public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
   @Inject
   public ModelRepository(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, AssetClass.MODEL, ModelConfig.class, validationService);
+    super(mongoClientFactory, CatalogMongoStoreClientType.CATALOG, ModelConfig.class, validationService);
   }
 
   @Override

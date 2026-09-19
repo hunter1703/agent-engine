@@ -1,9 +1,21 @@
 [
   {
-    "id": "ENCRYPTION:ENCRYPTION:default",
-    "_t": "com.agentengine.util.mongodb.infra.EncryptionInfraConfig",
-    "type": "ENCRYPTION",
-    "category": "ENCRYPTION",
+    "_t": "com.agentengine.util.crypto.EncryptionKeyInfraConfig",
+    "type": "ENCRYPTION_KEY",
+    "keyId": "default",
+    "provider": "KEY",
     "key": "${ENCRYPTION_KEY}"
+  },
+  {
+    "_t": "com.agentengine.util.crypto.EncryptionClientInfraConfig",
+    "type": "ENCRYPTION_CLIENT",
+    "customerId": -1,
+    "serverId": "default"
+  },
+  {
+    "_t": "com.agentengine.util.crypto.EncryptionClientInfraConfig",
+    "type": "ENCRYPTION_CLIENT",
+    "customerId": 1,
+    "serverId": "default"
   }
 ]

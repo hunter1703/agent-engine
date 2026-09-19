@@ -11,6 +11,7 @@ import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 @Singleton
@@ -28,6 +29,12 @@ public class SessionServiceImpl implements SessionService {
   @WithSpan
   public AgentSession getSession(final String id) {
     return sessionRepository.findById(id);
+  }
+
+  @Override
+  @WithSpan
+  public AgentSession getSession(final String id, final List<String> includeFields) {
+    return sessionRepository.findById(id, includeFields, null);
   }
 
   @Override

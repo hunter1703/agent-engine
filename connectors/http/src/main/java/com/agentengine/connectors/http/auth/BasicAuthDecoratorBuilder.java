@@ -18,8 +18,7 @@ public class BasicAuthDecoratorBuilder
     implements AuthDecoratorBuilder<BasicAuthDecoratorSpec, Object, HttpRequest> {
 
   private final Instance<ConnectionService> connectionService;
-  private final Cache<BasicAuthDecoratorSpec, AuthDecorator<Object, HttpRequest>> decoratorCache =
-      new Cache<>(CacheBuilder.newBuilder(), this::buildDecorator);
+  private final Cache<BasicAuthDecoratorSpec, AuthDecorator<Object, HttpRequest>> decoratorCache = new Cache<>(CacheBuilder.newBuilder(), this::buildDecorator);
 
   @Inject
   public BasicAuthDecoratorBuilder(Instance<ConnectionService> connectionService) {

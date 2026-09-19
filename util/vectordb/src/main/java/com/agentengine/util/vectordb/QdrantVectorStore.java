@@ -2,11 +2,24 @@ package com.agentengine.util.vectordb;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
+import com.google.common.util.concurrent.ListenableFuture;
+import io.qdrant.client.ConditionFactory;
+import io.qdrant.client.PointIdFactory;
+import io.qdrant.client.QdrantClient;
+import io.qdrant.client.QueryFactory;
+import io.qdrant.client.VectorFactory;
+import io.qdrant.client.VectorsFactory;
+import io.qdrant.client.WithPayloadSelectorFactory;
+import io.qdrant.client.WithVectorsSelectorFactory;
+import io.qdrant.client.grpc.Common;
+import io.qdrant.client.grpc.Points;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.function.BiFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,24 +43,18 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     this.clientFactory = clientFactory;
   }
 
-  private QdrantHttpClient client() {
-    return clientFactory.getClient(clientType);
-  }
-
-  protected abstract Map<String, Object> toPayload(T entity);
-
-  protected abstract T fromPayload(Map<String, Object> payload);
-
   @Override
   public long deleteByQuery(final Query query) {
-    final QdrantHttpClient.Filter filter = toQdrantFilter(query.getFilter());
+    final Common.Filter filter = toDeleteFilter(query.getFilter());
     LOG.debug(
         "QdrantVectorStore.deleteByQuery: collection={} filter={} translatedFilter={}",
-        collection,
+        collectionName(),
         query.getFilter(),
         filter);
-    final QdrantHttpClient.DeleteRequest request = new QdrantHttpClient.DeleteRequest(null, filter);
-    client().delete(collection, request);
+    if (filter == null) {
+      throw new IllegalArgumentException("Delete query has no supported filter");
+    }
+    await(client().deleteAsync(collectionName(), filter));
     return 0L;
   }
 
@@ -55,69 +62,59 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
   protected PaginatedResult<T> findBySemanticQueryInternal(final Query query) {
     final Page page = query.getPage();
     final int maxResults = page.getLimit() < 0 ? Integer.MAX_VALUE : page.getLimit();
-    final QdrantHttpClient.Filter qdrantFilter = buildQdrantFilter(query.getFilter());
+    final Common.Filter qdrantFilter = buildQdrantFilter(query.getFilter());
 
     final List<Filter> semanticFilters = extractSemanticFilters(query.getFilter());
     if (semanticFilters.isEmpty()) {
       return PaginatedResult.create(List.of(), page, null);
     }
 
-    final QdrantHttpClient.QueryRequest request;
+    final Points.QueryPoints.Builder request =
+        Points.QueryPoints.newBuilder()
+            .setCollectionName(collectionName())
+            .setLimit(maxResults)
+            .setWithPayload(WithPayloadSelectorFactory.enable(true));
+    if (qdrantFilter != null) {
+      request.setFilter(qdrantFilter);
+    }
 
-    // If there is only one vector, we can execute a simple, direct QueryRequest.
-    // If there are multiple vectors, Qdrant requires each vector search to be wrapped
-    // in a 'prefetch' sub-query so they can be executed in parallel and merged via RRF.
+    // A single vector is a direct query. Several vectors are each wrapped in a 'prefetch'
+    // sub-query, which Qdrant runs in parallel and merges via RRF.
     if (semanticFilters.size() == 1) {
       final Filter semantic = semanticFilters.getFirst();
       final float[] queryVector = (float[]) semantic.getValues().getFirst();
       final String vectorField = semantic.getField();
-      final double minScore = extractMinScore(semantic);
 
-      request =
-          new QdrantHttpClient.QueryRequest(
-              null,
-              toFloatList(queryVector),
-              StringUtils.isNotBlank(vectorField) ? vectorField : null,
-              qdrantFilter,
-              maxResults,
-              (float) minScore,
-              true);
-    } else {
-      final List<QdrantHttpClient.PrefetchQuery> prefetch = new ArrayList<>();
-      for (final Filter semantic : semanticFilters) {
-        final float[] queryVector = (float[]) semantic.getValues().getFirst();
-        final String vectorField = semantic.getField();
-        prefetch.add(
-            new QdrantHttpClient.PrefetchQuery(
-                toFloatList(queryVector),
-                StringUtils.isNotBlank(vectorField) ? vectorField : null,
-                maxResults));
+      request.setQuery(QueryFactory.nearest(queryVector));
+      if (StringUtils.isNotBlank(vectorField)) {
+        request.setUsing(vectorField);
       }
-      request =
-          new QdrantHttpClient.QueryRequest(
-              prefetch,
-              Map.of("fusion", "rrf"),
-              null,
-              qdrantFilter,
-              maxResults,
-              null, // scoreThreshold applies globally if present, but tricky with RRF. Leave null.
-              true);
+      request.setScoreThreshold((float) extractMinScore(semantic));
+    } else {
+      for (final Filter semantic : semanticFilters) {
+        final Points.PrefetchQuery.Builder prefetch =
+            Points.PrefetchQuery.newBuilder()
+                .setQuery(QueryFactory.nearest((float[]) semantic.getValues().getFirst()))
+                .setLimit(maxResults);
+        if (StringUtils.isNotBlank(semantic.getField())) {
+          prefetch.setUsing(semantic.getField());
+        }
+        request.addPrefetch(prefetch);
+      }
+      request.setQuery(QueryFactory.fusion(Points.Fusion.RRF));
     }
 
-    final QdrantHttpClient.QueryResponse response = client().query(collection, request);
-    final List<T> results = response.result().stream().map(p -> fromPayload(p.payload())).toList();
+    final List<Points.ScoredPoint> points = await(client().queryAsync(request.build()));
+    final List<T> results =
+        points.stream()
+            .map(point -> fromPayload(VectorDbUtils.fromValues(point.getPayloadMap())))
+            .toList();
     return PaginatedResult.create(results, page, null);
   }
 
   @Override
   public T save(final T entity) {
-    final Map<String, Object> payload = toPayload(entity);
-    final Object vectorData = buildNamedVectors(entity);
-    final QdrantHttpClient.Point point =
-        new QdrantHttpClient.Point(entity.getId(), vectorData, payload);
-    final QdrantHttpClient.UpsertRequest request =
-        new QdrantHttpClient.UpsertRequest(List.of(point));
-    client().upsert(collection, request);
+    await(client().upsertAsync(collectionName(), List.of(toPoint(entity))));
     return entity;
   }
 
@@ -126,20 +123,17 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     if (CollectionUtils.isEmpty(entities)) {
       return List.of();
     }
-    final List<QdrantHttpClient.Point> points = new ArrayList<>(entities.size());
+    final List<Points.PointStruct> points = new ArrayList<>(entities.size());
     for (final T entity : entities) {
-      points.add(
-          new QdrantHttpClient.Point(entity.getId(), buildNamedVectors(entity), toPayload(entity)));
+      points.add(toPoint(entity));
     }
-    client().upsert(collection, new QdrantHttpClient.UpsertRequest(points));
+    await(client().upsertAsync(collectionName(), points));
     return entities;
   }
 
   @Override
   public boolean deleteById(final String id) {
-    final QdrantHttpClient.DeleteRequest request =
-        new QdrantHttpClient.DeleteRequest(List.of(id), null);
-    client().delete(collection, request);
+    await(client().deleteAsync(collectionName(), List.of(pointId(id))));
     return true;
   }
 
@@ -208,37 +202,55 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     return retrievePoints(ids, includeFields, excludeFields);
   }
 
+  protected abstract Map<String, Object> toPayload(T entity);
+
+  protected abstract T fromPayload(Map<String, Object> payload);
+
   private Map<String, T> retrievePoints(
       final Collection<String> ids,
       final List<String> includeFields,
       final List<String> excludeFields) {
-    final QdrantHttpClient.RetrieveRequest request =
-        new QdrantHttpClient.RetrieveRequest(
-            new ArrayList<>(ids), payloadSelector(includeFields, excludeFields));
-    final QdrantHttpClient.RetrieveResponse response = client().retrieve(collection, request);
+    final List<Common.PointId> pointIds = ids.stream().map(QdrantVectorStore::pointId).toList();
+    final List<Points.RetrievedPoint> points =
+        await(
+            client()
+                .retrieveAsync(
+                    collectionName(),
+                    pointIds,
+                    payloadSelector(includeFields, excludeFields),
+                    WithVectorsSelectorFactory.enable(false),
+                    null));
     final Map<String, T> result = new LinkedHashMap<>();
-    for (final QdrantHttpClient.RetrievedPoint point : response.result()) {
-      final T entity = fromPayload(point.payload());
+    for (final Points.RetrievedPoint point : points) {
+      final T entity = fromPayload(VectorDbUtils.fromValues(point.getPayloadMap()));
       result.put(entity.getId(), entity);
     }
     return result;
+  }
+
+  private String collectionName() {
+    return collection + "_" + Context.customerId().orElseThrow();
+  }
+
+  private QdrantClient client() {
+    return clientFactory.getClient(clientType, Context.customerId().orElseThrow());
   }
 
   /**
    * Qdrant takes either an include list or an exclude list, not both, so when both are given the
    * excluded fields are dropped from the include list.
    */
-  private static Object payloadSelector(
+  private static Points.WithPayloadSelector payloadSelector(
       final List<String> includeFields, final List<String> excludeFields) {
     if (CollectionUtils.isNotEmpty(includeFields)) {
       final List<String> fields = new ArrayList<>(includeFields);
       fields.removeAll(CollectionUtils.nullSafeList(excludeFields));
-      return fields;
+      return WithPayloadSelectorFactory.include(fields);
     }
     if (CollectionUtils.isNotEmpty(excludeFields)) {
-      return Map.of("exclude", excludeFields);
+      return WithPayloadSelectorFactory.exclude(excludeFields);
     }
-    return true;
+    return WithPayloadSelectorFactory.enable(true);
   }
 
   @Override
@@ -248,39 +260,38 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  private Points.PointStruct toPoint(final T entity) {
+    return Points.PointStruct.newBuilder()
+        .setId(pointId(entity.getId()))
+        .setVectors(buildNamedVectors(entity))
+        .putAllPayload(VectorDbUtils.toValues(toPayload(entity)))
+        .build();
+  }
+
   /**
    * Builds the vectors for a Qdrant upsert, always keyed by physical vector field name — the same
    * name a semantic query addresses via {@code using}, so a collection needs its vectors declared
    * by name whether an entity carries one vector or several.
    */
-  private static Map<String, List<Float>> buildNamedVectors(final VectorEntity entity) {
-    final Map<String, float[]> vectors = entity.getVectors();
-    final Map<String, List<Float>> result = new HashMap<>();
-    vectors.forEach((field, vec) -> result.put(field, toFloatList(vec)));
-    return result;
+  private static Points.Vectors buildNamedVectors(final VectorEntity entity) {
+    final Map<String, Points.Vector> result = new HashMap<>();
+    entity.getVectors().forEach((field, vector) -> result.put(field, VectorFactory.vector(vector)));
+    return VectorsFactory.namedVectors(result);
   }
 
-  /**
-   * Translates a {@link Filter} to a Qdrant filter for delete operations. Supports EQ (keyword
-   * match) and AND compound filters.
-   */
-  private static QdrantHttpClient.Filter toQdrantFilter(final Filter filter) {
-    LOG.debug(
-        "toQdrantFilter: input filter op={} field={} values={}",
-        filter.getOp(),
-        filter.getField(),
-        filter.getValues());
+  private static Common.PointId pointId(final String id) {
+    return PointIdFactory.id(UUID.fromString(id));
+  }
 
-    final List<QdrantHttpClient.Condition> must = new ArrayList<>();
-
+  /** Translates a delete {@link Filter}: EQ (keyword match), or AND of them. */
+  private static Common.Filter toDeleteFilter(final Filter filter) {
+    final List<Common.Condition> must = new ArrayList<>();
     if (filter.getOp() == Operator.AND && filter.getValues() != null) {
-      LOG.debug("toQdrantFilter: processing AND with {} children", filter.getValues().size());
       for (final Object child : filter.getValues()) {
         if (child instanceof final Filter childFilter) {
-          final QdrantHttpClient.Filter subFilter = toQdrantFilter(childFilter);
-          if (subFilter != null && subFilter.must() != null) {
-            LOG.debug("toQdrantFilter: adding {} conditions from child", subFilter.must().size());
-            must.addAll(subFilter.must());
+          final Common.Filter subFilter = toDeleteFilter(childFilter);
+          if (subFilter != null) {
+            must.addAll(subFilter.getMustList());
           }
         }
       }
@@ -288,18 +299,14 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
         && filter.getField() != null
         && filter.getValues() != null
         && !filter.getValues().isEmpty()) {
-      final String value = String.valueOf(filter.getValues().getFirst());
-      LOG.debug(
-          "toQdrantFilter: creating EQ condition field={} value={}", filter.getField(), value);
-      final QdrantHttpClient.MatchCondition matchCondition =
-          new QdrantHttpClient.MatchCondition(value);
-      must.add(new QdrantHttpClient.Condition(filter.getField(), matchCondition));
+      must.add(
+          ConditionFactory.matchKeyword(
+              filter.getField(), String.valueOf(filter.getValues().getFirst())));
     }
-
-    return must.isEmpty() ? null : new QdrantHttpClient.Filter(must, null);
+    return must.isEmpty() ? null : Common.Filter.newBuilder().addAllMust(must).build();
   }
 
-  private static QdrantHttpClient.Filter buildQdrantFilter(final Filter filter) {
+  private static Common.Filter buildQdrantFilter(final Filter filter) {
     if (filter == null) {
       return null;
     }
@@ -311,30 +318,26 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
     final List<Object> values = filter.getValues();
     if (op == Operator.EQ) {
-      final String value = String.valueOf(values.getFirst());
-      final QdrantHttpClient.MatchCondition matchCondition =
-          new QdrantHttpClient.MatchCondition(value);
-      return new QdrantHttpClient.Filter(
-          List.of(new QdrantHttpClient.Condition(filter.getField(), matchCondition)), null);
+      return Common.Filter.newBuilder()
+          .addMust(
+              ConditionFactory.matchKeyword(filter.getField(), String.valueOf(values.getFirst())))
+          .build();
     }
 
     if (op.isCompound() && CollectionUtils.isNotEmpty(values)) {
-      final List<QdrantHttpClient.Condition> must = new ArrayList<>();
-      final List<QdrantHttpClient.Condition> should = new ArrayList<>();
+      final Common.Filter.Builder result = Common.Filter.newBuilder();
       for (final Object child : values) {
-        final Filter childFilter = (Filter) child;
-        final QdrantHttpClient.Filter sub = buildQdrantFilter(childFilter);
+        final Common.Filter sub = buildQdrantFilter((Filter) child);
         if (sub != null) {
           if (op == Operator.AND) {
-            if (sub.must() != null) must.addAll(sub.must());
+            result.addAllMust(sub.getMustList());
           } else {
-            if (sub.must() != null) should.addAll(sub.must());
+            result.addAllShould(sub.getMustList());
           }
         }
       }
-      if (!must.isEmpty() || !should.isEmpty()) {
-        return new QdrantHttpClient.Filter(
-            must.isEmpty() ? null : must, should.isEmpty() ? null : should);
+      if (result.getMustCount() > 0 || result.getShouldCount() > 0) {
+        return result.build();
       }
     }
 
@@ -362,12 +365,15 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     return val instanceof Number n ? n.doubleValue() : 0.0;
   }
 
-  private static List<Float> toFloatList(final float[] arr) {
-    final List<Float> list = new ArrayList<>(arr.length);
-    for (final float f : arr) {
-      list.add(f);
+  private static <R> R await(final ListenableFuture<R> future) {
+    try {
+      return future.get();
+    } catch (final InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while waiting for Qdrant", exception);
+    } catch (final ExecutionException exception) {
+      throw new IllegalStateException("Qdrant request failed", exception.getCause());
     }
-    return list;
   }
 
   protected static String strValue(final Map<String, Object> payload, final String key) {

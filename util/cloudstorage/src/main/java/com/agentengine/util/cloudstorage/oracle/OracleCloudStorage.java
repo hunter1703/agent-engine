@@ -2,13 +2,15 @@ package com.agentengine.util.cloudstorage.oracle;
 
 import static com.oracle.bmc.objectstorage.model.CreatePreauthenticatedRequestDetails.AccessType.ObjectRead;
 
-import com.agentengine.util.cloudstorage.CloudStorageInfraConfig;
+import com.agentengine.util.cloudstorage.AbstractCloudStorageService;
+import com.agentengine.util.cloudstorage.CloudStorageClientInfraConfig;
+import com.agentengine.util.cloudstorage.CloudStorageServerInfraConfig;
 import com.agentengine.util.cloudstorage.CloudStorageService;
-import com.agentengine.util.cloudstorage.CloudStorageServiceProducer;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FileUtils.BucketKey;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.infra.InfraConfigService;
 import com.oracle.bmc.Region;
 import com.oracle.bmc.auth.BasicAuthenticationDetailsProvider;
@@ -39,21 +41,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * {@link CloudStorageService} backed by OCI Object Storage's own native SDK, rather than its
- * S3-compatibility API — avoiding compatibility friction the AWS SDK has there (aws-chunked upload
- * encoding, strict request-length checks against a live request body stream) and supporting
- * Instance Principal auth, which the S3-compat API cannot.
- *
- * <p>Constructed directly by {@link CloudStorageServiceProducer} rather than injected — not a CDI
- * bean itself, since which {@link CloudStorageService} implementation backs a given deployment is a
- * runtime config choice, not a compile-time one.
- */
-public class OracleCloudStorage implements CloudStorageService {
+public class OracleCloudStorage extends AbstractCloudStorageService {
 
   private static final Logger log = LoggerFactory.getLogger(OracleCloudStorage.class);
 
@@ -62,35 +55,12 @@ public class OracleCloudStorage implements CloudStorageService {
   private final ObjectStorage client;
   private final String region;
   private final String namespace;
-  private final String defaultBucket;
 
-  public OracleCloudStorage(final InfraConfigService infraConfigService) {
-    final CloudStorageInfraConfig config =
-        infraConfigService.findById(
-            CloudStorageInfraConfig.CATEGORY,
-            CloudStorageInfraConfig.TYPE,
-            CloudStorageInfraConfig.CONFIG_ID);
-    this.client = buildClient(config);
+  public OracleCloudStorage(final CloudStorageServerInfraConfig config, InfraConfigService infraConfigService) {
+      super(infraConfigService);
+      this.client = buildClient(config);
     this.region = config.getRegion();
     this.namespace = config.getNamespace();
-    this.defaultBucket = config.getDefaultBucket();
-  }
-
-  private static ObjectStorage buildClient(final CloudStorageInfraConfig cloudStorageInfraConfig) {
-    final Region region = Region.fromRegionId(cloudStorageInfraConfig.getRegion());
-    final BasicAuthenticationDetailsProvider authProvider =
-        cloudStorageInfraConfig.isUseInstancePrincipal()
-            ? InstancePrincipalsAuthenticationDetailsProvider.builder().build()
-            : SimpleAuthenticationDetailsProvider.builder()
-                .tenantId(cloudStorageInfraConfig.getTenantId())
-                .userId(cloudStorageInfraConfig.getUserId())
-                .fingerprint(cloudStorageInfraConfig.getFingerprint())
-                .privateKeySupplier(
-                    new StringPrivateKeySupplier(cloudStorageInfraConfig.getPrivateKey()))
-                .passPhrase(cloudStorageInfraConfig.getPassPhrase())
-                .region(region)
-                .build();
-    return ObjectStorageClient.builder().region(region).build(authProvider);
   }
 
   @Override
@@ -105,7 +75,7 @@ public class OracleCloudStorage implements CloudStorageService {
     final PutObjectRequest.Builder requestBuilder =
         PutObjectRequest.builder()
             .namespaceName(namespace)
-            .bucketName(defaultBucket)
+            .bucketName(bucket())
             .objectName(key)
             .contentType(mediaType)
             .opcMeta(CollectionUtils.nullSafeMap(metadata))
@@ -125,7 +95,7 @@ public class OracleCloudStorage implements CloudStorageService {
     }
     return new FileDetails(
         name,
-        defaultBucket + "/" + key,
+        bucket() + "/" + key,
         FileDetails.StorageType.CLOUDSTORAGE,
         mediaType,
         contentLength);
@@ -133,7 +103,7 @@ public class OracleCloudStorage implements CloudStorageService {
 
   @Override
   public Content download(final String source) {
-    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
+    final BucketKey bucketKey = BucketKey.parse(source, bucket());
     final GetObjectResponse response =
         client.getObject(
             GetObjectRequest.builder()
@@ -151,7 +121,7 @@ public class OracleCloudStorage implements CloudStorageService {
 
   @Override
   public long getSize(final String source) {
-    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
+    final BucketKey bucketKey = BucketKey.parse(source, bucket());
     final HeadObjectResponse response =
         client.headObject(
             HeadObjectRequest.builder()
@@ -164,7 +134,7 @@ public class OracleCloudStorage implements CloudStorageService {
 
   @Override
   public void delete(final String source) {
-    final BucketKey bucketKey = BucketKey.parse(source, defaultBucket);
+    final BucketKey bucketKey = BucketKey.parse(source, bucket());
     client.deleteObject(
         DeleteObjectRequest.builder()
             .namespaceName(namespace)
@@ -175,22 +145,20 @@ public class OracleCloudStorage implements CloudStorageService {
 
   @Override
   public String presignedGetUrl(final FileDetails fileDetails, final Duration validity) {
-    final String source = fileDetails.source();
-    final int sep = source.indexOf('/');
-    final String key = sep >= 0 ? source.substring(sep + 1) : source;
+    final BucketKey bucketKey = BucketKey.parse(fileDetails.source(), bucket());
     final CreatePreauthenticatedRequestDetails requestDetails =
         CreatePreauthenticatedRequestDetails.builder()
             .name(ObjectId.get().toHexString())
             .bucketListingAction(PreauthenticatedRequest.BucketListingAction.Deny)
             .accessType(ObjectRead)
             .timeExpires(Date.from(Instant.now().plus(validity)))
-            .objectName(key)
+            .objectName(bucketKey.key())
             .build();
     final CreatePreauthenticatedRequestResponse response =
         client.createPreauthenticatedRequest(
             CreatePreauthenticatedRequestRequest.builder()
                 .namespaceName(namespace)
-                .bucketName(defaultBucket)
+                .bucketName(bucketKey.bucket())
                 .createPreauthenticatedRequestDetails(requestDetails)
                 .build());
     return "https://objectstorage."
@@ -209,7 +177,7 @@ public class OracleCloudStorage implements CloudStorageService {
           client.listObjects(
               ListObjectsRequest.builder()
                   .namespaceName(namespace)
-                  .bucketName(defaultBucket)
+                  .bucketName(bucket())
                   .prefix(keyPrefix)
                   .start(startAfter)
                   .build());
@@ -227,18 +195,19 @@ public class OracleCloudStorage implements CloudStorageService {
       final FileDetails source, final String name, final String destinationKey) {
     // OCI's copyObject is asynchronous - it starts a work request and returns immediately, so
     // the destination object may not exist yet by the time this method returns.
+    final BucketKey sourceBucketKey = BucketKey.parse(source.source(), bucket());
     final CopyObjectDetails copyObjectDetails =
         CopyObjectDetails.builder()
-            .sourceObjectName(source.source())
+            .sourceObjectName(sourceBucketKey.key())
             .destinationRegion(region)
             .destinationNamespace(namespace)
-            .destinationBucket(defaultBucket)
+            .destinationBucket(bucket())
             .destinationObjectName(destinationKey)
             .build();
     client.copyObject(
         CopyObjectRequest.builder()
             .namespaceName(namespace)
-            .bucketName(defaultBucket)
+            .bucketName(sourceBucketKey.bucket())
             .copyObjectDetails(copyObjectDetails)
             .build());
     return new FileDetails(
@@ -247,5 +216,26 @@ public class OracleCloudStorage implements CloudStorageService {
         FileDetails.StorageType.CLOUDSTORAGE,
         source.mimeType(),
         source.size());
+  }
+
+  @Override
+  public void close() throws Exception {
+    client.close();
+  }
+
+  private static ObjectStorage buildClient(final CloudStorageServerInfraConfig config) {
+    final Region region = Region.fromRegionId(config.getRegion());
+    final BasicAuthenticationDetailsProvider authProvider =
+            config.isUseInstancePrincipal()
+                    ? InstancePrincipalsAuthenticationDetailsProvider.builder().build()
+                    : SimpleAuthenticationDetailsProvider.builder()
+                    .tenantId(config.getTenantId())
+                    .userId(config.getUserId())
+                    .fingerprint(config.getFingerprint())
+                    .privateKeySupplier(new StringPrivateKeySupplier(config.getPrivateKey()))
+                    .passPhrase(config.getPassPhrase())
+                    .region(region)
+                    .build();
+    return ObjectStorageClient.builder().region(region).build(authProvider);
   }
 }

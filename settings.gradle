@@ -9,6 +9,8 @@ include 'catalog:core'
 
 include 'interfaces:rest'
 
+include 'tenancy'
+
 include 'agent:api'
 include 'agent:infra'
 include 'agent:core'
@@ -32,6 +34,7 @@ include 'util:models'
 include 'util:pekko'
 include 'util:scripts'
 include 'util:common'
+include 'util:context'
 include 'util:distributed'
 
 include 'knowledge:api'

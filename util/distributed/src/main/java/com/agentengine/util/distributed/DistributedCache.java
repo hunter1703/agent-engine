@@ -2,67 +2,44 @@ package com.agentengine.util.distributed;
 
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.context.Context;
+import com.agentengine.util.context.Context;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
-import jakarta.annotation.PostConstruct;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
-/**
- * A distributed cache decorator that uses a local Guava cache for fast reads, but broadcasts
- * evictions across the JGroups cluster when elements are removed or updated. This implementation
- * assumes Cache keys are of type String for cluster payload compatibility.
- *
- * <p>Every entry is implicitly namespaced by the ambient {@link Context}'s customer id - one shared
- * local cache holds every customer's entries under distinct physical keys, rather than one {@code
- * Cache} instance per customer, since these caches are unbounded (time-expiry only, no {@code
- * maximumSize}) and a per-customer instance would add a growing, never-cleaned-up map of Guava
- * caches for no eviction-isolation benefit today. {@link #getForUser}/{@link #putForUser}
- * additionally namespace by user id, for values that must stay private to one user of a customer
- * (e.g. once connection-level RBAC means not every user sees every connection).
- *
- * <p>{@link #invalidate} and {@link #put}'s broadcast only ever reach the customer-scoped entry for
- * a key, not every user-scoped variant of it under that customer - a user-scoped entry expires on
- * its own TTL instead. Reaching every user-scoped entry would need tracking which users have cached
- * a given key, which nothing here does yet; {@link #invalidateAll} remains the only way to
- * definitely clear user-scoped entries on demand.
- */
+
 public class DistributedCache<V> {
-  private static final String UNSCOPED = "_";
+  private static final String UNBOUND = "_";
+  private static final String SEPARATOR = ":";
 
   private final String cacheName;
+  private final CacheScope scope;
   private final Set<CacheTag> tags;
   private final Cache<String, V> localCache;
   private final DistributedCacheManager cacheManager;
 
-  public DistributedCache(
-      final String cacheName,
-      final CacheBuilder<Object, Object> delegate,
-      final Function<String, ? extends V> loader,
-      final DistributedCacheManager cacheManager) {
-    this(cacheName, Set.of(), delegate, loader, cacheManager);
-  }
-
-  public DistributedCache(
-      final String cacheName,
-      final Set<CacheTag> tags,
-      final CacheBuilder<Object, Object> delegate,
-      final Function<String, ? extends V> loader,
-      final DistributedCacheManager cacheManager) {
-    this.cacheName = cacheName;
-    this.tags = CollectionUtils.nullSafeSet(tags);
-    this.cacheManager = cacheManager;
+  private DistributedCache(final Builder<V> builder) {
+    this.cacheName = builder.cacheName;
+    this.scope = builder.scope;
+    this.tags = CollectionUtils.nullSafeSet(builder.tags);
+    this.cacheManager = builder.cacheManager;
+    final Function<String, ? extends V> loader = builder.loader;
     this.localCache =
-        new Cache<>(delegate, namespacedKey -> loader.apply(unwrapKey(namespacedKey)));
+        new Cache<>(
+            builder.localCache,
+            namespacedKey -> loader.apply(unwrapKey(namespacedKey)),
+            builder.removalListener);
+    cacheManager.register(this);
   }
 
-  @PostConstruct
-  public void init() {
-    cacheManager.register(this);
+  public static <V> Builder<V> builder(
+      final String cacheName, final DistributedCacheManager cacheManager) {
+    return new Builder<>(cacheName, cacheManager);
   }
 
   public String getCacheName() {
@@ -81,8 +58,9 @@ public class DistributedCache<V> {
     return localCache.get(namespacedKey(key));
   }
 
-  public V getForUser(String key) {
-    return localCache.get(namespacedKeyForUser(key));
+  public V get(final String key, final Function<String, ? extends V> loader) {
+    return localCache.get(
+        namespacedKey(key), namespacedKey -> loader.apply(unwrapKey(namespacedKey)));
   }
 
   public Map<String, V> getAllPresent(Iterable<String> keys) {
@@ -101,10 +79,6 @@ public class DistributedCache<V> {
     final String namespacedKey = namespacedKey(key);
     localCache.put(namespacedKey, value);
     cacheManager.broadcastInvalidation(cacheName, namespacedKey);
-  }
-
-  public void putForUser(String key, V value) {
-    localCache.put(namespacedKeyForUser(key), value);
   }
 
   public void invalidate(final String key) {
@@ -136,31 +110,73 @@ public class DistributedCache<V> {
     localCache.cleanUp();
   }
 
-  private static String namespacedKey(final String key) {
-    return namespacedKey(customerId(), UNSCOPED, key);
+  private String namespacedKey(final String key) {
+    return switch (scope) {
+      case GLOBAL -> key;
+      case CUSTOMER -> customerId() + SEPARATOR + key;
+      case USER -> customerId() + SEPARATOR + userId() + SEPARATOR + key;
+      case UNKNOWN -> throw new IllegalStateException("Cache " + cacheName + " has no scope");
+    };
   }
 
-  private static String namespacedKeyForUser(final String key) {
-    return namespacedKey(customerId(), userId(), key);
-  }
-
-  private static String namespacedKey(
-      final String customerId, final String userId, final String key) {
-    return customerId + ":" + userId + ":" + key;
-  }
-
-  private static String unwrapKey(final String namespacedKey) {
-    return namespacedKey.split(":", 3)[2];
+  private String unwrapKey(final String namespacedKey) {
+    final int segments = scope.namespaceSegments();
+    return segments == 0 ? namespacedKey : namespacedKey.split(SEPARATOR, segments + 1)[segments];
   }
 
   private static String customerId() {
-    return Context.current()
-        .map(Context::customerId)
-        .filter(StringUtils::isNotBlank)
-        .orElse(UNSCOPED);
+    return Context.customerId().map(String::valueOf).orElse(UNBOUND);
   }
 
   private static String userId() {
-    return Context.current().map(Context::userId).filter(StringUtils::isNotBlank).orElse(UNSCOPED);
+    return Context.userId().map(String::valueOf).orElse(UNBOUND);
+  }
+
+  public static final class Builder<V> {
+    private final String cacheName;
+    private final DistributedCacheManager cacheManager;
+    private CacheScope scope = CacheScope.CUSTOMER;
+    private Set<CacheTag> tags = Set.of();
+    private CacheBuilder<Object, Object> localCache = CacheBuilder.newBuilder();
+    private Function<String, ? extends V> loader;
+    private Consumer<? super V> removalListener = _ -> {};
+
+    private Builder(final String cacheName, final DistributedCacheManager cacheManager) {
+      this.cacheName = cacheName;
+      this.cacheManager = cacheManager;
+    }
+
+    public Builder<V> scope(final CacheScope scope) {
+      this.scope = scope;
+      return this;
+    }
+
+    public Builder<V> tags(final Set<CacheTag> tags) {
+      this.tags = tags;
+      return this;
+    }
+
+    public Builder<V> localCache(final CacheBuilder<Object, Object> localCache) {
+      this.localCache = localCache;
+      return this;
+    }
+
+    public Builder<V> loader(final Function<String, ? extends V> loader) {
+      this.loader = loader;
+      return this;
+    }
+
+    public Builder<V> removalListener(final Consumer<? super V> removalListener) {
+      this.removalListener = removalListener;
+      return this;
+    }
+
+    public DistributedCache<V> build() {
+      if (scope == CacheScope.UNKNOWN) {
+        throw new IllegalArgumentException("Cache " + cacheName + " has no scope");
+      }
+      Objects.requireNonNull(localCache, "localCache");
+      return new DistributedCache<>(this);
+    }
   }
 }

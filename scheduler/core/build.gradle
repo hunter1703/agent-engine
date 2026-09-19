@@ -9,6 +9,7 @@ dependencies {
     implementation project(':util:infra')
     runtimeOnly project(':agent:jobs')
     implementation project(':util:common')
+    implementation project(':util:context')
     implementation project(':util:mongodb')
     implementation libs.cron.utils
     runtimeOnly project(':util:ms:server')

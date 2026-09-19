@@ -1,47 +1,72 @@
 [
   {
-    "id": "MICROSERVICE:MICROSERVICE_SERVER:catalog",
-    "_t": "com.agentengine.util.ms.client.MicroServiceInfraConfig",
+    "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "category": "MICROSERVICE",
     "serverId": "catalog",
     "host": "catalog-local.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
-    "id": "MICROSERVICE:MICROSERVICE_SERVER:agent",
-    "_t": "com.agentengine.util.ms.client.MicroServiceInfraConfig",
+    "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "category": "MICROSERVICE",
     "serverId": "agent",
     "host": "agent-local.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
-    "id": "MICROSERVICE:MICROSERVICE_SERVER:knowledge",
-    "_t": "com.agentengine.util.ms.client.MicroServiceInfraConfig",
+    "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "category": "MICROSERVICE",
     "serverId": "knowledge",
     "host": "knowledge-local.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
-    "id": "MICROSERVICE:MICROSERVICE_SERVER:connectors",
-    "_t": "com.agentengine.util.ms.client.MicroServiceInfraConfig",
+    "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "category": "MICROSERVICE",
     "serverId": "connectors",
     "host": "connectors-local.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
-    "id": "MICROSERVICE:MICROSERVICE_SERVER:scheduler",
-    "_t": "com.agentengine.util.ms.client.MicroServiceInfraConfig",
+    "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "category": "MICROSERVICE",
     "serverId": "scheduler",
     "host": "scheduler-local.agent-engine.svc.cluster.local",
     "port": 8080
+  },
+  {
+    "_t": "com.agentengine.util.ms.client.MicroServiceClientInfraConfig",
+    "type": "MICROSERVICE_CLIENT",
+    "customerId": 1,
+    "service": "catalog",
+    "serverId": "catalog"
+  },
+  {
+    "_t": "com.agentengine.util.ms.client.MicroServiceClientInfraConfig",
+    "type": "MICROSERVICE_CLIENT",
+    "customerId": 1,
+    "service": "agent",
+    "serverId": "agent"
+  },
+  {
+    "_t": "com.agentengine.util.ms.client.MicroServiceClientInfraConfig",
+    "type": "MICROSERVICE_CLIENT",
+    "customerId": 1,
+    "service": "knowledge",
+    "serverId": "knowledge"
+  },
+  {
+    "_t": "com.agentengine.util.ms.client.MicroServiceClientInfraConfig",
+    "type": "MICROSERVICE_CLIENT",
+    "customerId": 1,
+    "service": "connectors",
+    "serverId": "connectors"
+  },
+  {
+    "_t": "com.agentengine.util.ms.client.MicroServiceClientInfraConfig",
+    "type": "MICROSERVICE_CLIENT",
+    "customerId": 1,
+    "service": "scheduler",
+    "serverId": "scheduler"
   }
 ]

@@ -1,9 +1,23 @@
 [
   {
-    "id": "ENCRYPTION:ENCRYPTION:default",
-    "_t": "com.agentengine.util.mongodb.infra.EncryptionInfraConfig",
-    "type": "ENCRYPTION",
-    "category": "ENCRYPTION",
-    "key": "${ENCRYPTION_KEY}"
+    "_t": "com.agentengine.util.crypto.EncryptionKeyInfraConfig",
+    "type": "ENCRYPTION_KEY",
+    "keyId": "default",
+    "provider": "OCI_KMS",
+    "vaultKeyId": "ocid1.key.oc1.REPLACE_ME",
+    "cryptoEndpoint": "https://REPLACE_ME-crypto.kms.REGION.oraclecloud.com",
+    "wrappedKey": "REPLACE_ME"
+  },
+  {
+    "_t": "com.agentengine.util.crypto.EncryptionClientInfraConfig",
+    "type": "ENCRYPTION_CLIENT",
+    "customerId": -1,
+    "serverId": "default"
+  },
+  {
+    "_t": "com.agentengine.util.crypto.EncryptionClientInfraConfig",
+    "type": "ENCRYPTION_CLIENT",
+    "customerId": 1,
+    "serverId": "default"
   }
 ]

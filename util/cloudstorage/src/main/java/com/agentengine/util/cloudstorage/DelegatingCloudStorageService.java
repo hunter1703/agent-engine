@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.function.Supplier;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 
-/** Throws {@link CloudStorageException} in place of a storage provider SDK's own exceptions. */
 public final class DelegatingCloudStorageService implements CloudStorageService {
   private final CloudStorageService delegate;
 
@@ -81,5 +80,10 @@ public final class DelegatingCloudStorageService implements CloudStorageService 
     } catch (final BmcException exception) {
       throw new CloudStorageException(exception.getStatusCode(), exception.getMessage(), exception);
     }
+  }
+
+  @Override
+  public void close() throws Exception {
+    delegate.close();
   }
 }

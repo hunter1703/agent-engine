@@ -6,25 +6,29 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.crypto.EncryptionKeyInfraConfig")
 public class EncryptionKeyInfraConfig extends InfraConfig {
-  public static final String TYPE = "KEY";
-  public static final String CATEGORY = "ENCRYPTION";
-
-  private long keyVersion;
-  private String provider = Provider.UNKNOWN.name();
-
-  /** {@link Provider#KEY}: the base64 AES-256 key. */
-  private String key;
+  public static final String TYPE = "ENCRYPTION_KEY";
 
   private String keyId;
+  private String provider = Provider.UNKNOWN.name();
+  private String key;
+  private String vaultKeyId;
   private String cryptoEndpoint;
-  private String wrappedKey;
 
-  public long getKeyVersion() {
-    return keyVersion;
+  public EncryptionKeyInfraConfig() {
+    setType(TYPE);
   }
 
-  public void setKeyVersion(final long keyVersion) {
-    this.keyVersion = keyVersion;
+  @Override
+  public String getId() {
+    return TYPE + ":" + keyId;
+  }
+
+  public String getKeyId() {
+    return keyId;
+  }
+
+  public void setKeyId(final String keyId) {
+    this.keyId = keyId;
   }
 
   public String getProvider() {
@@ -47,12 +51,12 @@ public class EncryptionKeyInfraConfig extends InfraConfig {
     this.key = key;
   }
 
-  public String getKeyId() {
-    return keyId;
+  public String getVaultKeyId() {
+    return vaultKeyId;
   }
 
-  public void setKeyId(final String keyId) {
-    this.keyId = keyId;
+  public void setVaultKeyId(final String vaultKeyId) {
+    this.vaultKeyId = vaultKeyId;
   }
 
   public String getCryptoEndpoint() {
@@ -61,14 +65,6 @@ public class EncryptionKeyInfraConfig extends InfraConfig {
 
   public void setCryptoEndpoint(final String cryptoEndpoint) {
     this.cryptoEndpoint = cryptoEndpoint;
-  }
-
-  public String getWrappedKey() {
-    return wrappedKey;
-  }
-
-  public void setWrappedKey(final String wrappedKey) {
-    this.wrappedKey = wrappedKey;
   }
 
   public enum Provider {

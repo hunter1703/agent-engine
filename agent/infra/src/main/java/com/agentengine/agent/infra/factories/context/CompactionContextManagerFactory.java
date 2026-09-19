@@ -7,9 +7,8 @@ import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.CompactionContextStrategyConfig;
 import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
 import com.agentengine.util.agents.beans.config.DefaultAgentConfig;
-import com.agentengine.util.agents.beans.config.DefaultModelsConfig;
+import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -20,16 +19,16 @@ public class CompactionContextManagerFactory
 
   private final ModelProvider modelProvider;
   private final SessionService sessionService;
-  private final InfraConfigService infraConfigService;
+  private final DefaultModelsRepository defaultModelsRepository;
 
   @Inject
   public CompactionContextManagerFactory(
       final ModelProvider modelProvider,
       final SessionService sessionService,
-      final InfraConfigService infraConfigService) {
+      final DefaultModelsRepository defaultModelsRepository) {
     this.modelProvider = modelProvider;
     this.sessionService = sessionService;
-    this.infraConfigService = infraConfigService;
+    this.defaultModelsRepository = defaultModelsRepository;
   }
 
   @Override
@@ -54,11 +53,9 @@ public class CompactionContextManagerFactory
     if (StringUtils.isNotBlank(config.getModelId())) {
       return config.getModelId();
     }
-    final DefaultModelsConfig defaults =
-        infraConfigService.findById(
-            DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
-    if (defaults != null && StringUtils.isNotBlank(defaults.getCompactionModelId())) {
-      return defaults.getCompactionModelId();
+    final String defaultModelId = defaultModelsRepository.getCompactionModelId();
+    if (StringUtils.isNotBlank(defaultModelId)) {
+      return defaultModelId;
     }
     return agentConfig.getModelId();
   }

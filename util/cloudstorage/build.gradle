@@ -6,7 +6,11 @@ dependencies {
     implementation platform(libs.quarkus.bom)
 
     implementation project(':util:common')
+
+    implementation project(':util:context')
     api project(':util:infra')
+    implementation project(':util:distributed')
+    implementation libs.guava
 
     implementation libs.aws.s3
 

@@ -2,12 +2,14 @@ package com.agentengine.util.mongodb.mongo;
 
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.ReadRepository;
 import com.mongodb.MongoCommandException;
 import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexModel;
@@ -29,26 +31,18 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
   private static final Logger LOG = LoggerFactory.getLogger(AbstractMongoReadRepository.class);
   private static final int INDEX_NOT_FOUND = 27;
 
-  private final MongoClientFactory mongoClientFactory;
-  protected final String collectionName;
+  protected final MongoClientFactory mongoClientFactory;
+  protected final MongoStoreClientType clientType;
+  private final String collectionName;
   protected final Class<T> entityClass;
-  protected final String databaseName;
 
   public AbstractMongoReadRepository(
       final MongoClientFactory mongoClientFactory,
-      final String collectionName,
-      final Class<T> entityClass) {
-    this(mongoClientFactory, "AGENT_ENGINE", collectionName, entityClass);
-  }
-
-  public AbstractMongoReadRepository(
-      final MongoClientFactory mongoClientFactory,
-      final String databaseName,
-      final String collectionName,
+      final MongoStoreClientType clientType,
       final Class<T> entityClass) {
     this.mongoClientFactory = mongoClientFactory;
-    this.databaseName = databaseName;
-    this.collectionName = collectionName;
+    this.clientType = clientType;
+    this.collectionName = entityClass.getSimpleName();
     this.entityClass = entityClass;
   }
 
@@ -177,11 +171,16 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
     return created;
   }
 
+  protected String database() {
+    return clientType.name() + "_" + customerId();
+  }
+
+  protected Integer customerId() {
+    return Context.customerId().orElseThrow();
+  }
+
   protected final MongoCollection<T> getCollection() {
-    return mongoClientFactory
-        .getClient()
-        .getDatabase(databaseName)
-        .getCollection(collectionName, entityClass);
+    return mongoClientFactory.getClient(clientType, customerId()).getDatabase(database()).getCollection(collectionName, entityClass);
   }
 
   private void dropIndex(final Index declaration) {

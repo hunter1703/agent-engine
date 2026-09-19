@@ -37,6 +37,7 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.UniqueRecord;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.query.Page;
@@ -145,7 +146,10 @@ public class RuntimeServiceImpl implements RuntimeService {
         .entityRef(resolvedSessionId)
         .<Done>ask(
             replyTo ->
-                new InitializeCommand(SessionTopology.root(agentId, resolvedSessionId), replyTo),
+                new InitializeCommand(
+                    SessionTopology.root(
+                        agentId, resolvedSessionId, Context.getUserContext().orElse(null)),
+                    replyTo),
             SessionActorFactory.ASK_TIMEOUT)
         .toCompletableFuture()
         .join(); // block until the session is persisted

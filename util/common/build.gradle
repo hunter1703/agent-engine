@@ -4,10 +4,14 @@ plugins {
 }
 
 dependencies {
+    implementation project(':util:context')
     // Annotation-only APIs: compile-time markers, runtime provided by Quarkus
+    compileOnly platform(libs.quarkus.bom)
+    compileOnly libs.quarkus.arc
     compileOnly libs.jakarta.inject.api
     compileOnly libs.jakarta.enterprise.cdi.api
     compileOnly libs.jakarta.validation.api
+    compileOnly libs.jakarta.annotation.api
     testCompileOnly libs.jakarta.inject.api
     testCompileOnly libs.jakarta.enterprise.cdi.api
     testCompileOnly libs.jakarta.validation.api

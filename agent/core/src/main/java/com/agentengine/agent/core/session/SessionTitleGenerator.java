@@ -2,12 +2,11 @@ package com.agentengine.agent.core.session;
 
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.agents.beans.config.DefaultModelsConfig;
+import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
@@ -32,23 +31,19 @@ public class SessionTitleGenerator {
 
   public SessionTitleGenerator(
       final SessionEventsRepository sessionEventsRepository,
-      final InfraConfigService infraConfigService,
+      final DefaultModelsRepository defaultModelsRepository,
       final ModelProvider modelProvider) {
     this.sessionEventsRepository = sessionEventsRepository;
     this.titleGeneratorModelCache =
         new Cache<>(
             CacheBuilder.newBuilder().maximumSize(1000),
             _ -> {
-              final DefaultModelsConfig defaultModelConfig =
-                  infraConfigService.findById(
-                      DefaultModelsConfig.CATEGORY,
-                      DefaultModelsConfig.TYPE,
-                      DefaultModelsConfig.CONFIG_ID);
-              if (defaultModelConfig == null) {
+              final String titleModelId = defaultModelsRepository.getTitleModelId();
+              if (titleModelId == null) {
                 throw new IllegalStateException(
-                    "Default models config not found. Ensure infra configs are seeded before starting the runtime.");
+                    "Default title model not configured. Ensure infra configs are seeded before starting the runtime.");
               }
-              return defaultModelConfig.getTitleModelId();
+              return titleModelId;
             });
     this.modelProvider = modelProvider;
   }

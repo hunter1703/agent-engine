@@ -151,7 +151,7 @@ Each configured tool entry:
 
 ## 3.9 Infra Config (`DefaultModelsConfig`)
 
-Stored in `INFRA.InfraConfig` as `DEFAULT_MODELS:default`:
+Stored in `INFRA.InfraConfig` with type `DEFAULT_MODELS`:
 
 - `titleModelId` — model used to generate session titles
 - `compactionModelId` — fallback compaction model when not set on the agent's context strategy

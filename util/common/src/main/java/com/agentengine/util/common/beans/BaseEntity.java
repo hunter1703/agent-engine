@@ -7,10 +7,12 @@ public abstract class BaseEntity {
   public static final String FIELD_CREATED_TIME = "createdTime";
   public static final String FIELD_UPDATED_TIME = "updatedTime";
   public static final String FIELD_VERSION = "version";
+  public static final String FIELD_OWNER_USER_ID = "ownerUserId";
   private String id;
   private long createdTime;
   private long updatedTime;
   private long version = 0;
+  private Integer ownerUserId;
 
   public BaseEntity() {}
 
@@ -48,6 +50,14 @@ public abstract class BaseEntity {
 
   public void setVersion(final long version) {
     this.version = version;
+  }
+
+  public Integer getOwnerUserId() {
+    return ownerUserId;
+  }
+
+  public void setOwnerUserId(final Integer ownerUserId) {
+    this.ownerUserId = ownerUserId;
   }
 
   @Override

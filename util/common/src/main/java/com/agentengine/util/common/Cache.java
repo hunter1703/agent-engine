@@ -2,19 +2,33 @@ package com.agentengine.util.common;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
+import com.google.common.cache.RemovalListener;
 import com.google.common.collect.ImmutableMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class Cache<K, V> {
   private final com.google.common.cache.Cache<K, Holder<? extends V>> delegate;
-  private final Function<K, Holder<? extends V>> loader;
+  private final Function<K, Holder<? extends V>> defaultLoader;
 
-  public Cache(final CacheBuilder<Object, Object> delegate, final Function<K, ? extends V> loader) {
+  public Cache(final CacheBuilder<Object, Object> delegate, final Function<K, ? extends V> defaultLoader) {
     this.delegate = delegate.build();
-    this.loader = input -> new Holder<>(loader.apply(input));
+    this.defaultLoader = input -> new Holder<>(defaultLoader.apply(input));
+  }
+
+  public Cache(
+      final CacheBuilder<Object, Object> delegate,
+      final Function<K, ? extends V> defaultLoader,
+      final Consumer<? super V> removalListener) {
+    final RemovalListener<K, Holder<? extends V>> listener =
+        notification ->
+            removalListener.accept(Objects.requireNonNull(notification.getValue()).value);
+    this.delegate = delegate.removalListener(listener).build();
+    this.defaultLoader = input -> new Holder<>(defaultLoader.apply(input));
   }
 
   public V getIfPresent(final K key) {
@@ -24,9 +38,17 @@ public class Cache<K, V> {
 
   public V get(final K key) {
     try {
-      final Holder<? extends V> holder = delegate.get(key, () -> loader.apply(key));
+      final Holder<? extends V> holder = delegate.get(key, () -> defaultLoader.apply(key));
       return holder.value;
     } catch (ExecutionException exception) {
+      throw new RuntimeException(exception);
+    }
+  }
+
+  public V get(final K key, final Function<K, ? extends V> loader) {
+    try {
+      return delegate.get(key, () -> new Holder<>(loader.apply(key))).value;
+    } catch (final ExecutionException exception) {
       throw new RuntimeException(exception);
     }
   }

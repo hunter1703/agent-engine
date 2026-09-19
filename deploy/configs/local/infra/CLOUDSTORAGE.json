@@ -1,13 +1,18 @@
 [
   {
-    "id": "CLOUDSTORAGE:CLOUDSTORAGE:default",
-    "_t": "com.agentengine.util.cloudstorage.CloudStorageInfraConfig",
-    "type": "CLOUDSTORAGE",
-    "category": "CLOUDSTORAGE",
+    "_t": "com.agentengine.util.cloudstorage.CloudStorageServerInfraConfig",
+    "type": "CLOUDSTORAGE_SERVER",
+    "serverId": "default",
     "endpointUrl": "http://localstack-local.infra.svc.cluster.local:4566",
     "region": "us-east-1",
     "accessKeyId": "test",
-    "secretAccessKey": "test",
-    "defaultBucket": "agent-assets"
+    "secretAccessKey": "test"
+  },
+  {
+    "_t": "com.agentengine.util.cloudstorage.CloudStorageClientInfraConfig",
+    "type": "CLOUDSTORAGE_CLIENT",
+    "customerId": 1,
+    "serverId": "default",
+    "bucket": "agentengine_1"
   }
 ]

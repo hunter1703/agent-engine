@@ -4,13 +4,18 @@ import com.agentengine.agent.core.factories.RunnerFactory;
 import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.commands.IdleTimeoutCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
+import com.agentengine.catalog.api.services.SessionCacheService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.config.ApplicationConfig;
+import com.agentengine.util.context.Context;
+import com.agentengine.util.context.UserContext;
+import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.actor.ChaosMailboxRegistry;
 import com.agentengine.util.pekko.actor.MessageFaultInterceptor;
 import com.agentengine.util.pekko.actor.RememberedPassivableShardedEntityFactory;
+import com.agentengine.util.pekko.persistence.PersistencePlugin;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -18,6 +23,7 @@ import java.time.Duration;
 import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.javadsl.Behaviors;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityContext;
+import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 
 @Singleton
 @Unremovable
@@ -30,7 +36,8 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
   private static final long DEFAULT_PASSIVATION_TIMEOUT_SECONDS = Duration.ofHours(1).toSeconds();
   private static final String AGENT_ROLE = "agent";
 
-  private final ActorSystemProvider actorSystemProvider;
+  private final InfraConfigService infraConfigService;
+  private final SessionCacheService sessionCacheService;
   private final SessionEventChannel sessionEventChannel;
   private final RunnerFactory runnerFactory;
   private final SessionService sessionService;
@@ -42,6 +49,8 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
   @Inject
   public SessionActorFactory(
       final ActorSystemProvider actorSystemProvider,
+      final InfraConfigService infraConfigService,
+      final SessionCacheService sessionCacheService,
       final SessionEventChannel sessionEventChannel,
       final RunnerFactory runnerFactory,
       final SessionService sessionService,
@@ -58,7 +67,8 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
                 PASSIVATION_TIMEOUT_KEY, DEFAULT_PASSIVATION_TIMEOUT_SECONDS)),
         AGENT_ROLE,
         SessionCommand.class);
-    this.actorSystemProvider = actorSystemProvider;
+    this.infraConfigService = infraConfigService;
+    this.sessionCacheService = sessionCacheService;
     this.sessionEventChannel = sessionEventChannel;
     this.runnerFactory = runnerFactory;
     this.sessionService = sessionService;
@@ -71,26 +81,57 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
   @Override
   protected Behavior<SessionCommand> domainBehavior(
       final EntityContext<SessionCommand> entityContext) {
+    String entityId = entityContext.getEntityId();
     return Behaviors.intercept(
         () ->
             new MessageFaultInterceptor<>(
-                SessionCommand.class, entityContext.getEntityId(), chaosMailboxRegistry),
+                SessionCommand.class, entityId, chaosMailboxRegistry),
         Behaviors.setup(
-            actorContext ->
-                new SessionActor(
+            actorContext -> {
+              final Context ownerContext = ownerContext(entityId);
+                return new SessionActor(
                     actorContext,
-                    entityContext.getEntityId(),
+                    entityId,
+                    new PersistencePlugin(customerId(entityId), infraConfigService),
+                    ownerContext,
                     sessionEventChannel,
-                    sessionId -> actorSystemProvider.entityRefFor(SessionActor.TYPE_KEY, sessionId),
+                    this::entityRef,
                     runnerFactory,
                     sessionService,
                     sessionTitleGenerator,
                     memoryService,
-                    sessionEventsRepository)));
+                    sessionEventsRepository);
+            }));
+  }
+
+  public static String entityId(final String sessionId) {
+    return Context.customerId().orElseThrow() + ":" + sessionId;
+  }
+
+  @Override
+  public EntityRef<SessionCommand> entityRef(final String sessionId) {
+    return super.entityRef(entityId(sessionId));
   }
 
   @Override
   protected SessionCommand idleTimeoutCommand() {
     return new IdleTimeoutCommand();
+  }
+
+  private static int customerId(final String entityId) {
+    return Integer.parseInt(entityId.substring(0, entityId.indexOf(':')));
+  }
+
+  private static String sessionId(final String entityId) {
+    return entityId.substring(entityId.indexOf(':') + 1);
+  }
+
+  private Context ownerContext(final String entityId) {
+    final int customerId = customerId(entityId);
+    final String sessionId = sessionId(entityId);
+    final Integer ownerUserId =
+        new Context(sessionId, new UserContext(customerId, UserContext.SYSTEM.userId()))
+            .get(() -> sessionCacheService.getSession(sessionId).getOwnerUserId());
+    return new Context(sessionId, new UserContext(customerId, ownerUserId));
   }
 }

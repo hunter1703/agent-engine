@@ -4,7 +4,6 @@ import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.query.Page;
-import com.agentengine.util.distributed.CacheTag;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.common.cache.CacheBuilder;
@@ -26,29 +25,31 @@ public class ConnectorCacheService {
   public ConnectorCacheService(
       ConnectionService connectionService, DistributedCacheManager cacheManager) {
     this.connectionsCache =
-        new DistributedCache<>(
-            CONNECTION_IDS_CACHE_NAME,
-            Set.of(CacheTag.CONNECTIONS),
-            CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS),
-            appName -> {
-              final List<Connection> result =
-                  connectionService.getConnections(appName, new Page(0, 100)).getItems();
-              return CollectionUtils.nullSafeList(result).stream().map(Connection::getId).toList();
-            },
-            cacheManager);
+        DistributedCache.<List<String>>builder(CONNECTION_IDS_CACHE_NAME, cacheManager)
+            .tags(Set.of(ConnectionCacheTag.CONNECTIONS))
+            .localCache(CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS))
+            .loader(
+                appName -> {
+                  final List<Connection> result =
+                      connectionService.getConnections(appName, new Page(0, 100)).getItems();
+                  return CollectionUtils.nullSafeList(result).stream()
+                      .map(Connection::getId)
+                      .toList();
+                })
+            .build();
 
     this.connectorMetadataCache =
-        new DistributedCache<>(
-            CONNECTOR_METADATA_CACHE_NAME,
-            CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS),
-            key -> {
-              String[] parts = key.split(":");
-              if (parts.length == 2) {
-                return connectionService.getConnectorMetadata(parts[0], parts[1]);
-              }
-              return null;
-            },
-            cacheManager);
+        DistributedCache.<ConnectorMetadata>builder(CONNECTOR_METADATA_CACHE_NAME, cacheManager)
+            .localCache(CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS))
+            .loader(
+                key -> {
+                  String[] parts = key.split(":");
+                  if (parts.length == 2) {
+                    return connectionService.getConnectorMetadata(parts[0], parts[1]);
+                  }
+                  return null;
+                })
+            .build();
   }
 
   public List<String> getConnectionsForApp(String appName) {

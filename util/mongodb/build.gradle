@@ -6,6 +6,8 @@ dependencies {
     implementation platform(libs.quarkus.bom)
 
     implementation project(':util:common')
+
+    implementation project(':util:context')
     implementation project(':util:distributed')
     implementation project(':util:infra')
     implementation project(':util:crypto')

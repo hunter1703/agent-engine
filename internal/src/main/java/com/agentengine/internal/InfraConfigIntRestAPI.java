@@ -1,5 +1,6 @@
 package com.agentengine.internal;
 
+import com.agentengine.util.context.ContextAware;
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.infra.InfraConfigService;
 import jakarta.inject.Inject;
@@ -9,8 +10,8 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import java.util.List;
-import java.util.Map;
 
+@ContextAware
 @Path("/infra-config")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -24,17 +25,7 @@ public class InfraConfigIntRestAPI {
   }
 
   @POST
-  public List<Map<String, String>> save(final List<InfraConfig> configs) {
-    return infraConfigService.saveAll(configs).stream()
-        .map(
-            config ->
-                Map.of(
-                    "id",
-                    config.getId(),
-                    "category",
-                    config.getCategory(),
-                    "type",
-                    config.getType()))
-        .toList();
+  public List<InfraConfig> save(final List<InfraConfig> configs) {
+    return infraConfigService.saveAll(configs);
   }
 }

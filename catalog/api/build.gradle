@@ -8,5 +8,8 @@ dependencies {
     implementation project(':util:ms:client')
     implementation project(':util:common')
     implementation project(':util:agents')
+    implementation project(':util:distributed')
+
+    compileOnly libs.jakarta.inject.api
 
 }

@@ -51,11 +51,13 @@ docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
 | `catalog:api`, `catalog:core`                                | **Catalog service** — config CRUD/validation, asset catalog, schema contracts, AG-UI event mapping        |
 | `knowledge:api`, `knowledge:core`                             | **Knowledge service** — document indexing and semantic search over Qdrant                                  |
 | `interfaces:rest`                                             | **REST service** — user-facing HTTP/SSE gateway (port 8080)                                                |
+| `tenancy`                                                     | Customers: `Customer` and its repository (`AUTH` database)                                               |
 | `connectors:api`, `connectors:core`, `connectors:http`, `connectors:infra` | **Connectors service** — config-driven HTTP connector framework (templating, auth, pagination, retry) backing tools such as `web_research` |
 | `scheduler:api`, `scheduler:core`                             | **Scheduler service** — cron-style job scheduling; fires jobs such as `agent:jobs`' `InvokeAgentJob`       |
 | `internal`                                                    | **Internal service** — internal/ops REST endpoints (Mongo, scheduler introspection)                        |
 | `chaos:api`, `chaos:core`                                     | Fault-injection / chaos-experiment framework. Not a deployed service — run standalone against the stack   |
 | `util:common`                                                 | Cross-module utility classes (queries, updates, exceptions, collections)                                    |
+| `util:context`                                                | Request context: `Context`, `UserContext`, context-propagating executors, `@ContextAware` binding       |
 | `util:infra`                                                  | Infra config model and lookup — `InfraConfig`, client/server configs, `InfraConfigService`                  |
 | `util:mongodb`                                                | MongoDB client factory, codec registry, infra config store                                                  |
 | `util:crypto`                                                 | `EncryptionService`, versioned key configs, KMS key loading                                                 |
@@ -156,6 +158,9 @@ the reader and the runtime equally.
    not `idleTimeoutSentinel` — it's the command scheduled for the idle timeout, not a "sentinel").
    Applies to booleans too: `sameClass`, not `homogeneous` — it's a plain description of the check
    ("do all these items share one class"), not a term of art the reader has to already know.
+3. Name a method that gets one thing by its id `get`, not `find`, `fetch` or `lookup` — e.g.
+   `InfraConfigService.get(id)`. Reserve `find` for searches that match by a query or condition
+   and may return several results.
 
 ### Code Structure Conventions
 

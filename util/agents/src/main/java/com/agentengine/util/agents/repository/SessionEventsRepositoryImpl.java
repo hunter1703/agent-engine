@@ -1,7 +1,6 @@
 package com.agentengine.util.agents.repository;
 
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
@@ -27,7 +26,7 @@ public class SessionEventsRepositoryImpl extends AbstractMongoRepository<Session
   @Inject
   public SessionEventsRepositoryImpl(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, AssetClass.SESSION_EVENT, SessionEvent.class, validationService);
+    super(mongoClientFactory, AgentMongoStoreClientType.AGENT, SessionEvent.class, validationService);
   }
 
   @Override

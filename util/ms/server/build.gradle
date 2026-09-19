@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api project(':util:ms:client')
     implementation project(':util:common')
+    implementation project(':util:context')
 
     implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.arc

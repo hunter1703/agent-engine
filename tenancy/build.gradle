@@ -1,0 +1,11 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+dependencies {
+    implementation project(':util:common')
+    implementation project(':util:mongodb')
+
+    compileOnly platform(libs.quarkus.bom)
+    compileOnly libs.quarkus.arc
+}

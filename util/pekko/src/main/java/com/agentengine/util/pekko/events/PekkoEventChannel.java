@@ -6,6 +6,7 @@ import com.agentengine.util.common.events.EventChannel;
 import com.agentengine.util.common.events.EventSubscription;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.pekko.ActorSystemProvider;
+import com.agentengine.util.pekko.EventSourcePlugin;
 import com.agentengine.util.pekko.actor.RequesterFirstAllocationStrategy;
 import com.agentengine.util.pekko.actor.ShardedEntityDefinition;
 import io.reactivex.rxjava3.core.BackpressureOverflowStrategy;
@@ -44,7 +45,9 @@ public class PekkoEventChannel<Scope, Event extends Copyable<Event>>
   private final Entity<BroadcasterCommand, ShardingEnvelope<BroadcasterCommand>> entityDef;
 
   public PekkoEventChannel(
-      final ActorSystemProvider actorSystemProvider, final String channelName) {
+      final ActorSystemProvider actorSystemProvider,
+      final EventSourcePlugin plugin,
+      final String channelName) {
     this.actorSystemProvider = actorSystemProvider;
     this.typeKey = EntityTypeKey.create(BroadcasterCommand.class, sanitizeTypeKey(channelName));
     this.entityDef =
@@ -54,7 +57,10 @@ public class PekkoEventChannel<Scope, Event extends Copyable<Event>>
                     Behaviors.setup(
                         actorCtx ->
                             new BroadcasterEntity(
-                                actorCtx, typeKey.name(), entityContext.getEntityId())))
+                                actorCtx,
+                                typeKey.name(),
+                                entityContext.getEntityId(),
+                                plugin)))
             .withAllocationStrategy(RequesterFirstAllocationStrategy.INSTANCE);
   }
 

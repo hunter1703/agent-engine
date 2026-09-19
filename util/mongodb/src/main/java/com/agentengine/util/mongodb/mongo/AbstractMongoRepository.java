@@ -12,6 +12,7 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.Repository;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.common.validation.ValidationService;
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoWriteException;
@@ -39,19 +40,10 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
 
   public AbstractMongoRepository(
       final MongoClientFactory mongoClientFactory,
-      final String collectionName,
+      final MongoStoreClientType clientType,
       final Class<T> entityClass,
       final ValidationService validationService) {
-    this(mongoClientFactory, "AGENT_ENGINE", collectionName, entityClass, validationService);
-  }
-
-  public AbstractMongoRepository(
-      final MongoClientFactory mongoClientFactory,
-      final String databaseName,
-      final String collectionName,
-      final Class<T> entityClass,
-      final ValidationService validationService) {
-    super(mongoClientFactory, databaseName, collectionName, entityClass);
+    super(mongoClientFactory, clientType, entityClass);
     this.validationService = validationService;
   }
 
@@ -62,6 +54,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
       if (StringUtils.isBlank(entity.getId())) {
         entity.setId(new ObjectId().toHexString());
       }
+      entity.setOwnerUserId(Context.userId().orElse(null));
       sanitizeForWrite(entity);
       try {
         getCollection().insertOne(entity);
@@ -86,6 +79,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
         if (StringUtils.isBlank(entity.getId())) {
           entity.setId(new ObjectId().toHexString());
         }
+        entity.setOwnerUserId(Context.userId().orElse(null));
         sanitizeForWrite(entity);
       }
       getCollection().insertMany(entities);
@@ -199,6 +193,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
     final long currentVersion = entity.getVersion();
     entity.setId(id);
     entity.setVersion(currentVersion + 1);
+    entity.setOwnerUserId(ownerOf(id));
     sanitizeForWrite(entity);
     try {
       final Bson filter =
@@ -224,6 +219,11 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
       LOG.error("Error replacing entity: {}", entity, exception);
       throw ExceptionUtils.wrapInRuntimeException(exception, "Error replacing entity");
     }
+  }
+
+  private Integer ownerOf(final String id) {
+    final T existing = findById(id, List.of(BaseEntity.FIELD_OWNER_USER_ID), null);
+    return existing != null ? existing.getOwnerUserId() : Context.userId().orElse(null);
   }
 
   /**

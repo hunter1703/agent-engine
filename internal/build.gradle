@@ -9,6 +9,9 @@ dependencies {
     // Pekko stays dormant here: agent and scheduler host actors only where
     // `agent-engine.pekko.enabled` is set, which this service does not set.
     runtimeOnly project(':agent:core')
+    implementation project(':tenancy')
+    implementation project(':util:common')
+    implementation project(':util:context')
     implementation project(':util:infra')
     runtimeOnly project(':catalog:core')
     runtimeOnly project(':connectors:core')

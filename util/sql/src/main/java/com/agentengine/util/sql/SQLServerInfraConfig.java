@@ -14,15 +14,24 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @BsonDiscriminator(value = "com.agentengine.util.sql.SQLServerInfraConfig")
 public class SQLServerInfraConfig extends InfraConfig {
   public static final String TYPE = "SQL_SERVER";
-  public static final String CATEGORY = "SQL";
 
   private String engine = Engine.UNKNOWN.name();
   private String host;
   private Integer port;
+  private String database;
   private String username;
   @Secure private String password;
 
   private Map<String, String> properties = new HashMap<>();
+
+  public SQLServerInfraConfig() {
+    setType(TYPE);
+  }
+
+  @Override
+  public String getId() {
+    return TYPE + ":" + getServerId();
+  }
 
   public String jdbcUrl(final String databaseName) {
     final Engine engineType = engineType();
@@ -56,6 +65,15 @@ public class SQLServerInfraConfig extends InfraConfig {
 
   public void setPort(final Integer port) {
     this.port = port;
+  }
+
+  /** The database all the server's stores are kept in, one schema per customer. */
+  public String getDatabase() {
+    return database;
+  }
+
+  public void setDatabase(final String database) {
+    this.database = database;
   }
 
   public String getUsername() {

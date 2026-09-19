@@ -7,11 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public interface CloudStorageService {
+public interface CloudStorageService extends AutoCloseable{
 
-  /**
-   * Uploads a stream to a caller-supplied storage key; the returned source is {@code bucket/key}.
-   */
   default FileDetails upload(
       String key, String name, InputStream inputStream, long contentLength, String mediaType) {
     return upload(key, name, inputStream, contentLength, mediaType, null);
@@ -25,14 +22,13 @@ public interface CloudStorageService {
       String mediaType,
       Map<String, String> metadata);
 
-  /** Uploads a stream to a randomly generated key. */
+
   default FileDetails upload(
       String name, InputStream inputStream, long contentLength, String mediaType) {
     return upload(
         UUID.randomUUID().toString().replace("-", ""), name, inputStream, contentLength, mediaType);
   }
 
-  /** Downloads the object at {@code source}, returning its byte stream and content type. */
   Content download(String source);
 
   Content download(FileDetails fileDetails);
@@ -47,10 +43,6 @@ public interface CloudStorageService {
 
   String presignedGetUrl(FileDetails fileDetails, Duration validity);
 
-  /**
-   * Lists all object keys whose paths begin with {@code keyPrefix}. Returns raw storage keys (not
-   * bucket-prefixed).
-   */
   List<String> list(String keyPrefix);
 
   FileDetails copy(FileDetails source, String name, String destinationKey);

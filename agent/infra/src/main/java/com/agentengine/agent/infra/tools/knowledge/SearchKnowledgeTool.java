@@ -8,17 +8,16 @@ import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.agents.beans.config.DefaultModelsConfig;
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
-import com.agentengine.util.infra.InfraConfigService;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
 import java.util.Map;
@@ -46,17 +45,17 @@ public final class SearchKnowledgeTool extends Tool {
 
   private final KnowledgeService knowledgeService;
   private final AgentService agentService;
-  private final InfraConfigService infraConfigService;
+  private final DefaultModelsRepository defaultModelsRepository;
 
   @ToolConstructor
   public SearchKnowledgeTool(
       KnowledgeService knowledgeService,
       final AgentService agentService,
-      final InfraConfigService infraConfigService) {
+      final DefaultModelsRepository defaultModelsRepository) {
     super(DESCRIPTOR);
     this.knowledgeService = knowledgeService;
     this.agentService = agentService;
-    this.infraConfigService = infraConfigService;
+    this.defaultModelsRepository = defaultModelsRepository;
   }
 
   /**
@@ -122,9 +121,6 @@ public final class SearchKnowledgeTool extends Tool {
     if (StringUtils.isNotBlank(agentModelId)) {
       return agentModelId;
     }
-    final DefaultModelsConfig defaults =
-        infraConfigService.findById(
-            DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
-    return defaults.getEmbeddingModelId();
+    return defaultModelsRepository.getEmbeddingModelId();
   }
 }

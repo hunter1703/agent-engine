@@ -1,7 +1,5 @@
 package com.agentengine.agent.core.session.commands;
 
-import com.agentengine.agent.core.session.SessionActor;
-import com.agentengine.util.pekko.PekkoSerializable;
+import com.agentengine.util.pekko.actor.ContextualCommand;
 
-/** Marker interface for all commands understood by a {@link SessionActor}. */
-public interface SessionCommand extends PekkoSerializable {}
+public abstract class SessionCommand extends ContextualCommand {}

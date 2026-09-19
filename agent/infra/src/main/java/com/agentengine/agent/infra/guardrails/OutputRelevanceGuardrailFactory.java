@@ -1,10 +1,9 @@
 package com.agentengine.agent.infra.guardrails;
 
-import com.agentengine.util.agents.beans.config.DefaultModelsConfig;
 import com.agentengine.util.agents.beans.config.GuardrailRuleType;
 import com.agentengine.util.agents.beans.config.OutputRelevanceGuardrailRule;
+import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -13,13 +12,13 @@ import jakarta.inject.Singleton;
 public final class OutputRelevanceGuardrailFactory
     implements GuardrailFactory<OutputRelevanceGuardrailRule> {
   private final ModelProvider modelProvider;
-  private final InfraConfigService infraConfigService;
+  private final DefaultModelsRepository defaultModelsRepository;
 
   @Inject
   public OutputRelevanceGuardrailFactory(
-      final ModelProvider modelProvider, final InfraConfigService infraConfigService) {
+      final ModelProvider modelProvider, final DefaultModelsRepository defaultModelsRepository) {
     this.modelProvider = modelProvider;
-    this.infraConfigService = infraConfigService;
+    this.defaultModelsRepository = defaultModelsRepository;
   }
 
   @Override
@@ -43,12 +42,7 @@ public final class OutputRelevanceGuardrailFactory
 
   private String resolveDefaultModelId() {
     try {
-      final DefaultModelsConfig defaults =
-          infraConfigService.findById(
-              DefaultModelsConfig.CATEGORY,
-              DefaultModelsConfig.TYPE,
-              DefaultModelsConfig.CONFIG_ID);
-      return defaults == null ? null : defaults.getEvaluatorModelId();
+      return defaultModelsRepository.getEvaluatorModelId();
     } catch (Exception ex) {
       return null;
     }

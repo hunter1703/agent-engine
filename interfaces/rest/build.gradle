@@ -10,6 +10,7 @@ dependencies {
     implementation project(':scheduler:api')
     implementation project(':util:agents')
     implementation project(':util:common')
+    implementation project(':util:context')
     implementation project(':util:cloudstorage')
     implementation project(':util:ms:client')
     implementation project(':connectors:api')

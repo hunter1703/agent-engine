@@ -5,7 +5,6 @@ import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.SessionService;
-import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FlowableUtils;
@@ -13,6 +12,7 @@ import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.SimpleJsonCodec;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.context.ContextAware;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import com.agui.community.core.event.CustomEvent;

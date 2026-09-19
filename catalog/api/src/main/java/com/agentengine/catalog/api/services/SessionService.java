@@ -6,11 +6,14 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.ms.client.MicroService;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 @MicroService("catalog")
 public interface SessionService {
   AgentSession getSession(String id);
+
+  AgentSession getSession(String id, List<String> includeFields);
 
   Map<String, AgentSession> getSessions(Collection<String> ids);
 

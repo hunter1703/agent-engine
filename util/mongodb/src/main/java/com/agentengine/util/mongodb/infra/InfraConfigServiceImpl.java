@@ -1,11 +1,17 @@
 package com.agentengine.util.mongodb.infra;
 
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.distributed.CacheScope;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
+import com.agentengine.util.infra.InfraCacheTag;
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.mongodb.mongo.MongoClientFactory;
+import com.agentengine.util.mongodb.mongo.MongoUtils;
 import com.google.common.cache.CacheBuilder;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.Duration;
@@ -17,47 +23,60 @@ public class InfraConfigServiceImpl implements InfraConfigService {
 
   private static final String CACHE_NAME = "INFRA_CONFIG_CACHE";
   private static final Duration CACHE_TTL = Duration.ofMinutes(5);
+  private static final String DATABASE = "INFRA";
+  private static final String COLLECTION = "InfraConfig";
 
-  private final InfraMongoRepository repository;
+  private final MongoClientFactory mongoClientFactory;
+  private final DistributedCacheManager cacheManager;
   private final DistributedCache<InfraConfig> cache;
 
   @Inject
   public InfraConfigServiceImpl(
-      final InfraMongoRepository repository, final DistributedCacheManager cacheManager) {
-    this.repository = repository;
+      final MongoClientFactory mongoClientFactory, final DistributedCacheManager cacheManager) {
+    this.mongoClientFactory = mongoClientFactory;
+    this.cacheManager = cacheManager;
     this.cache =
-        new DistributedCache<>(
-            CACHE_NAME,
-            CacheBuilder.newBuilder().maximumSize(256).expireAfterWrite(CACHE_TTL),
-            repository::findById,
-            cacheManager);
-    this.cache.init();
+        DistributedCache.<InfraConfig>builder(CACHE_NAME, cacheManager)
+            .scope(CacheScope.GLOBAL)
+            .localCache(CacheBuilder.newBuilder().maximumSize(1024).expireAfterWrite(CACHE_TTL))
+            .build();
   }
 
   @Override
   @SuppressWarnings("unchecked")
-  public <T extends InfraConfig> T findById(
-      final String configCategory, final String configType, final String configId) {
-    return (T) cache.get(configCategory + ":" + configType + ":" + configId);
+  public <T extends InfraConfig> T get(final String id) {
+    return (T) cache.get(id, this::load);
   }
 
   @Override
   public List<InfraConfig> saveAll(final List<InfraConfig> configs) {
-    for (final InfraConfig config : configs) {
-      if (StringUtils.isBlank(config.getId())) {
-        throw new IllegalArgumentException("Infra config has no id");
-      }
-    }
     final List<InfraConfig> saved = new ArrayList<>();
     for (final InfraConfig config : configs) {
-      final InfraConfig existing = repository.findById(config.getId());
-      if (existing != null) {
-        config.setCreatedTime(existing.getCreatedTime());
-        config.setVersion(existing.getVersion());
-      }
-      saved.add(repository.save(config));
-      cache.invalidateAll(false);
+      final long now = System.currentTimeMillis();
+      final InfraConfig existing = load(config.getId());
+      config.setCreatedTime(existing == null ? now : existing.getCreatedTime());
+      config.setUpdatedTime(now);
+      config.setVersion(existing == null ? 1 : existing.getVersion() + 1);
+      collection()
+          .replaceOne(
+              Filters.eq(MongoUtils.FIELD_MONGO_ID, config.getId()),
+              config,
+              new ReplaceOptions().upsert(true));
+      saved.add(config);
+      cache.invalidate(config.getId());
+      cacheManager.invalidate(InfraCacheTag.INFRA_CONNECTION, config.getId());
     }
     return saved;
+  }
+
+  private InfraConfig load(final String id) {
+    return collection().find(Filters.eq(MongoUtils.FIELD_MONGO_ID, id)).first();
+  }
+
+  private MongoCollection<InfraConfig> collection() {
+    return mongoClientFactory
+        .getInfraClient()
+        .getDatabase(DATABASE)
+        .getCollection(COLLECTION, InfraConfig.class);
   }
 }

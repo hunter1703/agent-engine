@@ -4,16 +4,15 @@ import com.agentengine.knowledge.api.chunking.ChunkingPipeline;
 import com.agentengine.knowledge.api.chunking.ChunkingStage;
 import com.agentengine.util.agents.beans.config.ChunkingStrategy;
 import com.agentengine.util.agents.beans.config.ChunkingType;
-import com.agentengine.util.agents.beans.config.DefaultModelsConfig;
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
+import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.models.factories.EmbeddingModelFactory;
 import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Singleton;
 import java.util.List;
-import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Assembles a {@link ChunkingPipeline} from a {@link KnowledgeSettings}.
@@ -34,32 +33,29 @@ public class ChunkingPipelineFactory {
 
   private final EmbeddingModelFactory embeddingModelFactory;
   private final ModelProvider modelProvider;
-  private final InfraConfigService infraConfigService;
+  private final DefaultModelsRepository defaultModelsRepository;
 
   public ChunkingPipelineFactory(
       final EmbeddingModelFactory embeddingModelFactory,
       final ModelProvider modelProvider,
-      final InfraConfigService infraConfigService) {
+      final DefaultModelsRepository defaultModelsRepository) {
     this.embeddingModelFactory = embeddingModelFactory;
     this.modelProvider = modelProvider;
-    this.infraConfigService = infraConfigService;
+    this.defaultModelsRepository = defaultModelsRepository;
   }
 
   public ChunkingPipeline create(final KnowledgeSettings settings) {
     List<ChunkingStrategy> stages = settings != null ? settings.getChunkingStrategy() : null;
     stages = CollectionUtils.isEmpty(stages) ? List.of(new ChunkingStrategy()) : stages;
 
-    final DefaultModelsConfig defaults = loadDefaults(settings);
     final String embeddingModelId =
         resolveModelId(
             settings == null ? null : settings.getEmbeddingModelId(),
-            defaults,
-            DefaultModelsConfig::getEmbeddingModelId);
+            defaultModelsRepository.getEmbeddingModelId());
     final String chatModelId =
         resolveModelId(
             settings == null ? null : settings.getChatModelId(),
-            defaults,
-            DefaultModelsConfig::getChatModelId);
+            defaultModelsRepository.getChatModelId());
 
     final ChunkingPipeline.Builder builder = ChunkingPipeline.builder();
     for (final ChunkingStrategy stageStrategy : stages) {
@@ -71,25 +67,9 @@ public class ChunkingPipelineFactory {
     return builder.build();
   }
 
-  /** Loads defaults only when at least one model ID is missing from settings. */
-  private DefaultModelsConfig loadDefaults(final KnowledgeSettings settings) {
-    if (settings != null
-        && StringUtils.isNotBlank(settings.getEmbeddingModelId())
-        && StringUtils.isNotBlank(settings.getChatModelId())) {
-      return null;
-    }
-    return infraConfigService.findById(
-        DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
-  }
-
   private static String resolveModelId(
-      final String configured,
-      final DefaultModelsConfig defaults,
-      final Function<DefaultModelsConfig, String> extractor) {
-    if (StringUtils.isNotBlank(configured)) {
-      return configured;
-    }
-    return defaults != null ? extractor.apply(defaults) : null;
+      final String configured, final String defaultModelId) {
+    return StringUtils.isNotBlank(configured) ? configured : defaultModelId;
   }
 
   private List<ChunkingStage> toStages(

@@ -1,9 +1,8 @@
 [
   {
-    "id": "VECTOR:VECTOR_SERVER:default",
     "_t": "com.agentengine.util.vectordb.VectorServerInfraConfig",
     "type": "VECTOR_SERVER",
-    "category": "VECTOR",
+    "serverId": "default",
     "host": "aaeb3c8c-9a81-41b7-be01-07b1400f23a1.eu-central-1-0.aws.cloud.qdrant.io",
     "httpPort": 6333,
     "grpcPort": 6334,
@@ -11,17 +10,17 @@
     "apiKey": "${QDRANT_TOKEN}"
   },
   {
-    "id": "VECTOR:KNOWLEDGE:default",
     "_t": "com.agentengine.util.vectordb.VectorClientInfraConfig",
-    "type": "KNOWLEDGE",
-    "category": "VECTOR",
+    "type": "VECTOR_CLIENT",
+    "customerId": 1,
+    "store": "KNOWLEDGE",
     "serverId": "default"
   },
   {
-    "id": "VECTOR:MEMORY:default",
     "_t": "com.agentengine.util.vectordb.VectorClientInfraConfig",
-    "type": "MEMORY",
-    "category": "VECTOR",
+    "type": "VECTOR_CLIENT",
+    "customerId": 1,
+    "store": "MEMORY",
     "serverId": "default"
   }
 ]

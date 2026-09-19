@@ -1,15 +1,20 @@
 package com.agentengine.internal;
 
+import com.agentengine.util.context.Context;
+import com.agentengine.util.context.ContextAware;
+import com.agentengine.util.context.UserContext;
 import com.agentengine.util.mongodb.mongo.AbstractMongoReadRepository;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +22,7 @@ import org.slf4j.LoggerFactory;
  * Operational endpoints for MongoDB. Served under {@code /internal}, which comes from {@code
  * quarkus.http.root-path} rather than being repeated in every path here.
  */
+@ContextAware
 @Path("/mongo")
 @Produces(MediaType.APPLICATION_JSON)
 public class MongoIntRestAPI {
@@ -34,11 +40,16 @@ public class MongoIntRestAPI {
 
   @POST
   @Path("/ensure-index")
-  public Response ensureIndex() {
+  public Response ensureIndex(@QueryParam("customerId") final int customerId) {
     final List<EnsureIndexesResult> results = new ArrayList<>();
-    for (final AbstractMongoReadRepository<?> repository : repositories) {
-      results.add(ensureFor(repository));
-    }
+    new Context(
+            UUID.randomUUID().toString(), new UserContext(customerId, UserContext.SYSTEM.userId()))
+        .run(
+            () -> {
+              for (final AbstractMongoReadRepository<?> repository : repositories) {
+                results.add(ensureFor(repository));
+              }
+            });
     final boolean anyFailed = results.stream().anyMatch(result -> result.error() != null);
     return Response.status(anyFailed ? MULTI_STATUS : Response.Status.OK.getStatusCode())
         .entity(results)

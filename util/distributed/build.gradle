@@ -10,6 +10,7 @@ dependencies {
     
     // Core Dependencies
     implementation project(':util:common')
+    implementation project(':util:context')
     
     // JGroups
     implementation libs.jgroups
