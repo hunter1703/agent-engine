@@ -4,45 +4,5 @@
     "type": "MONGO_SERVER",
     "serverId": "default",
     "uri": "${INFRA_MONGODB_URI}"
-  },
-  {
-    "_t": "com.agentengine.util.mongodb.infra.MongoClientInfraConfig",
-    "type": "MONGO_CLIENT",
-    "customerId": 1,
-    "store": "CATALOG",
-    "serverId": "default"
-  },
-  {
-    "_t": "com.agentengine.util.mongodb.infra.MongoClientInfraConfig",
-    "type": "MONGO_CLIENT",
-    "customerId": 1,
-    "store": "AGENT",
-    "serverId": "default"
-  },
-  {
-    "_t": "com.agentengine.util.mongodb.infra.MongoClientInfraConfig",
-    "type": "MONGO_CLIENT",
-    "customerId": 1,
-    "store": "CONNECTORS",
-    "serverId": "default"
-  },
-  {
-    "_t": "com.agentengine.util.mongodb.infra.MongoClientInfraConfig",
-    "type": "MONGO_CLIENT",
-    "customerId": 1,
-    "store": "KNOWLEDGE",
-    "serverId": "default"
-  },
-  {
-    "_t": "com.agentengine.util.mongodb.infra.MongoClientInfraConfig",
-    "type": "MONGO_CLIENT",
-    "store": "AUTH",
-    "serverId": "default"
-  },
-  {
-    "_t": "com.agentengine.util.mongodb.infra.MongoClientInfraConfig",
-    "type": "MONGO_CLIENT",
-    "store": "SCHEDULER",
-    "serverId": "default"
   }
 ]

@@ -10,6 +10,15 @@ dependencies {
     // `agent-engine.pekko.enabled` is set, which this service does not set.
     runtimeOnly project(':agent:core')
     implementation project(':tenancy')
+    implementation project(':util:mongodb')
+    implementation project(':util:crypto')
+    implementation project(':util:cloudstorage')
+    implementation project(':util:sql')
+    implementation project(':util:vectordb')
+    implementation project(':catalog:api')
+    implementation project(':agent:api')
+    implementation project(':knowledge:api')
+    implementation project(':connectors:api')
     implementation project(':util:common')
     implementation project(':util:context')
     implementation project(':util:infra')
@@ -18,8 +27,7 @@ dependencies {
     runtimeOnly project(':knowledge:core')
     implementation project(':scheduler:api')
     runtimeOnly project(':scheduler:core')
-    implementation project(':util:mongodb')
-    implementation project(':util:pekko')
+    implementation project(':util:ms:client')
 
     implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.arc

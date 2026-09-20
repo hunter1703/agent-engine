@@ -7,9 +7,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public final class Utils {
@@ -35,6 +38,19 @@ public final class Utils {
         return null;
       }
     };
+  }
+
+  public static List<Field> fieldsAnnotatedWith(
+      final Class<?> type, final Class<? extends Annotation> annotation) {
+    final List<Field> fields = new ArrayList<>();
+    for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+      for (final Field field : current.getDeclaredFields()) {
+        if (field.isAnnotationPresent(annotation)) {
+          fields.add(field);
+        }
+      }
+    }
+    return fields;
   }
 
   public static Class<?> getClass(final Type type) {

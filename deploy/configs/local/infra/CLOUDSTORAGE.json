@@ -7,12 +7,5 @@
     "region": "us-east-1",
     "accessKeyId": "test",
     "secretAccessKey": "test"
-  },
-  {
-    "_t": "com.agentengine.util.cloudstorage.CloudStorageClientInfraConfig",
-    "type": "CLOUDSTORAGE_CLIENT",
-    "customerId": 1,
-    "serverId": "default",
-    "bucket": "agentengine_1"
   }
 ]

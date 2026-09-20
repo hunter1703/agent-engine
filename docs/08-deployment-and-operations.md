@@ -104,6 +104,30 @@ Helper script:
 
 This generates and upserts encryption key material. Model `apiKey` and other secret fields rely on this — never commit plaintext secrets to `configs/`.
 
+### Provisioning
+
+Seeding saves only *server* configs (`*_SERVER`, `ENCRYPTION_KEY`) and settings such as
+`DEFAULT_MODELS`, from `deploy/configs/<env>/infra`. **Client** configs are made by provisioning.
+
+`deployae` runs one `provision` stage through the internal service:
+
+- `POST /internal/provision/environment` sets up what all customers share (the `TENANCY` and
+  `SCHEDULER` Mongo stores) and the system customer (-1): its encryption client and event store.
+- `POST /internal/provision/customer`, once per entry in `deploy/configs/<env>/customers.json`
+  (`{"id": 1, "name": "...", "servers": {"mongo": "eu-1"}}`), saves the customer and sets it up
+  end to end: encryption and cloud storage clients and bucket, then each service's own stores.
+
+Each deployable has a `*ProvisioningService` (`@MicroService`, resolved to the local bean when the
+caller hosts it) that saves its stores' client configs and prepares what they point at: Mongo
+indexes, the event store schema, Qdrant collections and payload indexes, its microservice client.
+Every step is safe to run again. The response lists each step's outcome, and the stage fails if any
+step did.
+
+The server a client points at is the request's `servers.<family>` (`mongo`, `sql`, `vector`,
+`cloudstorage`, `encryption`), else the environment's default from its global properties
+(`infra.default-server.<family>`, `infra.vector.size`). A client factory that finds no client config
+makes and saves one on the default server.
+
 ## 8.5 Session and Runtime Operational Behavior
 
 - sessions are event-sourced through cluster-sharded `SessionActor`s and can be resumed by session ID

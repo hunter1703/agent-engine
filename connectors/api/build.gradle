@@ -6,6 +6,7 @@ group = 'com.agentengine.connectors'
 
 dependencies {
     implementation project(':util:ms:client')
+    api project(':tenancy')
     implementation project(':util:common')
     implementation project(':util:distributed')
     compileOnly libs.jakarta.inject.api

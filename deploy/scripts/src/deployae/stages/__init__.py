@@ -16,12 +16,9 @@ from deployae.stages.cleanup import (
     DeletePvcsStage,
     RemoveLocalstackResourcesStage,
 )
-from deployae.stages.indexes import EnsureIndexesStage
-from deployae.stages.seed import SetupInfraStage, SeedAppConfigStage
-from deployae.stages.init import (
-    EnsureLocalstackBucketsStage,
-    InitQdrantCollectionStage,
-)
+from deployae.stages.infraconfig import SeedInfraConfigStage
+from deployae.stages.provision import ProvisionStage
+from deployae.stages.seed import SeedAppConfigStage
 
 __all__ = [
     "BuildDockerImageStage",
@@ -29,16 +26,14 @@ __all__ = [
     "DeleteNamespaceStage",
     "DeletePvcsStage",
     "DeployChartStage",
-    "EnsureIndexesStage",
-    "SetupInfraStage",
+    "ProvisionStage",
+    "SeedInfraConfigStage",
     "SeedAppConfigStage",
     "EnsureEnvSecretStage",
     "EnsureIngressControllerStage",
     "EnsureLocalTlsCertStage",
-    "EnsureLocalstackBucketsStage",
     "EnsureNamespaceStage",
     "HelmStage",
-    "InitQdrantCollectionStage",
     "RemoveLocalstackResourcesStage",
     "Stage",
     "UninstallChartStage",

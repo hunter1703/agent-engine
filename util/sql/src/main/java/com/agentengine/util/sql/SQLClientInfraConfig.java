@@ -16,7 +16,7 @@ public class SQLClientInfraConfig extends InfraConfig {
 
   @Override
   public String getId() {
-    return TYPE + ":" + store + ":" + getCustomerId();
+    return SQLUtils.clientId(store, getCustomerId());
   }
 
   public String getStore() {

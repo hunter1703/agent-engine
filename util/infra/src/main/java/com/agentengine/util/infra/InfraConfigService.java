@@ -1,6 +1,6 @@
 package com.agentengine.util.infra;
 
-import java.util.List;
+import com.agentengine.util.common.exception.DuplicateAssetException;
 
 public interface InfraConfigService {
 
@@ -10,5 +10,7 @@ public interface InfraConfigService {
     return get(serverType + ":" + client.getServerId());
   }
 
-  List<InfraConfig> saveAll(List<InfraConfig> configs);
+  <T extends InfraConfig> T save(T config);
+
+  void insert(InfraConfig config);
 }

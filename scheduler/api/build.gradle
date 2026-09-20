@@ -8,6 +8,7 @@ dependencies {
     implementation project(':util:common')
     implementation project(':util:context')
     implementation project(':util:ms:client')
+    api project(':tenancy')
     compileOnly libs.mongodb.bson
     compileOnly libs.jakarta.validation.api
 

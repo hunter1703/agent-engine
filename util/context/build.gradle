@@ -10,6 +10,7 @@ dependencies {
     compileOnly libs.jakarta.inject.api
     compileOnly libs.jakarta.enterprise.cdi.api
     compileOnly libs.jakarta.annotation.api
+    compileOnly libs.jakarta.validation.api
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

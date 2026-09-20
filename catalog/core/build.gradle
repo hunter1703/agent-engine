@@ -6,11 +6,13 @@ group = 'com.agentengine.catalog'
 
 dependencies {
     implementation project(':catalog:api')
+    implementation project(':tenancy')
     implementation project(':util:ms:client')
     implementation project(':agent:api')
     implementation project(':util:common')
     implementation project(':util:mongodb')
     implementation project(':util:agents')
+    implementation project(':util:infra')
     runtimeOnly project(':util:ms:server')
 
     implementation platform(libs.quarkus.bom)

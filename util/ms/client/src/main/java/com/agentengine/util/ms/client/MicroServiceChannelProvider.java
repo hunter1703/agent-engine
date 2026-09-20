@@ -29,7 +29,10 @@ public class MicroServiceChannelProvider
   }
 
   public Channel getForService(final int customerId, final String service) {
-    return get(infraConfigService.get(MicroServiceUtils.clientId(customerId, service)));
+    return get(
+        getOrCreate(
+            MicroServiceUtils.clientId(customerId, service),
+            () -> MicroServiceUtils.clientConfig(customerId, service, service)));
   }
 
   @Override

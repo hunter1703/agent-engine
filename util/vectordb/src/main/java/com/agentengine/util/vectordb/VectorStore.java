@@ -1,25 +1,43 @@
 package com.agentengine.util.vectordb;
 
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.*;
+import com.agentengine.util.common.annotations.Indexed;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.repository.Repository;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+
+import java.lang.reflect.Field;
+import java.util.*;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 public abstract class VectorStore<T extends BaseEntity> implements Repository<T> {
   public static final String FIELD_EMBEDDING_MODEL_ID = "embeddingModelId";
 
+  protected final Class<T> entityClass;
+  private final LazyLoader<Map<String, String>> fieldVsVectorName;
+  private final LazyLoader<Set<String>> indexedFields;
   private final BiFunction<String, String, float[]> embeddingGenerator;
 
-  protected VectorStore(final BiFunction<String, String, float[]> embeddingGenerator) {
+  protected VectorStore(
+      final Class<T> entityClass, final BiFunction<String, String, float[]> embeddingGenerator) {
+    this.entityClass = entityClass;
+    this.fieldVsVectorName = new LazyLoader<>(() -> VectorDbUtils.vectorNames(entityClass));
+    this.indexedFields = new LazyLoader<>(() -> Utils.fieldsAnnotatedWith(entityClass, Indexed.class).stream()
+            .filter(field -> !field.getAnnotation(Indexed.class).vector())
+            .map(Field::getName).collect(Collectors.toSet()));
     this.embeddingGenerator = embeddingGenerator;
   }
+
+  protected Map<String, String> getFieldVsVectorName() {
+    return fieldVsVectorName.get();
+  }
+
+  protected Set<String> getIndexedFields() {
+    return indexedFields.get();
+  }
+
+  protected abstract void setup(int vectorSize);
 
   @Override
   public PaginatedResult<T> findByQuery(Query query) {
@@ -44,9 +62,6 @@ public abstract class VectorStore<T extends BaseEntity> implements Repository<T>
       final String first =
           Objects.requireNonNull(CollectionUtils.getFirst(filter.getValues())).toString();
       final String field = filter.getField();
-      // Apply the <field> → <field>Vector naming convention so the rewritten filter
-      // references the physical vector field name in the store (e.g. "text" → "textVector").
-      final String vectorField = StringUtils.isBlank(field) ? null : field + "Vector";
       // Per-filter embeddingModelId (in additional) takes precedence over the global fallback,
       // allowing different semantic search fields to use different embedding models.
       final String modelId =
@@ -55,7 +70,12 @@ public abstract class VectorStore<T extends BaseEntity> implements Repository<T>
       if (StringUtils.isBlank(resolvedModelId)) {
         return Filters.eq(field, first);
       }
-      return Filters.semanticSearch(vectorField, embeddingGenerator.apply(resolvedModelId, first));
+      final String vectorName = fieldVsVectorName.get().get(field);
+      if (vectorName == null) {
+        throw new IllegalArgumentException(
+            entityClass.getSimpleName() + "." + field + " is not a vector field");
+      }
+      return Filters.semanticSearch(vectorName, embeddingGenerator.apply(resolvedModelId, first));
     }
     if (!op.isCompound()) {
       return filter;

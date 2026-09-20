@@ -68,6 +68,15 @@ public final class DelegatingCloudStorageService implements CloudStorageService 
     return runWithErrorHandling(() -> delegate.copy(source, name, destinationKey));
   }
 
+  @Override
+  public void ensureBucket(final String bucket) {
+    runWithErrorHandling(
+        () -> {
+          delegate.ensureBucket(bucket);
+          return null;
+        });
+  }
+
   private static <T> T runWithErrorHandling(final Supplier<T> call) {
     try {
       return call.get();

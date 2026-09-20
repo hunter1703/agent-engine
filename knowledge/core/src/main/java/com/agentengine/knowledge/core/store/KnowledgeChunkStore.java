@@ -32,6 +32,7 @@ public class KnowledgeChunkStore extends QdrantVectorStore<KnowledgeChunk> {
       final EmbeddingModelFactory embeddingModelFactory) {
     super(
         AssetClass.KNOWLEDGE_CHUNK,
+        KnowledgeChunk.class,
         KnowledgeVectorStoreClientType.KNOWLEDGE,
         clientFactory,
         (modelId, query) -> embeddingModelFactory.get(modelId).embed(query).content().vector());

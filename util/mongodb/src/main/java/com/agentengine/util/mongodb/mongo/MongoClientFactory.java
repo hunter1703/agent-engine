@@ -7,6 +7,8 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.LazyLoader;
+import com.agentengine.util.common.config.ApplicationConfig;
+import com.agentengine.util.common.config.ApplicationConfigUtils;
 import com.agentengine.util.crypto.EncryptionService;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
@@ -40,21 +42,23 @@ public class MongoClientFactory
   private static final Logger LOG = LoggerFactory.getLogger(MongoClientFactory.class);
   private final MongoClientSupport mongoClientSupport;
   private final EncryptionService encryptionService;
+  private final String defaultServerId;
   private final Instance<Codec<?>> customCodecs;
   private final LazyLoader<MongoClient> infraClient;
 
   @Inject
   public MongoClientFactory(
-      InfraConfigService infraConfigService,
-      DistributedCacheManager cacheManager,
-      MongoClientSupport mongoClientSupport,
-      EncryptionService encryptionService,
-      Instance<Codec<?>> customCodecs) {
+          InfraConfigService infraConfigService,
+          DistributedCacheManager cacheManager,
+          MongoClientSupport mongoClientSupport,
+          EncryptionService encryptionService, ApplicationConfig applicationConfig,
+          Instance<Codec<?>> customCodecs) {
     super(
         infraConfigService, cacheManager, MongoServerInfraConfig.TYPE);
     this.mongoClientSupport = mongoClientSupport;
     this.encryptionService = encryptionService;
-    this.customCodecs = customCodecs;
+      this.defaultServerId = ApplicationConfigUtils.getDefaultServerId(applicationConfig, MongoServerInfraConfig.TYPE);
+      this.customCodecs = customCodecs;
     this.infraClient = new LazyLoader<>(() -> create(EnvUtils.getInfraMongoUri()));
   }
 
@@ -63,9 +67,12 @@ public class MongoClientFactory
   }
 
   public MongoClient getClient(final MongoStoreClientType clientType, final Integer customerId) {
-    final MongoClientInfraConfig clientConfig =
-        infraConfigService.get(MongoUtils.clientId(clientType.name(), customerId));
-    return get(clientConfig);
+    return get(
+        getOrCreate(
+            MongoUtils.clientId(clientType.name(), customerId),
+            () ->
+                MongoUtils.clientConfig(
+                    clientType.name(), customerId, defaultServerId)));
   }
 
   @Override

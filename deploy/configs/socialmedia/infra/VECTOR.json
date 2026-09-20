@@ -8,19 +8,5 @@
     "grpcPort": 6334,
     "tls": true,
     "apiKey": "${QDRANT_TOKEN}"
-  },
-  {
-    "_t": "com.agentengine.util.vectordb.VectorClientInfraConfig",
-    "type": "VECTOR_CLIENT",
-    "customerId": 1,
-    "store": "KNOWLEDGE",
-    "serverId": "default"
-  },
-  {
-    "_t": "com.agentengine.util.vectordb.VectorClientInfraConfig",
-    "type": "VECTOR_CLIENT",
-    "customerId": 1,
-    "store": "MEMORY",
-    "serverId": "default"
   }
 ]

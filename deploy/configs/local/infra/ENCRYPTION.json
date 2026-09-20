@@ -5,17 +5,5 @@
     "keyId": "default",
     "provider": "KEY",
     "key": "${ENCRYPTION_KEY}"
-  },
-  {
-    "_t": "com.agentengine.util.crypto.EncryptionClientInfraConfig",
-    "type": "ENCRYPTION_CLIENT",
-    "customerId": -1,
-    "serverId": "default"
-  },
-  {
-    "_t": "com.agentengine.util.crypto.EncryptionClientInfraConfig",
-    "type": "ENCRYPTION_CLIENT",
-    "customerId": 1,
-    "serverId": "default"
   }
 ]

@@ -20,6 +20,7 @@ public class CloudStorageServerInfraConfig extends InfraConfig {
   // and need this set to false.
   private boolean chunkedEncodingEnabled = true;
   private String namespace;
+  private String compartmentId;
   private boolean useInstancePrincipal = false;
   private String tenantId;
   private String userId;
@@ -46,6 +47,15 @@ public class CloudStorageServerInfraConfig extends InfraConfig {
 
   public Provider providerType() {
     return Provider.valueOfOrUnknown(provider);
+  }
+
+  /** The compartment new buckets are created in; Oracle only. */
+  public String getCompartmentId() {
+    return compartmentId;
+  }
+
+  public void setCompartmentId(final String compartmentId) {
+    this.compartmentId = compartmentId;
   }
 
   public String getRegion() {

@@ -51,7 +51,7 @@ docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
 | `catalog:api`, `catalog:core`                                | **Catalog service** — config CRUD/validation, asset catalog, schema contracts, AG-UI event mapping        |
 | `knowledge:api`, `knowledge:core`                             | **Knowledge service** — document indexing and semantic search over Qdrant                                  |
 | `interfaces:rest`                                             | **REST service** — user-facing HTTP/SSE gateway (port 8080)                                                |
-| `tenancy`                                                     | Customers: `Customer` and its repository (`AUTH` database)                                               |
+| `tenancy`                                                     | Customers and the provisioning contract: `Customer` and its repository, `ProvisioningService`/`Request`/`Result` |
 | `connectors:api`, `connectors:core`, `connectors:http`, `connectors:infra` | **Connectors service** — config-driven HTTP connector framework (templating, auth, pagination, retry) backing tools such as `web_research` |
 | `scheduler:api`, `scheduler:core`                             | **Scheduler service** — cron-style job scheduling; fires jobs such as `agent:jobs`' `InvokeAgentJob`       |
 | `internal`                                                    | **Internal service** — internal/ops REST endpoints (Mongo, scheduler introspection)                        |

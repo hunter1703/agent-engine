@@ -33,40 +33,5 @@
     "serverId": "scheduler",
     "host": "scheduler-local.agent-engine.svc.cluster.local",
     "port": 8080
-  },
-  {
-    "_t": "com.agentengine.util.ms.client.MicroServiceClientInfraConfig",
-    "type": "MICROSERVICE_CLIENT",
-    "customerId": 1,
-    "service": "catalog",
-    "serverId": "catalog"
-  },
-  {
-    "_t": "com.agentengine.util.ms.client.MicroServiceClientInfraConfig",
-    "type": "MICROSERVICE_CLIENT",
-    "customerId": 1,
-    "service": "agent",
-    "serverId": "agent"
-  },
-  {
-    "_t": "com.agentengine.util.ms.client.MicroServiceClientInfraConfig",
-    "type": "MICROSERVICE_CLIENT",
-    "customerId": 1,
-    "service": "knowledge",
-    "serverId": "knowledge"
-  },
-  {
-    "_t": "com.agentengine.util.ms.client.MicroServiceClientInfraConfig",
-    "type": "MICROSERVICE_CLIENT",
-    "customerId": 1,
-    "service": "connectors",
-    "serverId": "connectors"
-  },
-  {
-    "_t": "com.agentengine.util.ms.client.MicroServiceClientInfraConfig",
-    "type": "MICROSERVICE_CLIENT",
-    "customerId": 1,
-    "service": "scheduler",
-    "serverId": "scheduler"
   }
 ]

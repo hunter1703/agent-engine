@@ -6,6 +6,7 @@ group = 'com.agentengine.agent'
 
 dependencies {
     implementation project(':util:ms:client')
+    api project(':tenancy')
     implementation project(':util:agents')
     implementation project(':util:common')
 

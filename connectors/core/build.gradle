@@ -6,6 +6,8 @@ group = 'com.agentengine.connectors'
 
 dependencies {
     implementation project(':connectors:api')
+    implementation project(':tenancy')
+    implementation project(':util:ms:client')
     implementation project(':util:crypto')
     implementation project(':connectors:infra')
     runtimeOnly project(':connectors:http')

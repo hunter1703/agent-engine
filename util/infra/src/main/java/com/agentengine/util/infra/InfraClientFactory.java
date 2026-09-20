@@ -1,10 +1,12 @@
 package com.agentengine.util.infra;
 
+import com.agentengine.util.common.exception.DuplicateAssetException;
 import com.agentengine.util.distributed.CacheScope;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import jakarta.annotation.PreDestroy;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +42,21 @@ public abstract class InfraClientFactory<
       return null;
     }
     return getClientForServer(serverConfig);
+  }
+
+  protected final C getOrCreate(final String clientId, final Supplier<C> defaultClient) {
+    final C existing = infraConfigService.get(clientId);
+    if (existing != null) {
+      return existing;
+    }
+    final C created = defaultClient.get();
+    try {
+      infraConfigService.insert(created);
+      return created;
+    } catch (final DuplicateAssetException exception) {
+      // Another node made it first; theirs is the one to use.
+      return infraConfigService.get(clientId);
+    }
   }
 
   protected T getClientForServer(S serverConfig) {

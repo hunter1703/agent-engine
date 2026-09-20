@@ -7,8 +7,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Declares an index on the annotated entity, created by {@link
- * com.agentengine.util.common.repository.IndexedRepository#ensureIndexes()}.
+ * Declares an index on the annotated entity, created when the entity's store is set up.
  *
  * <p>Indexes are declared next to the entity they belong to so that a query and the index serving
  * it are read together.

@@ -19,13 +19,17 @@ import com.oracle.bmc.auth.SimpleAuthenticationDetailsProvider;
 import com.oracle.bmc.auth.StringPrivateKeySupplier;
 import com.oracle.bmc.objectstorage.ObjectStorage;
 import com.oracle.bmc.objectstorage.ObjectStorageClient;
+import com.oracle.bmc.model.BmcException;
 import com.oracle.bmc.objectstorage.model.CopyObjectDetails;
+import com.oracle.bmc.objectstorage.model.CreateBucketDetails;
 import com.oracle.bmc.objectstorage.model.CreatePreauthenticatedRequestDetails;
 import com.oracle.bmc.objectstorage.model.ObjectSummary;
 import com.oracle.bmc.objectstorage.model.PreauthenticatedRequest;
 import com.oracle.bmc.objectstorage.requests.CopyObjectRequest;
+import com.oracle.bmc.objectstorage.requests.CreateBucketRequest;
 import com.oracle.bmc.objectstorage.requests.CreatePreauthenticatedRequestRequest;
 import com.oracle.bmc.objectstorage.requests.DeleteObjectRequest;
+import com.oracle.bmc.objectstorage.requests.GetBucketRequest;
 import com.oracle.bmc.objectstorage.requests.GetObjectRequest;
 import com.oracle.bmc.objectstorage.requests.HeadObjectRequest;
 import com.oracle.bmc.objectstorage.requests.ListObjectsRequest;
@@ -55,12 +59,14 @@ public class OracleCloudStorage extends AbstractCloudStorageService {
   private final ObjectStorage client;
   private final String region;
   private final String namespace;
+  private final String compartmentId;
 
   public OracleCloudStorage(final CloudStorageServerInfraConfig config, InfraConfigService infraConfigService) {
       super(infraConfigService);
       this.client = buildClient(config);
     this.region = config.getRegion();
     this.namespace = config.getNamespace();
+    this.compartmentId = config.getCompartmentId();
   }
 
   @Override
@@ -216,6 +222,28 @@ public class OracleCloudStorage extends AbstractCloudStorageService {
         FileDetails.StorageType.CLOUDSTORAGE,
         source.mimeType(),
         source.size());
+  }
+
+  @Override
+  public void ensureBucket(final String bucket) {
+    try {
+      client.getBucket(
+          GetBucketRequest.builder().namespaceName(namespace).bucketName(bucket).build());
+    } catch (final BmcException exception) {
+      if (exception.getStatusCode() != 404) {
+        throw exception;
+      }
+      if (StringUtils.isBlank(compartmentId)) {
+        throw new IllegalStateException(
+            "Bucket '" + bucket + "' does not exist and the server has no compartmentId to create it in");
+      }
+      client.createBucket(
+          CreateBucketRequest.builder()
+              .namespaceName(namespace)
+              .createBucketDetails(
+                  CreateBucketDetails.builder().name(bucket).compartmentId(compartmentId).build())
+              .build());
+    }
   }
 
   @Override

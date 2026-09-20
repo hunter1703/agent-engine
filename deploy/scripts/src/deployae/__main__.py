@@ -7,14 +7,13 @@ import argparse
 import sys
 
 from deployae.charts import TierRequiredError
-from deployae.cli import build_infra_setup, cleanup, deploy
+from deployae.cli import cleanup, deploy
 from deployae.helm import HelmError
 from deployae.kube import KubectlError
 
 _COMMANDS = {
     "cleanup": cleanup,
     "deploy": deploy,
-    "buildInfraSetupImage": build_infra_setup,
 }
 
 

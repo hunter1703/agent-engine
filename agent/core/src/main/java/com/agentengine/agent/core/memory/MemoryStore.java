@@ -23,6 +23,7 @@ public class MemoryStore extends QdrantVectorStore<Memory> {
       final EmbeddingModelFactory embeddingModelFactory) {
     super(
         AssetClass.MEMORY,
+        Memory.class,
         AgentVectorStoreClientType.MEMORY,
         clientFactory,
         (modelId, query) -> embeddingModelFactory.get(modelId).embed(query).content().vector());

@@ -11,19 +11,5 @@
     "properties": {
       "sslmode": "require"
     }
-  },
-  {
-    "_t": "com.agentengine.util.sql.SQLClientInfraConfig",
-    "type": "SQL_CLIENT",
-    "customerId": -1,
-    "store": "PEKKO",
-    "serverId": "default"
-  },
-  {
-    "_t": "com.agentengine.util.sql.SQLClientInfraConfig",
-    "type": "SQL_CLIENT",
-    "customerId": 1,
-    "store": "PEKKO",
-    "serverId": "default"
   }
 ]

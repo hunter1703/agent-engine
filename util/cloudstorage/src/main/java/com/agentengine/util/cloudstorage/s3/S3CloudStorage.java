@@ -26,10 +26,13 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -201,6 +204,15 @@ public class S3CloudStorage extends AbstractCloudStorageService {
         FileDetails.StorageType.CLOUDSTORAGE,
         source.mimeType(),
         source.size());
+  }
+
+  @Override
+  public void ensureBucket(final String bucket) {
+    try {
+      s3.headBucket(HeadBucketRequest.builder().bucket(bucket).build());
+    } catch (final NoSuchBucketException exception) {
+      s3.createBucket(CreateBucketRequest.builder().bucket(bucket).build());
+    }
   }
 
   @Override

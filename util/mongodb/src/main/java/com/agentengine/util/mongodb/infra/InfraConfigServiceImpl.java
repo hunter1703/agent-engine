@@ -1,5 +1,6 @@
 package com.agentengine.util.mongodb.infra;
 
+import com.agentengine.util.common.exception.DuplicateAssetException;
 import com.agentengine.util.distributed.CacheScope;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
@@ -9,14 +10,13 @@ import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import com.agentengine.util.mongodb.mongo.MongoUtils;
 import com.google.common.cache.CacheBuilder;
+import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 
 @Singleton
 public class InfraConfigServiceImpl implements InfraConfigService {
@@ -25,6 +25,7 @@ public class InfraConfigServiceImpl implements InfraConfigService {
   private static final Duration CACHE_TTL = Duration.ofMinutes(5);
   private static final String DATABASE = "INFRA";
   private static final String COLLECTION = "InfraConfig";
+  private static final int DUPLICATE_KEY_ERROR = 11000;
 
   private final MongoClientFactory mongoClientFactory;
   private final DistributedCacheManager cacheManager;
@@ -49,24 +50,38 @@ public class InfraConfigServiceImpl implements InfraConfigService {
   }
 
   @Override
-  public List<InfraConfig> saveAll(final List<InfraConfig> configs) {
-    final List<InfraConfig> saved = new ArrayList<>();
-    for (final InfraConfig config : configs) {
-      final long now = System.currentTimeMillis();
-      final InfraConfig existing = load(config.getId());
-      config.setCreatedTime(existing == null ? now : existing.getCreatedTime());
-      config.setUpdatedTime(now);
-      config.setVersion(existing == null ? 1 : existing.getVersion() + 1);
-      collection()
-          .replaceOne(
-              Filters.eq(MongoUtils.FIELD_MONGO_ID, config.getId()),
-              config,
-              new ReplaceOptions().upsert(true));
-      saved.add(config);
+  public <T extends InfraConfig> T save(final T config) {
+    final long now = System.currentTimeMillis();
+    final InfraConfig existing = load(config.getId());
+    config.setCreatedTime(existing == null ? now : existing.getCreatedTime());
+    config.setUpdatedTime(now);
+    config.setVersion(existing == null ? 1 : existing.getVersion() + 1);
+    collection()
+        .replaceOne(
+            Filters.eq(MongoUtils.FIELD_MONGO_ID, config.getId()),
+            config,
+            new ReplaceOptions().upsert(true));
+    cache.invalidate(config.getId());
+    cacheManager.invalidate(InfraCacheTag.INFRA_CONNECTION, config.getId());
+    return config;
+  }
+
+  @Override
+  public void insert(final InfraConfig config) {
+    final long now = System.currentTimeMillis();
+    config.setCreatedTime(now);
+    config.setUpdatedTime(now);
+    config.setVersion(1);
+    try {
+      collection().insertOne(config);
       cache.invalidate(config.getId());
-      cacheManager.invalidate(InfraCacheTag.INFRA_CONNECTION, config.getId());
+    } catch (final MongoWriteException exception) {
+      if (exception.getError().getCode() != DUPLICATE_KEY_ERROR) {
+        throw exception;
+      }
+      cache.invalidate(config.getId());
+      throw new DuplicateAssetException(config.getType(), config.getId());
     }
-    return saved;
   }
 
   private InfraConfig load(final String id) {

@@ -6,19 +6,5 @@
     "host": "qdrant-local.infra.svc.cluster.local",
     "httpPort": 6333,
     "grpcPort": 6334
-  },
-  {
-    "_t": "com.agentengine.util.vectordb.VectorClientInfraConfig",
-    "type": "VECTOR_CLIENT",
-    "customerId": 1,
-    "store": "KNOWLEDGE",
-    "serverId": "default"
-  },
-  {
-    "_t": "com.agentengine.util.vectordb.VectorClientInfraConfig",
-    "type": "VECTOR_CLIENT",
-    "customerId": 1,
-    "store": "MEMORY",
-    "serverId": "default"
   }
 ]

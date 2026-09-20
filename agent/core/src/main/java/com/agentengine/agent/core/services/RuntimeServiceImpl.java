@@ -8,6 +8,7 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.core.session.ResumeResult;
 import com.agentengine.agent.core.session.RollbackResult;
+import com.agentengine.agent.core.session.CurrentTurnEvents;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.SessionEventChannel;
 import com.agentengine.agent.core.session.StartSessionResult;
@@ -37,7 +38,6 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.UniqueRecord;
-import com.agentengine.util.context.Context;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.query.Page;
@@ -147,8 +147,7 @@ public class RuntimeServiceImpl implements RuntimeService {
         .<Done>ask(
             replyTo ->
                 new InitializeCommand(
-                    SessionTopology.root(
-                        agentId, resolvedSessionId, Context.getUserContext().orElse(null)),
+                    SessionTopology.root(agentId, resolvedSessionId),
                     replyTo),
             SessionActorFactory.ASK_TIMEOUT)
         .toCompletableFuture()
@@ -426,7 +425,8 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private List<SessionEvent> getCurrentTurnEvents(final String sessionId) {
     final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
-    return ref.ask(GetCurrentTurnEventsCommand::new, SessionActorFactory.ASK_TIMEOUT)
+    return ref.<CurrentTurnEvents>ask(
+            replyTo -> new GetCurrentTurnEventsCommand(replyTo), SessionActorFactory.ASK_TIMEOUT)
         .toCompletableFuture()
         .join()
         .events();

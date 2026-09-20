@@ -6,6 +6,7 @@ group = 'com.agentengine.agent'
 
 dependencies {
     implementation project(':agent:api')
+    implementation project(':tenancy')
     implementation project(':util:ms:client')
     implementation project(':util:infra')
     implementation project(':agent:infra')
@@ -16,7 +17,9 @@ dependencies {
     implementation project(':util:common')
     implementation project(':util:context')
     implementation project(':util:pekko')
+    implementation project(':util:mongodb')
     implementation project(':util:agents')
+    implementation project(':util:sql')
     runtimeOnly project(':util:ms:server')
     implementation project(':connectors:api')
     implementation project(':util:cloudstorage')

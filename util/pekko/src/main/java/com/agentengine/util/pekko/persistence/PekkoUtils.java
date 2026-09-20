@@ -4,6 +4,7 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.sql.SQLClientInfraConfig;
 import com.agentengine.util.sql.SQLServerInfraConfig;
+import com.agentengine.util.sql.SQLUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigValueFactory;
 import java.util.List;
@@ -16,13 +17,14 @@ public final class PekkoUtils {
   public static final List<String> JOURNAL_TABLES = List.of("event_journal", "event_tag");
   public static final List<String> SNAPSHOT_TABLES = List.of("snapshot");
   public static final String SQL_CLIENT_ID = "sql-client-id";
+  public static final String PEKKO_STORE = "PEKKO";
   public static final String PERSISTENCE_DISPATCHER = "pekko.actor.persistence-dispatcher";
 
   private PekkoUtils() {}
 
   public static SQLClientInfraConfig sqlClient(
       final InfraConfigService infraConfigService, final int customerId) {
-    return infraConfigService.get(SQLClientInfraConfig.TYPE + ":PEKKO:" + customerId);
+    return infraConfigService.get(SQLUtils.clientId(PEKKO_STORE, customerId));
   }
 
   public static Config buildConfigForClient(

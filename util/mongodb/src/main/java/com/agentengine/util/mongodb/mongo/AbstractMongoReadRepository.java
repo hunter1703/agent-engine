@@ -1,6 +1,8 @@
 package com.agentengine.util.mongodb.mongo;
 
+import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.annotations.Index;
+import com.agentengine.util.common.annotations.Indexed;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.common.query.Page;
@@ -14,6 +16,8 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexModel;
 import com.mongodb.client.model.IndexOptions;
+import com.mongodb.client.model.Indexes;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -140,35 +144,42 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
     }
   }
 
+  public MongoStoreClientType clientType() {
+    return clientType;
+  }
+
   public String collectionName() {
     return collectionName;
   }
 
   /**
-   * Applies the entity's {@link Index} declarations, creating those that are missing and dropping
-   * those declared with {@code drop = true}. Creating an index that already exists with the same
-   * definition is a no-op in MongoDB, so this is safe to call repeatedly. An entity that declares
-   * none does nothing.
+   * Prepares the current customer's collection for the entity by applying its {@link Index} and
+   * {@link Indexed} declarations: missing indexes are created, and those declared with {@code drop
+   * = true} are dropped. Creating an index that already exists with the same definition is a no-op
+   * in MongoDB, so this is safe to call repeatedly.
    */
-  public List<String> ensureIndexes() {
-    final Index[] declarations = entityClass.getAnnotationsByType(Index.class);
-    if (declarations.length == 0) {
-      return List.of();
-    }
-    final List<IndexModel> models = new ArrayList<>(declarations.length);
-    for (final Index declaration : declarations) {
+  protected void setup() {
+    final List<IndexModel> models = new ArrayList<>();
+    for (final Index declaration : entityClass.getAnnotationsByType(Index.class)) {
       if (declaration.drop()) {
         dropIndex(declaration);
         continue;
       }
       models.add(new IndexModel(Document.parse(declaration.def()), toIndexOptions(declaration)));
     }
+    for (final Field field : Utils.fieldsAnnotatedWith(entityClass, Indexed.class)) {
+      final Indexed declaration = field.getAnnotation(Indexed.class);
+      final IndexOptions options = new IndexOptions();
+      if (!declaration.name().isBlank()) {
+        options.name(declaration.name());
+      }
+      models.add(new IndexModel(Indexes.ascending(field.getName()), options));
+    }
     if (models.isEmpty()) {
-      return List.of();
+      return;
     }
     final List<String> created = getCollection().createIndexes(models);
     LOG.info("Ensured {} index(es) on collection {}: {}", created.size(), collectionName, created);
-    return created;
   }
 
   protected String database() {

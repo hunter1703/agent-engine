@@ -47,5 +47,7 @@ public interface CloudStorageService extends AutoCloseable{
 
   FileDetails copy(FileDetails source, String name, String destinationKey);
 
+  void ensureBucket(String bucket);
+
   record Content(InputStream stream, String mimeType) {}
 }

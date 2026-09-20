@@ -34,6 +34,15 @@ public final class MongoUtils {
 
   private MongoUtils() {}
 
+  public static MongoClientInfraConfig clientConfig(
+      final String store, final Integer customerId, final String serverId) {
+    final MongoClientInfraConfig clientConfig = new MongoClientInfraConfig();
+    clientConfig.setStore(store);
+    clientConfig.setCustomerId(customerId);
+    clientConfig.setServerId(serverId);
+    return clientConfig;
+  }
+
   public static String clientId(final String store, final Integer customerId) {
     return MongoClientInfraConfig.TYPE + ":" + store + (customerId == null ? "" : ":" + customerId);
   }

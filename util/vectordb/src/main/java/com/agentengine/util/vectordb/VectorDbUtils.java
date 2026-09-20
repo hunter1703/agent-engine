@@ -1,7 +1,10 @@
 package com.agentengine.util.vectordb;
 
+import com.agentengine.util.common.Utils;
+import com.agentengine.util.common.annotations.Indexed;
 import io.qdrant.client.ValueFactory;
 import io.qdrant.client.grpc.JsonWithInt.Value;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -10,10 +13,37 @@ import java.util.Map;
 
 public final class VectorDbUtils {
 
+  private static final String DEFAULT_VECTOR_SUFFIX = "Vector";
+
   private VectorDbUtils() {}
+
+  public static VectorClientInfraConfig clientConfig(
+      final VectorStoreClientType clientType, final Integer customerId, final String serverId) {
+    final VectorClientInfraConfig clientConfig = new VectorClientInfraConfig();
+    clientConfig.setStore(clientType.name());
+    clientConfig.setCustomerId(customerId);
+    clientConfig.setServerId(serverId);
+    return clientConfig;
+  }
 
   public static String clientId(final String store, final Integer customerId) {
     return VectorClientInfraConfig.TYPE + ":" + store + ":" + customerId;
+  }
+
+  /** The vector name of each {@link Indexed} vector field of the entity class, keyed by field. */
+  public static Map<String, String> vectorNames(final Class<?> entityClass) {
+    final Map<String, String> fieldVsVectorName = new LinkedHashMap<>();
+    for (final Field field : Utils.fieldsAnnotatedWith(entityClass, Indexed.class)) {
+      final Indexed declaration = field.getAnnotation(Indexed.class);
+      if (declaration.vector()) {
+        fieldVsVectorName.put(
+            field.getName(),
+            declaration.name().isBlank()
+                ? field.getName() + DEFAULT_VECTOR_SUFFIX
+                : declaration.name());
+      }
+    }
+    return fieldVsVectorName;
   }
 
   static Map<String, Value> toValues(final Map<String, Object> payload) {

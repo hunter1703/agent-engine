@@ -1,6 +1,8 @@
 package com.agentengine.util.vectordb;
 
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.Utils;
+import com.agentengine.util.common.annotations.Indexed;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.common.query.*;
@@ -16,8 +18,10 @@ import io.qdrant.client.VectorFactory;
 import io.qdrant.client.VectorsFactory;
 import io.qdrant.client.WithPayloadSelectorFactory;
 import io.qdrant.client.WithVectorsSelectorFactory;
+import io.qdrant.client.grpc.Collections;
 import io.qdrant.client.grpc.Common;
 import io.qdrant.client.grpc.Points;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiFunction;
@@ -34,10 +38,11 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
   protected QdrantVectorStore(
       final String collection,
+      final Class<T> entityClass,
       final VectorStoreClientType clientType,
       final VectorDbClientFactory clientFactory,
       final BiFunction<String, String, float[]> embeddingGenerator) {
-    super(embeddingGenerator);
+    super(entityClass, embeddingGenerator);
     this.collection = collection;
     this.clientType = clientType;
     this.clientFactory = clientFactory;
@@ -226,6 +231,34 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
       result.put(entity.getId(), entity);
     }
     return result;
+  }
+
+  public VectorStoreClientType clientType() {
+    return clientType;
+  }
+
+  @Override
+  protected void setup(final int vectorSize) {
+    final QdrantClient client = client();
+    final String name = collectionName();
+    if (!await(client.collectionExistsAsync(name))) {
+      final Map<String, Collections.VectorParams> vectors = new LinkedHashMap<>();
+      for (final String vectorName : getFieldVsVectorName().values()) {
+        vectors.put(
+            vectorName,
+            Collections.VectorParams.newBuilder()
+                .setSize(vectorSize)
+                .setDistance(Collections.Distance.Cosine)
+                .build());
+      }
+      await(client.createCollectionAsync(name, vectors));
+    }
+    // Qdrant Cloud rejects a filter on an unindexed field; creating an existing index is a no-op.
+    for (final String field : getIndexedFields()) {
+      await(
+          client.createPayloadIndexAsync(
+              name, field, Collections.PayloadSchemaType.Keyword, null, true, null, null));
+    }
   }
 
   private String collectionName() {

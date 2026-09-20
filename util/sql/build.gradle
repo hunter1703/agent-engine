@@ -7,4 +7,5 @@ dependencies {
     api project(':util:infra')
 
     api libs.mongodb.bson
+    compileOnly libs.jakarta.inject.api
 }

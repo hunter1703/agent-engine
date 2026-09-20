@@ -6,6 +6,7 @@ group = 'com.agentengine.knowledge'
 
 dependencies {
     implementation project(':knowledge:api')
+    implementation project(':tenancy')
     implementation project(':util:ms:client')
     implementation project(':util:infra')
     implementation project(':util:common')

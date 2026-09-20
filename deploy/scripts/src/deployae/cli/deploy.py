@@ -17,20 +17,18 @@ from dataclasses import replace
 from pathlib import Path
 
 from deployae import helm, output
-from deployae.charts import CONFIGS_DIR, REPO_ROOT, Chart
+from deployae.charts import REPO_ROOT, Chart
 from deployae.stages import (
     BuildDockerImageStage,
     BuildGradleStage,
     DeployChartStage,
     EnsureEnvSecretStage,
-    EnsureIndexesStage,
     EnsureIngressControllerStage,
     EnsureLocalTlsCertStage,
-    EnsureLocalstackBucketsStage,
     EnsureNamespaceStage,
-    SetupInfraStage,
+    ProvisionStage,
+    SeedInfraConfigStage,
     SeedAppConfigStage,
-    InitQdrantCollectionStage,
     Stage,
     UninstallChartStage,
     run_graph,
@@ -366,58 +364,19 @@ def build_stages(
     }
     stages.extend(infra_deploy_by_name.values())
 
-    # mongodb and postgres are the infra charts setup-infra waits on if enabled.
-    setup_infra_deps = tuple(
-        infra_deploy_by_name[name]
-        for name in ("mongodb", "postgres")
-        if infra_chart_enabled[name]
-    )
-    setup_infra_stage = SetupInfraStage(
-        name="setup-infra",
-        depends_on=setup_infra_deps,
-        tier=ctx.tier,
-        environment=ctx.environment,
-        namespace_override=ctx.namespace,
-        external_mongodb_uri=ctx.mongodb_uri,
-        image_registry=ctx.image_registry,
-        enabled=(infra_chart_enabled["mongodb"] or bool(ctx.mongodb_uri)) and not dry_run,
-    )
-    stages.append(setup_infra_stage)
-    # A tier with no self-hosted qdrant chart (e.g. socialmedia, backed by Qdrant Cloud) still
-    # runs this stage against its own VECTOR.json directly - see InitQdrantCollectionStage.
-    has_external_vector_config = (
-        CONFIGS_DIR / ctx.environment / "infra" / "VECTOR.json"
-    ).is_file() and not infra_chart_enabled["qdrant"]
-    qdrant_collections_stage = InitQdrantCollectionStage(
-        name="init-qdrant-collections",
-        depends_on=(infra_deploy_by_name["qdrant"],) if infra_chart_enabled["qdrant"] else (),
-        namespace_override=ctx.namespace,
-        tier=ctx.tier,
-        environment=ctx.environment,
-        external=has_external_vector_config,
-        enabled=(infra_chart_enabled["qdrant"] or has_external_vector_config) and not dry_run,
-    )
-    stages.append(qdrant_collections_stage)
-    localstack_buckets_stage = EnsureLocalstackBucketsStage(
-        name="ensure-localstack-buckets",
-        depends_on=(infra_deploy_by_name["localstack"],),
-        namespace_override=ctx.namespace,
-        tier=ctx.tier,
-        enabled=infra_chart_enabled["localstack"],
-    )
-    stages.append(localstack_buckets_stage)
-
     # --- App charts ---
     def deploy_app_chart(name: str, *extra_deps: Stage) -> DeployChartStage:
         chart = Chart(name)
         # Every app service reads Mongo-backed infra config at startup somewhere (encryption,
         # microservice client wiring, Pekko cluster config, vector DB, cloud storage, ...) via
         # InfraConfigService.findById(), which returns null — not an error — for a document
-        # that hasn't been seeded yet. Without this dependency, app charts and setup-infra
-        # race, and whichever finishes startup first decides whether that config exists.
-        # global-properties is the one exception: it doesn't read infra config, so keeping it
-        # off this dependency keeps it off the critical path.
-        infra_config_dep = () if name == "global-properties" else (setup_infra_stage,)
+        # that hasn't been saved yet. Without this dependency, app charts and the infra config
+        # save race, and whichever finishes startup first decides whether that config exists.
+        # global-properties doesn't read infra config, and internal is what saves it, so
+        # neither can wait on it.
+        infra_config_dep = (
+            () if name in ("global-properties", "internal") else (infra_config_stage,)
+        )
         depends_on = (
             *_chart_prerequisites(chart, ctx, namespace_stages, env_secret_stages, ingress_stage, tls_cert_stages),
             *infra_config_dep,
@@ -440,6 +399,26 @@ def build_stages(
         return stage
 
     global_properties_stage = deploy_app_chart("global-properties")
+    mongodb_deps = tuple(
+        infra_deploy_by_name[name] for name in ("mongodb",) if infra_chart_enabled[name]
+    )
+    internal_stage = deploy_app_chart(
+        "internal", global_properties_stage, image_stage_by_component["internal"], *mongodb_deps
+    )
+    infra_config_stage = SeedInfraConfigStage(
+        name="seed-infra-config",
+        depends_on=(
+            *mongodb_deps,
+            *(infra_deploy_by_name[name] for name in ("postgres",) if infra_chart_enabled[name]),
+            internal_stage,
+        ),
+        chart_name="internal",
+        tier=ctx.tier,
+        namespace_override=ctx.namespace,
+        environment=ctx.environment,
+        enabled=(infra_chart_enabled["mongodb"] or bool(ctx.mongodb_uri)) and not dry_run,
+    )
+    stages.append(infra_config_stage)
     catalog_stage = deploy_app_chart(
         "catalog", global_properties_stage, image_stage_by_component["catalog"]
     )
@@ -450,33 +429,46 @@ def build_stages(
         image_stage_by_component["knowledge"],
     )
     deploy_app_chart("connectors", global_properties_stage, image_stage_by_component["connectors"])
-    deploy_app_chart("scheduler", global_properties_stage, image_stage_by_component["scheduler"])
-    internal_stage = deploy_app_chart(
-        "internal", global_properties_stage, image_stage_by_component["internal"]
-    )
-    deploy_app_chart(
-        "agent",
-        global_properties_stage,
-        image_stage_by_component["agent"],
-    )
-
-    # --- Index creation: internal links every repository, so one call covers all collections ---
-    ensure_indexes_stage = EnsureIndexesStage(
-        name="ensure-indexes",
-        depends_on=(infra_deploy_by_name["mongodb"], internal_stage),
+    # The environment and every customer are provisioned through internal: client configs, and the
+    # databases, event store tables, indexes, vector collections and buckets behind them. The
+    # services that host Pekko actors read and write the event store from startup, so they wait
+    # for it.
+    provision_stage = ProvisionStage(
+        name="provision",
+        depends_on=(
+            *(
+                infra_deploy_by_name[name]
+                for name in ("mongodb", "postgres", "qdrant", "localstack")
+                if infra_chart_enabled[name]
+            ),
+            infra_config_stage,
+        ),
+        environment=ctx.environment,
         chart_name="internal",
         tier=ctx.tier,
         namespace_override=ctx.namespace,
         enabled=not dry_run,
     )
-    stages.append(ensure_indexes_stage)
+    stages.append(provision_stage)
+    deploy_app_chart(
+        "scheduler",
+        global_properties_stage,
+        image_stage_by_component["scheduler"],
+        provision_stage,
+    )
+    deploy_app_chart(
+        "agent",
+        global_properties_stage,
+        image_stage_by_component["agent"],
+        provision_stage,
+    )
 
-    # --- Optional: internal is only needed transiently, to create indexes above — not as
-    # a standing service. --cleanup-internal tears it down once that's done. ---
+    # --- Optional: internal is only needed transiently, to provision — not as a standing
+    # service. --cleanup-internal tears it down once that's done. ---
     stages.append(
         UninstallChartStage(
             name="cleanup-internal",
-            depends_on=(ensure_indexes_stage,),
+            depends_on=(provision_stage,),
             chart=Chart("internal"),
             tier=ctx.tier,
             environment=ctx.environment,

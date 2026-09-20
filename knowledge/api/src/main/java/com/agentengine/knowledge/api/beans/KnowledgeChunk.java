@@ -1,5 +1,6 @@
 package com.agentengine.knowledge.api.beans;
 
+import com.agentengine.util.common.annotations.Indexed;
 import com.agentengine.util.vectordb.VectorEntity;
 
 /**
@@ -9,7 +10,7 @@ import com.agentengine.util.vectordb.VectorEntity;
  * <p>Source and sourceType are intentionally omitted — they are available on the parent {@link
  * Knowledge} entity and can be fetched via {@code knowledgeId} when needed.
  *
- * <p>Currently a single vector field is used ({@link #FIELD_TEXT_VECTOR}), populated by embedding
+ * <p>Currently a single vector field is used ({@link #FIELD_TEXT}), populated by embedding
  * the chunk's text. Additional fields (e.g. title, summary) can be added later by calling {@link
  * #setVector(String, float[])} with the appropriate physical field name.
  */
@@ -18,12 +19,12 @@ public class KnowledgeChunk extends VectorEntity {
   public static final String FIELD_KNOWLEDGE_ID = "knowledgeId";
   public static final String FIELD_AGENT_ID = "agentId";
 
-  /** Physical vector field name for the primary text embedding in the vector store. */
-  public static final String FIELD_TEXT_VECTOR = "textVector";
+  public static final String FIELD_TEXT = "text";
 
-  private String knowledgeId;
-  private String agentId;
+  @Indexed private String knowledgeId;
+  @Indexed private String agentId;
   private int chunkIndex;
+  @Indexed(vector = true)
   private String text;
   private int chunkStart;
   private int chunkEnd;

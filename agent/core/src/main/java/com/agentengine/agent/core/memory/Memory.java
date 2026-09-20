@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.memory;
 
+import com.agentengine.util.common.annotations.Indexed;
 import com.agentengine.util.vectordb.VectorEntity;
 
 /**
@@ -14,8 +15,9 @@ public class Memory extends VectorEntity {
   public static final String FIELD_USER_ID = "userId";
   public static final String FIELD_TEXT = "text";
 
-  private String agentId;
-  private String userId;
+  @Indexed private String agentId;
+  @Indexed private String userId;
+  @Indexed(vector = true)
   private String text;
 
   public String getAgentId() {

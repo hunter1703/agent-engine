@@ -1,6 +1,7 @@
 package com.agentengine.util.crypto;
 
 import com.agentengine.util.distributed.DistributedCacheManager;
+import com.agentengine.util.infra.DefaultServers;
 import com.agentengine.util.infra.InfraClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
 import com.oracle.bmc.auth.InstancePrincipalsAuthenticationDetailsProvider;
@@ -16,12 +17,22 @@ import java.util.Base64;
 @Singleton
 public class EncryptionClientProvider extends InfraClientFactory<EncryptionClientInfraConfig, EncryptionKeyInfraConfig, CryptoClient> {
 
-    protected EncryptionClientProvider(InfraConfigService infraConfigService, DistributedCacheManager cacheManager) {
+    private final DefaultServers defaultServers;
+
+    protected EncryptionClientProvider(
+            InfraConfigService infraConfigService,
+            DistributedCacheManager cacheManager,
+            DefaultServers defaultServers) {
         super(infraConfigService, cacheManager, EncryptionKeyInfraConfig.TYPE);
+        this.defaultServers = defaultServers;
     }
 
     public CryptoClient get(final int customerId) {
-        return get(infraConfigService.get(EncryptionUtils.clientId(customerId)));
+        return get(
+                getOrCreate(
+                        EncryptionUtils.clientId(customerId),
+                        () -> EncryptionUtils.clientConfig(
+                                customerId, defaultServers.serverId(DefaultServers.ENCRYPTION))));
     }
 
     public CryptoClient getForKeyId(final String keyId) {

@@ -26,6 +26,6 @@ public class InfraConfigIntRestAPI {
 
   @POST
   public List<InfraConfig> save(final List<InfraConfig> configs) {
-    return infraConfigService.saveAll(configs);
+    return configs.stream().map(infraConfigService::save).toList();
   }
 }
