@@ -82,11 +82,11 @@ public class JobDefinitionValidator implements Validator<JobDefinition> {
     }
   }
 
-  /** A blank tag would silently become a capacity bucket nobody can configure. */
+  /** A blank tag would silently become a group nobody can name. */
   private void validateTags(final JobDefinition jobDefinition, final ValidationCollector errors) {
-    if (CollectionUtils.nullSafeList(jobDefinition.getJobTags()).stream()
+    if (CollectionUtils.nullSafeList(jobDefinition.getTags()).stream()
         .anyMatch(StringUtils::isBlank)) {
-      errors.add("jobTags must not contain blank entries");
+      errors.add("tags must not contain blank entries");
     }
   }
 }

@@ -104,13 +104,13 @@ public final class SessionActor
   private final SessionTitleGenerator sessionTitleGenerator;
   private final MemoryService memoryService;
   private final SessionEventsRepository sessionEventsRepository;
+  private Context ownerContext;
   private SessionRunner runner;
 
   public SessionActor(
       final ActorContext<SessionCommand> context,
       final String entityId,
       final EventSourcePlugin plugin,
-      final Context ownerContext,
       final SessionEventChannel eventChannel,
       final java.util.function.Function<String, EntityRef<SessionCommand>> refSupplier,
       final RunnerFactory runnerFactory,
@@ -118,7 +118,7 @@ public final class SessionActor
       final SessionTitleGenerator sessionTitleGenerator,
       final MemoryService memoryService,
       final SessionEventsRepository sessionEventsRepository) {
-    super(TYPE_KEY.name(), entityId, plugin, ownerContext);
+    super(TYPE_KEY.name(), entityId, plugin);
     this.context = context;
     this.self = context.getSelf();
     this.eventChannel = eventChannel;
@@ -180,7 +180,7 @@ public final class SessionActor
     if (state == null || state.topology() == null) {
       return;
     }
-    defaultContext.run(() -> recover(state));
+    defaultContext(state).run(() -> recover(state));
   }
 
   private void recover(final SessionActorState state) {
@@ -346,7 +346,7 @@ public final class SessionActor
       return Effect().none().thenReply(command.getReplyTo(), _ -> Done.done());
     }
     return Effect()
-        .persist(new InitializedFact(topology))
+        .persist(new InitializedFact(topology, Context.getUserContext().orElseThrow()))
         .thenRun(inContext(_ -> init(topology)))
         .thenReply(command.getReplyTo(), _ -> Done.done());
   }
@@ -451,16 +451,13 @@ public final class SessionActor
               ASK_TIMEOUT),
           // Piped back as a command rather than handled inline: the future completes on a thread
           // other than the actor's, which cannot use actor-only abstractions like persist().
-          (resumeResult, error) ->
-              command
-                  .getContext()
-                  .get(
-                      () ->
-                          new ResumeChildCommand(
-                              resumeRequest,
-                              replyTo,
-                              resumeResult,
-                              error == null ? null : error.getMessage())));
+          inContext(
+              (resumeResult, error) ->
+                  new ResumeChildCommand(
+                      resumeRequest,
+                      replyTo,
+                      resumeResult,
+                      error == null ? null : error.getMessage())));
       return Effect().none();
     }
 
@@ -615,17 +612,14 @@ public final class SessionActor
     context.pipeToSelf(
         childRef.ask(
             (Function<ActorRef<RunResult>, SessionCommand>) AwaitCommand::new, ASK_TIMEOUT),
-        (result, error) ->
-            command
-                .getContext()
-                .get(
-                    () ->
-                        new ReapChildResultCommand(
-                            command.getReplyTo(),
-                            command.getChildSessionId(),
-                            command.getAttempt(),
-                            result,
-                            error)));
+        inContext(
+            (result, error) ->
+                new ReapChildResultCommand(
+                    command.getReplyTo(),
+                    command.getChildSessionId(),
+                    command.getAttempt(),
+                    result,
+                    error)));
     return Effect().none();
   }
 
@@ -687,23 +681,16 @@ public final class SessionActor
                   new StartingChild(command.getAgentId(), childSessionId, commandMessage)))
           .thenRun(inContext(
               _ ->
-                  startChildSession(state, childAgentId, childSessionId, message)
-                      .whenComplete(
-                          (result, error) -> {
-                            self.tell(
-                                command
-                                    .getContext()
-                                    .get(
-                                        () ->
-                                            new StartChildCompletedCommand(
-                                                childSessionId,
-                                                childAgentId,
-                                                replyTo,
-                                                result,
-                                                error == null
-                                                    ? null
-                                                    : ExceptionUtils.getErrorMessage(error))));
-                          })));
+                  context.pipeToSelf(
+                      startChildSession(state, childAgentId, childSessionId, message),
+                      inContext(
+                          (result, error) ->
+                              new StartChildCompletedCommand(
+                                  childSessionId,
+                                  childAgentId,
+                                  replyTo,
+                                  result,
+                                  error == null ? null : ExceptionUtils.getErrorMessage(error))))));
     }
     final StartChildResult rejected =
         new StartChildResult(
@@ -1164,12 +1151,25 @@ public final class SessionActor
   }
 
   @Override
+  protected Context defaultContext(final SessionActorState state) {
+    if (state.ownerContext() == null) {
+      throw new IllegalStateException("Session " + persistenceId().entityId() + " has no owner context yet");
+    }
+    if (ownerContext == null) {
+      ownerContext = new Context(state.topology().sessionId(), state.ownerContext());
+    }
+    return ownerContext;
+  }
+
+  @Override
   public EventHandler<SessionActorState, SessionFact> eventHandler() {
     return newEventHandlerBuilder()
         .forAnyState()
         .onEvent(
             InitializedFact.class,
-            (_, fact) -> SessionActorState.initial().withTopology(fact.getTopology()))
+            (_, fact) ->
+                SessionActorState.initial()
+                    .withInitialized(fact.getTopology(), fact.getOwnerContext()))
         .onEvent(
             StartedFact.class,
             (state, fact) ->

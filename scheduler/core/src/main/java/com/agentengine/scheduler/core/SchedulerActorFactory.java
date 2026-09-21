@@ -2,13 +2,10 @@ package com.agentengine.scheduler.core;
 
 import com.agentengine.scheduler.api.store.JobDefinitionRepository;
 import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
-import com.agentengine.scheduler.core.actor.ConcurrencyLimiter;
-import com.agentengine.scheduler.core.actor.JobRunnerActorFactory;
+import com.agentengine.scheduler.core.actor.WorkerActorFactory;
 import com.agentengine.scheduler.core.actor.SchedulerActor;
 import com.agentengine.scheduler.core.actor.TriggerReconcilerActor;
-import com.agentengine.scheduler.core.config.JobTagSettings;
 import com.agentengine.util.common.config.ApplicationConfig;
-import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import io.quarkus.arc.Unremovable;
 import io.quarkus.runtime.StartupEvent;
@@ -16,7 +13,9 @@ import jakarta.annotation.Priority;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.time.Duration;
+
+import java.util.Optional;
+import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.javadsl.Behaviors;
 import org.apache.pekko.cluster.typed.ClusterSingletonSettings;
 import org.apache.pekko.cluster.typed.SingletonActor;
@@ -31,30 +30,24 @@ public class SchedulerActorFactory {
   private static final Logger LOG = LoggerFactory.getLogger(SchedulerActorFactory.class);
   private static final String SINGLETON_NAME = "SchedulerActor";
   private static final String RECONCILER_SINGLETON_NAME = "TriggerReconcilerActor";
-  private static final String RESERVATION_TTL_KEY =
-      "agent-engine.scheduler.dispatch-reservation-ttl-millis";
-  private static final long DEFAULT_RESERVATION_TTL_MILLIS = Duration.ofMinutes(30).toMillis();
-
   private final TriggerDefinitionRepository triggerDefinitionRepository;
   private final JobDefinitionRepository jobDefinitionRepository;
   private final ActorSystemProvider actorSystemProvider;
-  private final JobRunnerActorFactory jobRunnerActorFactory;
-  private final InfraConfigService infraConfigService;
+  private final WorkerActorFactory workerActorFactory;
   private final ApplicationConfig applicationConfig;
+  private ActorRef<SchedulerActor.Command> schedulerRef;
 
   @Inject
   public SchedulerActorFactory(
       final TriggerDefinitionRepository triggerDefinitionRepository,
       final JobDefinitionRepository jobDefinitionRepository,
       final ActorSystemProvider actorSystemProvider,
-      final JobRunnerActorFactory jobRunnerActorFactory,
-      final InfraConfigService infraConfigService,
+      final WorkerActorFactory workerActorFactory,
       final ApplicationConfig applicationConfig) {
     this.triggerDefinitionRepository = triggerDefinitionRepository;
     this.jobDefinitionRepository = jobDefinitionRepository;
     this.actorSystemProvider = actorSystemProvider;
-    this.jobRunnerActorFactory = jobRunnerActorFactory;
-    this.infraConfigService = infraConfigService;
+    this.workerActorFactory = workerActorFactory;
     this.applicationConfig = applicationConfig;
   }
 
@@ -65,17 +58,7 @@ public class SchedulerActorFactory {
       LOG.info("Pekko is disabled; scheduler singleton will not start");
       return;
     }
-    final ConcurrencyLimiter concurrencyLimiter =
-        new ConcurrencyLimiter(
-            tag -> {
-              final JobTagSettings config = infraConfigService.get(JobTagSettings.TYPE + ":" + tag);
-              return (config == null || config.getMaxConcurrent() <= 0)
-                  ? Integer.MAX_VALUE
-                  : config.getMaxConcurrent();
-            },
-            applicationConfig.getLong(RESERVATION_TTL_KEY, DEFAULT_RESERVATION_TTL_MILLIS));
-
-    final SchedulerConfigs schedulerConfigs = SchedulerConfigs.from(applicationConfig);
+    final SchedulerConfigs schedulerConfigs = new SchedulerConfigs(applicationConfig);
     final SingletonActor<SchedulerActor.Command> singleton =
         SingletonActor.of(
                 Behaviors.<SchedulerActor.Command>setup(
@@ -87,8 +70,6 @@ public class SchedulerActorFactory {
                                     timers,
                                     triggerDefinitionRepository,
                                     jobDefinitionRepository,
-                                    jobRunnerActorFactory,
-                                    concurrencyLimiter,
                                     schedulerConfigs))),
                 SINGLETON_NAME)
             .withSettings(ClusterSingletonSettings.create(actorSystemProvider.system()));
@@ -101,8 +82,13 @@ public class SchedulerActorFactory {
                 RECONCILER_SINGLETON_NAME)
             .withSettings(ClusterSingletonSettings.create(actorSystemProvider.system()));
 
-    actorSystemProvider.singleton().init(singleton);
+    schedulerRef = actorSystemProvider.singleton().init(singleton);
+    workerActorFactory.start(schedulerRef);
     actorSystemProvider.singleton().init(reconcilerSingleton);
     LOG.info("Scheduler singleton {} initialized", SINGLETON_NAME);
+  }
+
+  public ActorRef<SchedulerActor.Command> getSchedulerRef() {
+    return schedulerRef;
   }
 }

@@ -2,23 +2,27 @@ package com.agentengine.scheduler.core.actor;
 
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.models.TriggerDefinition;
+import com.agentengine.scheduler.api.models.TriggerStatus;
 import com.agentengine.scheduler.api.store.JobDefinitionRepository;
 import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.SchedulerConfigs;
-import com.agentengine.scheduler.core.SchedulerUtils;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.EnvUtils;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.collections.DeficitRoundRobinQueue;
 import com.agentengine.util.pekko.PekkoSerializable;
+import java.time.Duration;
+import java.util.AbstractQueue;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.javadsl.AbstractBehavior;
@@ -27,13 +31,13 @@ import org.apache.pekko.actor.typed.javadsl.Receive;
 import org.apache.pekko.actor.typed.javadsl.TimerScheduler;
 
 /**
- * Cluster singleton that finds due triggers, takes them, and hands each to the {@link
- * JobRunnerActor} entity for its trigger.
+ * Cluster singleton that keeps the due triggers in fair order and hands them to the {@link
+ * WorkerActor}s that ask for work.
  *
- * <p>Taking them is a batch compare-and-set that stamps this scheduler's id, followed by a read of
- * the rows carrying that id. The update reports how many rows it changed but not which, and the
- * read-back closes that gap: should a partition ever leave two singletons running, each dispatches
- * only the subset it actually won rather than both dispatching everything.
+ * <p>Handing them out is a batch compare-and-set that stamps the asking worker's id, followed by a
+ * read of the rows carrying that id. The update reports how many rows it changed but not which, and
+ * the read-back closes that gap: should a partition ever leave two singletons running, each grants
+ * only the subset it actually won rather than both granting everything.
  *
  * <p>Recovering triggers stuck in QUEUED or RUNNING after a dead node is handled separately, by
  * {@link TriggerReconcilerActor}, which uses each trigger's heartbeat lease to tell a long-running
@@ -41,34 +45,36 @@ import org.apache.pekko.actor.typed.javadsl.TimerScheduler;
  */
 public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Command> {
 
+  public static final List<String> RECONCILE_JOB_FIELDS =
+          List.of(
+                  TriggerDefinition.FIELD_JOB_DEFINITION + "." + JobDefinition.FIELD_USER_CONTEXT,
+                  TriggerDefinition.FIELD_JOB_DEFINITION + "." + BaseEntity.FIELD_TAGS,
+                  TriggerDefinition.FIELD_JOB_DEFINITION + "." + JobDefinition.FIELD_JOB_CLASS_NAME);
+
   private static final String TIMER_KEY = "scheduler";
+  private static final String RECONCILE_TIMER_KEY = "reconciliation";
 
   private final TriggerDefinitionRepository triggerDefinitionRepository;
   private final JobDefinitionRepository jobDefinitionRepository;
-  private final JobRunnerActorFactory jobRunnerActorFactory;
-  private final ConcurrencyLimiter concurrencyLimiter;
-  private final ActorRef<JobRunnerActor.Response.TriggerFinished> schedulerCallbackActor;
   private final SchedulerConfigs schedulerConfigs;
-  private final String schedulerId;
+  private final TimerScheduler<Command> timers;
+  private DeficitRoundRobinQueue<Integer, TriggerDefinition> dueTriggers = new DeficitRoundRobinQueue<>(_ -> 1);
+  private boolean initialized;
 
   public SchedulerActor(
       final ActorContext<Command> context,
       final TimerScheduler<Command> timers,
       final TriggerDefinitionRepository triggerDefinitionRepository,
       final JobDefinitionRepository jobDefinitionRepository,
-      final JobRunnerActorFactory jobRunnerActorFactory,
-      final ConcurrencyLimiter concurrencyLimiter,
       final SchedulerConfigs schedulerConfigs) {
     super(context);
+    this.timers = timers;
     this.schedulerConfigs = schedulerConfigs;
     this.triggerDefinitionRepository = triggerDefinitionRepository;
     this.jobDefinitionRepository = jobDefinitionRepository;
-    this.jobRunnerActorFactory = jobRunnerActorFactory;
-    this.concurrencyLimiter = concurrencyLimiter;
-    this.schedulerId = newSchedulerId();
-    this.schedulerCallbackActor =
-        context.messageAdapter(
-            JobRunnerActor.Response.TriggerFinished.class, Command.RunFinished::new);
+    context.getSelf().tell(new Command.Reconcile());
+    timers.startTimerWithFixedDelay(
+        RECONCILE_TIMER_KEY, new Command.Reconcile(), schedulerConfigs.reconcileInterval());
     timers.startTimerWithFixedDelay(
         TIMER_KEY, new Command.FetchTriggers(), schedulerConfigs.scanInterval());
   }
@@ -77,158 +83,142 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
   public Receive<Command> createReceive() {
     return newReceiveBuilder()
         .onMessage(Command.FetchTriggers.class, this::onFetchTriggers)
-        .onMessage(Command.DispatchResult.class, this::onDispatchResult)
+        .onMessage(Command.Reconcile.class, this::onReconcile)
+        .onMessage(Command.RequestWork.class, this::onRequestWork)
         .onMessage(Command.RunFinished.class, this::onRunFinished)
+        .onMessage(Command.JobScheduled.class, this::onJobScheduled)
+        .onMessage(Command.TriggerDue.class, this::onTriggerDue)
         .build();
   }
 
   private Behavior<Command> onFetchTriggers(final Command.FetchTriggers command) {
-    final long now = System.currentTimeMillis();
-    concurrencyLimiter.evictExpired(now);
     try {
-      fetch(now);
+      fetch();
     } catch (final RuntimeException exception) {
       getContext().getLog().error("Scheduler scan failed", exception);
     }
     return this;
   }
 
-  /**
-   * The node either took the trigger or it did not. Capacity is handed straight back unless it was
-   * taken, in which case it is held until the runner reports the run finished. A timed-out ask
-   * means the node never answered, so nothing is running and the reservation is equally safe to
-   * release.
-   */
-  private Behavior<Command> onDispatchResult(final Command.DispatchResult command) {
-    if (command.failure() != null) {
-      getContext()
-          .getLog()
-          .warn(
-              "Trigger {} was not acknowledged by its runner. Holding capacity until TTL expires to prevent over-triggering.",
-              command.triggerId(),
-              command.failure());
-      return this;
+  private Behavior<Command> onReconcile(final Command.Reconcile command) {
+    try {
+      initialized = true;
+    } catch (final RuntimeException exception) {
+      getContext().getLog().error("Failed to reconcile in-flight triggers", exception);
     }
+    return this;
+  }
 
-    if (!command.accepted()) {
-      getContext()
-          .getLog()
-          .debug(
-              "Trigger {} rejected for lack of capacity; it will be picked up again",
-              command.triggerId());
-      concurrencyLimiter.release(command.tags(), command.triggerId());
-      triggerDefinitionRepository.releaseTrigger(command.triggerId());
-    }
-
+  private Behavior<Command> onRequestWork(final Command.RequestWork command) {
+    command.replyTo().tell(new Response.WorkGranted(getWork(command)));
     return this;
   }
 
   private Behavior<Command> onRunFinished(final Command.RunFinished command) {
-    final JobRunnerActor.Response.TriggerFinished finished = command.finished();
-    concurrencyLimiter.release(finished.tags(), finished.triggerId());
     return this;
   }
 
-  private void fetch(final long now) {
-    final List<TriggerDefinition> dueTriggers =
-        triggerDefinitionRepository.findDueTriggers(schedulerConfigs.maxTriggersPerScan());
-    if (CollectionUtils.isEmpty(dueTriggers)) {
+  private Behavior<Command> onJobScheduled(final Command.JobScheduled command) {
+    try {
+      final TriggerDefinition trigger = triggerDefinitionRepository.findById(command.triggerId());
+      if (trigger == null || trigger.getStatus() != TriggerStatus.WAITING) {
+        return this;
+      }
+      final long delayMs = trigger.getDueAt() - System.currentTimeMillis();
+      if (delayMs <= 0) {
+        dueTriggers.enqueue(
+            trigger.getJobDefinition().getUserContext().customerId(), trigger, 1, TenantQueue::new);
+      } else {
+        timers.startSingleTimer(
+            command.triggerId(), new Command.TriggerDue(command.triggerId()), Duration.ofMillis(delayMs));
+      }
+    } catch (final RuntimeException exception) {
+      getContext().getLog().error("Failed to process JobScheduled", exception);
+    }
+    return this;
+  }
+
+  private Behavior<Command> onTriggerDue(final Command.TriggerDue command) {
+    try {
+      final TriggerDefinition trigger = triggerDefinitionRepository.findById(command.triggerId());
+      if (trigger != null && trigger.getStatus() == TriggerStatus.WAITING) {
+        dueTriggers.enqueue(
+            trigger.getJobDefinition().getUserContext().customerId(), trigger, 1, TenantQueue::new);
+      }
+    } catch (final RuntimeException exception) {
+      getContext().getLog().error("Failed to process TriggerDue", exception);
+    }
+    return this;
+  }
+
+  private void fetch() {
+    if (!initialized) {
       return;
     }
-    final Map<String, JobDefinition> idVsJobs = fetchJobs(dueTriggers);
+    final List<TriggerDefinition> due =
+        triggerDefinitionRepository.findDueTriggers(schedulerConfigs.maxTriggersPerScan());
+    if (CollectionUtils.isEmpty(due)) {
+      dueTriggers = new DeficitRoundRobinQueue<>(_ -> 1);
+      return;
+    }
+    final Map<String, JobDefinition> idVsJobs = fetchJobs(due);
 
     final List<String> outdated = new ArrayList<>();
-    final Map<String, List<String>> triggerIdVsTags = new LinkedHashMap<>();
-    for (final TriggerDefinition trigger : dueTriggers) {
+    final List<TriggerDefinition> current = new ArrayList<>();
+    for (final TriggerDefinition trigger : due) {
       if (isOutdated(trigger, idVsJobs.get(trigger.getJobDefinition().getId()))) {
         outdated.add(trigger.getId());
-        continue;
+      } else {
+        current.add(trigger);
       }
-      final List<String> tags = SchedulerUtils.getJobTags(trigger.getJobDefinition());
-      if (concurrencyLimiter.tryAcquire(tags, trigger.getId(), now)) {
-        triggerIdVsTags.put(trigger.getId(), tags);
-      }
+    }
+    dueTriggers = new DeficitRoundRobinQueue<>(_ -> 1);
+    for (final TriggerDefinition trigger : current) {
+      dueTriggers.enqueue(
+          trigger.getJobDefinition().getUserContext().customerId(), trigger, 1, TenantQueue::new);
     }
     try {
       triggerDefinitionRepository.cancelTriggers(outdated);
     } catch (final RuntimeException exception) {
       getContext().getLog().error("Failed to cancel outdated triggers", exception);
     }
+  }
 
-    if (CollectionUtils.isEmpty(triggerIdVsTags)) {
-      return;
+  private List<TriggerDefinition> getWork(final Command.RequestWork command) {
+    if (!initialized) {
+      return List.of();
     }
+    final List<TriggerDefinition> chosen = new ArrayList<>();
+    while (chosen.size() < command.slots()) {
+      final TriggerDefinition trigger = dueTriggers.poll();
+      if (trigger == null) {
+        break;
+      }
+      chosen.add(trigger);
+    }
+    if (CollectionUtils.isEmpty(chosen)) {
+      return List.of();
+    }
+    List<TriggerDefinition> queued = List.of();
     try {
-      triggerDefinitionRepository.queueTriggers(triggerIdVsTags.keySet(), schedulerId);
-      dispatch(triggerIdVsTags);
+      queued = queue(chosen, command.workerId());
     } catch (final RuntimeException exception) {
-      // Capacity was reserved for triggers that will not now be dispatched. Without this the
-      // reservations would sit until they expire, so one failed write would cost a tag its whole
-      // quota for the length of the TTL.
-      releaseAll(triggerIdVsTags);
-      getContext().getLog().error("Failed to queue triggers for dispatch", exception);
+      getContext().getLog().error("Failed to queue triggers for a worker", exception);
     }
+    return queued;
   }
 
-  /**
-   * Dispatches the triggers this scheduler actually took, and hands back the capacity it reserved
-   * for any it did not. The read-back is narrowed to the ids attempted in this pass: a queued
-   * trigger left over from an earlier one may already be sitting in a mailbox, and sending it again
-   * would run the job twice.
-   */
-  private void dispatch(final Map<String, List<String>> triggerIdVsTags) {
-    final Map<String, TriggerDefinition> taken = new HashMap<>();
-    for (final TriggerDefinition trigger : triggerDefinitionRepository.findQueuedBy(schedulerId)) {
-      if (triggerIdVsTags.containsKey(trigger.getId())) {
-        taken.put(trigger.getId(), trigger);
-      }
-    }
-    for (final Entry<String, List<String>> entry : triggerIdVsTags.entrySet()) {
-      if (!taken.containsKey(entry.getKey())) {
-        concurrencyLimiter.release(entry.getValue(), entry.getKey());
-      }
-    }
-    taken
-        .values()
-        .forEach(
-            takenTrigger -> {
-              try {
-                trigger(takenTrigger, triggerIdVsTags.get(takenTrigger.getId()));
-              } catch (final RuntimeException exception) {
-                getContext()
-                    .getLog()
-                    .error(
-                        "Failed to dispatch trigger {} for job {}",
-                        takenTrigger.getId(),
-                        takenTrigger.getJobDefinition().getId(),
-                        exception);
-              }
-            });
+  private List<TriggerDefinition> queue(
+      final List<TriggerDefinition> chosen, final String workerId) {
+    return triggerDefinitionRepository.queueTriggers(chosen, workerId);
   }
 
-  private void releaseAll(final Map<String, List<String>> triggerIdVsTags) {
-    triggerIdVsTags.forEach((triggerId, tags) -> concurrencyLimiter.release(tags, triggerId));
-  }
-
-  private void trigger(final TriggerDefinition trigger, final List<String> tags) {
-    getContext()
-        .ask(
-            JobRunnerActor.Response.RunAck.class,
-            jobRunnerActorFactory.entityRef(trigger.getId()),
-            schedulerConfigs.dispatchAskTimeout(),
-            replyTo ->
-                new JobRunnerActor.Command.RunTrigger(trigger, replyTo, schedulerCallbackActor),
-            (accepted, failure) ->
-                new Command.DispatchResult(
-                    trigger.getId(), tags, accepted != null && accepted.accepted(), failure));
-  }
-
-  private Map<String, JobDefinition> fetchJobs(final List<TriggerDefinition> dueTriggers) {
+  private Map<String, JobDefinition> fetchJobs(final List<TriggerDefinition> due) {
     final Set<String> jobIds = new LinkedHashSet<>();
-    for (final TriggerDefinition trigger : dueTriggers) {
+    for (final TriggerDefinition trigger : due) {
       jobIds.add(trigger.getJobDefinition().getId());
     }
-    return jobIds.isEmpty() ? Map.of() : jobDefinitionRepository.findByIds(jobIds);
+    return jobIds.isEmpty() ? Map.of() : jobDefinitionRepository.findByIds(jobIds, List.of(BaseEntity.FIELD_VERSION), null);
   }
 
   /**
@@ -245,23 +235,64 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
     return jobDefinition.getVersion() > trigger.getJobDefinition().getVersion();
   }
 
-  /**
-   * Unique per singleton incarnation rather than per host: a scheduler that is replaced must not
-   * mistake rows stamped by its predecessor for ones it took itself.
-   */
-  private static String newSchedulerId() {
-    final String host = EnvUtils.getHostname();
-    return (StringUtils.isBlank(host) ? "scheduler" : host) + ":" + UUID.randomUUID();
+  private static final class TenantQueue extends AbstractQueue<TriggerDefinition> {
+    private final DeficitRoundRobinQueue<String, TriggerDefinition> tagQueue =
+        new DeficitRoundRobinQueue<>(_ -> 1);
+    private TriggerDefinition head;
+
+    @Override
+    public boolean offer(final TriggerDefinition trigger) {
+      final String tag = CollectionUtils.isEmpty(trigger.getJobDefinition().getTags())
+          ? "default"
+          : trigger.getJobDefinition().getTags().getFirst();
+      tagQueue.enqueue(tag, trigger, 1, () -> new PriorityQueue<>(Comparator.comparing(TriggerDefinition::getDueAt)));
+      if (head == null) {
+        head = tagQueue.poll();
+      }
+      return true;
+    }
+
+    @Override
+    public TriggerDefinition poll() {
+      final TriggerDefinition res = head;
+      head = tagQueue.poll();
+      return res;
+    }
+
+    @Override
+    public TriggerDefinition peek() {
+      return head;
+    }
+
+    @Override
+    public int size() {
+      return head != null ? 1 : 0;
+    }
+
+    @Override
+    public Iterator<TriggerDefinition> iterator() {
+      return null;
+    }
   }
 
   public interface Command extends PekkoSerializable {
 
     record FetchTriggers() implements Command {}
 
-    /** Outcome of the ask that offered a trigger to its runner. */
-    record DispatchResult(String triggerId, List<String> tags, boolean accepted, Throwable failure)
+    record Reconcile() implements Command {}
+
+    record RequestWork(String workerId, int slots, ActorRef<Response.WorkGranted> replyTo)
         implements Command {}
 
-    record RunFinished(JobRunnerActor.Response.TriggerFinished finished) implements Command {}
+    record RunFinished(String triggerId) implements Command {}
+
+    record JobScheduled(String triggerId) implements Command {}
+
+    record TriggerDue(String triggerId) implements Command {}
+  }
+
+  public interface Response extends PekkoSerializable {
+
+    record WorkGranted(List<TriggerDefinition> triggers) implements Response {}
   }
 }

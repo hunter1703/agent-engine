@@ -21,10 +21,9 @@ public final class SchedulerUtils {
   private SchedulerUtils() {}
 
   /**
-   * Capacity buckets a job draws from: its declared tags plus its class name, which is always a tag
-   * in its own right. That implicit tag gives every job type a bucket that can be capped without
-   * anyone having to declare one, and leaves a job with no tags at all still individually
-   * limitable.
+   * The groups a job shares capacity in: its declared tags plus its class name, which is always a
+   * tag in its own right. That implicit tag gives every job type a group without anyone having to
+   * declare one, and leaves a job with no tags at all still grouped with its own kind.
    *
    * <p>Deduplicated and order-preserving, so declaring the class name explicitly is harmless.
    */
@@ -34,7 +33,7 @@ public final class SchedulerUtils {
     }
     final Set<String> tags = new LinkedHashSet<>();
     for (final String tag :
-        jobDefinition.getJobTags() == null ? List.<String>of() : jobDefinition.getJobTags()) {
+        jobDefinition.getTags() == null ? List.<String>of() : jobDefinition.getTags()) {
       if (StringUtils.isNotBlank(tag)) {
         tags.add(tag);
       }

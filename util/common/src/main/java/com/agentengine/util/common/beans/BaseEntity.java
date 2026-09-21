@@ -1,5 +1,6 @@
 package com.agentengine.util.common.beans;
 
+import java.util.List;
 import java.util.Objects;
 
 public abstract class BaseEntity {
@@ -8,11 +9,13 @@ public abstract class BaseEntity {
   public static final String FIELD_UPDATED_TIME = "updatedTime";
   public static final String FIELD_VERSION = "version";
   public static final String FIELD_OWNER_USER_ID = "ownerUserId";
+  public static final String FIELD_TAGS = "tags";
   private String id;
   private long createdTime;
   private long updatedTime;
   private long version = 0;
   private Integer ownerUserId;
+  private List<String> tags;
 
   public BaseEntity() {}
 
@@ -58,6 +61,14 @@ public abstract class BaseEntity {
 
   public void setOwnerUserId(final Integer ownerUserId) {
     this.ownerUserId = ownerUserId;
+  }
+
+  public List<String> getTags() {
+    return tags;
+  }
+
+  public void setTags(final List<String> tags) {
+    this.tags = tags;
   }
 
   @Override

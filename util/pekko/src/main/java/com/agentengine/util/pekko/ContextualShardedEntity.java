@@ -3,6 +3,7 @@ package com.agentengine.util.pekko;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.pekko.actor.ContextualCommand;
 import java.util.Optional;
+import org.apache.pekko.japi.function.Function2;
 import org.apache.pekko.japi.function.Procedure;
 import org.apache.pekko.persistence.typed.javadsl.CommandHandler;
 
@@ -39,5 +40,12 @@ public abstract class ContextualShardedEntity<
                   callback.apply(state);
                   return null;
                 });
+  }
+
+  protected final <T, R> Function2<T, Throwable, R> inContext(
+      final Function2<T, Throwable, R> mapResult) {
+    final Context context =
+        Context.current().orElseThrow(() -> new IllegalStateException("No context to carry"));
+    return (value, error) -> context.call(() -> mapResult.apply(value, error));
   }
 }

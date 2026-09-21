@@ -9,10 +9,12 @@ import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.scheduler.api.store.JobDefinitionRepository;
 import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.CronUtils;
+import com.agentengine.scheduler.core.SchedulerActorFactory;
 import com.agentengine.scheduler.core.SchedulerUtils;
-import com.agentengine.util.context.Context;
+import com.agentengine.scheduler.core.actor.SchedulerActor;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.context.Context;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -25,13 +27,16 @@ public class SchedulerServiceImpl implements SchedulerService {
 
   private final JobDefinitionRepository jobDefinitionRepository;
   private final TriggerDefinitionRepository triggerDefinitionRepository;
+  private final SchedulerActorFactory schedulerActorFactory;
 
   @Inject
   public SchedulerServiceImpl(
       final JobDefinitionRepository jobDefinitionRepository,
-      final TriggerDefinitionRepository triggerDefinitionRepository) {
+      final TriggerDefinitionRepository triggerDefinitionRepository,
+      final SchedulerActorFactory schedulerActorFactory) {
     this.jobDefinitionRepository = jobDefinitionRepository;
     this.triggerDefinitionRepository = triggerDefinitionRepository;
+    this.schedulerActorFactory = schedulerActorFactory;
   }
 
   @Override
@@ -39,7 +44,7 @@ public class SchedulerServiceImpl implements SchedulerService {
     jobDefinition.setUserContext(
         Context.getUserContext()
             .orElseThrow(() -> new IllegalStateException("Jobs are scheduled within a context")));
-    createTrigger(jobDefinitionRepository.save(jobDefinition));
+    saveTrigger(jobDefinitionRepository.save(jobDefinition));
     return jobDefinition.getId();
   }
 
@@ -66,7 +71,7 @@ public class SchedulerServiceImpl implements SchedulerService {
    * time before the scheduler cleared it — and makes a cancellation take effect immediately rather
    * than at the next occurrence. A failure of this write is therefore harmless.
    */
-  private void createTrigger(final JobDefinition jobDefinition) {
+  private void saveTrigger(final JobDefinition jobDefinition) {
     triggerDefinitionRepository.cancelAllJobTriggers(jobDefinition.getId());
     final TriggerDefinition triggerDefinition = new TriggerDefinition();
     triggerDefinition.setJobDefinition(jobDefinition);
@@ -78,6 +83,7 @@ public class SchedulerServiceImpl implements SchedulerService {
     triggerDefinition.setScheduledFor(scheduled.get().toEpochMilli());
     triggerDefinition.setDueAt(
         CronUtils.applyJitter(scheduled.get(), Instant.now(), JITTER_FRACTION).toEpochMilli());
-    triggerDefinitionRepository.save(triggerDefinition);
+    final TriggerDefinition savedTrigger = triggerDefinitionRepository.save(triggerDefinition);
+    schedulerActorFactory.getSchedulerRef().tell(new SchedulerActor.Command.JobScheduled(savedTrigger.getId()));
   }
 }

@@ -20,6 +20,8 @@ import jakarta.inject.Singleton;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Singleton
 public class TriggerDefinitionRepositoryImpl extends GlobalMongoRepository<TriggerDefinition>
@@ -54,8 +56,20 @@ public class TriggerDefinitionRepositoryImpl extends GlobalMongoRepository<Trigg
         new Query()
             .withFilter(filter)
             .withSort(new Sort(TriggerDefinition.FIELD_DUE_AT, Sort.Order.ASC))
-            .withExcludeFields(FIND_DUE_EXCLUDED_FIELDS)
             .withPage(new Page(0, limit));
+    return findByQuery(query).getItems();
+  }
+
+  @Override
+  public List<TriggerDefinition> findInFlightTriggers(final List<String> includeFields) {
+    final Query query =
+        new Query()
+            .withFilter(
+                Filters.or(
+                    Filters.eq(TriggerDefinition.FIELD_STATUS, TriggerStatus.QUEUED),
+                    Filters.eq(TriggerDefinition.FIELD_STATUS, TriggerStatus.RUNNING)))
+            .withIncludeFields(includeFields)
+            .withPage(new Page(0, -1));
     return findByQuery(query).getItems();
   }
 
@@ -70,18 +84,23 @@ public class TriggerDefinitionRepositoryImpl extends GlobalMongoRepository<Trigg
   }
 
   @Override
-  public long queueTriggers(final Collection<String> triggerIds, final String scheduledBy) {
-    if (CollectionUtils.isEmpty(triggerIds)) {
-      return 0L;
+  public List<TriggerDefinition> queueTriggers(final Collection<TriggerDefinition> triggers, final String scheduledBy) {
+    if (CollectionUtils.isEmpty(triggers)) {
+      return List.of();
     }
-    return updateMany(
+    final Set<String> triggerIds = triggers.stream().map(TriggerDefinition::getId).collect(Collectors.toSet());
+    updateMany(
         Filters.and(
-            Filters.in(BaseEntity.FIELD_ID, List.copyOf(triggerIds)),
+            Filters.in(
+                BaseEntity.FIELD_ID, List.copyOf(triggerIds)),
             Filters.eq(TriggerDefinition.FIELD_STATUS, TriggerStatus.WAITING)),
         Update.of(
             Operation.set(TriggerDefinition.FIELD_STATUS, TriggerStatus.QUEUED),
             Operation.set(TriggerDefinition.FIELD_SCHEDULED_BY, scheduledBy),
             Operation.set(TriggerDefinition.FIELD_LAST_HEARTBEAT, System.currentTimeMillis())));
+    return findQueuedBy(scheduledBy).stream()
+        .filter(trigger -> triggerIds.contains(trigger.getId()))
+        .toList();
   }
 
   @Override
@@ -94,17 +113,6 @@ public class TriggerDefinitionRepositoryImpl extends GlobalMongoRepository<Trigg
   }
 
   @Override
-  public void releaseTrigger(final String triggerDefinitionId) {
-    updateOne(
-        Filters.and(
-            Filters.eq(BaseEntity.FIELD_ID, triggerDefinitionId),
-            Filters.eq(TriggerDefinition.FIELD_STATUS, TriggerStatus.QUEUED)),
-        Update.of(
-            Operation.set(TriggerDefinition.FIELD_STATUS, TriggerStatus.WAITING),
-            Operation.unset(TriggerDefinition.FIELD_SCHEDULED_BY)));
-  }
-
-  @Override
   public long cancelAllJobTriggers(final String jobId) {
     final Filter filter =
         Filters.and(
@@ -112,6 +120,20 @@ public class TriggerDefinitionRepositoryImpl extends GlobalMongoRepository<Trigg
             Filters.nin(TriggerDefinition.FIELD_STATUS, TERMINAL_STATUSES));
     return updateMany(
         filter, Update.of(Operation.set(TriggerDefinition.FIELD_STATUS, TriggerStatus.CANCELLED)));
+  }
+
+  @Override
+  public boolean startTrigger(final String triggerId, final String scheduledBy) {
+    final long updated =
+        updateOne(
+            Filters.and(
+                Filters.eq(BaseEntity.FIELD_ID, triggerId),
+                Filters.eq(TriggerDefinition.FIELD_STATUS, TriggerStatus.QUEUED),
+                Filters.eq(TriggerDefinition.FIELD_SCHEDULED_BY, scheduledBy)),
+            Update.of(
+                Operation.set(TriggerDefinition.FIELD_STATUS, TriggerStatus.RUNNING),
+                Operation.set(TriggerDefinition.FIELD_LAST_HEARTBEAT, System.currentTimeMillis())));
+    return updated > 0;
   }
 
   @Override

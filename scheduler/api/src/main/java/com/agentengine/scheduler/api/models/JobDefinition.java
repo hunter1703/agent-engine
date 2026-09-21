@@ -3,17 +3,16 @@ package com.agentengine.scheduler.api.models;
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.context.UserContext;
-import java.util.List;
 import java.util.Map;
 
 @Index(name = "job_class_name_idx", def = "{'jobClassName': 1}")
 public class JobDefinition extends BaseEntity {
 
   public static final String FIELD_JOB_CLASS_NAME = "jobClassName";
+  public static final String FIELD_USER_CONTEXT = "userContext";
 
   private UserContext userContext;
   private String jobClassName;
-  private List<String> jobTags;
   private String cronSchedule;
   private Map<String, Object> payload;
 
@@ -31,14 +30,6 @@ public class JobDefinition extends BaseEntity {
 
   public void setJobClassName(final String jobClassName) {
     this.jobClassName = jobClassName;
-  }
-
-  public List<String> getJobTags() {
-    return jobTags;
-  }
-
-  public void setJobTags(final List<String> jobTags) {
-    this.jobTags = jobTags;
   }
 
   public String getCronSchedule() {

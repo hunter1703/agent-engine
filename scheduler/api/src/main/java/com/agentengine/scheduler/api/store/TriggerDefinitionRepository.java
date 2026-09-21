@@ -13,17 +13,18 @@ public interface TriggerDefinitionRepository extends Repository<TriggerDefinitio
    */
   List<TriggerDefinition> findDueTriggers(int limit);
 
+  /** Triggers that are queued or running, carrying only the given fields, or all if none. */
+  List<TriggerDefinition> findInFlightTriggers(List<String> includeFields);
+
   /** Cancels triggers the scheduler has decided are out of date. */
   long cancelTriggers(Collection<String> triggerIds);
 
   /**
-   * Moves triggers to queued and stamps them with the scheduler that took them, only where they are
+   * Moves triggers to queued and stamps them with the worker they are for, only where they are
    * still waiting. The status predicate makes this a compare-and-set, so two schedulers cannot both
-   * take the same trigger.
-   *
-   * @return how many were taken — but not which, hence {@link #findQueuedBy}
+   * take the same trigger. Returns every trigger queued for that worker, not only these.
    */
-  long queueTriggers(Collection<String> triggerIds, String scheduledBy);
+  List<TriggerDefinition> queueTriggers(Collection<TriggerDefinition> triggers, String scheduledBy);
 
   /**
    * The queued triggers this scheduler owns, in full, ready to dispatch. Unbounded by design: only
@@ -32,8 +33,11 @@ public interface TriggerDefinitionRepository extends Repository<TriggerDefinitio
    */
   List<TriggerDefinition> findQueuedBy(String scheduledBy);
 
-  /** Returns a queued trigger to waiting, e.g. when no node had capacity to run it. */
-  void releaseTrigger(String triggerDefinitionId);
+  /**
+   * Moves a queued trigger to running, only if it is still queued for that worker. A trigger that
+   * was recovered and handed to another worker in the meantime is left alone.
+   */
+  boolean startTrigger(String triggerId, String scheduledBy);
 
   /** Updates the heartbeat timestamp for a running trigger to maintain its lease. */
   boolean heartbeat(String triggerId);
