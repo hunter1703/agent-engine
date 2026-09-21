@@ -1,5 +1,6 @@
 package com.agentengine.util.mongodb.mongo;
 
+import com.agentengine.util.infra.ClientType;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.beans.BaseEntity;
@@ -44,7 +45,7 @@ public final class MongoUtils {
   }
 
   public static String clientId(final String store, final Integer customerId) {
-    return MongoClientInfraConfig.TYPE + ":" + store + (customerId == null ? "" : ":" + customerId);
+    return ClientType.MONGO_CLIENT + ":" + store + (customerId == null ? "" : ":" + customerId);
   }
 
   public static Bson toBsonUpdate(final Update update) {

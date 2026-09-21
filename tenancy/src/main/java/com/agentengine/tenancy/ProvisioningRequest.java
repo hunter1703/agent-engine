@@ -2,11 +2,11 @@ package com.agentengine.tenancy;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.infra.ServerType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public class ProvisioningRequest {
   private Map<String, Server> typeVsServer = new HashMap<>();
@@ -20,10 +20,19 @@ public class ProvisioningRequest {
   }
 
   @JsonIgnore
-  public String getServer(final String serverType, final String clientType) {
-    final Server server = CollectionUtils.getValueFromMap(typeVsServer, serverType);
-    final String clientServerId = CollectionUtils.getStringValueFromMap(Objects.requireNonNull(server).getClientTypeVsServerId(), clientType);
-    return StringUtils.isEmpty(clientServerId) ? server.getDefaultServerId() : clientServerId;
+  public String getServer(final ServerType serverType, final String clientType) {
+    final Server server = CollectionUtils.getValueFromMap(typeVsServer, serverType.name());
+    final String clientServerId =
+        server == null
+            ? null
+            : CollectionUtils.getStringValueFromMap(server.getClientTypeVsServerId(), clientType);
+    return StringUtils.isEmpty(clientServerId) ? getDefaultServerId(serverType) : clientServerId;
+  }
+
+  @JsonIgnore
+  public String getDefaultServerId(final ServerType serverType) {
+    final Server server = CollectionUtils.getValueFromMap(typeVsServer, serverType.name());
+    return server == null ? null : server.getDefaultServerId();
   }
 
   public static class Server {

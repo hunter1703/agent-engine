@@ -1,13 +1,14 @@
 package com.agentengine.scheduler.core.runner;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.scheduler.api.runner.SchedulerProvisioningService;
 import com.agentengine.scheduler.core.store.SchedulerMongoStoreClientType;
-import com.agentengine.util.mongodb.infra.MongoServerInfraConfig;
 import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
 import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import com.agentengine.tenancy.ProvisioningRequest;
 import com.agentengine.tenancy.ProvisioningResult;
-import com.agentengine.util.ms.client.MicroServiceServerInfraConfig;
+import com.agentengine.tenancy.ProvisioningRun;
+import com.agentengine.util.context.Context;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -29,17 +30,18 @@ public class SchedulerProvisioningServiceImpl implements SchedulerProvisioningSe
 
   @Override
   public ProvisioningResult provisionEnvironment(final ProvisioningRequest request) {
-    final ProvisioningResult result = new ProvisioningResult();
-    result.step(
+    final ProvisioningRun run = new ProvisioningRun();
+    run.step(
         "mongo",
-        () -> mongoClientProvisioner.provision(SchedulerMongoStoreClientType.SCHEDULER, null, request.getServer(MongoServerInfraConfig.TYPE, SchedulerMongoStoreClientType.SCHEDULER.name())));
-    return result;
+        () -> mongoClientProvisioner.provision(SchedulerMongoStoreClientType.SCHEDULER, null, request.getServer(ServerType.MONGO_SERVER, SchedulerMongoStoreClientType.SCHEDULER.name())));
+    return run.result();
   }
 
   @Override
-  public ProvisioningResult provision(final int customerId, final ProvisioningRequest request) {
-    final ProvisioningResult result = new ProvisioningResult();
-    result.step("microservice", () -> microServiceProvisioner.provision(customerId, "scheduler", request.getServer(MicroServiceServerInfraConfig.TYPE, "scheduler")));
-    return result;
+  public ProvisioningResult provision(final ProvisioningRequest request) {
+    final int customerId = Context.requireCustomerId();
+    final ProvisioningRun run = new ProvisioningRun();
+    run.step("microservice", () -> microServiceProvisioner.provision(customerId, "scheduler", request.getServer(ServerType.MICROSERVICE_SERVER, "scheduler")));
+    return run.result();
   }
 }

@@ -7,6 +7,7 @@ import com.agentengine.knowledge.api.services.KnowledgeProvisioningService;
 import com.agentengine.scheduler.api.runner.SchedulerProvisioningService;
 import com.agentengine.tenancy.ProvisioningRequest;
 import com.agentengine.tenancy.ProvisioningResult;
+import com.agentengine.tenancy.ProvisioningRun;
 import com.agentengine.tenancy.ProvisioningService;
 import com.agentengine.tenancy.TenancyMongoStoreClientType;
 import com.agentengine.util.context.Context;
@@ -37,34 +38,34 @@ public class EnvironmentProvisioningService {
   }
 
   public ProvisioningResult provisionEnvironment(final ProvisioningRequest provisioningRequest) {
-    final ProvisioningResult result = new ProvisioningResult();
+    final ProvisioningRun run = new ProvisioningRun();
     new Context(UUID.randomUUID().toString(), UserContext.SYSTEM)
         .run(
             () -> {
-              result.step(
+              run.step(
                   "encryption",
                   () -> encryptionClientProvisioner.provision(UserContext.SYSTEM.customerId(), null));
-              result.step(
+              run.step(
                   "tenancy",
                   () ->
                       mongoClientProvisioner.provision(
                           TenancyMongoStoreClientType.TENANCY, null, null));
-              result.steps(
+              run.merge(
                   "catalog",
                   () -> client(CatalogProvisioningService.class).provisionEnvironment(provisioningRequest));
-              result.steps(
+              run.merge(
                   "connectors",
                   () -> client(ConnectorsProvisioningService.class).provisionEnvironment(provisioningRequest));
-              result.steps(
+              run.merge(
                   "knowledge",
                   () -> client(KnowledgeProvisioningService.class).provisionEnvironment(provisioningRequest));
-              result.steps(
+              run.merge(
                   "agent", () -> client(AgentProvisioningService.class).provisionEnvironment(provisioningRequest));
-              result.steps(
+              run.merge(
                   "scheduler",
                   () -> client(SchedulerProvisioningService.class).provisionEnvironment(provisioningRequest));
             });
-    return result;
+    return run.result();
   }
 
   private <T extends ProvisioningService> T client(final Class<T> service) {

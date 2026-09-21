@@ -1,5 +1,6 @@
 package com.agentengine.util.crypto;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.InfraClientProvisioner;
@@ -22,6 +23,6 @@ public class EncryptionClientProvisioner extends InfraClientProvisioner {
   public void provision(final int customerId, final String serverId) {
     infraConfigService.save(
         EncryptionUtils.clientConfig(
-            customerId, resolvedServerId(EncryptionKeyInfraConfig.TYPE, serverId)));
+            customerId, resolvedServerId(ServerType.ENCRYPTION_KEY, serverId)));
   }
 }

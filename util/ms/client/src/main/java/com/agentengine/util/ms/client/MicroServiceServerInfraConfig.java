@@ -1,24 +1,23 @@
 package com.agentengine.util.ms.client;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.infra.InfraConfig;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.ms.client.MicroServiceServerInfraConfig")
 public class MicroServiceServerInfraConfig extends InfraConfig {
-  public static final String TYPE = "MICROSERVICE_SERVER";
-
   public static final int MAX_INBOUND_MESSAGE_SIZE = 100 * 1024 * 1024;
 
   private String host;
   private int port;
 
   public MicroServiceServerInfraConfig() {
-    setType(TYPE);
+    setType(ServerType.MICROSERVICE_SERVER.name());
   }
 
   @Override
   public String getId() {
-    return TYPE + ":" + getServerId();
+    return ServerType.MICROSERVICE_SERVER + ":" + getServerId();
   }
 
   public String getHost() {

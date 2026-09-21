@@ -30,7 +30,7 @@ public class KnowledgeSettings {
 
   /**
    * ID of the embedding model to use for indexing and search. Falls back to {@code
-   * DefaultModelsConfig.embeddingModelId} when null.
+   * DefaultModels.embeddingModelId} when null.
    */
   private String embeddingModelId;
 

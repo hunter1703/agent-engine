@@ -33,7 +33,6 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
   private static final Logger LOG = LoggerFactory.getLogger(QdrantVectorStore.class);
 
   private final String collection;
-  private final VectorStoreClientType clientType;
   private final VectorDbClientFactory clientFactory;
 
   protected QdrantVectorStore(
@@ -42,9 +41,8 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
       final VectorStoreClientType clientType,
       final VectorDbClientFactory clientFactory,
       final BiFunction<String, String, float[]> embeddingGenerator) {
-    super(entityClass, embeddingGenerator);
+    super(entityClass, clientType, embeddingGenerator);
     this.collection = collection;
-    this.clientType = clientType;
     this.clientFactory = clientFactory;
   }
 
@@ -233,10 +231,6 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     return result;
   }
 
-  public VectorStoreClientType clientType() {
-    return clientType;
-  }
-
   @Override
   protected void setup(final int vectorSize) {
     final QdrantClient client = client();
@@ -266,7 +260,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
   }
 
   private QdrantClient client() {
-    return clientFactory.getClient(clientType, Context.customerId().orElseThrow());
+    return clientFactory.getClient(clientType(), Context.customerId().orElseThrow());
   }
 
   /**

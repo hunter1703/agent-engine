@@ -1,5 +1,6 @@
 package com.agentengine.util.vectordb;
 
+import com.agentengine.util.infra.ClientType;
 import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.annotations.Indexed;
 import io.qdrant.client.ValueFactory;
@@ -27,7 +28,7 @@ public final class VectorDbUtils {
   }
 
   public static String clientId(final String store, final Integer customerId) {
-    return VectorClientInfraConfig.TYPE + ":" + store + ":" + customerId;
+    return ClientType.VECTOR_CLIENT + ":" + store + ":" + customerId;
   }
 
   /** The vector name of each {@link Indexed} vector field of the entity class, keyed by field. */

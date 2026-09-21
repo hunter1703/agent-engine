@@ -85,7 +85,7 @@ docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
 ## Key Gotchas
 
 - **llama.cpp chat template bug**: Some `.gguf` models (e.g. `qwen3-coder-30b`) cause `500` errors on nested JSON schemas. Fix: pass `--chat-template-file` pointing to the safe template in `configs/models/templates/`.
-- **Compaction model resolution order**: `contextStrategy.modelId` → infra `default_model.compactionModelId` → agent `modelId`.
+- **Compaction model resolution order**: `contextStrategy.modelId` → the customer's `DefaultModels.compactionModelId` → agent `modelId`.
 - **Session history source**: committed session events live in a dedicated Mongo collection
   (`SessionEventsRepository`), written once per turn at commit time and read back from there by
   most history paths (memory, title generation, the REST history API). Postgres is still the

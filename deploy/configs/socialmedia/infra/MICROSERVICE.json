@@ -2,35 +2,35 @@
   {
     "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "serverId": "catalog",
+    "serverId": "catalog-default",
     "host": "catalog-socialmedia.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
     "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "serverId": "agent",
+    "serverId": "agent-default",
     "host": "agent-socialmedia.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
     "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "serverId": "knowledge",
+    "serverId": "knowledge-default",
     "host": "knowledge-socialmedia.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
     "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "serverId": "connectors",
+    "serverId": "connectors-default",
     "host": "connectors-socialmedia.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
     "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "serverId": "scheduler",
+    "serverId": "scheduler-default",
     "host": "scheduler-socialmedia.agent-engine.svc.cluster.local",
     "port": 8080
   }

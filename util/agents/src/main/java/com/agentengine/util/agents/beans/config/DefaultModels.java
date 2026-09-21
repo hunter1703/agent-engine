@@ -1,11 +1,10 @@
 package com.agentengine.util.agents.beans.config;
 
-import com.agentengine.util.infra.InfraConfig;
-import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+import com.agentengine.util.common.beans.BaseEntity;
 
-@BsonDiscriminator(value = "com.agentengine.util.agents.beans.config.DefaultModelsConfig")
-public class DefaultModelsConfig extends InfraConfig {
-  public static final String TYPE = "DEFAULT_MODELS";
+public class DefaultModels extends BaseEntity {
+
+  public static final String ID = "default";
 
   private String titleModelId;
   private String compactionModelId;
@@ -13,13 +12,8 @@ public class DefaultModelsConfig extends InfraConfig {
   private String embeddingModelId;
   private String chatModelId;
 
-  public DefaultModelsConfig() {
-    setType(TYPE);
-  }
-
-  @Override
-  public String getId() {
-    return TYPE;
+  public DefaultModels() {
+    super(ID);
   }
 
   public String getTitleModelId() {

@@ -14,7 +14,6 @@ import java.util.function.Function;
 
 
 public class DistributedCache<V> {
-  private static final String UNBOUND = "_";
   private static final String SEPARATOR = ":";
 
   private final String cacheName;
@@ -124,12 +123,19 @@ public class DistributedCache<V> {
     return segments == 0 ? namespacedKey : namespacedKey.split(SEPARATOR, segments + 1)[segments];
   }
 
-  private static String customerId() {
-    return Context.customerId().map(String::valueOf).orElse(UNBOUND);
+  private String customerId() {
+    return Context.customerId()
+        .map(String::valueOf)
+        .orElseThrow(() -> noIdentity("customer"));
   }
 
-  private static String userId() {
-    return Context.userId().map(String::valueOf).orElse(UNBOUND);
+  private String userId() {
+    return Context.userId().map(String::valueOf).orElseThrow(() -> noIdentity("user"));
+  }
+
+  private IllegalStateException noIdentity(final String identity) {
+    return new IllegalStateException(
+        "Cache " + cacheName + " is " + scope + "-scoped but the current context has no " + identity);
   }
 
   public static final class Builder<V> {

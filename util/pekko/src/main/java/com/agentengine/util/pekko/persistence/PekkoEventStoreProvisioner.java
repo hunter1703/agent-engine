@@ -1,5 +1,6 @@
 package com.agentengine.util.pekko.persistence;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.InfraClientProvisioner;
@@ -43,36 +44,34 @@ public class PekkoEventStoreProvisioner extends InfraClientProvisioner {
       this.infraConfigService = infraConfigService;
   }
 
-  public Result provision(final int customerId, final String serverId) {
+  public void provision(final int customerId, final String serverId) {
     final SQLClientInfraConfig clientConfig = SQLUtils.clientConfig(
             PekkoUtils.PEKKO_STORE,
             customerId,
-            resolvedServerId(SQLServerInfraConfig.TYPE, serverId));
+            resolvedServerId(ServerType.SQL_SERVER, serverId));
     infraConfigService.save(clientConfig);
-    return setup(clientConfig);
+    setup(clientConfig);
   }
 
-  private Result setup(final SQLClientInfraConfig clientConfig) {
-    final SQLServerInfraConfig server = infraConfigService.getServer(SQLServerInfraConfig.TYPE, clientConfig);
+  private void setup(final SQLClientInfraConfig clientConfig) {
+    final SQLServerInfraConfig server = infraConfigService.getServer(ServerType.SQL_SERVER, clientConfig);
     createSchema(server, clientConfig.schema());
-    return createTables(server, clientConfig);
+    createTables(server, clientConfig);
   }
 
   private static void createSchema(final SQLServerInfraConfig server, final String schema) {
-    if (!schema.matches("[A-Za-z0-9_-]+")) {
-      throw new IllegalArgumentException("Invalid schema name '" + schema + "'");
-    }
+    final String quotedSchema = SQLUtils.quoteIdentifier(schema);
     try (Connection connection =
             DriverManager.getConnection(
                 server.jdbcUrl(server.getDatabase()), server.getUsername(), server.getPassword());
         Statement create = connection.createStatement()) {
-      create.execute("CREATE SCHEMA IF NOT EXISTS \"%s\"".formatted(schema));
+      create.execute("CREATE SCHEMA IF NOT EXISTS " + quotedSchema);
     } catch (final SQLException ex) {
       throw new IllegalStateException("Failed to create schema '" + schema + "'", ex);
     }
   }
 
-  private static Result createTables(
+  private static void createTables(
       final SQLServerInfraConfig serverConfig, final SQLClientInfraConfig clientConfig) {
     final ActorSystem system =
         ActorSystem.create("event-store-setup", config(serverConfig, clientConfig));
@@ -84,7 +83,6 @@ public class PekkoEventStoreProvisioner extends InfraClientProvisioner {
           "Event store tables ensured in schema '{}' of database '{}'",
           clientConfig.schema(),
           serverConfig.getDatabase());
-      return new Result(serverConfig.getDatabase(), clientConfig.schema());
     } catch (final InterruptedException ex) {
       Thread.currentThread().interrupt();
       throw new IllegalStateException("Interrupted while setting up the event store", ex);
@@ -98,15 +96,15 @@ public class PekkoEventStoreProvisioner extends InfraClientProvisioner {
 
   private static Config config(
       final SQLServerInfraConfig serverConfig, final SQLClientInfraConfig clientConfig) {
-    final Config reference = ConfigFactory.defaultReference();
-    return reference
+    final Config base = ConfigFactory.defaultReference();
+    return base
         .withValue(
             PekkoUtils.JOURNAL,
-            plugin(reference, PekkoUtils.JOURNAL, PekkoUtils.JOURNAL_TABLES, serverConfig, clientConfig))
+            plugin(base, PekkoUtils.JOURNAL, PekkoUtils.JOURNAL_TABLES, serverConfig, clientConfig))
         .withValue(
             PekkoUtils.SNAPSHOT_STORE,
             plugin(
-                reference,
+                base,
                 PekkoUtils.SNAPSHOT_STORE,
                 PekkoUtils.SNAPSHOT_TABLES,
                 serverConfig,
@@ -126,6 +124,4 @@ public class PekkoEventStoreProvisioner extends InfraClientProvisioner {
         .withValue("slick", slick.root())
         .root();
   }
-
-  public record Result(String database, String schema) {}
 }

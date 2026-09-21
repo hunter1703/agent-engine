@@ -5,6 +5,7 @@ plugins {
 dependencies {
     implementation project(':util:common')
     implementation project(':util:mongodb')
+    api project(':util:infra')
     implementation libs.slf4j.api
 
     compileOnly platform(libs.quarkus.bom)

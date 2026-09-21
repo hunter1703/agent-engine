@@ -1,16 +1,15 @@
 package com.agentengine.util.ms.client;
 
+import com.agentengine.util.infra.ClientType;
 import com.agentengine.util.infra.InfraConfig;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.ms.client.MicroServiceClientInfraConfig")
 public class MicroServiceClientInfraConfig extends InfraConfig {
-  public static final String TYPE = "MICROSERVICE_CLIENT";
-
   private String service;
 
   public MicroServiceClientInfraConfig() {
-    setType(TYPE);
+    setType(ClientType.MICROSERVICE_CLIENT.name());
   }
 
   @Override

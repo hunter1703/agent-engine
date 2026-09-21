@@ -12,6 +12,7 @@ dependencies {
     implementation project(':connectors:infra')
     runtimeOnly project(':connectors:http')
     implementation project(':util:common')
+    implementation project(':util:context')
     implementation project(':util:distributed')
     implementation project(':util:scripts')
     runtimeOnly project(':util:ms:server')

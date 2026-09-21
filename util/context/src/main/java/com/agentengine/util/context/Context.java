@@ -41,6 +41,10 @@ public record Context(String requestId, UserContext userContext) {
     return getUserContext().map(UserContext::customerId);
   }
 
+  public static int requireCustomerId() {
+    return customerId().orElseThrow(() -> new IllegalStateException("No customer in the current context"));
+  }
+
   public static Optional<Integer> userId() {
     return getUserContext().map(UserContext::userId);
   }

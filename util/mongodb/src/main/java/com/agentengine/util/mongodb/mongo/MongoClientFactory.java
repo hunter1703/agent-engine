@@ -1,5 +1,6 @@
 package com.agentengine.util.mongodb.mongo;
 
+import com.agentengine.util.infra.ServerType;
 import static org.bson.codecs.configuration.CodecRegistries.fromCodecs;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
@@ -8,7 +9,6 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.config.ApplicationConfig;
-import com.agentengine.util.common.config.ApplicationConfigUtils;
 import com.agentengine.util.crypto.EncryptionService;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
@@ -54,10 +54,10 @@ public class MongoClientFactory
           EncryptionService encryptionService, ApplicationConfig applicationConfig,
           Instance<Codec<?>> customCodecs) {
     super(
-        infraConfigService, cacheManager, MongoServerInfraConfig.TYPE);
+        infraConfigService, cacheManager, ServerType.MONGO_SERVER);
     this.mongoClientSupport = mongoClientSupport;
     this.encryptionService = encryptionService;
-      this.defaultServerId = ApplicationConfigUtils.getDefaultServerId(applicationConfig, MongoServerInfraConfig.TYPE);
+      this.defaultServerId = ServerType.MONGO_SERVER.defaultServerId(applicationConfig);
       this.customCodecs = customCodecs;
     this.infraClient = new LazyLoader<>(() -> create(EnvUtils.getInfraMongoUri()));
   }

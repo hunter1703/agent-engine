@@ -1,13 +1,24 @@
 package com.agentengine.util.vectordb;
 
-import com.agentengine.util.common.*;
+import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.LazyLoader;
+import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.annotations.Indexed;
 import com.agentengine.util.common.beans.BaseEntity;
-import com.agentengine.util.common.query.*;
+import com.agentengine.util.common.query.Filter;
+import com.agentengine.util.common.query.Filters;
+import com.agentengine.util.common.query.Operator;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.Repository;
-
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -18,15 +29,17 @@ public abstract class VectorStore<T extends BaseEntity> implements Repository<T>
   private final LazyLoader<Map<String, String>> fieldVsVectorName;
   private final LazyLoader<Set<String>> indexedFields;
   private final BiFunction<String, String, float[]> embeddingGenerator;
+  private final VectorStoreClientType clientType;
 
   protected VectorStore(
-      final Class<T> entityClass, final BiFunction<String, String, float[]> embeddingGenerator) {
+          final Class<T> entityClass, final VectorStoreClientType clientType, final BiFunction<String, String, float[]> embeddingGenerator) {
     this.entityClass = entityClass;
     this.fieldVsVectorName = new LazyLoader<>(() -> VectorDbUtils.vectorNames(entityClass));
     this.indexedFields = new LazyLoader<>(() -> Utils.fieldsAnnotatedWith(entityClass, Indexed.class).stream()
             .filter(field -> !field.getAnnotation(Indexed.class).vector())
             .map(Field::getName).collect(Collectors.toSet()));
     this.embeddingGenerator = embeddingGenerator;
+      this.clientType = clientType;
   }
 
   protected Map<String, String> getFieldVsVectorName() {
@@ -35,6 +48,10 @@ public abstract class VectorStore<T extends BaseEntity> implements Repository<T>
 
   protected Set<String> getIndexedFields() {
     return indexedFields.get();
+  }
+
+  VectorStoreClientType clientType() {
+    return clientType;
   }
 
   protected abstract void setup(int vectorSize);

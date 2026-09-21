@@ -2,35 +2,15 @@ package com.agentengine.tenancy;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ProvisioningResult {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ProvisioningResult.class);
-
   private List<Step> steps = new ArrayList<>();
 
-  public void step(final String name, final Runnable action) {
-    try {
-      action.run();
-      steps.add(new Step(name, null));
-    } catch (final Exception exception) {
-      LOG.error("Provisioning step '{}' failed", name, exception);
-      steps.add(new Step(name, String.valueOf(exception)));
-    }
-  }
+  public ProvisioningResult() {}
 
-  public void steps(final String name, final Supplier<ProvisioningResult> provision) {
-    try {
-      for (final Step step : provision.get().getSteps()) {
-        steps.add(new Step(name + "/" + step.getName(), step.getError()));
-      }
-    } catch (final Exception exception) {
-      LOG.error("Provisioning '{}' failed", name, exception);
-      steps.add(new Step(name, String.valueOf(exception)));
-    }
+  public ProvisioningResult(final List<Step> steps) {
+    setSteps(steps);
   }
 
   public boolean succeeded() {

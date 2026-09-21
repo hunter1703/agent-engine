@@ -1,8 +1,6 @@
 package com.agentengine.util.sql;
 
-import com.agentengine.util.infra.InfraConfigService;
-import com.agentengine.util.infra.InfraServerProvisioner;
-import jakarta.inject.Inject;
+import com.agentengine.util.infra.InfraSetup;
 import jakarta.inject.Singleton;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -12,22 +10,20 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 @Singleton
-public class SQLServerProvisioner extends InfraServerProvisioner<SQLServerInfraConfig> {
+public class SQLServerSetup implements InfraSetup<SQLServerInfraConfig> {
 
-  @Inject
-  public SQLServerProvisioner(final InfraConfigService infraConfigService) {
-    super(infraConfigService);
+  @Override
+  public Class<SQLServerInfraConfig> configType() {
+    return SQLServerInfraConfig.class;
   }
 
   @Override
-  protected void setup(final SQLServerInfraConfig server) {
+  public void setup(final SQLServerInfraConfig server) {
     if (server.engineType() != SQLServerInfraConfig.Engine.POSTGRES) {
       throw new IllegalStateException("Unsupported SQL engine");
     }
     final String database = server.getDatabase();
-    if (!database.matches("[A-Za-z0-9_-]+")) {
-      throw new IllegalArgumentException("Invalid database name '" + database + "'");
-    }
+    final String quotedDatabase = SQLUtils.quoteIdentifier(database);
     try (final Connection connection =
             DriverManager.getConnection(
                 server.jdbcUrl("postgres"), server.getUsername(), server.getPassword());
@@ -39,8 +35,8 @@ public class SQLServerProvisioner extends InfraServerProvisioner<SQLServerInfraC
           return;
         }
       }
-      try (Statement create = connection.createStatement()) {
-        create.execute("CREATE DATABASE \"%s\"".formatted(database));
+      try (final Statement create = connection.createStatement()) {
+        create.execute("CREATE DATABASE " + quotedDatabase);
       }
     } catch (final SQLException ex) {
       throw new IllegalStateException("Failed to create database '" + database + "'", ex);

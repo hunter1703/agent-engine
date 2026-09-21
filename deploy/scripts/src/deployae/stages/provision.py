@@ -25,7 +25,7 @@ class ProvisionStage(InternalEndpointStage):
     environment: str
 
     def _execute(self, client: httpx.Client, service: str) -> None:
-        self._provision("environment", client.post(ENVIRONMENT_PATH), service)
+        self._provision("environment", client.post(ENVIRONMENT_PATH, json={}), service)
         for customer in self._customers():
             self._provision(
                 f"customer {customer['id']}", client.post(CUSTOMERS_PATH, json=customer), service

@@ -1,12 +1,10 @@
 package com.agentengine.util.pekko.persistence;
 
-import com.agentengine.util.distributed.DistributedCacheManager;
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.infra.InfraClientFactory;
-import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.sql.SQLClientInfraConfig;
 import com.agentengine.util.sql.SQLServerInfraConfig;
 import com.typesafe.config.Config;
-import io.quarkus.arc.Arc;
 import org.apache.pekko.actor.ActorSystem;
 import org.apache.pekko.persistence.jdbc.db.LazySlickDatabase;
 import org.apache.pekko.persistence.jdbc.db.SlickDatabase;
@@ -19,12 +17,12 @@ public class InfraSlickDatabaseProvider
 
   private final ActorSystem system;
 
-  @java.lang.SuppressWarnings("resource")
   public InfraSlickDatabaseProvider(final ActorSystem system) {
-    super(
-        Arc.container().instance(InfraConfigService.class).get(),
-        Arc.container().instance(DistributedCacheManager.class).get(),
-        SQLServerInfraConfig.TYPE);
+    this(system, infraSetup(system));
+  }
+
+  private InfraSlickDatabaseProvider(final ActorSystem system, final InfraSetup infraSetup) {
+    super(infraSetup.infraConfigService(), infraSetup.cacheManager(), ServerType.SQL_SERVER);
     this.system = system;
   }
 
@@ -37,6 +35,14 @@ public class InfraSlickDatabaseProvider
   protected Pool create(final SQLServerInfraConfig serverConfig) {
     final Config baseConfig = system.settings().config().getConfig(PekkoUtils.SLICK);
     return new Pool(new LazySlickDatabase(PekkoUtils.buildSlickConfig(baseConfig, serverConfig), system));
+  }
+
+  private static InfraSetup infraSetup(final ActorSystem system) {
+    return system
+        .settings()
+        .setup()
+        .get(InfraSetup.class)
+        .orElseThrow(() -> new IllegalStateException("The actor system has no InfraSetup"));
   }
 
   public record Pool(LazySlickDatabase slickDatabase) implements AutoCloseable {

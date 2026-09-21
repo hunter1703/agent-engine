@@ -3,6 +3,9 @@ package com.agentengine.util.pekko;
 import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.pekko.actor.ShardedEntityDefinition;
+import com.agentengine.util.distributed.DistributedCacheManager;
+import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.pekko.persistence.InfraSetup;
 import com.agentengine.util.pekko.persistence.InfraSlickDatabaseProvider;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -42,6 +45,7 @@ public class ActorSystemProvider {
 
   private final Instance<ShardedEntityDefinition> entityDefinitions;
   private final PekkoJsonCodecFactory jsonCodecFactory;
+  private final InfraSetup infraSetup;
   private volatile ActorSystem<SpawnProtocol.Command> system;
   private volatile ClusterSharding sharding;
   private volatile boolean enabled;
@@ -49,9 +53,12 @@ public class ActorSystemProvider {
   @Inject
   public ActorSystemProvider(
       final Instance<ShardedEntityDefinition> entityDefinitions,
-      final PekkoJsonCodecFactory jsonCodecFactory) {
+      final PekkoJsonCodecFactory jsonCodecFactory,
+      final InfraConfigService infraConfigService,
+      final DistributedCacheManager cacheManager) {
     this.entityDefinitions = entityDefinitions;
     this.jsonCodecFactory = jsonCodecFactory;
+    this.infraSetup = new InfraSetup(infraConfigService, cacheManager);
   }
 
   /**
@@ -77,7 +84,8 @@ public class ActorSystemProvider {
     final ActorSystemSetup setup =
         ActorSystemSetup.create(
             BootstrapSetup.create(config),
-            JacksonObjectMapperProviderSetup.create(jsonCodecFactory));
+            JacksonObjectMapperProviderSetup.create(jsonCodecFactory),
+            infraSetup);
     this.system = ActorSystem.create(SpawnProtocol.create(), pekkoCluster, setup);
     PekkoManagement.get(system).start();
     ClusterBootstrap.get(system).start();

@@ -12,7 +12,6 @@ import com.agentengine.util.models.factories.EmbeddingModelFactory;
 import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Singleton;
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * Assembles a {@link ChunkingPipeline} from a {@link KnowledgeSettings}.

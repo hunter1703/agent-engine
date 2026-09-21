@@ -365,6 +365,8 @@ def build_stages(
     stages.extend(infra_deploy_by_name.values())
 
     # --- App charts ---
+    app_chart_stages: list[DeployChartStage] = []
+
     def deploy_app_chart(name: str, *extra_deps: Stage) -> DeployChartStage:
         chart = Chart(name)
         # Every app service reads Mongo-backed infra config at startup somewhere (encryption,
@@ -396,6 +398,7 @@ def build_stages(
             enabled=chart.is_enabled_for_tier(ctx.tier),
         )
         stages.append(stage)
+        app_chart_stages.append(stage)
         return stage
 
     global_properties_stage = deploy_app_chart("global-properties")
@@ -480,7 +483,7 @@ def build_stages(
     # --- App Config Seeding (replaces old rest seeding) ---
     seed_app = SeedAppConfigStage(
         name="seed-app-config",
-        depends_on=tuple(stages.copy()),  # run after everything else
+        depends_on=tuple(app_chart_stages),
         environment=ctx.environment,
         tier=ctx.tier,
         enabled=not dry_run

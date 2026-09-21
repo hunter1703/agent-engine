@@ -1,5 +1,6 @@
 package com.agentengine.util.vectordb;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.Secure;
 import com.agentengine.util.infra.InfraConfig;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
@@ -11,8 +12,6 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @BsonDiscriminator(value = "com.agentengine.util.vectordb.VectorServerInfraConfig")
 public class VectorServerInfraConfig extends InfraConfig {
 
-  public static final String TYPE = "VECTOR_SERVER";
-
   private String host = "localhost";
   private int httpPort = 6333;
   private int grpcPort = 6334;
@@ -20,12 +19,12 @@ public class VectorServerInfraConfig extends InfraConfig {
   private boolean tls = false;
 
   public VectorServerInfraConfig() {
-    setType(TYPE);
+    setType(ServerType.VECTOR_SERVER.name());
   }
 
   @Override
   public String getId() {
-    return TYPE + ":" + getServerId();
+    return ServerType.VECTOR_SERVER + ":" + getServerId();
   }
 
   public String getHost() {

@@ -1,7 +1,8 @@
 package com.agentengine.util.vectordb;
 
+import com.agentengine.util.infra.ServerType;
+import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.distributed.DistributedCacheManager;
-import com.agentengine.util.infra.DefaultServers;
 import com.agentengine.util.infra.InfraClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
 import io.qdrant.client.QdrantClient;
@@ -19,15 +20,15 @@ public class VectorDbClientFactory
   private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
   private static final Logger LOG = LoggerFactory.getLogger(VectorDbClientFactory.class);
 
-  private final DefaultServers defaultServers;
+  private final ApplicationConfig applicationConfig;
 
   @Inject
   public VectorDbClientFactory(
       final InfraConfigService infraConfigService,
       final DistributedCacheManager cacheManager,
-      final DefaultServers defaultServers) {
-    super(infraConfigService, cacheManager, VectorServerInfraConfig.TYPE);
-    this.defaultServers = defaultServers;
+      final ApplicationConfig applicationConfig) {
+    super(infraConfigService, cacheManager, ServerType.VECTOR_SERVER);
+    this.applicationConfig = applicationConfig;
   }
 
   public QdrantClient getClient(final VectorStoreClientType clientType, final Integer customerId) {
@@ -38,7 +39,7 @@ public class VectorDbClientFactory
                 VectorDbUtils.clientConfig(
                     clientType,
                     customerId,
-                    defaultServers.serverId(DefaultServers.VECTOR))));
+                    ServerType.VECTOR_SERVER.defaultServerId(applicationConfig))));
   }
 
   @Override

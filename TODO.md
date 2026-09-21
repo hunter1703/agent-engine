@@ -59,3 +59,14 @@ buffer. Trades memory for CPU. Track as a known limitation until 100MP use cases
 
 
 
+
+## Provisioning: Docs Out of Date
+
+`docs/08-deployment-and-operations.md` §Provisioning still describes the earlier design. Update it for:
+- the request shape (`typeVsServer` with `defaultServerId` / `clientTypeVsServerId`, not `servers.<family>`);
+- `infra.default-server.<server type>` keys (e.g. `MONGO_SERVER`, `ENCRYPTION_KEY`) instead of family names;
+- `infra.vector.size` no longer existing;
+- server configs going through the single `/internal/infra-config` endpoint with per-type setup hooks;
+- microservice servers defaulting to `<service>-default`;
+- provisioning stopping at the first failed step;
+- default models being per-customer (`DefaultModels` in the customer's AGENT store, set from `defaultModels` in `customers.json`), replacing the `DEFAULT_MODELS` infra config in §3.9 of `03-configuration-reference.md`, `01-system-overview.md` and §8.4 of `08-deployment-and-operations.md`.

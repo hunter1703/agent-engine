@@ -1,7 +1,8 @@
 package com.agentengine.util.crypto;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.distributed.DistributedCacheManager;
-import com.agentengine.util.infra.DefaultServers;
+import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.infra.InfraClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
 import com.oracle.bmc.auth.InstancePrincipalsAuthenticationDetailsProvider;
@@ -17,14 +18,14 @@ import java.util.Base64;
 @Singleton
 public class EncryptionClientProvider extends InfraClientFactory<EncryptionClientInfraConfig, EncryptionKeyInfraConfig, CryptoClient> {
 
-    private final DefaultServers defaultServers;
+    private final ApplicationConfig applicationConfig;
 
     protected EncryptionClientProvider(
             InfraConfigService infraConfigService,
             DistributedCacheManager cacheManager,
-            DefaultServers defaultServers) {
-        super(infraConfigService, cacheManager, EncryptionKeyInfraConfig.TYPE);
-        this.defaultServers = defaultServers;
+            ApplicationConfig applicationConfig) {
+        super(infraConfigService, cacheManager, ServerType.ENCRYPTION_KEY);
+        this.applicationConfig = applicationConfig;
     }
 
     public CryptoClient get(final int customerId) {
@@ -32,11 +33,12 @@ public class EncryptionClientProvider extends InfraClientFactory<EncryptionClien
                 getOrCreate(
                         EncryptionUtils.clientId(customerId),
                         () -> EncryptionUtils.clientConfig(
-                                customerId, defaultServers.serverId(DefaultServers.ENCRYPTION))));
+                                customerId,
+                                ServerType.ENCRYPTION_KEY.defaultServerId(applicationConfig))));
     }
 
     public CryptoClient getForKeyId(final String keyId) {
-        return getClientForServer(infraConfigService.get(EncryptionKeyInfraConfig.TYPE + ":" + keyId));
+        return getClientForServer(infraConfigService.get(ServerType.ENCRYPTION_KEY + ":" + keyId));
     }
 
     @Override

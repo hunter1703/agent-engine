@@ -1,17 +1,16 @@
 package com.agentengine.util.sql;
 
+import com.agentengine.util.infra.ClientType;
 import com.agentengine.util.infra.InfraConfig;
 import java.util.Locale;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.sql.SQLClientInfraConfig")
 public class SQLClientInfraConfig extends InfraConfig {
-  public static final String TYPE = "SQL_CLIENT";
-
   private String store;
 
   public SQLClientInfraConfig() {
-    setType(TYPE);
+    setType(ClientType.SQL_CLIENT.name());
   }
 
   @Override

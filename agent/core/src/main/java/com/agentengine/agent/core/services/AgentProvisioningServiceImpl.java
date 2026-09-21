@@ -1,22 +1,20 @@
 package com.agentengine.agent.core.services;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.agent.api.services.AgentProvisioningService;
 import com.agentengine.agent.core.memory.AgentVectorStoreClientType;
 import com.agentengine.agent.core.memory.MemoryStore;
 import com.agentengine.util.agents.repository.AgentMongoStoreClientType;
 import com.agentengine.util.context.UserContext;
-import com.agentengine.util.mongodb.infra.MongoServerInfraConfig;
 import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
 import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import com.agentengine.tenancy.ProvisioningRequest;
 import com.agentengine.tenancy.ProvisioningResult;
-import com.agentengine.util.ms.client.MicroServiceServerInfraConfig;
+import com.agentengine.tenancy.ProvisioningRun;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.pekko.persistence.PekkoEventStoreProvisioner;
 import com.agentengine.util.pekko.persistence.PekkoUtils;
-import com.agentengine.util.sql.SQLServerInfraConfig;
-import com.agentengine.util.sql.SQLServerProvisioner;
 import com.agentengine.util.vectordb.VectorDBClientProvisioner;
-import com.agentengine.util.vectordb.VectorServerInfraConfig;
 import com.agentengine.util.vectordb.VectorStoreClientType;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
@@ -48,28 +46,29 @@ public class AgentProvisioningServiceImpl implements AgentProvisioningService {
   }
 
   @Override
-  public ProvisioningResult provisionEnvironment(final ProvisioningRequest provisioningRequest) {
-    final ProvisioningResult result = new ProvisioningResult();
-    result.step(
+  public ProvisioningResult provisionEnvironment(final ProvisioningRequest request) {
+    final ProvisioningRun run = new ProvisioningRun();
+    run.step(
         "event-store",
-        () -> pekkoEventStoreProvisioner.provision(UserContext.SYSTEM.customerId(), provisioningRequest.getServer(SQLServerInfraConfig.TYPE, PekkoUtils.PEKKO_STORE)));
-    return result;
+        () -> pekkoEventStoreProvisioner.provision(UserContext.SYSTEM.customerId(), request.getServer(ServerType.SQL_SERVER, PekkoUtils.PEKKO_STORE)));
+    return run.result();
   }
 
   @Override
-  public ProvisioningResult provision(final int customerId, final ProvisioningRequest request) {
-    final ProvisioningResult result = new ProvisioningResult();
-    result.step(
+  public ProvisioningResult provision(final ProvisioningRequest request) {
+    final int customerId = Context.requireCustomerId();
+    final ProvisioningRun run = new ProvisioningRun();
+    run.step(
         "mongo",
         () ->
             mongoClientProvisioner.provision(
-                AgentMongoStoreClientType.AGENT, customerId, request.getServer(MongoServerInfraConfig.TYPE, AgentMongoStoreClientType.AGENT.name())));
-    result.step(
-        "event-store", () -> pekkoEventStoreProvisioner.provision(customerId, request.getServer(SQLServerInfraConfig.TYPE, PekkoUtils.PEKKO_STORE)));
-    result.step(
+                AgentMongoStoreClientType.AGENT, customerId, request.getServer(ServerType.MONGO_SERVER, AgentMongoStoreClientType.AGENT.name())));
+    run.step(
+        "event-store", () -> pekkoEventStoreProvisioner.provision(customerId, request.getServer(ServerType.SQL_SERVER, PekkoUtils.PEKKO_STORE)));
+    run.step(
         "vector",
-        () -> vectorDBClientProvisioner.provision(memoryStore, customerId, request.getServer(VectorServerInfraConfig.TYPE, AgentVectorStoreClientType.MEMORY.name())));
-    result.step("microservice", () -> microServiceProvisioner.provision(customerId, "agent", request.getServer(MicroServiceServerInfraConfig.TYPE, "agent")));
-    return result;
+        () -> vectorDBClientProvisioner.provision(memoryStore, customerId, request.getServer(ServerType.VECTOR_SERVER, AgentVectorStoreClientType.MEMORY.name())));
+    run.step("microservice", () -> microServiceProvisioner.provision(customerId, "agent", request.getServer(ServerType.MICROSERVICE_SERVER, "agent")));
+    return run.result();
   }
 }

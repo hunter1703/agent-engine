@@ -2,7 +2,6 @@ package com.agentengine.util.infra;
 
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.config.ApplicationConfig;
-import com.agentengine.util.common.config.ApplicationConfigUtils;
 
 public abstract class InfraClientProvisioner {
     private final ApplicationConfig applicationConfig;
@@ -11,10 +10,10 @@ public abstract class InfraClientProvisioner {
         this.applicationConfig = applicationConfig;
     }
 
-    protected String resolvedServerId(final String serverType, final String serverId) {
+    protected String resolvedServerId(final ServerType serverType, final String serverId) {
         if (StringUtils.isNotBlank(serverId)) {
             return serverId;
         }
-        return ApplicationConfigUtils.getDefaultServerId(applicationConfig, serverType);
+        return serverType.defaultServerId(applicationConfig);
     }
 }

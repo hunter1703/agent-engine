@@ -34,11 +34,10 @@ class InternalEndpointStage(Stage):
         service = chart.resource_name(self.tier)
 
         if not kube.service_exists(namespace, service):
-            print(
-                f"Skipping {self.name} because service '{service}' is not present "
-                f"in namespace '{namespace}'."
+            raise RuntimeError(
+                f"{self.name} needs service '{service}' in namespace '{namespace}', "
+                f"but it is not deployed"
             )
-            return
 
         with (
             kube.port_forward(namespace, service, self.service_port) as local_port,

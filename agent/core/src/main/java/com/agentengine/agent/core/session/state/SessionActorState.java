@@ -6,6 +6,7 @@ import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.UniqueRecord;
+import com.agentengine.util.context.UserContext;
 import com.agentengine.util.pekko.PekkoSerializable;
 import com.google.adk.events.Event;
 import java.util.*;
@@ -29,6 +30,7 @@ public record SessionActorState(
     Map<String, ChildSession> childRegistry,
     Set<StartingChild> startingChildren,
     SessionTopology topology,
+    UserContext ownerContext,
     PauseState pauseState,
     List<RunState> runs,
     RolledBackRun lastRollback,
@@ -46,6 +48,7 @@ public record SessionActorState(
         new LinkedList<>(),
         new HashMap<>(),
         new HashSet<>(),
+        null,
         null,
         new PauseState(),
         new ArrayList<>(),
@@ -85,19 +88,22 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         pauseState,
         runs,
         lastRollback,
         grants);
   }
 
-  public SessionActorState withTopology(final SessionTopology updatedTopology) {
+  public SessionActorState withInitialized(
+      final SessionTopology updatedTopology, final UserContext ownerContext) {
     return new SessionActorState(
         sessionState,
         queue,
         childRegistry,
         startingChildren,
         updatedTopology,
+            ownerContext,
         pauseState,
         runs,
         lastRollback,
@@ -119,6 +125,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         pauseState,
         runs,
         lastRollback,
@@ -133,6 +140,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         pauseState,
         runs,
         lastRollback,
@@ -164,6 +172,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         pauseState,
         runs,
         lastRollback,
@@ -202,6 +211,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         pauseState,
         runs,
         new RolledBackRun(runId, rollbackSequence),
@@ -235,6 +245,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         pauseState.withChildPaused(childSessionId, interruptId),
         runs,
         lastRollback,
@@ -249,6 +260,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         pauseState.withSelfPaused(interruptId, runId, turnId),
         runs,
         lastRollback,
@@ -315,6 +327,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         updated,
         runs,
         lastRollback,
@@ -333,6 +346,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         pauseState.withInternalSelfPause(childSessionId, interruptId, runId, turnId),
         runs,
         lastRollback,
@@ -358,6 +372,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         pauseState.withSelfResumed(resumeRequest),
         runs,
         lastRollback,
@@ -371,6 +386,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         pauseState.withChildResumed(resumeRequest.getInterruptId()),
         runs,
         lastRollback,
@@ -403,6 +419,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
+        ownerContext,
         new PauseState(
             new HashMap<>(),
             new HashMap<>(),
@@ -434,6 +451,7 @@ public record SessionActorState(
         new HashMap<>(childRegistry),
         new HashSet<>(startingChildren),
         topology,
+        ownerContext,
         pauseState,
         new ArrayList<>(runs),
         lastRollback,

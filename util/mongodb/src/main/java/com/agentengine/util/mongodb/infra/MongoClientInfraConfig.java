@@ -1,5 +1,6 @@
 package com.agentengine.util.mongodb.infra;
 
+import com.agentengine.util.infra.ClientType;
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.mongodb.mongo.MongoUtils;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
@@ -10,12 +11,10 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
  */
 @BsonDiscriminator(value = "com.agentengine.util.mongodb.infra.MongoClientInfraConfig")
 public class MongoClientInfraConfig extends InfraConfig {
-  public static final String TYPE = "MONGO_CLIENT";
-
   private String store;
 
   public MongoClientInfraConfig() {
-    setType(TYPE);
+    setType(ClientType.MONGO_CLIENT.name());
   }
 
   @Override

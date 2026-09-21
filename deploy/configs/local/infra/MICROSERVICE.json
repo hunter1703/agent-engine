@@ -2,35 +2,35 @@
   {
     "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "serverId": "catalog",
+    "serverId": "catalog-default",
     "host": "catalog-local.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
     "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "serverId": "agent",
+    "serverId": "agent-default",
     "host": "agent-local.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
     "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "serverId": "knowledge",
+    "serverId": "knowledge-default",
     "host": "knowledge-local.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
     "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "serverId": "connectors",
+    "serverId": "connectors-default",
     "host": "connectors-local.agent-engine.svc.cluster.local",
     "port": 8080
   },
   {
     "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
     "type": "MICROSERVICE_SERVER",
-    "serverId": "scheduler",
+    "serverId": "scheduler-default",
     "host": "scheduler-local.agent-engine.svc.cluster.local",
     "port": 8080
   }

@@ -1,11 +1,13 @@
 package com.agentengine.util.cloudstorage;
 
+import com.agentengine.util.infra.ClientType;
+
 public final class CloudStorageUtils {
 
   private CloudStorageUtils() {}
 
   public static String clientId(final Integer customerId) {
-    return CloudStorageClientInfraConfig.TYPE + ":" + customerId;
+    return ClientType.CLOUDSTORAGE_CLIENT + ":" + customerId;
   }
 
   public static CloudStorageClientInfraConfig clientConfig(
@@ -19,6 +21,6 @@ public final class CloudStorageUtils {
 
   /** The bucket of a customer whose client config does not name one. */
   public static String defaultBucket(final Integer customerId) {
-    return "agentengine_" + customerId;
+    return "agentengine-" + customerId;
   }
 }

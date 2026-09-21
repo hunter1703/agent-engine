@@ -1,11 +1,17 @@
 package com.agentengine.util.ms.client;
 
+import com.agentengine.util.infra.ClientType;
+
 public final class MicroServiceUtils {
 
   private MicroServiceUtils() {}
 
+  public static String defaultServerId(final String service) {
+    return service + "-default";
+  }
+
   public static String clientId(final Integer customerId, final String service) {
-    return MicroServiceClientInfraConfig.TYPE + ":" + service + ":" + customerId;
+    return ClientType.MICROSERVICE_CLIENT + ":" + service + ":" + customerId;
   }
 
   public static MicroServiceClientInfraConfig clientConfig(

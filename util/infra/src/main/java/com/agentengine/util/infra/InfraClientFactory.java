@@ -16,13 +16,13 @@ public abstract class InfraClientFactory<
   private static final Logger LOG = LoggerFactory.getLogger(InfraClientFactory.class);
 
   protected final InfraConfigService infraConfigService;
-  private final String serverType;
+  private final ServerType serverType;
   private final DistributedCache<T> connections;
 
   protected InfraClientFactory(
       final InfraConfigService infraConfigService,
       final DistributedCacheManager cacheManager,
-      final String serverType) {
+      final ServerType serverType) {
     this.infraConfigService = infraConfigService;
     this.serverType = serverType;
     this.connections =
@@ -44,6 +44,11 @@ public abstract class InfraClientFactory<
     return getClientForServer(serverConfig);
   }
 
+  @PreDestroy
+  public void closeAll() {
+    connections.invalidateAll(true);
+  }
+
   protected final C getOrCreate(final String clientId, final Supplier<C> defaultClient) {
     final C existing = infraConfigService.get(clientId);
     if (existing != null) {
@@ -61,11 +66,6 @@ public abstract class InfraClientFactory<
 
   protected T getClientForServer(S serverConfig) {
     return connections.get(serverConfig.getId(), _ -> create(serverConfig));
-  }
-
-  @PreDestroy
-  public void closeAll() {
-    connections.invalidateAll(true);
   }
 
   protected abstract T create(S serverConfig);

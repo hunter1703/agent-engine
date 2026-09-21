@@ -1,8 +1,8 @@
 globalProperties:
   infra.mongodb.database: INFRA
   app.mongodb.database: AGENT_ENGINE
-  infra.default-server.mongo: default
-  infra.default-server.sql: default
-  infra.default-server.vector: default
-  infra.default-server.cloudstorage: default
-  infra.default-server.encryption: default
+  infra.default-server.MONGO_SERVER: default
+  infra.default-server.SQL_SERVER: default
+  infra.default-server.VECTOR_SERVER: default
+  infra.default-server.CLOUDSTORAGE_SERVER: default
+  infra.default-server.ENCRYPTION_KEY: default

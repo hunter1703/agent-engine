@@ -1,13 +1,12 @@
 package com.agentengine.util.crypto;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.infra.InfraConfig;
 import java.util.Locale;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.crypto.EncryptionKeyInfraConfig")
 public class EncryptionKeyInfraConfig extends InfraConfig {
-  public static final String TYPE = "ENCRYPTION_KEY";
-
   private String keyId;
   private String provider = Provider.UNKNOWN.name();
   private String key;
@@ -15,12 +14,12 @@ public class EncryptionKeyInfraConfig extends InfraConfig {
   private String cryptoEndpoint;
 
   public EncryptionKeyInfraConfig() {
-    setType(TYPE);
+    setType(ServerType.ENCRYPTION_KEY.name());
   }
 
   @Override
   public String getId() {
-    return TYPE + ":" + keyId;
+    return ServerType.ENCRYPTION_KEY + ":" + keyId;
   }
 
   public String getKeyId() {

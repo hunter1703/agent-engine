@@ -1,5 +1,6 @@
 package com.agentengine.util.ms.client;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
@@ -25,14 +26,15 @@ public class MicroServiceChannelProvider
     super(
         infraConfigService,
         cacheManager,
-        MicroServiceServerInfraConfig.TYPE);
+        ServerType.MICROSERVICE_SERVER);
   }
 
   public Channel getForService(final int customerId, final String service) {
     return get(
         getOrCreate(
             MicroServiceUtils.clientId(customerId, service),
-            () -> MicroServiceUtils.clientConfig(customerId, service, service)));
+            () -> MicroServiceUtils.clientConfig(
+                    customerId, service, MicroServiceUtils.defaultServerId(service))));
   }
 
   @Override

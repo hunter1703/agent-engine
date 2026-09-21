@@ -1,6 +1,13 @@
 [
   {
     "id": 1,
-    "name": "socialmedia"
+    "name": "socialmedia",
+    "defaultModels": {
+      "titleModelId": "gemma4",
+      "compactionModelId": "gemma4",
+      "evaluatorModelId": "gemma4",
+      "embeddingModelId": "nomic-embed-text",
+      "chatModelId": "gemma4"
+    }
   }
 ]

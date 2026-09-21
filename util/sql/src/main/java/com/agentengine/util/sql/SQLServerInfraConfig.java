@@ -1,5 +1,6 @@
 package com.agentengine.util.sql;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.Secure;
 import com.agentengine.util.infra.InfraConfig;
 import java.net.URLEncoder;
@@ -13,8 +14,6 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.sql.SQLServerInfraConfig")
 public class SQLServerInfraConfig extends InfraConfig {
-  public static final String TYPE = "SQL_SERVER";
-
   private String engine = Engine.UNKNOWN.name();
   private String host;
   private Integer port;
@@ -25,12 +24,12 @@ public class SQLServerInfraConfig extends InfraConfig {
   private Map<String, String> properties = new HashMap<>();
 
   public SQLServerInfraConfig() {
-    setType(TYPE);
+    setType(ServerType.SQL_SERVER.name());
   }
 
   @Override
   public String getId() {
-    return TYPE + ":" + getServerId();
+    return ServerType.SQL_SERVER + ":" + getServerId();
   }
 
   public String jdbcUrl(final String databaseName) {

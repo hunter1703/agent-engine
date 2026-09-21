@@ -1,5 +1,6 @@
 package com.agentengine.util.cloudstorage;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.InfraClientProvisioner;
@@ -25,7 +26,7 @@ public class CloudStorageClientProvisioner extends InfraClientProvisioner {
     final String bucket = CloudStorageUtils.defaultBucket(customerId);
     infraConfigService.save(
         CloudStorageUtils.clientConfig(
-            customerId, resolvedServerId(CloudStorageServerInfraConfig.TYPE, serverId), bucket));
+            customerId, resolvedServerId(ServerType.CLOUDSTORAGE_SERVER, serverId), bucket));
     storageFactory.get(customerId).ensureBucket(bucket);
   }
 }

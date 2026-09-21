@@ -4,12 +4,10 @@ import com.agentengine.agent.core.factories.RunnerFactory;
 import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.commands.IdleTimeoutCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
-import com.agentengine.catalog.api.services.SessionCacheService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.context.Context;
-import com.agentengine.util.context.UserContext;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.actor.ChaosMailboxRegistry;
@@ -37,7 +35,6 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
   private static final String AGENT_ROLE = "agent";
 
   private final InfraConfigService infraConfigService;
-  private final SessionCacheService sessionCacheService;
   private final SessionEventChannel sessionEventChannel;
   private final RunnerFactory runnerFactory;
   private final SessionService sessionService;
@@ -50,7 +47,6 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
   public SessionActorFactory(
       final ActorSystemProvider actorSystemProvider,
       final InfraConfigService infraConfigService,
-      final SessionCacheService sessionCacheService,
       final SessionEventChannel sessionEventChannel,
       final RunnerFactory runnerFactory,
       final SessionService sessionService,
@@ -68,7 +64,6 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
         AGENT_ROLE,
         SessionCommand.class);
     this.infraConfigService = infraConfigService;
-    this.sessionCacheService = sessionCacheService;
     this.sessionEventChannel = sessionEventChannel;
     this.runnerFactory = runnerFactory;
     this.sessionService = sessionService;
@@ -87,21 +82,17 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
             new MessageFaultInterceptor<>(
                 SessionCommand.class, entityId, chaosMailboxRegistry),
         Behaviors.setup(
-            actorContext -> {
-              final Context ownerContext = ownerContext(entityId);
-                return new SessionActor(
-                    actorContext,
-                    entityId,
-                    new PersistencePlugin(customerId(entityId), infraConfigService),
-                    ownerContext,
-                    sessionEventChannel,
-                    this::entityRef,
-                    runnerFactory,
-                    sessionService,
-                    sessionTitleGenerator,
-                    memoryService,
-                    sessionEventsRepository);
-            }));
+            actorContext -> new SessionActor(
+                actorContext,
+                entityId,
+                new PersistencePlugin(customerId(entityId), infraConfigService),
+                sessionEventChannel,
+                this::entityRef,
+                runnerFactory,
+                sessionService,
+                sessionTitleGenerator,
+                memoryService,
+                sessionEventsRepository)));
   }
 
   public static String entityId(final String sessionId) {
@@ -120,18 +111,5 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
 
   private static int customerId(final String entityId) {
     return Integer.parseInt(entityId.substring(0, entityId.indexOf(':')));
-  }
-
-  private static String sessionId(final String entityId) {
-    return entityId.substring(entityId.indexOf(':') + 1);
-  }
-
-  private Context ownerContext(final String entityId) {
-    final int customerId = customerId(entityId);
-    final String sessionId = sessionId(entityId);
-    final Integer ownerUserId =
-        new Context(sessionId, new UserContext(customerId, UserContext.SYSTEM.userId()))
-            .get(() -> sessionCacheService.getSession(sessionId).getOwnerUserId());
-    return new Context(sessionId, new UserContext(customerId, ownerUserId));
   }
 }

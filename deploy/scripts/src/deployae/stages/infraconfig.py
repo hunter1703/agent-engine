@@ -1,8 +1,7 @@
 """Saves the tier's infra configs through the internal service.
 
-Each file in deploy/configs/<env>/infra is a list of infra configs. A server config is sent to its
-server's endpoint, which prepares the server for customers to use before saving it; the remaining
-configs, such as the default models, are saved together through the generic infra-config endpoint.
+Each file in deploy/configs/<env>/infra is a list of infra configs, saved through the infra-config
+endpoint, which first prepares whatever a config points at (a SQL server's database, for one).
 Re-running is safe: a config of the same type and key is replaced.
 """
 
@@ -18,14 +17,6 @@ from deployae.stages.internal import InternalEndpointStage
 from deployae.stages.seed import expand_json_vars
 
 SAVE_PATH = "/internal/infra-config"
-SERVER_PATHS = {
-    "ENCRYPTION.json": "/internal/server/encryption",
-    "MONGO.json": "/internal/server/mongo",
-    "SQL.json": "/internal/server/sql",
-    "VECTOR.json": "/internal/server/vector",
-    "CLOUDSTORAGE.json": "/internal/server/cloudstorage",
-    "MICROSERVICE.json": "/internal/server/microservice",
-}
 ENCRYPTION_FILE = "ENCRYPTION.json"
 
 
@@ -36,12 +27,7 @@ class SeedInfraConfigStage(InternalEndpointStage):
     def _execute(self, client: httpx.Client, service: str) -> None:
         for path in self._config_files():
             configs = json.loads(expand_json_vars(path))
-            server_path = SERVER_PATHS.get(path.name)
-            if server_path is None:
-                self._succeeded(client.post(SAVE_PATH, json=configs), service)
-            else:
-                for config in configs:
-                    self._succeeded(client.put(server_path, json=config), service)
+            self._succeeded(client.post(SAVE_PATH, json=configs), service)
             print(f"Saved {path.name}")
 
     def _config_files(self):

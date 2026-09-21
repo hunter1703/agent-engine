@@ -1,16 +1,15 @@
 package com.agentengine.util.vectordb;
 
+import com.agentengine.util.infra.ClientType;
 import com.agentengine.util.infra.InfraConfig;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.vectordb.VectorClientInfraConfig")
 public class VectorClientInfraConfig extends InfraConfig {
-  public static final String TYPE = "VECTOR_CLIENT";
-
   private String store;
 
   public VectorClientInfraConfig() {
-    setType(TYPE);
+    setType(ClientType.VECTOR_CLIENT.name());
   }
 
   @Override

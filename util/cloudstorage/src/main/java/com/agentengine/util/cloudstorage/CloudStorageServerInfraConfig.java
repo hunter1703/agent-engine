@@ -1,5 +1,6 @@
 package com.agentengine.util.cloudstorage;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.Secure;
 import com.agentengine.util.infra.InfraConfig;
 import java.util.Locale;
@@ -7,8 +8,6 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.cloudstorage.CloudStorageServerInfraConfig")
 public class CloudStorageServerInfraConfig extends InfraConfig {
-  public static final String TYPE = "CLOUDSTORAGE_SERVER";
-
   private String provider = Provider.S3.name();
   private String region = "us-east-1";
   private String endpointUrl = "http://localhost:4566";
@@ -29,12 +28,12 @@ public class CloudStorageServerInfraConfig extends InfraConfig {
   @Secure private String passPhrase;
 
   public CloudStorageServerInfraConfig() {
-    setType(TYPE);
+    setType(ServerType.CLOUDSTORAGE_SERVER.name());
   }
 
   @Override
   public String getId() {
-    return TYPE + ":" + getServerId();
+    return ServerType.CLOUDSTORAGE_SERVER + ":" + getServerId();
   }
 
   public String getProvider() {

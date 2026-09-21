@@ -1,10 +1,10 @@
 package com.agentengine.util.mongodb.mongo;
 
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.InfraClientProvisioner;
 import com.agentengine.util.mongodb.infra.MongoClientInfraConfig;
-import com.agentengine.util.mongodb.infra.MongoServerInfraConfig;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -30,10 +30,10 @@ public class MongoClientProvisioner extends InfraClientProvisioner {
       final Integer customerId,
       String serverId) {
     final MongoClientInfraConfig clientConfig = MongoUtils.clientConfig(
-            store.name(), customerId, resolvedServerId(MongoServerInfraConfig.TYPE, serverId));
+            store.name(), customerId, resolvedServerId(ServerType.MONGO_SERVER, serverId));
     infraConfigService.save(clientConfig);
     for (final AbstractMongoReadRepository<?> repository : repositories) {
-      if (repository.clientType().name().equals(store.name())) {
+      if (repository.clientType().equals(store)) {
         repository.setup();
       }
     }
