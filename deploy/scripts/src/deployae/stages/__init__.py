@@ -12,6 +12,7 @@ from deployae.stages.chart import (
     UninstallChartStage,
 )
 from deployae.stages.cleanup import (
+    CleanDockerCacheStage,
     DeleteNamespaceStage,
     DeletePvcsStage,
     RemoveLocalstackResourcesStage,
@@ -23,6 +24,7 @@ from deployae.stages.seed import SeedAppConfigStage
 __all__ = [
     "BuildDockerImageStage",
     "BuildGradleStage",
+    "CleanDockerCacheStage",
     "DeleteNamespaceStage",
     "DeletePvcsStage",
     "DeployChartStage",

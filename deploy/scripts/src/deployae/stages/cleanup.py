@@ -39,3 +39,20 @@ class RemoveLocalstackResourcesStage(Stage):
             kube.delete_by_label, self.namespace, "app.kubernetes.io/name=localstack"
         )
         print(f"Removed localstack resources from namespace {self.namespace}")
+
+
+@dataclass(eq=False, kw_only=True)
+class CleanDockerCacheStage(Stage):
+    async def run(self) -> None:
+        await asyncio.to_thread(self._clean)
+
+    def _clean(self) -> None:
+        import subprocess
+
+        try:
+            print("Cleaning Docker build cache and dangling images...")
+            subprocess.run(["docker", "builder", "prune", "-f"], check=True)
+            subprocess.run(["docker", "image", "prune", "-f"], check=True)
+            print("Docker build cache and dangling images cleaned")
+        except (subprocess.SubprocessError, FileNotFoundError) as e:
+            print(f"Warning: Failed to clean Docker cache: {e}")

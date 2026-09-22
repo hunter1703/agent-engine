@@ -16,6 +16,7 @@ from deployae.charts import (
     Chart,
 )
 from deployae.stages import (
+    CleanDockerCacheStage,
     DeleteNamespaceStage,
     DeletePvcsStage,
     RemoveLocalstackResourcesStage,
@@ -33,6 +34,12 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
     parser.add_argument("-t", "--tier", help="Tier to remove for the app/infra charts")
     parser.add_argument("-n", "--namespace", help="Override every selected chart's namespace")
+    parser.add_argument(
+        "--clean-docker-cache",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Clean Docker build cache (defaults to true for local tier and --all)",
+    )
 
 
 def run(args: argparse.Namespace) -> None:
@@ -40,11 +47,15 @@ def run(args: argparse.Namespace) -> None:
         print("Nuclear cleanup initiated: deleting namespaces agent-engine, infra, ingress-nginx...")
         # For --all, we don't need to specify tier or run helm uninstalls individually,
         # deleting the namespaces will cascade and delete everything in them (including PVCs and Helm releases).
-        asyncio.run(run_graph([
+        stages: list[Stage] = [
             DeleteNamespaceStage(name="delete-ns-agent-engine", namespace="agent-engine"),
             DeleteNamespaceStage(name="delete-ns-infra", namespace="infra"),
             DeleteNamespaceStage(name="delete-ns-ingress", namespace="ingress-nginx"),
-        ]))
+        ]
+        clean_docker = args.clean_docker_cache if args.clean_docker_cache is not None else True
+        if clean_docker:
+            stages.append(CleanDockerCacheStage(name="clean-docker-cache"))
+        asyncio.run(run_graph(stages))
         return
 
     if not args.tier:
@@ -58,12 +69,16 @@ def run(args: argparse.Namespace) -> None:
         chart_names = (*APP_CHART_NAMES, *INFRA_CHART_NAMES)
 
     charts = [CHARTS_BY_NAME[n] for n in chart_names]
+    clean_docker = (
+        args.clean_docker_cache if args.clean_docker_cache is not None else (args.tier == "local")
+    )
 
     asyncio.run(
         cleanup_charts(
             charts,
             tier=args.tier,
             namespace_override=args.namespace,
+            clean_docker_cache=clean_docker,
         )
     )
 
@@ -73,6 +88,7 @@ async def cleanup_charts(
     *,
     tier: str,
     namespace_override: str | None,
+    clean_docker_cache: bool = False,
 ) -> None:
     namespace_by_chart = {chart.name: chart.namespace(namespace_override) for chart in charts}
     namespaces = sorted(set(namespace_by_chart.values()))
@@ -105,6 +121,7 @@ async def cleanup_charts(
             )
         )
 
-
+    if clean_docker_cache:
+        stages.append(CleanDockerCacheStage(name="clean-docker-cache"))
 
     await run_graph(stages)

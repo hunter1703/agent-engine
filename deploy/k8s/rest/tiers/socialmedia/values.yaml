@@ -1,6 +1,6 @@
 app-base:
   imagePullSecrets:
-    - name: ghcr-pull
+    - name: ocir-pull
   ingress:
     enabled: true
     className: nginx

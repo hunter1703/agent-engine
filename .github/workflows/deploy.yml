@@ -18,15 +18,11 @@ on:
         required: true
         default: "socialmedia"
 
-env:
-  REGISTRY: ghcr.io/${{ github.repository_owner }}
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -66,12 +62,12 @@ jobs:
       - name: Install deployae
         run: pip install ./deploy/scripts
 
-      - name: Log in to GHCR
+      - name: Log in to OCIR
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ${{ secrets.OCIR_REGISTRY }}
+          username: ${{ secrets.OCIR_USERNAME }}
+          password: ${{ secrets.OCIR_AUTH_TOKEN }}
 
       # Registers binfmt handlers so plain `docker build` (what deployae's BuildDockerImageStage
       # already calls) can cross-compile arm64 images on this x86 runner via DOCKER_DEFAULT_PLATFORM
@@ -91,17 +87,18 @@ jobs:
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
 
+      - name: Ensure image pull secret in Kubernetes
+        run: |
+          kubectl create secret docker-registry ocir-pull \
+            --namespace agent-engine \
+            --docker-server="${{ secrets.OCIR_REGISTRY }}" \
+            --docker-username="${{ secrets.OCIR_USERNAME }}" \
+            --docker-password="${{ secrets.OCIR_AUTH_TOKEN }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
       # Builds only the app charts enabled for this tier (per Chart.is_enabled_for_tier),
-      # builds+pushes their images to GHCR, and helm-upgrades every enabled chart.
+      # builds+pushes their images, and helm-upgrades every enabled chart.
       # Also runs Kubernetes Jobs to seed Infra and App configs via deployae.
-      #
-      # Always tag/push as "latest" rather than the git SHA — this tier's GHCR packages are
-      # private, and private packages are capped at 500MB total storage on a Free account;
-      # a SHA per deploy would accumulate forever instead of overwriting one image per
-      # component. app-base's Deployment template sets imagePullPolicy: Always whenever
-      # global.imageRegistry is set (see deploy/k8s/app-base/templates/deployment.yaml) so
-      # nodes actually re-pull "latest" instead of trusting a stale locally-cached copy.
       - name: Deploy
         env:
           DOCKER_DEFAULT_PLATFORM: linux/arm64
@@ -112,4 +109,5 @@ jobs:
             -t "${{ inputs.tier }}" \
             -e "${{ inputs.environment }}" \
             --image-tag latest \
-            --image-registry "$REGISTRY"
+            --image-registry "${{ secrets.OCIR_REGISTRY }}/bmt6upkvrhpm"
+
