@@ -4,6 +4,7 @@ import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.SchedulerConfigs;
 import com.agentengine.util.common.ThreadUtils;
 import com.agentengine.util.common.config.ApplicationConfig;
+import com.agentengine.util.context.ContextualExecutor;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
@@ -40,7 +41,10 @@ public class WorkerActorFactory {
     this.triggerDefinitionRepository = triggerDefinitionRepository;
     this.schedulerConfigs = new SchedulerConfigs(applicationConfig);
     this.jobExecutor =
-        ThreadUtils.newFixedThreadExecutor("job-runner-", schedulerConfigs.maxConcurrentJobs());
+        new ContextualExecutor(
+            ThreadUtils.newFixedThreadExecutor(
+                "job-runner-", schedulerConfigs.maxConcurrentJobs()));
+    ;
   }
 
   public void start(final ActorRef<SchedulerActor.Command> scheduler) {

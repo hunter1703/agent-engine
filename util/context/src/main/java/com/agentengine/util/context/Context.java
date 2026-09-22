@@ -2,6 +2,7 @@ package com.agentengine.util.context;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 
@@ -42,7 +43,8 @@ public record Context(String requestId, UserContext userContext) {
   }
 
   public static int requireCustomerId() {
-    return customerId().orElseThrow(() -> new IllegalStateException("No customer in the current context"));
+    return customerId()
+        .orElseThrow(() -> new IllegalStateException("No customer in the current context"));
   }
 
   public static Optional<Integer> userId() {
@@ -55,5 +57,9 @@ public record Context(String requestId, UserContext userContext) {
 
   public static <T> Callable<T> bindCurrent(final Callable<T> callable) {
     return current().<Callable<T>>map(context -> () -> context.call(callable)).orElse(callable);
+  }
+
+  public static void runAsSystem(final Runnable runnable) {
+    new Context(UUID.randomUUID().toString(), UserContext.SYSTEM).run(runnable);
   }
 }

@@ -25,7 +25,6 @@ public final class BroadcasterEntity
   private static final Logger LOG = LoggerFactory.getLogger(BroadcasterEntity.class);
   private static final int MAX_RETAINED_EVENTS = 256;
 
-  private final ActorContext<BroadcasterCommand> context;
   private final Address selfAddress;
   // Split by locality once at subscribe time rather than re-checking on every publish: a local
   // subscriber shares this JVM with the broadcaster, so a plain tell() hands it the exact same
@@ -41,8 +40,7 @@ public final class BroadcasterEntity
       final String typeKeyName,
       final String entityId,
       final EventSourcePlugin plugin) {
-    super(typeKeyName, entityId, plugin);
-    this.context = context;
+    super(typeKeyName, entityId, plugin, context);
     this.selfAddress = Cluster.get(context.getSystem()).selfMember().address();
   }
 
@@ -106,7 +104,7 @@ public final class BroadcasterEntity
                   .replyTo()
                   .tell(
                       new SubscribeAck(
-                          context.getSelf(),
+                          actorContext.getSelf(),
                           replayAccepted,
                           state.oldestRetainedSequence(),
                           state.latestPublishedSequence(),
@@ -154,9 +152,9 @@ public final class BroadcasterEntity
     final ActorRef<SubscriberCommand> previousElsewhere = otherBucket.remove(subscriptionId);
     final ActorRef<SubscriberCommand> replaced = previous != null ? previous : previousElsewhere;
     if (replaced != null && !replaced.equals(subscriber)) {
-      context.unwatch(replaced);
+      actorContext.unwatch(replaced);
     }
-    context.watchWith(subscriber, new BroadcasterCommand.UnsubscribeCommand(subscriptionId));
+    actorContext.watchWith(subscriber, new BroadcasterCommand.UnsubscribeCommand(subscriptionId));
   }
 
   private void detachSubscriber(final String subscriptionId) {
@@ -164,7 +162,7 @@ public final class BroadcasterEntity
     final ActorRef<SubscriberCommand> subscriber =
         removedLocal != null ? removedLocal : remoteSubscribers.remove(subscriptionId);
     if (subscriber != null) {
-      context.unwatch(subscriber);
+      actorContext.unwatch(subscriber);
     }
   }
 

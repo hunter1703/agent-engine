@@ -6,6 +6,8 @@ import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.UniqueRecord;
+import com.agentengine.util.context.Context;
+import com.agentengine.util.context.Contextual;
 import com.agentengine.util.context.UserContext;
 import com.agentengine.util.pekko.PekkoSerializable;
 import com.google.adk.events.Event;
@@ -35,7 +37,15 @@ public record SessionActorState(
     List<RunState> runs,
     RolledBackRun lastRollback,
     ResourceGrants grants)
-    implements PekkoSerializable {
+    implements PekkoSerializable, Contextual {
+
+  @Override
+  public Context context() {
+    if (topology == null || ownerContext == null) {
+      return null;
+    }
+    return new Context(topology.sessionId(), ownerContext);
+  }
 
   public RunResult lastResult() {
     final RunState current = currentRun();
@@ -103,7 +113,7 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         updatedTopology,
-            ownerContext,
+        ownerContext,
         pauseState,
         runs,
         lastRollback,

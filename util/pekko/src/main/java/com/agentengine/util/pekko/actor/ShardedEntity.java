@@ -1,5 +1,9 @@
 package com.agentengine.util.pekko.actor;
 
+import com.agentengine.util.pekko.EventSourcePlugin;
+import com.typesafe.config.Config;
+import java.util.Optional;
+import org.apache.pekko.actor.typed.javadsl.ActorContext;
 import org.apache.pekko.persistence.typed.PersistenceId;
 import org.apache.pekko.persistence.typed.javadsl.CommandHandler;
 import org.apache.pekko.persistence.typed.javadsl.EventHandler;
@@ -39,6 +43,9 @@ import org.apache.pekko.persistence.typed.javadsl.EventSourcedBehavior;
 public abstract class ShardedEntity<Command, Event, State>
     extends EventSourcedBehavior<Command, Event, State> {
 
+  private final EventSourcePlugin plugin;
+  protected final ActorContext<Command> actorContext;
+
   /**
    * Derives the persistence ID from the type key name and the shard entity ID, following the Pekko
    * convention of {@code PersistenceId.of(typeKey.name(), entityId)}.
@@ -49,9 +56,32 @@ public abstract class ShardedEntity<Command, Event, State>
    *
    * @param typeKeyName the entity type key name — pass {@code TYPE_KEY.name()}
    * @param entityId the shard entity ID
+   * @param plugin the event source plugin
    */
-  protected ShardedEntity(final String typeKeyName, final String entityId) {
+  protected ShardedEntity(
+      final String typeKeyName,
+      final String entityId,
+      final EventSourcePlugin plugin,
+      ActorContext<Command> actorContext) {
     super(PersistenceId.of(typeKeyName, entityId));
+    this.plugin = plugin == null ? EventSourcePlugin.NoPlugin.INSTANCE : plugin;
+    this.actorContext = actorContext;
+  }
+
+  public String journalPluginId() {
+    return plugin.journalPluginId();
+  }
+
+  public String snapshotPluginId() {
+    return plugin.snapshotPluginId();
+  }
+
+  public Optional<Config> journalPluginConfig() {
+    return plugin.journalPluginConfig();
+  }
+
+  public Optional<Config> snapshotPluginConfig() {
+    return plugin.snapshotPluginConfig();
   }
 
   @Override

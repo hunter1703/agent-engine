@@ -5,6 +5,11 @@ import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.SchedulerConfigs;
 import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.context.Context;
+import com.agentengine.util.context.Contextual;
+import com.agentengine.util.context.UserContext;
+import com.agentengine.util.pekko.PekkoSerializable;
+import com.agentengine.util.pekko.actor.ContextualInterceptor;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executor;
@@ -54,17 +59,21 @@ public final class WorkerActor extends AbstractBehavior<WorkerActor.Command> {
       final TriggerDefinitionRepository triggerDefinitionRepository,
       final Executor jobExecutor,
       final SchedulerConfigs schedulerConfigs) {
-    return Behaviors.setup(
-        context ->
-            Behaviors.withTimers(
-                timers ->
-                    new WorkerActor(
-                        context,
-                        timers,
-                        scheduler,
-                        triggerDefinitionRepository,
-                        jobExecutor,
-                        schedulerConfigs)));
+    return Behaviors.intercept(
+        () ->
+            new ContextualInterceptor<>(
+                Command.class, new Context(UUID.randomUUID().toString(), UserContext.SYSTEM)),
+        Behaviors.setup(
+            context ->
+                Behaviors.withTimers(
+                    timers ->
+                        new WorkerActor(
+                            context,
+                            timers,
+                            scheduler,
+                            triggerDefinitionRepository,
+                            jobExecutor,
+                            schedulerConfigs))));
   }
 
   @Override
@@ -85,7 +94,9 @@ public final class WorkerActor extends AbstractBehavior<WorkerActor.Command> {
   private Behavior<Command> onWorkReceived(final Command.WorkReceived command) {
     requesting = false;
     if (command.failure() != null) {
-      getContext().getLog().warn("Scheduler did not answer the request for work", command.failure());
+      getContext()
+          .getLog()
+          .warn("Scheduler did not answer the request for work", command.failure());
       return this;
     }
     command.triggers().forEach(this::run);
@@ -143,7 +154,7 @@ public final class WorkerActor extends AbstractBehavior<WorkerActor.Command> {
     return (StringUtils.isBlank(host) ? "worker" : host) + ":" + UUID.randomUUID();
   }
 
-  public interface Command {
+  public interface Command extends Contextual, PekkoSerializable {
 
     record Poll() implements Command {}
 

@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.session.commands;
 
-import com.agentengine.util.pekko.actor.ContextualCommand;
+import com.agentengine.util.context.Contextual;
+import com.agentengine.util.pekko.PekkoSerializable;
 
-public abstract class SessionCommand extends ContextualCommand {}
+public interface SessionCommand extends Contextual, PekkoSerializable {}

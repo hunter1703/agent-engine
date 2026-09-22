@@ -30,11 +30,11 @@ import com.agentengine.util.common.*;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.UniqueRecord;
-import com.agentengine.util.context.Context;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.pekko.ContextualShardedEntity;
 import com.agentengine.util.pekko.EventSourcePlugin;
 import com.google.adk.events.Event;
@@ -48,17 +48,14 @@ import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
-import java.util.function.Supplier;
 import org.apache.pekko.Done;
 import org.apache.pekko.actor.Scheduler;
 import org.apache.pekko.actor.typed.ActorRef;
-import org.apache.pekko.actor.typed.PostStop;
 import org.apache.pekko.actor.typed.javadsl.ActorContext;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
 import org.apache.pekko.japi.function.Function;
 import org.apache.pekko.pattern.Patterns;
-import org.apache.pekko.persistence.typed.RecoveryCompleted;
 import org.apache.pekko.persistence.typed.SnapshotAdapter;
 import org.apache.pekko.persistence.typed.javadsl.*;
 import org.slf4j.Logger;
@@ -82,8 +79,6 @@ public final class SessionActor
 
   private static final ExecutorService RUN_EXECUTOR =
       ThreadUtils.newVirtualThreadExecutor("session-run-");
-
-  private final ActorContext<SessionCommand> context;
   private final ActorRef<SessionCommand> self;
   private final SessionEventChannel eventChannel;
   private final List<Event> turnEvents = new LinkedList<>();
@@ -108,7 +103,7 @@ public final class SessionActor
   private SessionRunner runner;
 
   public SessionActor(
-      final ActorContext<SessionCommand> context,
+      final ActorContext<SessionCommand> actorContext,
       final String entityId,
       final EventSourcePlugin plugin,
       final SessionEventChannel eventChannel,
@@ -118,9 +113,8 @@ public final class SessionActor
       final SessionTitleGenerator sessionTitleGenerator,
       final MemoryService memoryService,
       final SessionEventsRepository sessionEventsRepository) {
-    super(TYPE_KEY.name(), entityId, plugin);
-    this.context = context;
-    this.self = context.getSelf();
+    super(TYPE_KEY.name(), entityId, plugin, actorContext);
+    this.self = actorContext.getSelf();
     this.eventChannel = eventChannel;
     this.refSupplier = refSupplier;
     this.runnerFactory = runnerFactory;
@@ -133,20 +127,6 @@ public final class SessionActor
   @Override
   public SessionActorState emptyState() {
     return SessionActorState.initial();
-  }
-
-  @Override
-  public SignalHandler<SessionActorState> signalHandler() {
-    return newSignalHandlerBuilder()
-        .onSignal(RecoveryCompleted.class, (state, _) -> onRecoveryCompleted(state))
-        .onSignal(
-            PostStop.class,
-            (_, _) -> {
-              if (runner != null) {
-                runner.close();
-              }
-            })
-        .build();
   }
 
   @Override
@@ -176,11 +156,19 @@ public final class SessionActor
     };
   }
 
-  private void onRecoveryCompleted(final SessionActorState state) {
+  @Override
+  protected void onPostStop(final SessionActorState state) {
+    if (runner != null) {
+      runner.close();
+    }
+  }
+
+  @Override
+  protected void onRecoveryCompleted(final SessionActorState state) {
     if (state == null || state.topology() == null) {
       return;
     }
-    defaultContext(state).run(() -> recover(state));
+    recover(state);
   }
 
   private void recover(final SessionActorState state) {
@@ -294,20 +282,20 @@ public final class SessionActor
 
   private Effect<SessionFact, SessionActorState> discardInterrupts(
       final SessionActorState state, final DiscardInterruptsCommand command) {
-    return Effect()
-        .persist(new InterruptsDiscardedFact(command.getInterruptIds()))
-        .thenRun(inContext(
-            newState -> {
-              if (!newState.allInterruptsAnswered()) {
-                stayPaused(newState);
-              } else {
-                reRunFromLastCommittedTurn(newState);
-              }
-            }));
+    return thenRun(
+        Effect().persist(new InterruptsDiscardedFact(command.interruptIds())),
+        newState -> {
+          if (!newState.allInterruptsAnswered()) {
+            stayPaused(newState);
+          } else {
+            reRunFromLastCommittedTurn(newState);
+          }
+        });
   }
 
   @Override
-  protected CommandHandler<SessionCommand, SessionFact, SessionActorState> contextualCommandHandler() {
+  protected CommandHandler<SessionCommand, SessionFact, SessionActorState>
+      contextualCommandHandler() {
     final CommandHandlerBuilder<SessionCommand, SessionFact, SessionActorState> builder =
         newCommandHandlerBuilder();
     builder
@@ -339,16 +327,16 @@ public final class SessionActor
 
   private Effect<SessionFact, SessionActorState> initialize(
       final SessionActorState state, final InitializeCommand command) {
-    final SessionTopology topology = command.getTopology();
+    final SessionTopology topology = command.topology();
     // Persist InitializedFact only on first initialization — re-sending InitializeCommand for an
     // existing session (e.g. a new turn on a root session) must not wipe accumulated state.
     if (state.topology() != null) {
-      return Effect().none().thenReply(command.getReplyTo(), _ -> Done.done());
+      return Effect().none().thenReply(command.replyTo(), _ -> Done.done());
     }
-    return Effect()
-        .persist(new InitializedFact(topology, Context.getUserContext().orElseThrow()))
-        .thenRun(inContext(_ -> init(topology)))
-        .thenReply(command.getReplyTo(), _ -> Done.done());
+    return thenRun(
+            Effect().persist(new InitializedFact(topology, Context.getUserContext().orElseThrow())),
+            _ -> init(topology))
+        .thenReply(command.replyTo(), _ -> Done.done());
   }
 
   private void init(final SessionTopology topology) {
@@ -397,9 +385,9 @@ public final class SessionActor
               .none()
               .thenReply(command.getReplyTo(), _ -> new StartSessionResult.DuplicateRequest());
         } else {
-          yield Effect()
-              .persist(new MessageEnqueuedFact(message))
-              .thenRun(inContext(_ -> self.tell(new StartNextQueuedMessageCommand())))
+          yield thenRun(
+                  Effect().persist(new MessageEnqueuedFact(message)),
+                  _ -> self.tell(new StartNextQueuedMessageCommand()))
               .thenReply(command.getReplyTo(), _ -> new StartSessionResult.Accepted());
         }
       }
@@ -444,20 +432,16 @@ public final class SessionActor
       }
 
       final EntityRef<SessionCommand> childRef = refSupplier.apply(childSessionId);
-      context.pipeToSelf(
+      pipeToSelf(
           childRef.ask(
               (Function<ActorRef<ResumeResult>, SessionCommand>)
                   askReplyTo -> new ResumeCommand(resumeRequest, askReplyTo),
               ASK_TIMEOUT),
           // Piped back as a command rather than handled inline: the future completes on a thread
           // other than the actor's, which cannot use actor-only abstractions like persist().
-          inContext(
-              (resumeResult, error) ->
-                  new ResumeChildCommand(
-                      resumeRequest,
-                      replyTo,
-                      resumeResult,
-                      error == null ? null : error.getMessage())));
+          (resumeResult, error) ->
+              new ResumeChildCommand(
+                  resumeRequest, replyTo, resumeResult, error == null ? null : error.getMessage()));
       return Effect().none();
     }
 
@@ -478,49 +462,48 @@ public final class SessionActor
 
   private Effect<SessionFact, SessionActorState> resumeChild(
       final SessionActorState state, final ResumeChildCommand command) {
-    final ActorRef<ResumeResult> replyTo = command.getReplyTo();
-    if (command.getError() != null) {
+    final ActorRef<ResumeResult> replyTo = command.replyTo();
+    if (command.error() != null) {
       return Effect()
           .none()
           .thenReply(
               replyTo,
               _ ->
                   new ResumeResult.Rejected(
-                      "Failed to forward resume to child session: " + command.getError()));
+                      "Failed to forward resume to child session: " + command.error()));
     }
 
-    if (command.getResult() instanceof ResumeResult.Rejected rejected) {
+    if (command.result() instanceof ResumeResult.Rejected rejected) {
       return Effect().none().thenReply(replyTo, _ -> rejected);
     }
 
     return resumed(
         replyTo,
-        command.getResumeRequest(),
+        command.resumeRequest(),
         state
             .pauseState()
             .pendingExternalSelfInterrupts()
-            .containsKey(command.getResumeRequest().getInterruptId()));
+            .containsKey(command.resumeRequest().getInterruptId()));
   }
 
   private Effect<SessionFact, SessionActorState> completeChild(
       final SessionActorState state, final CompleteChildCommand command) {
-    final String interruptId = state.getInternalInterruptId(command.getChildSessionId());
+    final String interruptId = state.getInternalInterruptId(command.childSessionId());
     LOG.debug(
         "Received Child completed for topology : {}, child sessionId : {}, interruptId : {}",
         JsonUtils.toJson(state.topology()),
-        command.getChildSessionId(),
+        command.childSessionId(),
         interruptId);
     if (interruptId == null) {
       return Effect().none();
     }
-    final String childAgentId = SessionUtils.agentIdFromSessionId(command.getChildSessionId());
+    final String childAgentId = SessionUtils.agentIdFromSessionId(command.childSessionId());
     final String author = childAgentId != null ? childAgentId : Constants.AUTHOR_USER;
     final ResumeRequest resumeRequest =
         new ResumeRequest(
             interruptId,
             true,
-            AwaitAgentTool.buildCompletedResponseMap(
-                command.getChildSessionId(), command.getResult()),
+            AwaitAgentTool.buildCompletedResponseMap(command.childSessionId(), command.result()),
             author);
     return resumed(null, resumeRequest, true);
   }
@@ -534,19 +517,18 @@ public final class SessionActor
       final ResumeRequest resumeRequest,
       final boolean pendingSelfInterrupt) {
     final EffectBuilder<SessionFact, SessionActorState> builder =
-        Effect()
-            .persist(new ResumedFact(resumeRequest))
-            .thenRun(inContext(
-                newState -> {
-                  LOG.debug(
-                      "resumed for topology : {}, all interruptsAnswered : {}, pendingSelfInterrupt:{}",
-                      JsonUtils.toJson(newState.topology()),
-                      newState.allInterruptsAnswered(),
-                      pendingSelfInterrupt);
-                  if (pendingSelfInterrupt && newState.allInterruptsAnswered()) {
-                    self.tell(new ContinueRunCommand());
-                  }
-                }));
+        thenRun(
+            Effect().persist(new ResumedFact(resumeRequest)),
+            (newState -> {
+              LOG.debug(
+                  "resumed for topology : {}, all interruptsAnswered : {}, pendingSelfInterrupt:{}",
+                  JsonUtils.toJson(newState.topology()),
+                  newState.allInterruptsAnswered(),
+                  pendingSelfInterrupt);
+              if (pendingSelfInterrupt && newState.allInterruptsAnswered()) {
+                self.tell(new ContinueRunCommand());
+              }
+            }));
     return replyTo != null ? builder.thenReply(replyTo, _ -> new ResumeResult.Accepted()) : builder;
   }
 
@@ -567,103 +549,97 @@ public final class SessionActor
         "Continuing run with resumes : {} for topology : {}",
         JsonUtils.toJson(resumeRequests),
         JsonUtils.toJson(state.topology()));
-    return Effect()
-        .persist(new ContinuingFact())
-        .thenRun(inContext(
-            newState -> {
-              resumeRequests.forEach(
-                  resumeRequest -> resumedInterruptIds.add(resumeRequest.getInterruptId()));
-              RUN_EXECUTOR.execute(() -> runner.resume(resumeRequests, newState.grants()));
-              LOG.debug(
-                  "Continued run with resumes : {} for topology : {}",
-                  JsonUtils.toJson(resumeRequests),
-                  JsonUtils.toJson(state.topology()));
-              updateSessionStatus(newState, SessionStatus.RUNNING);
-            }));
+    return thenRun(
+        Effect().persist(new ContinuingFact()),
+        (newState -> {
+          resumeRequests.forEach(
+              resumeRequest -> resumedInterruptIds.add(resumeRequest.getInterruptId()));
+          RUN_EXECUTOR.execute(() -> runner.resume(resumeRequests, newState.grants()));
+          LOG.debug(
+              "Continued run with resumes : {} for topology : {}",
+              JsonUtils.toJson(resumeRequests),
+              JsonUtils.toJson(state.topology()));
+          updateSessionStatus(newState, SessionStatus.RUNNING);
+        }));
   }
 
   private Effect<SessionFact, SessionActorState> await(
       final SessionActorState state, final AwaitCommand command) {
     return switch (state.sessionState()) {
       case PAUSED, TRIGGERED_RUN, RUNNING ->
-          Effect().none().thenReply(command.getReplyTo(), _ -> RunResult.incomplete());
-      default -> Effect().none().thenReply(command.getReplyTo(), _ -> state.lastResult());
+          Effect().none().thenReply(command.replyTo(), _ -> RunResult.incomplete());
+      default -> Effect().none().thenReply(command.replyTo(), _ -> state.lastResult());
     };
   }
 
   private Effect<SessionFact, SessionActorState> awaitChild(
       final SessionActorState state, final AwaitChildCommand command) {
-    final String childSessionId = command.getChildSessionId();
+    final String childSessionId = command.childSessionId();
     final Optional<ChildSession> child = state.child(childSessionId);
     if (child.isEmpty()) {
       return Effect()
           .none()
           .thenReply(
-              command.getReplyTo(),
+              command.replyTo(),
               _ -> RunResult.failure("Unknown child session: " + childSessionId));
     }
-    self.tell(new ReapChildCommand(command.getReplyTo(), childSessionId, 1));
+    self.tell(new ReapChildCommand(command.replyTo(), childSessionId, 1));
     return Effect().none();
   }
 
   private Effect<SessionFact, SessionActorState> reapChild(
       final SessionActorState state, final ReapChildCommand command) {
-    final EntityRef<SessionCommand> childRef = refSupplier.apply(command.getChildSessionId());
-    context.pipeToSelf(
+    final EntityRef<SessionCommand> childRef = refSupplier.apply(command.childSessionId());
+    actorContext.pipeToSelf(
         childRef.ask(
             (Function<ActorRef<RunResult>, SessionCommand>) AwaitCommand::new, ASK_TIMEOUT),
-        inContext(
-            (result, error) ->
-                new ReapChildResultCommand(
-                    command.getReplyTo(),
-                    command.getChildSessionId(),
-                    command.getAttempt(),
-                    result,
-                    error)));
+        (result, error) ->
+            new ReapChildResultCommand(
+                command.replyTo(), command.childSessionId(), command.attempt(), result, error));
     return Effect().none();
   }
 
   private Effect<SessionFact, SessionActorState> reapResult(
       final SessionActorState state, final ReapChildResultCommand command) {
-    if (command.getError() != null) {
-      if (command.getAttempt() >= MAX_CHILD_POLL_ATTEMPTS) {
+    if (command.error() != null) {
+      if (command.attempt() >= MAX_CHILD_POLL_ATTEMPTS) {
         LOG.error(
             "Giving up polling child session {} after {} attempts",
-            command.getChildSessionId(),
-            command.getAttempt());
+            command.childSessionId(),
+            command.attempt());
         command
-            .getReplyTo()
+            .replyTo()
             .tell(
                 RunResult.failure(
                     "Child session "
-                        + command.getChildSessionId()
+                        + command.childSessionId()
                         + " unreachable after "
-                        + command.getAttempt()
+                        + command.attempt()
                         + " attempts"));
       } else {
         final ReapChildCommand retry =
             new ReapChildCommand(
-                command.getReplyTo(), command.getChildSessionId(), command.getAttempt() + 1);
-        context
+                command.replyTo(), command.childSessionId(), command.attempt() + 1);
+        actorContext
             .getSystem()
             .classicSystem()
             .scheduler()
             .scheduleOnce(
-                Duration.ofSeconds(1), () -> self.tell(retry), context.getExecutionContext());
+                Duration.ofSeconds(1), () -> self.tell(retry), actorContext.getExecutionContext());
       }
     } else {
-      command.getReplyTo().tell(command.getResult());
+      command.replyTo().tell(command.result());
     }
     return Effect().none();
   }
 
   private Effect<SessionFact, SessionActorState> startChild(
       final SessionActorState state, final StartChildCommand command) {
-    final String childAgentId = command.getAgentId();
-    final UniqueRecord<UserMessage> commandMessage = command.getMessage();
+    final String childAgentId = command.agentId();
+    final UniqueRecord<UserMessage> commandMessage = command.message();
     final String childSessionId = commandMessage.getId();
     final UserMessage message = commandMessage.getRecord();
-    final ActorRef<StartChildResult> replyTo = command.getReplyTo();
+    final ActorRef<StartChildResult> replyTo = command.replyTo();
     if (state.child(childSessionId).isPresent()) {
       final StartChildResult result =
           new StartChildResult(childSessionId, new StartSessionResult.Accepted());
@@ -675,22 +651,21 @@ public final class SessionActor
             && !turnEvents.isEmpty())) {
       // TRIGGERED_RUN/CONTINUING with events already buffered means the run is actively producing
       // its first turn — sessionState only flips to RUNNING once that turn commits.
-      return Effect()
-          .persist(
-              new ChildStartingFact(
-                  new StartingChild(command.getAgentId(), childSessionId, commandMessage)))
-          .thenRun(inContext(
-              _ ->
-                  context.pipeToSelf(
-                      startChildSession(state, childAgentId, childSessionId, message),
-                      inContext(
-                          (result, error) ->
-                              new StartChildCompletedCommand(
-                                  childSessionId,
-                                  childAgentId,
-                                  replyTo,
-                                  result,
-                                  error == null ? null : ExceptionUtils.getErrorMessage(error))))));
+      return thenRun(
+          Effect()
+              .persist(
+                  new ChildStartingFact(
+                      new StartingChild(command.agentId(), childSessionId, commandMessage))),
+          (_ ->
+              pipeToSelf(
+                  startChildSession(state, childAgentId, childSessionId, message),
+                  (result, error) ->
+                      new StartChildCompletedCommand(
+                          childSessionId,
+                          childAgentId,
+                          replyTo,
+                          result,
+                          error == null ? null : ExceptionUtils.getErrorMessage(error)))));
     }
     final StartChildResult rejected =
         new StartChildResult(
@@ -733,78 +708,76 @@ public final class SessionActor
 
   private Effect<SessionFact, SessionActorState> startChildCompleted(
       final SessionActorState state, final StartChildCompletedCommand command) {
-    final ActorRef<StartChildResult> replyTo = command.getReplyTo();
+    final ActorRef<StartChildResult> replyTo = command.replyTo();
 
-    if (command.getError() != null) {
+    if (command.error() != null) {
       final StartChildResult result =
           new StartChildResult(
-              command.getSessionId(),
-              new StartSessionResult.Rejected(
-                  "Failed to start child session: " + command.getError()));
-      final var effect = Effect().persist(new ChildStartFailedFact(command.getSessionId()));
+              command.sessionId(),
+              new StartSessionResult.Rejected("Failed to start child session: " + command.error()));
+      final var effect = Effect().persist(new ChildStartFailedFact(command.sessionId()));
       return replyTo != null ? effect.thenReply(replyTo, _ -> result) : effect;
     }
 
-    if (command.getResult() instanceof StartSessionResult.Rejected rejected) {
-      final StartChildResult result = new StartChildResult(command.getSessionId(), rejected);
-      final var effect = Effect().persist(new ChildStartFailedFact(command.getSessionId()));
+    if (command.result() instanceof StartSessionResult.Rejected rejected) {
+      final StartChildResult result = new StartChildResult(command.sessionId(), rejected);
+      final var effect = Effect().persist(new ChildStartFailedFact(command.sessionId()));
       return replyTo != null ? effect.thenReply(replyTo, _ -> result) : effect;
     }
 
     final EffectBuilder<SessionFact, SessionActorState> effect =
-        Effect().persist(new ChildStartedFact(command.getSessionId(), command.getAgentId()));
+        Effect().persist(new ChildStartedFact(command.sessionId(), command.agentId()));
     return replyTo != null
         ? effect.thenReply(
-            replyTo, _ -> new StartChildResult(command.getSessionId(), command.getResult()))
+            replyTo, _ -> new StartChildResult(command.sessionId(), command.result()))
         : effect;
   }
 
   private Effect<SessionFact, SessionActorState> sendMessage(
       final SessionActorState state, final SendMessageCommand command) {
-    final String childSessionId = command.getSessionId();
+    final String childSessionId = command.sessionId();
     final Optional<ChildSession> child = state.child(childSessionId);
     if (child.isEmpty()) {
       return Effect()
           .none()
           .thenReply(
-              command.getReplyTo(),
+              command.replyTo(),
               _ -> new StartSessionResult.Rejected("Unknown child session: " + childSessionId));
     }
 
     final EntityRef<SessionCommand> childRef = refSupplier.apply(childSessionId);
-    return Effect()
-        .none()
-        .thenRun(inContext(
-            _ ->
-                childRef
-                    .ask(
-                        (Function<ActorRef<StartSessionResult>, SessionCommand>)
-                            replyTo ->
-                                new StartCommand(
-                                    new UniqueRecord<>(command.getMessage().getRecord()), replyTo),
-                        ASK_TIMEOUT)
-                    .whenComplete(
-                        (result, error) -> {
-                          if (error != null) {
-                            command
-                                .getReplyTo()
-                                .tell(
-                                    new StartSessionResult.Rejected(
-                                        "Failed to send message to child session: "
-                                            + error.getMessage()));
-                            return;
-                          }
-                          if (result instanceof StartSessionResult.DuplicateRequest) {
-                            command.getReplyTo().tell(new StartSessionResult.Accepted());
-                          } else {
-                            command.getReplyTo().tell(result);
-                          }
-                        })));
+    return thenRun(
+        Effect().none(),
+        (_ ->
+            childRef
+                .ask(
+                    (Function<ActorRef<StartSessionResult>, SessionCommand>)
+                        replyTo ->
+                            new StartCommand(
+                                new UniqueRecord<>(command.message().getRecord()), replyTo),
+                    ASK_TIMEOUT)
+                .whenComplete(
+                    (result, error) -> {
+                      if (error != null) {
+                        command
+                            .replyTo()
+                            .tell(
+                                new StartSessionResult.Rejected(
+                                    "Failed to send message to child session: "
+                                        + error.getMessage()));
+                        return;
+                      }
+                      if (result instanceof StartSessionResult.DuplicateRequest) {
+                        command.replyTo().tell(new StartSessionResult.Accepted());
+                      } else {
+                        command.replyTo().tell(result);
+                      }
+                    })));
   }
 
   private Effect<SessionFact, SessionActorState> publishEvent(
       final SessionActorState state, final PublishEventCommand command) {
-    final Event event = command.getEvent();
+    final Event event = command.event();
 
     LOG.debug(
         "[USER_MESSAGE_TRACE][{}] SessionActor.publishEvent() received event: author={} turnComplete={} content={}",
@@ -878,14 +851,13 @@ public final class SessionActor
       } else {
         LOG.debug("Publishing with pause effect");
         effectBuilder =
-            Effect()
-                .persist(pauseFacts)
-                .thenRun(inContext(
-                    newState -> {
-                      externalInterruptIds.forEach(
-                          id -> propagateSelfPauseToParent(newState.topology(), id));
-                      updateSessionStatus(newState, SessionStatus.PAUSED);
-                    }));
+            thenRun(
+                Effect().persist(pauseFacts),
+                (newState -> {
+                  externalInterruptIds.forEach(
+                      id -> propagateSelfPauseToParent(newState.topology(), id));
+                  updateSessionStatus(newState, SessionStatus.PAUSED);
+                }));
       }
     } else {
       LOG.debug(
@@ -972,20 +944,20 @@ public final class SessionActor
         commitFacts.addAll(pauseFacts);
         LOG.debug("Publishing with commit effect");
         effectBuilder =
-            Effect()
-                .persist(commitFacts)
-                .thenRun(inContext(
-                    newState -> {
-                      externalInterruptIds.forEach(
-                          id -> propagateSelfPauseToParent(newState.topology(), id));
-                      if (newState.sessionState() == SessionState.PAUSED) {
-                        updateSessionStatus(newState, SessionStatus.PAUSED);
-                      }
-                    }));
+            thenRun(
+                Effect().persist(commitFacts),
+                (newState -> {
+                  externalInterruptIds.forEach(
+                      id -> propagateSelfPauseToParent(newState.topology(), id));
+                  if (newState.sessionState() == SessionState.PAUSED) {
+                    updateSessionStatus(newState, SessionStatus.PAUSED);
+                  }
+                }));
       }
     }
-    return effectBuilder.thenRun(inContext(
-        _ -> {
+    return thenRun(
+        effectBuilder,
+        (_ -> {
           LOG.debug(
               "Publishing adk event : {} as session event :{}",
               JsonUtils.toJson(event),
@@ -997,15 +969,13 @@ public final class SessionActor
   private Effect<SessionFact, SessionActorState> childPaused(
       final SessionActorState state, final PauseChildCommand command) {
     EffectBuilder<SessionFact, SessionActorState> effect;
-    if (state.pauseState().getPausedChild(command.getInterruptId()) != null) {
+    if (state.pauseState().getPausedChild(command.interruptId()) != null) {
       effect = Effect().none();
     } else {
       effect =
-          Effect()
-              .persist(
-                  PausedFact.childPaused(command.getChildSessionId(), command.getInterruptId()));
+          Effect().persist(PausedFact.childPaused(command.childSessionId(), command.interruptId()));
     }
-    return effect.thenReply(command.getReplyTo(), _ -> Done.done());
+    return effect.thenReply(command.replyTo(), _ -> Done.done());
   }
 
   /**
@@ -1031,8 +1001,8 @@ public final class SessionActor
 
     // Captured on the actor's own thread; whenComplete below may run on another thread, and
     // these are the only two actor-affiliated references that are safe to touch from there.
-    final Scheduler scheduler = context.getSystem().classicSystem().scheduler();
-    final ExecutionContextExecutor executionContext = context.getExecutionContext();
+    final Scheduler scheduler = actorContext.getSystem().classicSystem().scheduler();
+    final ExecutionContextExecutor executionContext = actorContext.getExecutionContext();
 
     Patterns.retry(
             () ->
@@ -1044,7 +1014,7 @@ public final class SessionActor
             Duration.ofSeconds(1),
             Duration.ofSeconds(30),
             0.2,
-            context.getSystem())
+            actorContext.getSystem())
         .whenComplete(
             (ignored, error) -> {
               if (error != null) {
@@ -1073,8 +1043,8 @@ public final class SessionActor
    */
   private Effect<SessionFact, SessionActorState> retryPropagateSelfPause(
       final SessionActorState state, final SelfPauseCommand command) {
-    if (state.pauseState().pendingExternalSelfInterrupts().containsKey(command.getInterruptId())) {
-      propagateSelfPauseToParent(command.getTopology(), command.getInterruptId());
+    if (state.pauseState().pendingExternalSelfInterrupts().containsKey(command.interruptId())) {
+      propagateSelfPauseToParent(command.topology(), command.interruptId());
     }
     return Effect().none();
   }
@@ -1114,10 +1084,10 @@ public final class SessionActor
     }
     // RollbackFact persists first: it's the source of truth, so a crash before it lands means the
     // rollback simply never happened, and the caller's ask times out with nothing changed.
-    return Effect()
-        .persist(new RollbackFact(command.getRunId()))
-        .thenRun(inContext(
-            newState -> invalidateRolledBackEvents(newState, command.getRunId(), rollbackSequence)))
+    return thenRun(
+            Effect().persist(new RollbackFact(command.getRunId())),
+            (newState ->
+                invalidateRolledBackEvents(newState, command.getRunId(), rollbackSequence)))
         .thenReply(command.getReplyTo(), _ -> new RollbackResult.Applied());
   }
 
@@ -1137,23 +1107,23 @@ public final class SessionActor
     }
 
     final UniqueRecord<UserMessage> nextMessage = state.queue().peek();
-    return Effect()
-        .persist(new StartedFact(nextMessage))
-        .thenRun(inContext(
-            newState -> {
-              LOG.debug(
-                  "[USER_MESSAGE_TRACE][{}] Starting message: '{}'",
-                  newState.topology().sessionId(),
-                  nextMessage.getRecord());
-              updateSessionStatus(newState, SessionStatus.RUNNING);
-              RUN_EXECUTOR.execute(() -> runner.start(nextMessage.getRecord(), newState.grants()));
-            }));
+    return thenRun(
+        Effect().persist(new StartedFact(nextMessage)),
+        (newState -> {
+          LOG.debug(
+              "[USER_MESSAGE_TRACE][{}] Starting message: '{}'",
+              newState.topology().sessionId(),
+              nextMessage.getRecord());
+          updateSessionStatus(newState, SessionStatus.RUNNING);
+          RUN_EXECUTOR.execute(() -> runner.start(nextMessage.getRecord(), newState.grants()));
+        }));
   }
 
   @Override
   protected Context defaultContext(final SessionActorState state) {
     if (state.ownerContext() == null) {
-      throw new IllegalStateException("Session " + persistenceId().entityId() + " has no owner context yet");
+      throw new IllegalStateException(
+          "Session " + persistenceId().entityId() + " has no owner context yet");
     }
     if (ownerContext == null) {
       ownerContext = new Context(state.topology().sessionId(), state.ownerContext());
@@ -1281,7 +1251,7 @@ public final class SessionActor
         && sessionState != SessionState.CONTINUING) {
       return Effect().none();
     }
-    final String error = command.getError();
+    final String error = command.error();
     final List<SessionFact> facts = new ArrayList<>();
     final boolean isFailed = StringUtils.isNotEmpty(error);
     if (isFailed) {
@@ -1316,7 +1286,7 @@ public final class SessionActor
     }
     facts.add(
         new CompletedFact(isFailed ? null : extractFinalAnswer(state), isFailed ? error : null));
-    return Effect().persist(facts).thenRun(inContext(newState -> afterComplete(newState, false)));
+    return thenRun(Effect().persist(facts), (newState -> afterComplete(newState, false)));
   }
 
   private void afterComplete(final SessionActorState state, final boolean isRecovery) {

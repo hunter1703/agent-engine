@@ -1,8 +1,13 @@
 package com.agentengine.scheduler.core.actor;
 
 import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
+import com.agentengine.util.context.Context;
+import com.agentengine.util.context.Contextual;
+import com.agentengine.util.context.UserContext;
 import com.agentengine.util.pekko.PekkoSerializable;
+import com.agentengine.util.pekko.actor.ContextualInterceptor;
 import java.time.Duration;
+import java.util.UUID;
 import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.javadsl.AbstractBehavior;
 import org.apache.pekko.actor.typed.javadsl.ActorContext;
@@ -33,12 +38,16 @@ public class TriggerReconcilerActor extends AbstractBehavior<TriggerReconcilerAc
   public static Behavior<Command> create(
       final TriggerDefinitionRepository triggerDefinitionRepository,
       final long heartbeatTimeoutMs) {
-    return Behaviors.setup(
-        context ->
-            Behaviors.withTimers(
-                timers ->
-                    new TriggerReconcilerActor(
-                        context, timers, triggerDefinitionRepository, heartbeatTimeoutMs)));
+    return Behaviors.intercept(
+        () ->
+            new ContextualInterceptor<>(
+                Command.class, new Context(UUID.randomUUID().toString(), UserContext.SYSTEM)),
+        Behaviors.setup(
+            context ->
+                Behaviors.withTimers(
+                    timers ->
+                        new TriggerReconcilerActor(
+                            context, timers, triggerDefinitionRepository, heartbeatTimeoutMs))));
   }
 
   @Override
@@ -54,7 +63,7 @@ public class TriggerReconcilerActor extends AbstractBehavior<TriggerReconcilerAc
     return Behaviors.same();
   }
 
-  public interface Command extends PekkoSerializable {
+  public interface Command extends Contextual, PekkoSerializable {
     record Sweep() implements Command {}
   }
 }

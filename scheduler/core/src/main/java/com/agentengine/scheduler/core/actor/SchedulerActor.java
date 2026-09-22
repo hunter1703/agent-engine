@@ -9,24 +9,27 @@ import com.agentengine.scheduler.core.SchedulerConfigs;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.collections.DeficitRoundRobinQueue;
+import com.agentengine.util.context.Context;
+import com.agentengine.util.context.Contextual;
+import com.agentengine.util.context.UserContext;
 import com.agentengine.util.pekko.PekkoSerializable;
+import com.agentengine.util.pekko.actor.ContextualInterceptor;
 import java.time.Duration;
 import java.util.AbstractQueue;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.stream.Collectors;
-
+import java.util.UUID;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.javadsl.AbstractBehavior;
 import org.apache.pekko.actor.typed.javadsl.ActorContext;
+import org.apache.pekko.actor.typed.javadsl.Behaviors;
 import org.apache.pekko.actor.typed.javadsl.Receive;
 import org.apache.pekko.actor.typed.javadsl.TimerScheduler;
 
@@ -45,12 +48,6 @@ import org.apache.pekko.actor.typed.javadsl.TimerScheduler;
  */
 public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Command> {
 
-  public static final List<String> RECONCILE_JOB_FIELDS =
-          List.of(
-                  TriggerDefinition.FIELD_JOB_DEFINITION + "." + JobDefinition.FIELD_USER_CONTEXT,
-                  TriggerDefinition.FIELD_JOB_DEFINITION + "." + BaseEntity.FIELD_TAGS,
-                  TriggerDefinition.FIELD_JOB_DEFINITION + "." + JobDefinition.FIELD_JOB_CLASS_NAME);
-
   private static final String TIMER_KEY = "scheduler";
   private static final String RECONCILE_TIMER_KEY = "reconciliation";
 
@@ -58,10 +55,11 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
   private final JobDefinitionRepository jobDefinitionRepository;
   private final SchedulerConfigs schedulerConfigs;
   private final TimerScheduler<Command> timers;
-  private DeficitRoundRobinQueue<Integer, TriggerDefinition> dueTriggers = new DeficitRoundRobinQueue<>(_ -> 1);
+  private DeficitRoundRobinQueue<Integer, TriggerDefinition> dueTriggers =
+      new DeficitRoundRobinQueue<>(_ -> 1);
   private boolean initialized;
 
-  public SchedulerActor(
+  private SchedulerActor(
       final ActorContext<Command> context,
       final TimerScheduler<Command> timers,
       final TriggerDefinitionRepository triggerDefinitionRepository,
@@ -77,6 +75,26 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
         RECONCILE_TIMER_KEY, new Command.Reconcile(), schedulerConfigs.reconcileInterval());
     timers.startTimerWithFixedDelay(
         TIMER_KEY, new Command.FetchTriggers(), schedulerConfigs.scanInterval());
+  }
+
+  public static Behavior<Command> create(
+      final TriggerDefinitionRepository triggerDefinitionRepository,
+      final JobDefinitionRepository jobDefinitionRepository,
+      final SchedulerConfigs schedulerConfigs) {
+    return Behaviors.intercept(
+        () ->
+            new ContextualInterceptor<>(
+                Command.class, new Context(UUID.randomUUID().toString(), UserContext.SYSTEM)),
+        Behaviors.setup(
+            context ->
+                Behaviors.withTimers(
+                    timers ->
+                        new SchedulerActor(
+                            context,
+                            timers,
+                            triggerDefinitionRepository,
+                            jobDefinitionRepository,
+                            schedulerConfigs))));
   }
 
   @Override
@@ -130,7 +148,9 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
             trigger.getJobDefinition().getUserContext().customerId(), trigger, 1, TenantQueue::new);
       } else {
         timers.startSingleTimer(
-            command.triggerId(), new Command.TriggerDue(command.triggerId()), Duration.ofMillis(delayMs));
+            command.triggerId(),
+            new Command.TriggerDue(command.triggerId()),
+            Duration.ofMillis(delayMs));
       }
     } catch (final RuntimeException exception) {
       getContext().getLog().error("Failed to process JobScheduled", exception);
@@ -218,7 +238,9 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
     for (final TriggerDefinition trigger : due) {
       jobIds.add(trigger.getJobDefinition().getId());
     }
-    return jobIds.isEmpty() ? Map.of() : jobDefinitionRepository.findByIds(jobIds, List.of(BaseEntity.FIELD_VERSION), null);
+    return jobIds.isEmpty()
+        ? Map.of()
+        : jobDefinitionRepository.findByIds(jobIds, List.of(BaseEntity.FIELD_VERSION), null);
   }
 
   /**
@@ -242,10 +264,15 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
 
     @Override
     public boolean offer(final TriggerDefinition trigger) {
-      final String tag = CollectionUtils.isEmpty(trigger.getJobDefinition().getTags())
-          ? "default"
-          : trigger.getJobDefinition().getTags().getFirst();
-      tagQueue.enqueue(tag, trigger, 1, () -> new PriorityQueue<>(Comparator.comparing(TriggerDefinition::getDueAt)));
+      final String tag =
+          CollectionUtils.isEmpty(trigger.getJobDefinition().getTags())
+              ? "default"
+              : trigger.getJobDefinition().getTags().getFirst();
+      tagQueue.enqueue(
+          tag,
+          trigger,
+          1,
+          () -> new PriorityQueue<>(Comparator.comparing(TriggerDefinition::getDueAt)));
       if (head == null) {
         head = tagQueue.poll();
       }
@@ -275,7 +302,7 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
     }
   }
 
-  public interface Command extends PekkoSerializable {
+  public interface Command extends Contextual, PekkoSerializable {
 
     record FetchTriggers() implements Command {}
 

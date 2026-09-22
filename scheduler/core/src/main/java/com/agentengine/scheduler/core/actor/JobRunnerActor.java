@@ -15,6 +15,9 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.context.Context;
+import com.agentengine.util.context.Contextual;
+import com.agentengine.util.pekko.PekkoSerializable;
+import com.agentengine.util.pekko.actor.ContextualInterceptor;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -74,19 +77,24 @@ public final class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Comman
       final TriggerDefinitionRepository triggerDefinitionRepository,
       final Executor jobExecutor,
       final Duration heartbeatInterval) {
-    return Behaviors.setup(
-        context ->
-            Behaviors.withTimers(
-                timers ->
-                    new JobRunnerActor(
-                        context,
-                        timers,
-                        trigger,
-                        scheduledBy,
-                        worker,
-                        triggerDefinitionRepository,
-                        jobExecutor,
-                        heartbeatInterval)));
+    return Behaviors.intercept(
+        () ->
+            new ContextualInterceptor<>(
+                Command.class,
+                new Context(trigger.getId(), trigger.getJobDefinition().getUserContext())),
+        Behaviors.setup(
+            context ->
+                Behaviors.withTimers(
+                    timers ->
+                        new JobRunnerActor(
+                            context,
+                            timers,
+                            trigger,
+                            scheduledBy,
+                            worker,
+                            triggerDefinitionRepository,
+                            jobExecutor,
+                            heartbeatInterval))));
   }
 
   @Override
@@ -117,12 +125,8 @@ public final class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Comman
               exception);
       return finish(null, false);
     }
-    final Context jobContext =
-        new Context(trigger.getId(), trigger.getJobDefinition().getUserContext());
     getContext()
-        .pipeToSelf(
-            CompletableFuture.supplyAsync(() -> jobContext.get(job::run), jobExecutor),
-            Command.RunFinished::new);
+        .pipeToSelf(CompletableFuture.supplyAsync(job::run, jobExecutor), Command.RunFinished::new);
     return this;
   }
 
@@ -159,7 +163,8 @@ public final class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Comman
       }
       getContext()
           .getLog()
-          .warn("Trigger {} is no longer queued for this worker. Not starting it.", trigger.getId());
+          .warn(
+              "Trigger {} is no longer queued for this worker. Not starting it.", trigger.getId());
     } catch (final RuntimeException exception) {
       getContext().getLog().error("Failed to start trigger {}", trigger.getId(), exception);
     }
@@ -212,7 +217,7 @@ public final class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Comman
         .newInstance(context);
   }
 
-  public interface Command {
+  public interface Command extends Contextual, PekkoSerializable {
 
     record Start() implements Command {}
 

@@ -13,7 +13,7 @@ import org.apache.pekko.actor.typed.ActorRef;
  * Commands that any party may send to a session actor — users via the API, peer sessions, or parent
  * sessions. No relationship constraint is required to send these.
  */
-public abstract class ExternalCommand extends SessionCommand {
+public abstract class ExternalCommand implements SessionCommand {
 
   public static final class StartCommand extends ExternalCommand {
     private UniqueRecord<UserMessage> message;
