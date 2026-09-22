@@ -1,9 +1,11 @@
 package com.agentengine.util.pekko.persistence;
 
+import com.agentengine.util.context.UserContext;
 import com.agentengine.util.infra.InfraClientFactory;
 import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.sql.SQLClientInfraConfig;
 import com.agentengine.util.sql.SQLServerInfraConfig;
+import com.agentengine.util.sql.SQLUtils;
 import com.typesafe.config.Config;
 import org.apache.pekko.actor.ActorSystem;
 import org.apache.pekko.persistence.jdbc.db.LazySlickDatabase;
@@ -28,7 +30,11 @@ public class InfraSlickDatabaseProvider
 
   @Override
   public SlickDatabase database(final Config config) {
-    return get(infraConfigService.get(config.getString(PekkoUtils.SQL_CLIENT_ID))).slickDatabase();
+    final String sqlClientId =
+        config.hasPath(PekkoUtils.SQL_CLIENT_ID)
+            ? config.getString(PekkoUtils.SQL_CLIENT_ID)
+            : SQLUtils.clientId(PekkoUtils.PEKKO_STORE, UserContext.SYSTEM.customerId());
+    return get(infraConfigService.get(sqlClientId)).slickDatabase();
   }
 
   @Override
