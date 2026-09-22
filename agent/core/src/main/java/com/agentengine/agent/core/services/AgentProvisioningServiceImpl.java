@@ -52,6 +52,13 @@ public class AgentProvisioningServiceImpl implements AgentProvisioningService {
             pekkoEventStoreProvisioner.provision(
                 UserContext.SYSTEM.customerId(),
                 request.getServer(ServerType.SQL_SERVER, PekkoUtils.PEKKO_STORE)));
+    run.step(
+        "microservice",
+        () ->
+            microServiceProvisioner.provision(
+                UserContext.SYSTEM.customerId(),
+                "agent",
+                request.getServer(ServerType.MICROSERVICE_SERVER, "agent")));
     return run.result();
   }
 

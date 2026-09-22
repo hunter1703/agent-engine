@@ -8,6 +8,7 @@ import com.agentengine.tenancy.ProvisioningRequest;
 import com.agentengine.tenancy.ProvisioningResult;
 import com.agentengine.tenancy.ProvisioningRun;
 import com.agentengine.util.context.Context;
+import com.agentengine.util.context.UserContext;
 import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
 import com.agentengine.util.ms.client.MicroServiceProvisioner;
@@ -39,7 +40,15 @@ public class KnowledgeProvisioningServiceImpl implements KnowledgeProvisioningSe
 
   @Override
   public ProvisioningResult provisionEnvironment(final ProvisioningRequest request) {
-    return new ProvisioningResult();
+    final ProvisioningRun run = new ProvisioningRun();
+    run.step(
+        "microservice",
+        () ->
+            microServiceProvisioner.provision(
+                UserContext.SYSTEM.customerId(),
+                "knowledge",
+                request.getServer(ServerType.MICROSERVICE_SERVER, "knowledge")));
+    return run.result();
   }
 
   @Override
