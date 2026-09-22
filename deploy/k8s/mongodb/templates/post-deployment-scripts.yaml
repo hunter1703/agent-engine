@@ -1,1 +1,3 @@
+{{- if gt (int (.Values.replicaCount | default 1)) 1 }}
 {{- include "agent-engine.infra-base.postDeploymentScriptJobs" . }}
+{{- end }}

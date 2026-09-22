@@ -2,7 +2,7 @@
 {{- $instance := include "agent-engine.infra-base.instance" . -}}
 {{- $namespace := include "agent-engine.infra-base.namespace" . -}}
 {{- $replicaCount := int (.Values.replicaCount | default 1) -}}
-{{- $replicaSetName := .Values.replicaSetName | default "rs0" -}}
+{{- $replicaSetName := .Values.replicaSetName -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -29,8 +29,10 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
+            {{- if gt $replicaCount 1 }}
             - --replSet
-            - {{ $replicaSetName }}
+            - {{ $replicaSetName | default "rs0" }}
+            {{- end }}
             - --bind_ip_all
           securityContext:
             {{- include "agent-engine.infra-base.containerSecurityContext" . | nindent 12 }}
