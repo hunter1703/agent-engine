@@ -26,7 +26,8 @@ public class SessionEventsRepositoryImpl extends AbstractMongoRepository<Session
   @Inject
   public SessionEventsRepositoryImpl(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, AgentMongoStoreClientType.AGENT, SessionEvent.class, validationService);
+    super(
+        mongoClientFactory, AgentMongoStoreClientType.AGENT, SessionEvent.class, validationService);
   }
 
   @Override

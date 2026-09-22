@@ -1,9 +1,9 @@
 package com.agentengine.util.vectordb;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.config.ApplicationConfig;
-import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.InfraClientProvisioner;
+import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.infra.ServerType;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -20,19 +20,15 @@ public class VectorDBClientProvisioner extends InfraClientProvisioner {
 
   @Inject
   public VectorDBClientProvisioner(
-      final InfraConfigService infraConfigService,
-      final ApplicationConfig applicationConfig) {
-      super(applicationConfig);
-      this.infraConfigService = infraConfigService;
+      final InfraConfigService infraConfigService, final ApplicationConfig applicationConfig) {
+    super(applicationConfig);
+    this.infraConfigService = infraConfigService;
   }
 
-  public void provision(
-      final VectorStore<?> store, final int customerId, final String serverId) {
+  public void provision(final VectorStore<?> store, final int customerId, final String serverId) {
     infraConfigService.save(
         VectorDbUtils.clientConfig(
-            store.clientType(),
-            customerId,
-            resolvedServerId(ServerType.VECTOR_SERVER, serverId)));
+            store.clientType(), customerId, resolvedServerId(ServerType.VECTOR_SERVER, serverId)));
     store.setup(DEFAULT_VECTOR_SIZE);
   }
 }

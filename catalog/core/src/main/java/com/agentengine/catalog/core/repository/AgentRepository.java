@@ -12,6 +12,10 @@ public class AgentRepository extends AbstractMongoRepository<BaseAgentConfig> {
   @Inject
   public AgentRepository(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, CatalogMongoStoreClientType.CATALOG, BaseAgentConfig.class, validationService);
+    super(
+        mongoClientFactory,
+        CatalogMongoStoreClientType.CATALOG,
+        BaseAgentConfig.class,
+        validationService);
   }
 }

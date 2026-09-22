@@ -1,9 +1,9 @@
 package com.agentengine.util.crypto;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.config.ApplicationConfig;
-import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.InfraClientProvisioner;
+import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.infra.ServerType;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -15,9 +15,9 @@ public class EncryptionClientProvisioner extends InfraClientProvisioner {
 
   @Inject
   public EncryptionClientProvisioner(
-          final InfraConfigService infraConfigService, final ApplicationConfig applicationConfig) {
-      super(applicationConfig);
-      this.infraConfigService = infraConfigService;
+      final InfraConfigService infraConfigService, final ApplicationConfig applicationConfig) {
+    super(applicationConfig);
+    this.infraConfigService = infraConfigService;
   }
 
   public void provision(final int customerId, final String serverId) {

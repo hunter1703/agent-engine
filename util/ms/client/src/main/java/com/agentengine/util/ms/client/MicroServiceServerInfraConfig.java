@@ -1,7 +1,7 @@
 package com.agentengine.util.ms.client;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.infra.InfraConfig;
+import com.agentengine.util.infra.ServerType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.ms.client.MicroServiceServerInfraConfig")

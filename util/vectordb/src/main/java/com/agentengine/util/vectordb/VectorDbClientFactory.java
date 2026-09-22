@@ -1,10 +1,10 @@
 package com.agentengine.util.vectordb;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.infra.ServerType;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
 import jakarta.inject.Inject;

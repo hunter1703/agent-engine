@@ -32,14 +32,20 @@ public abstract class VectorStore<T extends BaseEntity> implements Repository<T>
   private final VectorStoreClientType clientType;
 
   protected VectorStore(
-          final Class<T> entityClass, final VectorStoreClientType clientType, final BiFunction<String, String, float[]> embeddingGenerator) {
+      final Class<T> entityClass,
+      final VectorStoreClientType clientType,
+      final BiFunction<String, String, float[]> embeddingGenerator) {
     this.entityClass = entityClass;
     this.fieldVsVectorName = new LazyLoader<>(() -> VectorDbUtils.vectorNames(entityClass));
-    this.indexedFields = new LazyLoader<>(() -> Utils.fieldsAnnotatedWith(entityClass, Indexed.class).stream()
-            .filter(field -> !field.getAnnotation(Indexed.class).vector())
-            .map(Field::getName).collect(Collectors.toSet()));
+    this.indexedFields =
+        new LazyLoader<>(
+            () ->
+                Utils.fieldsAnnotatedWith(entityClass, Indexed.class).stream()
+                    .filter(field -> !field.getAnnotation(Indexed.class).vector())
+                    .map(Field::getName)
+                    .collect(Collectors.toSet()));
     this.embeddingGenerator = embeddingGenerator;
-      this.clientType = clientType;
+    this.clientType = clientType;
   }
 
   protected Map<String, String> getFieldVsVectorName() {

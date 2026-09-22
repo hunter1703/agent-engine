@@ -12,6 +12,10 @@ public class ConnectionRepositoryImpl extends AbstractMongoRepository<Connection
 
   public ConnectionRepositoryImpl(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, ConnectorsMongoStoreClientType.CONNECTORS, Connection.class, validationService);
+    super(
+        mongoClientFactory,
+        ConnectorsMongoStoreClientType.CONNECTORS,
+        Connection.class,
+        validationService);
   }
 }

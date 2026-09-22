@@ -24,9 +24,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * Caches each connector's tool {@link FunctionDeclaration} - the "input"/"connectionId" wrapper
  * schema a {@link ConnectorTool} exposes to the model. Scoped per user, not just per customer, via
- * {@link CacheScope#USER} - a connector's connection-id enum can eventually differ per
- * user once connections carry RBAC, so one user's cached declaration must never leak into
- * another's.
+ * {@link CacheScope#USER} - a connector's connection-id enum can eventually differ per user once
+ * connections carry RBAC, so one user's cached declaration must never leak into another's.
  *
  * <p>Tagged {@link ConnectionCacheTag#CONNECTIONS} alongside {@code ConnectorCacheService}'s own
  * connection-id and connector-metadata caches, but since a {@code CacheCategory.CONNECTIONS}

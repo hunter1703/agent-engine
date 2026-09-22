@@ -1,14 +1,14 @@
 package com.agentengine.connectors.core.services;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.connectors.api.services.ConnectorsProvisioningService;
 import com.agentengine.connectors.core.ConnectorsMongoStoreClientType;
-import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
-import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import com.agentengine.tenancy.ProvisioningRequest;
 import com.agentengine.tenancy.ProvisioningResult;
 import com.agentengine.tenancy.ProvisioningRun;
 import com.agentengine.util.context.Context;
+import com.agentengine.util.infra.ServerType;
+import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
+import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -30,7 +30,7 @@ public class ConnectorsProvisioningServiceImpl implements ConnectorsProvisioning
 
   @Override
   public ProvisioningResult provisionEnvironment(final ProvisioningRequest request) {
-      return new ProvisioningResult();
+    return new ProvisioningResult();
   }
 
   @Override
@@ -41,8 +41,17 @@ public class ConnectorsProvisioningServiceImpl implements ConnectorsProvisioning
         "mongo",
         () ->
             mongoClientProvisioner.provision(
-                ConnectorsMongoStoreClientType.CONNECTORS, customerId, request.getServer(ServerType.MONGO_SERVER, ConnectorsMongoStoreClientType.CONNECTORS.name())));
-    run.step("microservice", () -> microServiceProvisioner.provision(customerId, "connectors", request.getServer(ServerType.MICROSERVICE_SERVER, "connectors")));
+                ConnectorsMongoStoreClientType.CONNECTORS,
+                customerId,
+                request.getServer(
+                    ServerType.MONGO_SERVER, ConnectorsMongoStoreClientType.CONNECTORS.name())));
+    run.step(
+        "microservice",
+        () ->
+            microServiceProvisioner.provision(
+                customerId,
+                "connectors",
+                request.getServer(ServerType.MICROSERVICE_SERVER, "connectors")));
     return run.result();
   }
 }

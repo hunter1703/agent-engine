@@ -1,9 +1,9 @@
 package com.agentengine.util.ms.client;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.infra.ServerType;
 import io.grpc.ManagedChannelBuilder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -14,26 +14,22 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class MicroServiceChannelProvider
     extends InfraClientFactory<
-        MicroServiceClientInfraConfig,
-        MicroServiceServerInfraConfig,
-        Channel> {
+        MicroServiceClientInfraConfig, MicroServiceServerInfraConfig, Channel> {
 
   private static final Logger LOG = LoggerFactory.getLogger(MicroServiceChannelProvider.class);
 
   @Inject
   public MicroServiceChannelProvider(
       final InfraConfigService infraConfigService, final DistributedCacheManager cacheManager) {
-    super(
-        infraConfigService,
-        cacheManager,
-        ServerType.MICROSERVICE_SERVER);
+    super(infraConfigService, cacheManager, ServerType.MICROSERVICE_SERVER);
   }
 
   public Channel getForService(final int customerId, final String service) {
     return get(
         getOrCreate(
             MicroServiceUtils.clientId(customerId, service),
-            () -> MicroServiceUtils.clientConfig(
+            () ->
+                MicroServiceUtils.clientConfig(
                     customerId, service, MicroServiceUtils.defaultServerId(service))));
   }
 
@@ -50,8 +46,8 @@ public class MicroServiceChannelProvider
     return new Channel(
         ManagedChannelBuilder.forTarget(
                 "dns:///" + serverConfig.getHost() + ":" + serverConfig.getPort())
-            //TODO: check
-                .usePlaintext()
+            // TODO: check
+            .usePlaintext()
             .defaultLoadBalancingPolicy("round_robin")
             .maxInboundMessageSize(MicroServiceServerInfraConfig.MAX_INBOUND_MESSAGE_SIZE)
             .keepAliveTime(30, TimeUnit.SECONDS)
@@ -59,5 +55,4 @@ public class MicroServiceChannelProvider
             .keepAliveWithoutCalls(true)
             .build());
   }
-
 }

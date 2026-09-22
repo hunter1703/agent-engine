@@ -1,12 +1,11 @@
 package com.agentengine.util.infra;
 
-import com.agentengine.util.common.exception.DuplicateAssetException;
-
 public interface InfraConfigService {
 
   <T extends InfraConfig> T get(String id);
 
-  default <S extends InfraConfig> S getServer(final ServerType serverType, final InfraConfig client) {
+  default <S extends InfraConfig> S getServer(
+      final ServerType serverType, final InfraConfig client) {
     return get(serverType + ":" + client.getServerId());
   }
 

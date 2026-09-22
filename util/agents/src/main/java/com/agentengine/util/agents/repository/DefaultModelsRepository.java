@@ -23,7 +23,11 @@ public class DefaultModelsRepository extends AbstractMongoRepository<DefaultMode
       final MongoClientFactory mongoClientFactory,
       final ValidationService validationService,
       final DistributedCacheManager cacheManager) {
-    super(mongoClientFactory, AgentMongoStoreClientType.AGENT, DefaultModels.class, validationService);
+    super(
+        mongoClientFactory,
+        AgentMongoStoreClientType.AGENT,
+        DefaultModels.class,
+        validationService);
     this.cache =
         DistributedCache.<DefaultModels>builder(CACHE_NAME, cacheManager)
             .loader(this::findById)

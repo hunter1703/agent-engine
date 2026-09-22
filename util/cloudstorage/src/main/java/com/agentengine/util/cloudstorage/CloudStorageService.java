@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public interface CloudStorageService extends AutoCloseable{
+public interface CloudStorageService extends AutoCloseable {
 
   default FileDetails upload(
       String key, String name, InputStream inputStream, long contentLength, String mediaType) {
@@ -21,7 +21,6 @@ public interface CloudStorageService extends AutoCloseable{
       long contentLength,
       String mediaType,
       Map<String, String> metadata);
-
 
   default FileDetails upload(
       String name, InputStream inputStream, long contentLength, String mediaType) {

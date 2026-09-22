@@ -1,25 +1,23 @@
 package com.agentengine.agent.core.services;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.agent.api.services.AgentProvisioningService;
 import com.agentengine.agent.core.memory.AgentVectorStoreClientType;
 import com.agentengine.agent.core.memory.MemoryStore;
-import com.agentengine.util.agents.repository.AgentMongoStoreClientType;
-import com.agentengine.util.context.UserContext;
-import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
-import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import com.agentengine.tenancy.ProvisioningRequest;
 import com.agentengine.tenancy.ProvisioningResult;
 import com.agentengine.tenancy.ProvisioningRun;
+import com.agentengine.util.agents.repository.AgentMongoStoreClientType;
 import com.agentengine.util.context.Context;
+import com.agentengine.util.context.UserContext;
+import com.agentengine.util.infra.ServerType;
+import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
+import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import com.agentengine.util.pekko.persistence.PekkoEventStoreProvisioner;
 import com.agentengine.util.pekko.persistence.PekkoUtils;
 import com.agentengine.util.vectordb.VectorDBClientProvisioner;
-import com.agentengine.util.vectordb.VectorStoreClientType;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.Map;
 
 @Singleton
 @Unremovable
@@ -50,7 +48,10 @@ public class AgentProvisioningServiceImpl implements AgentProvisioningService {
     final ProvisioningRun run = new ProvisioningRun();
     run.step(
         "event-store",
-        () -> pekkoEventStoreProvisioner.provision(UserContext.SYSTEM.customerId(), request.getServer(ServerType.SQL_SERVER, PekkoUtils.PEKKO_STORE)));
+        () ->
+            pekkoEventStoreProvisioner.provision(
+                UserContext.SYSTEM.customerId(),
+                request.getServer(ServerType.SQL_SERVER, PekkoUtils.PEKKO_STORE)));
     return run.result();
   }
 
@@ -62,13 +63,28 @@ public class AgentProvisioningServiceImpl implements AgentProvisioningService {
         "mongo",
         () ->
             mongoClientProvisioner.provision(
-                AgentMongoStoreClientType.AGENT, customerId, request.getServer(ServerType.MONGO_SERVER, AgentMongoStoreClientType.AGENT.name())));
+                AgentMongoStoreClientType.AGENT,
+                customerId,
+                request.getServer(
+                    ServerType.MONGO_SERVER, AgentMongoStoreClientType.AGENT.name())));
     run.step(
-        "event-store", () -> pekkoEventStoreProvisioner.provision(customerId, request.getServer(ServerType.SQL_SERVER, PekkoUtils.PEKKO_STORE)));
+        "event-store",
+        () ->
+            pekkoEventStoreProvisioner.provision(
+                customerId, request.getServer(ServerType.SQL_SERVER, PekkoUtils.PEKKO_STORE)));
     run.step(
         "vector",
-        () -> vectorDBClientProvisioner.provision(memoryStore, customerId, request.getServer(ServerType.VECTOR_SERVER, AgentVectorStoreClientType.MEMORY.name())));
-    run.step("microservice", () -> microServiceProvisioner.provision(customerId, "agent", request.getServer(ServerType.MICROSERVICE_SERVER, "agent")));
+        () ->
+            vectorDBClientProvisioner.provision(
+                memoryStore,
+                customerId,
+                request.getServer(
+                    ServerType.VECTOR_SERVER, AgentVectorStoreClientType.MEMORY.name())));
+    run.step(
+        "microservice",
+        () ->
+            microServiceProvisioner.provision(
+                customerId, "agent", request.getServer(ServerType.MICROSERVICE_SERVER, "agent")));
     return run.result();
   }
 }

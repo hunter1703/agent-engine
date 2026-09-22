@@ -1,16 +1,18 @@
 package com.agentengine.util.cloudstorage;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.cloudstorage.oracle.OracleCloudStorage;
 import com.agentengine.util.cloudstorage.s3.S3CloudStorage;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.infra.ServerType;
 import jakarta.inject.Singleton;
 
 @Singleton
-public class CloudStorageServiceFactory extends InfraClientFactory<CloudStorageClientInfraConfig, CloudStorageServerInfraConfig, CloudStorageService> {
+public class CloudStorageServiceFactory
+    extends InfraClientFactory<
+        CloudStorageClientInfraConfig, CloudStorageServerInfraConfig, CloudStorageService> {
 
   private final ApplicationConfig applicationConfig;
 
@@ -36,10 +38,11 @@ public class CloudStorageServiceFactory extends InfraClientFactory<CloudStorageC
   @Override
   protected CloudStorageService create(final CloudStorageServerInfraConfig serverConfig) {
     final CloudStorageServerInfraConfig.Provider provider = serverConfig.providerType();
-    final CloudStorageService cloudStorageService = switch (provider) {
-      case ORACLE -> new OracleCloudStorage(serverConfig, infraConfigService);
-      default -> new S3CloudStorage(serverConfig, infraConfigService);
-    };
+    final CloudStorageService cloudStorageService =
+        switch (provider) {
+          case ORACLE -> new OracleCloudStorage(serverConfig, infraConfigService);
+          default -> new S3CloudStorage(serverConfig, infraConfigService);
+        };
     return new DelegatingCloudStorageService(cloudStorageService);
   }
 }

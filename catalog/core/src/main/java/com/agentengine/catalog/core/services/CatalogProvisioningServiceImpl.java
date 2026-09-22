@@ -1,14 +1,14 @@
 package com.agentengine.catalog.core.services;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.catalog.api.services.CatalogProvisioningService;
 import com.agentengine.catalog.core.repository.CatalogMongoStoreClientType;
-import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
-import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import com.agentengine.tenancy.ProvisioningRequest;
 import com.agentengine.tenancy.ProvisioningResult;
 import com.agentengine.tenancy.ProvisioningRun;
 import com.agentengine.util.context.Context;
+import com.agentengine.util.infra.ServerType;
+import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
+import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -41,8 +41,17 @@ public class CatalogProvisioningServiceImpl implements CatalogProvisioningServic
         "mongo",
         () ->
             mongoClientProvisioner.provision(
-                CatalogMongoStoreClientType.CATALOG, customerId, request.getServer(ServerType.MONGO_SERVER, CatalogMongoStoreClientType.CATALOG.name())));
-    run.step("microservice", () -> microServiceProvisioner.provision(customerId, "catalog", request.getServer(ServerType.MICROSERVICE_SERVER, "catalog")));
+                CatalogMongoStoreClientType.CATALOG,
+                customerId,
+                request.getServer(
+                    ServerType.MONGO_SERVER, CatalogMongoStoreClientType.CATALOG.name())));
+    run.step(
+        "microservice",
+        () ->
+            microServiceProvisioner.provision(
+                customerId,
+                "catalog",
+                request.getServer(ServerType.MICROSERVICE_SERVER, "catalog")));
     return run.result();
   }
 }

@@ -13,6 +13,10 @@ public class KnowledgeRepository extends AbstractMongoRepository<Knowledge> {
   @Inject
   public KnowledgeRepository(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, KnowledgeMongoStoreClientType.KNOWLEDGE, Knowledge.class, validationService);
+    super(
+        mongoClientFactory,
+        KnowledgeMongoStoreClientType.KNOWLEDGE,
+        Knowledge.class,
+        validationService);
   }
 }

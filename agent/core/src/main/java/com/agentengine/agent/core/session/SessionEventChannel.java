@@ -4,7 +4,6 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.EventSourcePlugin;
 import com.agentengine.util.pekko.events.PekkoEventChannel;
-import com.agentengine.util.pekko.persistence.DefaultPersistencePlugin;
 import jakarta.inject.Singleton;
 
 /**

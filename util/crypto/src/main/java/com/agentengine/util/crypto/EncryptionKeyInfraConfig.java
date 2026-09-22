@@ -1,7 +1,7 @@
 package com.agentengine.util.crypto;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.infra.InfraConfig;
+import com.agentengine.util.infra.ServerType;
 import java.util.Locale;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 

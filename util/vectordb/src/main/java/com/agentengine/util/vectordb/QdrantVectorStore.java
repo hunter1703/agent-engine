@@ -1,14 +1,12 @@
 package com.agentengine.util.vectordb;
 
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.Utils;
-import com.agentengine.util.common.annotations.Indexed;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.context.Context;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.context.Context;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.qdrant.client.ConditionFactory;
 import io.qdrant.client.PointIdFactory;
@@ -21,7 +19,6 @@ import io.qdrant.client.WithVectorsSelectorFactory;
 import io.qdrant.client.grpc.Collections;
 import io.qdrant.client.grpc.Common;
 import io.qdrant.client.grpc.Points;
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiFunction;

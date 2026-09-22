@@ -12,6 +12,7 @@ public class CustomerRepository extends GlobalMongoRepository<Customer> {
   @Inject
   public CustomerRepository(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, TenancyMongoStoreClientType.TENANCY, Customer.class, validationService);
+    super(
+        mongoClientFactory, TenancyMongoStoreClientType.TENANCY, Customer.class, validationService);
   }
 }

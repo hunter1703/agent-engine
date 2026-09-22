@@ -6,9 +6,9 @@ import com.agentengine.agent.api.model.AgentFileDetails;
 import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
+import com.agentengine.agent.core.session.CurrentTurnEvents;
 import com.agentengine.agent.core.session.ResumeResult;
 import com.agentengine.agent.core.session.RollbackResult;
-import com.agentengine.agent.core.session.CurrentTurnEvents;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.SessionEventChannel;
 import com.agentengine.agent.core.session.StartSessionResult;
@@ -146,9 +146,7 @@ public class RuntimeServiceImpl implements RuntimeService {
         .entityRef(resolvedSessionId)
         .<Done>ask(
             replyTo ->
-                new InitializeCommand(
-                    SessionTopology.root(agentId, resolvedSessionId),
-                    replyTo),
+                new InitializeCommand(SessionTopology.root(agentId, resolvedSessionId), replyTo),
             SessionActorFactory.ASK_TIMEOUT)
         .toCompletableFuture()
         .join(); // block until the session is persisted

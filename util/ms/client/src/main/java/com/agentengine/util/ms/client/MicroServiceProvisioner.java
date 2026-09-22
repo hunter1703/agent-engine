@@ -20,6 +20,8 @@ public class MicroServiceProvisioner {
         MicroServiceUtils.clientConfig(
             customerId,
             service,
-            StringUtils.isNotBlank(serverId) ? serverId : MicroServiceUtils.defaultServerId(service)));
+            StringUtils.isNotBlank(serverId)
+                ? serverId
+                : MicroServiceUtils.defaultServerId(service)));
   }
 }

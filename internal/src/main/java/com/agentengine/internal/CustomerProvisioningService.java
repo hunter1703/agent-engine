@@ -1,6 +1,5 @@
 package com.agentengine.internal;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.agent.api.services.AgentProvisioningService;
 import com.agentengine.catalog.api.services.CatalogProvisioningService;
 import com.agentengine.connectors.api.services.ConnectorsProvisioningService;
@@ -16,10 +15,10 @@ import com.agentengine.util.cloudstorage.CloudStorageClientProvisioner;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.UserContext;
 import com.agentengine.util.crypto.EncryptionClientProvisioner;
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.UUID;
 
 @Singleton
@@ -48,30 +47,30 @@ public class CustomerProvisioningService {
   public ProvisioningResult provisionCustomer(final CustomerProvisioningRequest request) {
     final int customerId = request.getId();
     final ProvisioningRun run = new ProvisioningRun();
-    new Context(UUID.randomUUID().toString(), new UserContext(customerId, UserContext.SYSTEM.userId()))
+    new Context(
+            UUID.randomUUID().toString(), new UserContext(customerId, UserContext.SYSTEM.userId()))
         .run(
             () -> {
               run.step(
                   "encryption",
-                  () -> encryptionClientProvisioner.provision(customerId, request.getDefaultServerId(ServerType.ENCRYPTION_KEY)));
+                  () ->
+                      encryptionClientProvisioner.provision(
+                          customerId, request.getDefaultServerId(ServerType.ENCRYPTION_KEY)));
               run.step(
                   "cloudstorage",
-                  () -> cloudStorageClientProvisioner.provision(customerId, request.getDefaultServerId(ServerType.CLOUDSTORAGE_SERVER)));
+                  () ->
+                      cloudStorageClientProvisioner.provision(
+                          customerId, request.getDefaultServerId(ServerType.CLOUDSTORAGE_SERVER)));
               run.merge(
-                  "catalog",
-                  () -> client(CatalogProvisioningService.class).provision(request));
+                  "catalog", () -> client(CatalogProvisioningService.class).provision(request));
               run.merge(
                   "connectors",
                   () -> client(ConnectorsProvisioningService.class).provision(request));
               run.merge(
-                  "knowledge",
-                  () -> client(KnowledgeProvisioningService.class).provision(request));
+                  "knowledge", () -> client(KnowledgeProvisioningService.class).provision(request));
+              run.merge("agent", () -> client(AgentProvisioningService.class).provision(request));
               run.merge(
-                  "agent",
-                  () -> client(AgentProvisioningService.class).provision(request));
-              run.merge(
-                  "scheduler",
-                  () -> client(SchedulerProvisioningService.class).provision(request));
+                  "scheduler", () -> client(SchedulerProvisioningService.class).provision(request));
               run.step("default-models", () -> saveDefaultModels(request));
               run.step("customer", () -> saveCustomer(request));
             });

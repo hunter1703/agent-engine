@@ -17,7 +17,6 @@ import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.UUID;
 
 @Singleton
@@ -44,7 +43,8 @@ public class EnvironmentProvisioningService {
             () -> {
               run.step(
                   "encryption",
-                  () -> encryptionClientProvisioner.provision(UserContext.SYSTEM.customerId(), null));
+                  () ->
+                      encryptionClientProvisioner.provision(UserContext.SYSTEM.customerId(), null));
               run.step(
                   "tenancy",
                   () ->
@@ -52,18 +52,29 @@ public class EnvironmentProvisioningService {
                           TenancyMongoStoreClientType.TENANCY, null, null));
               run.merge(
                   "catalog",
-                  () -> client(CatalogProvisioningService.class).provisionEnvironment(provisioningRequest));
+                  () ->
+                      client(CatalogProvisioningService.class)
+                          .provisionEnvironment(provisioningRequest));
               run.merge(
                   "connectors",
-                  () -> client(ConnectorsProvisioningService.class).provisionEnvironment(provisioningRequest));
+                  () ->
+                      client(ConnectorsProvisioningService.class)
+                          .provisionEnvironment(provisioningRequest));
               run.merge(
                   "knowledge",
-                  () -> client(KnowledgeProvisioningService.class).provisionEnvironment(provisioningRequest));
+                  () ->
+                      client(KnowledgeProvisioningService.class)
+                          .provisionEnvironment(provisioningRequest));
               run.merge(
-                  "agent", () -> client(AgentProvisioningService.class).provisionEnvironment(provisioningRequest));
+                  "agent",
+                  () ->
+                      client(AgentProvisioningService.class)
+                          .provisionEnvironment(provisioningRequest));
               run.merge(
                   "scheduler",
-                  () -> client(SchedulerProvisioningService.class).provisionEnvironment(provisioningRequest));
+                  () ->
+                      client(SchedulerProvisioningService.class)
+                          .provisionEnvironment(provisioningRequest));
             });
     return run.result();
   }

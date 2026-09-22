@@ -1,6 +1,5 @@
 package com.agentengine.util.mongodb.mongo;
 
-import com.agentengine.util.infra.ClientType;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.beans.BaseEntity;
@@ -10,6 +9,7 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.query.Sort;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.infra.ClientType;
 import com.agentengine.util.mongodb.infra.MongoClientInfraConfig;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;

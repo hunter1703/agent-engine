@@ -7,6 +7,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FileUtils.BucketKey;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
+import com.agentengine.util.infra.InfraConfigService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -14,8 +15,6 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-
-import com.agentengine.util.infra.InfraConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -32,8 +31,8 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -58,9 +57,10 @@ public class S3CloudStorage extends AbstractCloudStorageService {
   private final S3Client s3;
   private final S3Presigner presigner;
 
-  public S3CloudStorage(final CloudStorageServerInfraConfig config, final InfraConfigService infraConfigService) {
-      super(infraConfigService);
-      final StaticCredentialsProvider credentials =
+  public S3CloudStorage(
+      final CloudStorageServerInfraConfig config, final InfraConfigService infraConfigService) {
+    super(infraConfigService);
+    final StaticCredentialsProvider credentials =
         StaticCredentialsProvider.create(
             AwsBasicCredentials.create(config.getAccessKeyId(), config.getSecretAccessKey()));
     final URI endpoint = URI.create(config.getEndpointUrl());
@@ -83,7 +83,9 @@ public class S3CloudStorage extends AbstractCloudStorageService {
             .region(region)
             .credentialsProvider(credentials)
             .serviceConfiguration(
-                S3Configuration.builder().pathStyleAccessEnabled(config.isPathStyleAccess()).build())
+                S3Configuration.builder()
+                    .pathStyleAccessEnabled(config.isPathStyleAccess())
+                    .build())
             .build();
   }
 
@@ -125,11 +127,7 @@ public class S3CloudStorage extends AbstractCloudStorageService {
       throw ex;
     }
     return new FileDetails(
-        name,
-            bucket() + "/" + key,
-        FileDetails.StorageType.CLOUDSTORAGE,
-        mediaType,
-        contentLength);
+        name, bucket() + "/" + key, FileDetails.StorageType.CLOUDSTORAGE, mediaType, contentLength);
   }
 
   @Override

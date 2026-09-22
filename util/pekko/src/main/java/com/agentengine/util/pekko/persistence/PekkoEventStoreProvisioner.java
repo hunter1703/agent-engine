@@ -1,9 +1,9 @@
 package com.agentengine.util.pekko.persistence;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.config.ApplicationConfig;
-import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.InfraClientProvisioner;
+import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.sql.SQLClientInfraConfig;
 import com.agentengine.util.sql.SQLServerInfraConfig;
 import com.agentengine.util.sql.SQLUtils;
@@ -39,22 +39,22 @@ public class PekkoEventStoreProvisioner extends InfraClientProvisioner {
 
   @Inject
   public PekkoEventStoreProvisioner(
-          final InfraConfigService infraConfigService, final ApplicationConfig applicationConfig) {
-      super(applicationConfig);
-      this.infraConfigService = infraConfigService;
+      final InfraConfigService infraConfigService, final ApplicationConfig applicationConfig) {
+    super(applicationConfig);
+    this.infraConfigService = infraConfigService;
   }
 
   public void provision(final int customerId, final String serverId) {
-    final SQLClientInfraConfig clientConfig = SQLUtils.clientConfig(
-            PekkoUtils.PEKKO_STORE,
-            customerId,
-            resolvedServerId(ServerType.SQL_SERVER, serverId));
+    final SQLClientInfraConfig clientConfig =
+        SQLUtils.clientConfig(
+            PekkoUtils.PEKKO_STORE, customerId, resolvedServerId(ServerType.SQL_SERVER, serverId));
     infraConfigService.save(clientConfig);
     setup(clientConfig);
   }
 
   private void setup(final SQLClientInfraConfig clientConfig) {
-    final SQLServerInfraConfig server = infraConfigService.getServer(ServerType.SQL_SERVER, clientConfig);
+    final SQLServerInfraConfig server =
+        infraConfigService.getServer(ServerType.SQL_SERVER, clientConfig);
     createSchema(server, clientConfig.schema());
     createTables(server, clientConfig);
   }
@@ -97,8 +97,7 @@ public class PekkoEventStoreProvisioner extends InfraClientProvisioner {
   private static Config config(
       final SQLServerInfraConfig serverConfig, final SQLClientInfraConfig clientConfig) {
     final Config base = ConfigFactory.defaultReference();
-    return base
-        .withValue(
+    return base.withValue(
             PekkoUtils.JOURNAL,
             plugin(base, PekkoUtils.JOURNAL, PekkoUtils.JOURNAL_TABLES, serverConfig, clientConfig))
         .withValue(

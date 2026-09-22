@@ -78,21 +78,20 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
       final EntityContext<SessionCommand> entityContext) {
     String entityId = entityContext.getEntityId();
     return Behaviors.intercept(
-        () ->
-            new MessageFaultInterceptor<>(
-                SessionCommand.class, entityId, chaosMailboxRegistry),
+        () -> new MessageFaultInterceptor<>(SessionCommand.class, entityId, chaosMailboxRegistry),
         Behaviors.setup(
-            actorContext -> new SessionActor(
-                actorContext,
-                entityId,
-                new PersistencePlugin(customerId(entityId), infraConfigService),
-                sessionEventChannel,
-                this::entityRef,
-                runnerFactory,
-                sessionService,
-                sessionTitleGenerator,
-                memoryService,
-                sessionEventsRepository)));
+            actorContext ->
+                new SessionActor(
+                    actorContext,
+                    entityId,
+                    new PersistencePlugin(customerId(entityId), infraConfigService),
+                    sessionEventChannel,
+                    this::entityRef,
+                    runnerFactory,
+                    sessionService,
+                    sessionTitleGenerator,
+                    memoryService,
+                    sessionEventsRepository)));
   }
 
   public static String entityId(final String sessionId) {

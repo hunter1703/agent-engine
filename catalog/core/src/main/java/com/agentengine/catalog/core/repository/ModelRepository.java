@@ -14,7 +14,11 @@ public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
   @Inject
   public ModelRepository(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, CatalogMongoStoreClientType.CATALOG, ModelConfig.class, validationService);
+    super(
+        mongoClientFactory,
+        CatalogMongoStoreClientType.CATALOG,
+        ModelConfig.class,
+        validationService);
   }
 
   @Override

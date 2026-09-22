@@ -1,7 +1,7 @@
 package com.agentengine.util.pekko.persistence;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.infra.InfraClientFactory;
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.sql.SQLClientInfraConfig;
 import com.agentengine.util.sql.SQLServerInfraConfig;
 import com.typesafe.config.Config;
@@ -34,7 +34,8 @@ public class InfraSlickDatabaseProvider
   @Override
   protected Pool create(final SQLServerInfraConfig serverConfig) {
     final Config baseConfig = system.settings().config().getConfig(PekkoUtils.SLICK);
-    return new Pool(new LazySlickDatabase(PekkoUtils.buildSlickConfig(baseConfig, serverConfig), system));
+    return new Pool(
+        new LazySlickDatabase(PekkoUtils.buildSlickConfig(baseConfig, serverConfig), system));
   }
 
   private static InfraSetup infraSetup(final ActorSystem system) {

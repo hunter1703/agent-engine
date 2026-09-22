@@ -2,8 +2,8 @@ package com.agentengine.util.pekko.events;
 
 import com.agentengine.util.common.events.Copyable;
 import com.agentengine.util.common.events.SequencedEvent;
-import com.agentengine.util.pekko.AbstractShardedEntity;
 import com.agentengine.util.pekko.EventSourcePlugin;
+import com.agentengine.util.pekko.actor.ShardedEntity;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 /** Persistent sharded broadcaster with bounded replay for gap healing. */
 public final class BroadcasterEntity
-    extends AbstractShardedEntity<BroadcasterCommand, BroadcasterFact, BroadcasterState> {
+    extends ShardedEntity<BroadcasterCommand, BroadcasterFact, BroadcasterState> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BroadcasterEntity.class);
   private static final int MAX_RETAINED_EVENTS = 256;

@@ -10,8 +10,8 @@ import com.agentengine.util.vectordb.VectorEntity;
  * <p>Source and sourceType are intentionally omitted — they are available on the parent {@link
  * Knowledge} entity and can be fetched via {@code knowledgeId} when needed.
  *
- * <p>Currently a single vector field is used ({@link #FIELD_TEXT}), populated by embedding
- * the chunk's text. Additional fields (e.g. title, summary) can be added later by calling {@link
+ * <p>Currently a single vector field is used ({@link #FIELD_TEXT}), populated by embedding the
+ * chunk's text. Additional fields (e.g. title, summary) can be added later by calling {@link
  * #setVector(String, float[])} with the appropriate physical field name.
  */
 public class KnowledgeChunk extends VectorEntity {
@@ -24,8 +24,10 @@ public class KnowledgeChunk extends VectorEntity {
   @Indexed private String knowledgeId;
   @Indexed private String agentId;
   private int chunkIndex;
+
   @Indexed(vector = true)
   private String text;
+
   private int chunkStart;
   private int chunkEnd;
 

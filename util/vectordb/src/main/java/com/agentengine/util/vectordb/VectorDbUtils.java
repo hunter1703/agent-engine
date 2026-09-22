@@ -1,8 +1,8 @@
 package com.agentengine.util.vectordb;
 
-import com.agentengine.util.infra.ClientType;
 import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.annotations.Indexed;
+import com.agentengine.util.infra.ClientType;
 import io.qdrant.client.ValueFactory;
 import io.qdrant.client.grpc.JsonWithInt.Value;
 import java.lang.reflect.Field;

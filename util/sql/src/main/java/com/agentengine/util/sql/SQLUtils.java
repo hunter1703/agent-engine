@@ -1,7 +1,7 @@
 package com.agentengine.util.sql;
 
-import com.agentengine.util.infra.ClientType;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.infra.ClientType;
 import java.util.regex.Pattern;
 
 public final class SQLUtils {

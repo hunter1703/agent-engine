@@ -27,7 +27,8 @@ public final class EmbeddingStage extends ChunkingStage {
       final String embeddingModelId, final EmbeddingModelFactory embeddingModelFactory) {
     this.embeddingModelId = embeddingModelId;
     this.embeddingModelFactory = embeddingModelFactory;
-    this.fieldVsVectorName = new LazyLoader<>(() -> VectorDbUtils.vectorNames(KnowledgeChunk.class));
+    this.fieldVsVectorName =
+        new LazyLoader<>(() -> VectorDbUtils.vectorNames(KnowledgeChunk.class));
   }
 
   @Override

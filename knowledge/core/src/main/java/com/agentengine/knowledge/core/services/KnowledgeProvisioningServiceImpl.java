@@ -1,16 +1,16 @@
 package com.agentengine.knowledge.core.services;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.knowledge.api.services.KnowledgeProvisioningService;
 import com.agentengine.knowledge.core.repository.KnowledgeMongoStoreClientType;
 import com.agentengine.knowledge.core.store.KnowledgeChunkStore;
 import com.agentengine.knowledge.core.store.KnowledgeVectorStoreClientType;
-import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
-import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import com.agentengine.tenancy.ProvisioningRequest;
 import com.agentengine.tenancy.ProvisioningResult;
 import com.agentengine.tenancy.ProvisioningRun;
 import com.agentengine.util.context.Context;
+import com.agentengine.util.infra.ServerType;
+import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
+import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import com.agentengine.util.vectordb.VectorDBClientProvisioner;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
@@ -39,7 +39,7 @@ public class KnowledgeProvisioningServiceImpl implements KnowledgeProvisioningSe
 
   @Override
   public ProvisioningResult provisionEnvironment(final ProvisioningRequest request) {
-      return new ProvisioningResult();
+    return new ProvisioningResult();
   }
 
   @Override
@@ -50,11 +50,25 @@ public class KnowledgeProvisioningServiceImpl implements KnowledgeProvisioningSe
         "mongo",
         () ->
             mongoClientProvisioner.provision(
-                KnowledgeMongoStoreClientType.KNOWLEDGE, customerId, request.getServer(ServerType.MONGO_SERVER, KnowledgeMongoStoreClientType.KNOWLEDGE.name())));
+                KnowledgeMongoStoreClientType.KNOWLEDGE,
+                customerId,
+                request.getServer(
+                    ServerType.MONGO_SERVER, KnowledgeMongoStoreClientType.KNOWLEDGE.name())));
     run.step(
         "vector",
-        () -> vectorDBClientProvisioner.provision(knowledgeChunkStore, customerId, request.getServer(ServerType.VECTOR_SERVER, KnowledgeVectorStoreClientType.KNOWLEDGE.name())));
-    run.step("microservice", () -> microServiceProvisioner.provision(customerId, "knowledge", request.getServer(ServerType.MICROSERVICE_SERVER, "knowledge")));
+        () ->
+            vectorDBClientProvisioner.provision(
+                knowledgeChunkStore,
+                customerId,
+                request.getServer(
+                    ServerType.VECTOR_SERVER, KnowledgeVectorStoreClientType.KNOWLEDGE.name())));
+    run.step(
+        "microservice",
+        () ->
+            microServiceProvisioner.provision(
+                customerId,
+                "knowledge",
+                request.getServer(ServerType.MICROSERVICE_SERVER, "knowledge")));
     return run.result();
   }
 }

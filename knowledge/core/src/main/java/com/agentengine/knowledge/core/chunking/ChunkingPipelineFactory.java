@@ -66,8 +66,7 @@ public class ChunkingPipelineFactory {
     return builder.build();
   }
 
-  private static String resolveModelId(
-      final String configured, final String defaultModelId) {
+  private static String resolveModelId(final String configured, final String defaultModelId) {
     return StringUtils.isNotBlank(configured) ? configured : defaultModelId;
   }
 

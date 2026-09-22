@@ -57,10 +57,7 @@ public class PekkoEventChannel<Scope, Event extends Copyable<Event>>
                     Behaviors.setup(
                         actorCtx ->
                             new BroadcasterEntity(
-                                actorCtx,
-                                typeKey.name(),
-                                entityContext.getEntityId(),
-                                plugin)))
+                                actorCtx, typeKey.name(), entityContext.getEntityId(), plugin)))
             .withAllocationStrategy(RequesterFirstAllocationStrategy.INSTANCE);
   }
 

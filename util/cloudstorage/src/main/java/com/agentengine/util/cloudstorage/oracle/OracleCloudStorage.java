@@ -3,23 +3,20 @@ package com.agentengine.util.cloudstorage.oracle;
 import static com.oracle.bmc.objectstorage.model.CreatePreauthenticatedRequestDetails.AccessType.ObjectRead;
 
 import com.agentengine.util.cloudstorage.AbstractCloudStorageService;
-import com.agentengine.util.cloudstorage.CloudStorageClientInfraConfig;
 import com.agentengine.util.cloudstorage.CloudStorageServerInfraConfig;
-import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FileUtils.BucketKey;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
-import com.agentengine.util.context.Context;
 import com.agentengine.util.infra.InfraConfigService;
 import com.oracle.bmc.Region;
 import com.oracle.bmc.auth.BasicAuthenticationDetailsProvider;
 import com.oracle.bmc.auth.InstancePrincipalsAuthenticationDetailsProvider;
 import com.oracle.bmc.auth.SimpleAuthenticationDetailsProvider;
 import com.oracle.bmc.auth.StringPrivateKeySupplier;
+import com.oracle.bmc.model.BmcException;
 import com.oracle.bmc.objectstorage.ObjectStorage;
 import com.oracle.bmc.objectstorage.ObjectStorageClient;
-import com.oracle.bmc.model.BmcException;
 import com.oracle.bmc.objectstorage.model.CopyObjectDetails;
 import com.oracle.bmc.objectstorage.model.CreateBucketDetails;
 import com.oracle.bmc.objectstorage.model.CreatePreauthenticatedRequestDetails;
@@ -45,7 +42,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,9 +57,10 @@ public class OracleCloudStorage extends AbstractCloudStorageService {
   private final String namespace;
   private final String compartmentId;
 
-  public OracleCloudStorage(final CloudStorageServerInfraConfig config, InfraConfigService infraConfigService) {
-      super(infraConfigService);
-      this.client = buildClient(config);
+  public OracleCloudStorage(
+      final CloudStorageServerInfraConfig config, InfraConfigService infraConfigService) {
+    super(infraConfigService);
+    this.client = buildClient(config);
     this.region = config.getRegion();
     this.namespace = config.getNamespace();
     this.compartmentId = config.getCompartmentId();
@@ -100,11 +97,7 @@ public class OracleCloudStorage extends AbstractCloudStorageService {
       throw ex;
     }
     return new FileDetails(
-        name,
-        bucket() + "/" + key,
-        FileDetails.StorageType.CLOUDSTORAGE,
-        mediaType,
-        contentLength);
+        name, bucket() + "/" + key, FileDetails.StorageType.CLOUDSTORAGE, mediaType, contentLength);
   }
 
   @Override
@@ -235,7 +228,9 @@ public class OracleCloudStorage extends AbstractCloudStorageService {
       }
       if (StringUtils.isBlank(compartmentId)) {
         throw new IllegalStateException(
-            "Bucket '" + bucket + "' does not exist and the server has no compartmentId to create it in");
+            "Bucket '"
+                + bucket
+                + "' does not exist and the server has no compartmentId to create it in");
       }
       client.createBucket(
           CreateBucketRequest.builder()
@@ -254,16 +249,16 @@ public class OracleCloudStorage extends AbstractCloudStorageService {
   private static ObjectStorage buildClient(final CloudStorageServerInfraConfig config) {
     final Region region = Region.fromRegionId(config.getRegion());
     final BasicAuthenticationDetailsProvider authProvider =
-            config.isUseInstancePrincipal()
-                    ? InstancePrincipalsAuthenticationDetailsProvider.builder().build()
-                    : SimpleAuthenticationDetailsProvider.builder()
-                    .tenantId(config.getTenantId())
-                    .userId(config.getUserId())
-                    .fingerprint(config.getFingerprint())
-                    .privateKeySupplier(new StringPrivateKeySupplier(config.getPrivateKey()))
-                    .passPhrase(config.getPassPhrase())
-                    .region(region)
-                    .build();
+        config.isUseInstancePrincipal()
+            ? InstancePrincipalsAuthenticationDetailsProvider.builder().build()
+            : SimpleAuthenticationDetailsProvider.builder()
+                .tenantId(config.getTenantId())
+                .userId(config.getUserId())
+                .fingerprint(config.getFingerprint())
+                .privateKeySupplier(new StringPrivateKeySupplier(config.getPrivateKey()))
+                .passPhrase(config.getPassPhrase())
+                .region(region)
+                .build();
     return ObjectStorageClient.builder().region(region).build(authProvider);
   }
 }

@@ -45,7 +45,8 @@ public final class PekkoUtils {
     return result;
   }
 
-  public static Config buildSlickConfig(final Config baseConfig, final SQLServerInfraConfig serverConfig) {
+  public static Config buildSlickConfig(
+      final Config baseConfig, final SQLServerInfraConfig serverConfig) {
     if (StringUtils.isBlank(serverConfig.getDatabase())) {
       throw new IllegalStateException(
           "SQL server '%s' has no database".formatted(serverConfig.getId()));

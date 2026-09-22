@@ -1,9 +1,9 @@
 package com.agentengine.util.cloudstorage;
 
-import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.common.config.ApplicationConfig;
-import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.InfraClientProvisioner;
+import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.infra.ServerType;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -15,10 +15,11 @@ public class CloudStorageClientProvisioner extends InfraClientProvisioner {
 
   @Inject
   public CloudStorageClientProvisioner(
-          final InfraConfigService infraConfigService,
-          final CloudStorageServiceFactory storageFactory, ApplicationConfig applicationConfig) {
-      super(applicationConfig);
-      this.infraConfigService = infraConfigService;
+      final InfraConfigService infraConfigService,
+      final CloudStorageServiceFactory storageFactory,
+      ApplicationConfig applicationConfig) {
+    super(applicationConfig);
+    this.infraConfigService = infraConfigService;
     this.storageFactory = storageFactory;
   }
 

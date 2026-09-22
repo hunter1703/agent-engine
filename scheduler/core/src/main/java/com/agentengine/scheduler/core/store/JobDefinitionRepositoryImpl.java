@@ -15,6 +15,10 @@ public class JobDefinitionRepositoryImpl extends GlobalMongoRepository<JobDefini
   @Inject
   public JobDefinitionRepositoryImpl(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, SchedulerMongoStoreClientType.SCHEDULER, JobDefinition.class, validationService);
+    super(
+        mongoClientFactory,
+        SchedulerMongoStoreClientType.SCHEDULER,
+        JobDefinition.class,
+        validationService);
   }
 }

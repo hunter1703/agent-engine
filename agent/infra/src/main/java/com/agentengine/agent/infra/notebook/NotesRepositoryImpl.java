@@ -1,7 +1,7 @@
 package com.agentengine.agent.infra.notebook;
 
-import com.agentengine.util.common.validation.ValidationService;
 import com.agentengine.util.agents.repository.AgentMongoStoreClientType;
+import com.agentengine.util.common.validation.ValidationService;
 import com.agentengine.util.mongodb.mongo.AbstractMongoRepository;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import jakarta.inject.Inject;

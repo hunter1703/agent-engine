@@ -1,6 +1,5 @@
 package com.agentengine.util.mongodb.mongo;
 
-import com.agentengine.util.infra.ServerType;
 import static org.bson.codecs.configuration.CodecRegistries.fromCodecs;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
@@ -13,6 +12,7 @@ import com.agentengine.util.crypto.EncryptionService;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
+import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.mongodb.infra.MongoClientInfraConfig;
 import com.agentengine.util.mongodb.infra.MongoServerInfraConfig;
 import com.mongodb.ConnectionString;
@@ -48,17 +48,17 @@ public class MongoClientFactory
 
   @Inject
   public MongoClientFactory(
-          InfraConfigService infraConfigService,
-          DistributedCacheManager cacheManager,
-          MongoClientSupport mongoClientSupport,
-          EncryptionService encryptionService, ApplicationConfig applicationConfig,
-          Instance<Codec<?>> customCodecs) {
-    super(
-        infraConfigService, cacheManager, ServerType.MONGO_SERVER);
+      InfraConfigService infraConfigService,
+      DistributedCacheManager cacheManager,
+      MongoClientSupport mongoClientSupport,
+      EncryptionService encryptionService,
+      ApplicationConfig applicationConfig,
+      Instance<Codec<?>> customCodecs) {
+    super(infraConfigService, cacheManager, ServerType.MONGO_SERVER);
     this.mongoClientSupport = mongoClientSupport;
     this.encryptionService = encryptionService;
-      this.defaultServerId = ServerType.MONGO_SERVER.defaultServerId(applicationConfig);
-      this.customCodecs = customCodecs;
+    this.defaultServerId = ServerType.MONGO_SERVER.defaultServerId(applicationConfig);
+    this.customCodecs = customCodecs;
     this.infraClient = new LazyLoader<>(() -> create(EnvUtils.getInfraMongoUri()));
   }
 
@@ -70,9 +70,7 @@ public class MongoClientFactory
     return get(
         getOrCreate(
             MongoUtils.clientId(clientType.name(), customerId),
-            () ->
-                MongoUtils.clientConfig(
-                    clientType.name(), customerId, defaultServerId)));
+            () -> MongoUtils.clientConfig(clientType.name(), customerId, defaultServerId)));
   }
 
   @Override

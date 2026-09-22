@@ -12,6 +12,10 @@ public class SessionRepository extends AbstractMongoRepository<AgentSession> {
   @Inject
   public SessionRepository(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, CatalogMongoStoreClientType.CATALOG, AgentSession.class, validationService);
+    super(
+        mongoClientFactory,
+        CatalogMongoStoreClientType.CATALOG,
+        AgentSession.class,
+        validationService);
   }
 }

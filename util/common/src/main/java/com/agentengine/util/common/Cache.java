@@ -15,7 +15,8 @@ public class Cache<K, V> {
   private final com.google.common.cache.Cache<K, Holder<? extends V>> delegate;
   private final Function<K, Holder<? extends V>> defaultLoader;
 
-  public Cache(final CacheBuilder<Object, Object> delegate, final Function<K, ? extends V> defaultLoader) {
+  public Cache(
+      final CacheBuilder<Object, Object> delegate, final Function<K, ? extends V> defaultLoader) {
     this.delegate = delegate.build();
     this.defaultLoader = input -> new Holder<>(defaultLoader.apply(input));
   }

@@ -12,7 +12,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-
 public class DistributedCache<V> {
   private static final String SEPARATOR = ":";
 
@@ -124,9 +123,7 @@ public class DistributedCache<V> {
   }
 
   private String customerId() {
-    return Context.customerId()
-        .map(String::valueOf)
-        .orElseThrow(() -> noIdentity("customer"));
+    return Context.customerId().map(String::valueOf).orElseThrow(() -> noIdentity("customer"));
   }
 
   private String userId() {
@@ -135,7 +132,12 @@ public class DistributedCache<V> {
 
   private IllegalStateException noIdentity(final String identity) {
     return new IllegalStateException(
-        "Cache " + cacheName + " is " + scope + "-scoped but the current context has no " + identity);
+        "Cache "
+            + cacheName
+            + " is "
+            + scope
+            + "-scoped but the current context has no "
+            + identity);
   }
 
   public static final class Builder<V> {

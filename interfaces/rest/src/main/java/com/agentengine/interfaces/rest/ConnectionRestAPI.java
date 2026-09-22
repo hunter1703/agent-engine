@@ -4,9 +4,9 @@ import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 
 import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.api.services.ConnectionService;
-import com.agentengine.util.context.ContextAware;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.context.ContextAware;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;

@@ -17,6 +17,7 @@ public class Memory extends VectorEntity {
 
   @Indexed private String agentId;
   @Indexed private String userId;
+
   @Indexed(vector = true)
   private String text;
 

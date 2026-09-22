@@ -41,7 +41,11 @@ public class TriggerDefinitionRepositoryImpl extends GlobalMongoRepository<Trigg
   @Inject
   public TriggerDefinitionRepositoryImpl(
       final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, SchedulerMongoStoreClientType.SCHEDULER, TriggerDefinition.class, validationService);
+    super(
+        mongoClientFactory,
+        SchedulerMongoStoreClientType.SCHEDULER,
+        TriggerDefinition.class,
+        validationService);
   }
 
   @Override
@@ -84,15 +88,16 @@ public class TriggerDefinitionRepositoryImpl extends GlobalMongoRepository<Trigg
   }
 
   @Override
-  public List<TriggerDefinition> queueTriggers(final Collection<TriggerDefinition> triggers, final String scheduledBy) {
+  public List<TriggerDefinition> queueTriggers(
+      final Collection<TriggerDefinition> triggers, final String scheduledBy) {
     if (CollectionUtils.isEmpty(triggers)) {
       return List.of();
     }
-    final Set<String> triggerIds = triggers.stream().map(TriggerDefinition::getId).collect(Collectors.toSet());
+    final Set<String> triggerIds =
+        triggers.stream().map(TriggerDefinition::getId).collect(Collectors.toSet());
     updateMany(
         Filters.and(
-            Filters.in(
-                BaseEntity.FIELD_ID, List.copyOf(triggerIds)),
+            Filters.in(BaseEntity.FIELD_ID, List.copyOf(triggerIds)),
             Filters.eq(TriggerDefinition.FIELD_STATUS, TriggerStatus.WAITING)),
         Update.of(
             Operation.set(TriggerDefinition.FIELD_STATUS, TriggerStatus.QUEUED),
