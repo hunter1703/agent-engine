@@ -8,7 +8,7 @@ import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.SchedulerConfigs;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.BaseEntity;
-import com.agentengine.util.common.collections.DeficitRoundRobinQueue;
+import com.agentengine.util.common.collections.FairQueue;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Contextual;
 import com.agentengine.util.context.UserContext;
@@ -55,8 +55,8 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
   private final JobDefinitionRepository jobDefinitionRepository;
   private final SchedulerConfigs schedulerConfigs;
   private final TimerScheduler<Command> timers;
-  private DeficitRoundRobinQueue<Integer, TriggerDefinition> dueTriggers =
-      new DeficitRoundRobinQueue<>(_ -> 1);
+  private FairQueue<Integer, TriggerDefinition> dueTriggers =
+      new FairQueue<>(_ -> new TenantQueue());
   private boolean initialized;
 
   private SchedulerActor(
@@ -144,8 +144,7 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
       }
       final long delayMs = trigger.getDueAt() - System.currentTimeMillis();
       if (delayMs <= 0) {
-        dueTriggers.enqueue(
-            trigger.getJobDefinition().getUserContext().customerId(), trigger, 1, TenantQueue::new);
+        dueTriggers.enqueue(trigger.getCustomerId(), trigger);
       } else {
         timers.startSingleTimer(
             command.triggerId(),
@@ -162,8 +161,7 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
     try {
       final TriggerDefinition trigger = triggerDefinitionRepository.findById(command.triggerId());
       if (trigger != null && trigger.getStatus() == TriggerStatus.WAITING) {
-        dueTriggers.enqueue(
-            trigger.getJobDefinition().getUserContext().customerId(), trigger, 1, TenantQueue::new);
+        dueTriggers.enqueue(trigger.getCustomerId(), trigger);
       }
     } catch (final RuntimeException exception) {
       getContext().getLog().error("Failed to process TriggerDue", exception);
@@ -178,7 +176,7 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
     final List<TriggerDefinition> due =
         triggerDefinitionRepository.findDueTriggers(schedulerConfigs.maxTriggersPerScan());
     if (CollectionUtils.isEmpty(due)) {
-      dueTriggers = new DeficitRoundRobinQueue<>(_ -> 1);
+      dueTriggers = new FairQueue<>(_ -> new TenantQueue());
       return;
     }
     final Map<String, JobDefinition> idVsJobs = fetchJobs(due);
@@ -192,10 +190,9 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
         current.add(trigger);
       }
     }
-    dueTriggers = new DeficitRoundRobinQueue<>(_ -> 1);
+    dueTriggers = new FairQueue<>(_ -> new TenantQueue());
     for (final TriggerDefinition trigger : current) {
-      dueTriggers.enqueue(
-          trigger.getJobDefinition().getUserContext().customerId(), trigger, 1, TenantQueue::new);
+      dueTriggers.enqueue(trigger.getCustomerId(), trigger);
     }
     try {
       triggerDefinitionRepository.cancelTriggers(outdated);
@@ -258,8 +255,9 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
   }
 
   private static final class TenantQueue extends AbstractQueue<TriggerDefinition> {
-    private final DeficitRoundRobinQueue<String, TriggerDefinition> tagQueue =
-        new DeficitRoundRobinQueue<>(_ -> 1);
+    private final FairQueue<String, TriggerDefinition> tagQueue =
+        new FairQueue<>(
+            _ -> new PriorityQueue<>(Comparator.comparing(TriggerDefinition::getDueAt)));
     private TriggerDefinition head;
 
     @Override
@@ -268,11 +266,7 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
           CollectionUtils.isEmpty(trigger.getJobDefinition().getTags())
               ? "default"
               : trigger.getJobDefinition().getTags().getFirst();
-      tagQueue.enqueue(
-          tag,
-          trigger,
-          1,
-          () -> new PriorityQueue<>(Comparator.comparing(TriggerDefinition::getDueAt)));
+      tagQueue.enqueue(tag, trigger);
       if (head == null) {
         head = tagQueue.poll();
       }

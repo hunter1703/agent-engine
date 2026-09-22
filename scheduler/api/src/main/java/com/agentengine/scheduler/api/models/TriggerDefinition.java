@@ -31,6 +31,10 @@ public class TriggerDefinition extends BaseEntity {
     return jobDefinition;
   }
 
+  public int getCustomerId() {
+    return getJobDefinition().getUserContext().customerId();
+  }
+
   public void setJobDefinition(final JobDefinition jobDefinition) {
     this.jobDefinition = jobDefinition;
   }
