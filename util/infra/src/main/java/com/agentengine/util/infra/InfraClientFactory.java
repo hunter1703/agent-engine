@@ -19,6 +19,12 @@ public abstract class InfraClientFactory<
   private final ServerType serverType;
   private final DistributedCache<T> connections;
 
+  protected InfraClientFactory() {
+    this.infraConfigService = null;
+    this.serverType = null;
+    this.connections = null;
+  }
+
   protected InfraClientFactory(
       final InfraConfigService infraConfigService,
       final DistributedCacheManager cacheManager,

@@ -1,5 +1,6 @@
 package com.agentengine.util.vectordb;
 
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
@@ -46,11 +47,14 @@ public class VectorDbClientFactory
   protected QdrantClient create(final VectorServerInfraConfig serverConfig) {
     LOG.info(
         "Connecting to Qdrant gRPC at {}:{}", serverConfig.getHost(), serverConfig.getGrpcPort());
-    return new QdrantClient(
+    final QdrantGrpcClient.Builder builder =
         QdrantGrpcClient.newBuilder(
                 serverConfig.getHost(), serverConfig.getGrpcPort(), serverConfig.isTls())
-            .withApiKey(serverConfig.getApiKey())
-            .withTimeout(REQUEST_TIMEOUT)
-            .build());
+            .withTimeout(REQUEST_TIMEOUT);
+    final String apiKey = serverConfig.getApiKey();
+    if (StringUtils.isNotBlank(apiKey)) {
+      builder.withApiKey(apiKey);
+    }
+    return new QdrantClient(builder.build());
   }
 }

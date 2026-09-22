@@ -13,10 +13,10 @@ app-base:
   resources:
     requests:
       cpu: "100m"
-      memory: "256Mi"
+      memory: "512Mi"
     limits:
       cpu: "100m"
-      memory: "256Mi"
+      memory: "512Mi"
   config:
     applicationProperties:
       # quarkus.log.category."org.jgroups".level: DEBUG

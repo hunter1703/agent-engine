@@ -7,6 +7,7 @@ import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.ServerType;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 @Singleton
@@ -16,7 +17,8 @@ public class CloudStorageServiceFactory
 
   private final ApplicationConfig applicationConfig;
 
-  protected CloudStorageServiceFactory(
+  @Inject
+  public CloudStorageServiceFactory(
       final InfraConfigService infraConfigService,
       final DistributedCacheManager cacheManager,
       final ApplicationConfig applicationConfig) {
@@ -38,11 +40,9 @@ public class CloudStorageServiceFactory
   @Override
   protected CloudStorageService create(final CloudStorageServerInfraConfig serverConfig) {
     final CloudStorageServerInfraConfig.Provider provider = serverConfig.providerType();
-    final CloudStorageService cloudStorageService =
-        switch (provider) {
-          case ORACLE -> new OracleCloudStorage(serverConfig, infraConfigService);
-          default -> new S3CloudStorage(serverConfig, infraConfigService);
-        };
-    return new DelegatingCloudStorageService(cloudStorageService);
+    return switch (provider) {
+      case ORACLE -> new OracleCloudStorage(serverConfig, infraConfigService);
+      default -> new S3CloudStorage(serverConfig, infraConfigService);
+    };
   }
 }

@@ -16,13 +16,11 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOptions;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.time.Duration;
 
 @Singleton
 public class InfraConfigServiceImpl implements InfraConfigService {
 
   private static final String CACHE_NAME = "INFRA_CONFIG_CACHE";
-  private static final Duration CACHE_TTL = Duration.ofMinutes(5);
   private static final String DATABASE = "INFRA";
   private static final String COLLECTION = "InfraConfig";
   private static final int DUPLICATE_KEY_ERROR = 11000;
@@ -39,7 +37,7 @@ public class InfraConfigServiceImpl implements InfraConfigService {
     this.cache =
         DistributedCache.<InfraConfig>builder(CACHE_NAME, cacheManager)
             .scope(CacheScope.GLOBAL)
-            .localCache(CacheBuilder.newBuilder().maximumSize(1024).expireAfterWrite(CACHE_TTL))
+            .localCache(CacheBuilder.newBuilder().maximumSize(2048))
             .build();
   }
 

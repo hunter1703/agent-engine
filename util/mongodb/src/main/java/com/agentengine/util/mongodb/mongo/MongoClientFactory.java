@@ -46,6 +46,15 @@ public class MongoClientFactory
   private final Instance<Codec<?>> customCodecs;
   private final LazyLoader<MongoClient> infraClient;
 
+  // needed for quarkus to build proxy because the bean is ApplicationScoped
+  protected MongoClientFactory() {
+    this.mongoClientSupport = null;
+    this.encryptionService = null;
+    this.defaultServerId = null;
+    this.customCodecs = null;
+    this.infraClient = null;
+  }
+
   @Inject
   public MongoClientFactory(
       InfraConfigService infraConfigService,

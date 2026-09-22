@@ -65,6 +65,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("-n", "--namespace", help="Override every selected chart's namespace")
     parser.add_argument(
         "--env",
+        required=True,
         help="Path to a .env file: loaded into the process for seed-time ${VAR} expansion, "
         "and copied wholesale into the namespace Secret that every app pod mounts",
     )
@@ -135,14 +136,14 @@ def _build_context(args: argparse.Namespace) -> helm.DeployContext:
 
 def run(args: argparse.Namespace) -> None:
     env_file = getattr(args, "env", None)
-    env_path: Path | None = None
-    if env_file:
-        env_path = Path(os.path.expanduser(env_file))
-        if not env_path.is_file():
-            raise ValueError(f"env file {env_path} not found")
-        from dotenv import load_dotenv
+    if not env_file:
+        raise ValueError("--env is required for deployment")
+    env_path = Path(os.path.expanduser(env_file))
+    if not env_path.is_file():
+        raise ValueError(f"env file {env_path} not found")
+    from dotenv import load_dotenv
 
-        load_dotenv(env_path, override=True)
+    load_dotenv(env_path, override=True)
 
     ctx = _build_context(args)
     asyncio.run(
