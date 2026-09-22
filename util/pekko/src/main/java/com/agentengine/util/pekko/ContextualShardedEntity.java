@@ -2,8 +2,10 @@ package com.agentengine.util.pekko;
 
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Contextual;
+import com.agentengine.util.context.UserContext;
 import com.agentengine.util.pekko.actor.ShardedEntity;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import org.apache.pekko.actor.typed.PostStop;
 import org.apache.pekko.actor.typed.javadsl.ActorContext;
@@ -32,8 +34,7 @@ public abstract class ContextualShardedEntity<
   protected Context defaultContext(final State state) {
     final Context context = state.context();
     if (context == null) {
-      throw new IllegalStateException(
-          "Entity " + persistenceId().entityId() + " has no context yet");
+      return new Context(UUID.randomUUID().toString(), UserContext.SYSTEM);
     }
     return context;
   }

@@ -3,11 +3,14 @@ package com.agentengine.util.pekko;
 import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.context.Context;
+import com.agentengine.util.context.UserContext;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.pekko.actor.ShardedEntityDefinition;
 import com.agentengine.util.pekko.persistence.InfraSetup;
-import com.agentengine.util.pekko.persistence.InfraSlickDatabaseProvider;
+import com.agentengine.util.pekko.persistence.PekkoSlickDatabaseProvider;
+import com.agentengine.util.pekko.persistence.PekkoUtils;
+import com.agentengine.util.sql.SQLClientInfraConfig;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValueFactory;
@@ -153,10 +156,26 @@ public class ActorSystemProvider {
                 // A node's role is its Pekko cluster identity (pekko.cluster in the chart), so this
                 // scopes bootstrap discovery to peers of that same cluster.
                 ConfigValueFactory.fromAnyRef(PEKKO_CLUSTER_LABEL_KEY + "=" + pekkoCluster));
+    final SQLClientInfraConfig systemClient =
+        PekkoUtils.sqlClient(infraSetup.infraConfigService(), UserContext.SYSTEM.customerId());
+    if (systemClient == null) {
+      throw new IllegalStateException("System SQL client config not found for Pekko persistence");
+    }
+    final Config journalConfig =
+        PekkoUtils.buildConfigForClient(
+            baseConfig.getConfig(PekkoUtils.JOURNAL), systemClient, PekkoUtils.JOURNAL_TABLES);
+    final Config snapshotConfig =
+        PekkoUtils.buildConfigForClient(
+            baseConfig.getConfig(PekkoUtils.SNAPSHOT_STORE),
+            systemClient,
+            PekkoUtils.SNAPSHOT_TABLES);
     return withCluster
+        // replace the default configs with our updated one.
+        .withValue(PekkoUtils.JOURNAL, journalConfig.root())
+        .withValue(PekkoUtils.SNAPSHOT_STORE, snapshotConfig.root())
         .withValue(
             "pekko-persistence-jdbc.database-provider-fqcn",
-            ConfigValueFactory.fromAnyRef(InfraSlickDatabaseProvider.class.getName()))
+            ConfigValueFactory.fromAnyRef(PekkoSlickDatabaseProvider.class.getName()))
         .withFallback(ConfigFactory.load())
         .resolve();
   }

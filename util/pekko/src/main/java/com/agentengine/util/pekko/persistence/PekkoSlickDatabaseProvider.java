@@ -12,18 +12,18 @@ import org.apache.pekko.persistence.jdbc.db.LazySlickDatabase;
 import org.apache.pekko.persistence.jdbc.db.SlickDatabase;
 import org.apache.pekko.persistence.jdbc.db.SlickDatabaseProvider;
 
-public class InfraSlickDatabaseProvider
+public class PekkoSlickDatabaseProvider
     extends InfraClientFactory<
-        SQLClientInfraConfig, SQLServerInfraConfig, InfraSlickDatabaseProvider.Pool>
+        SQLClientInfraConfig, SQLServerInfraConfig, PekkoSlickDatabaseProvider.Pool>
     implements SlickDatabaseProvider {
 
   private final ActorSystem system;
 
-  public InfraSlickDatabaseProvider(final ActorSystem system) {
+  public PekkoSlickDatabaseProvider(final ActorSystem system) {
     this(system, infraSetup(system));
   }
 
-  private InfraSlickDatabaseProvider(final ActorSystem system, final InfraSetup infraSetup) {
+  private PekkoSlickDatabaseProvider(final ActorSystem system, final InfraSetup infraSetup) {
     super(infraSetup.infraConfigService(), infraSetup.cacheManager(), ServerType.SQL_SERVER);
     this.system = system;
   }
