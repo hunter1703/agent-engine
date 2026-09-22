@@ -1121,9 +1121,8 @@ public final class SessionActor
 
   @Override
   protected Context defaultContext(final SessionActorState state) {
-    if (state.ownerContext() == null) {
-      throw new IllegalStateException(
-          "Session " + persistenceId().entityId() + " has no owner context yet");
+    if (state == null || state.ownerContext() == null || state.topology() == null) {
+      return super.defaultContext(state);
     }
     if (ownerContext == null) {
       ownerContext = new Context(state.topology().sessionId(), state.ownerContext());

@@ -32,7 +32,7 @@ public abstract class ContextualShardedEntity<
   protected abstract CommandHandler<Command, Event, State> contextualCommandHandler();
 
   protected Context defaultContext(final State state) {
-    final Context context = state.context();
+    final Context context = state == null ? null : state.context();
     if (context == null) {
       return new Context(UUID.randomUUID().toString(), UserContext.SYSTEM);
     }
