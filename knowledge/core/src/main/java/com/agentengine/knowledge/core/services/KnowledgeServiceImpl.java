@@ -5,6 +5,7 @@ import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.knowledge.core.pipeline.KnowledgeIndexer;
 import com.agentengine.knowledge.core.repository.KnowledgeRepository;
 import com.agentengine.knowledge.core.store.KnowledgeChunkStore;
+import com.agentengine.util.common.ThreadUtils;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.repository.Repository;
 import com.agentengine.util.common.update.Operation;
@@ -14,6 +15,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +24,8 @@ import org.slf4j.LoggerFactory;
 public class KnowledgeServiceImpl implements KnowledgeService {
 
   private static final Logger LOG = LoggerFactory.getLogger(KnowledgeServiceImpl.class);
+  private static final ExecutorService INDEXING_EXECUTOR =
+      ThreadUtils.newVirtualThreadExecutor("knowledge-indexing-");
 
   private final KnowledgeRepository knowledgeRepo;
   private final List<KnowledgeIndexer> indexers;
@@ -100,9 +104,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
   }
 
   private void scheduleIndexing(final Knowledge knowledge) {
-    Thread.ofVirtual()
-        .name("knowledge-indexing-" + knowledge.getId())
-        .start(() -> runIndexing(knowledge));
+    INDEXING_EXECUTOR.execute(() -> runIndexing(knowledge));
   }
 
   private void runIndexing(final Knowledge knowledge) {

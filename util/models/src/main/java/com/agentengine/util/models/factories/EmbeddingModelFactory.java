@@ -93,12 +93,14 @@ public class EmbeddingModelFactory {
     return switch (provider) {
       case OLLAMA ->
           OllamaEmbeddingModel.builder()
+              .httpClientBuilder(LangchainUtils.httpClientBuilder())
               .baseUrl(baseUrl)
               .modelName(model)
               .timeout(DEFAULT_TIMEOUT)
               .build();
       case OPEN_AI_COMPATIBLE ->
           OpenAiEmbeddingModel.builder()
+              .httpClientBuilder(LangchainUtils.httpClientBuilder())
               .baseUrl(baseUrl)
               .apiKey(config.getApiKey())
               .modelName(model)

@@ -2,7 +2,6 @@ package com.agentengine.agent.infra.tools;
 
 import com.agentengine.agent.infra.tools.knowledge.ReadKnowledgeSourceTool;
 import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
-import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.beans.config.ToolsConfig;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
@@ -22,7 +21,6 @@ public final class ToolFactory {
   private final ToolService toolService;
   private final CloudStorageService cloudStorageService;
   private final KnowledgeService knowledgeService;
-  private final AgentService agentService;
   private final DefaultModelsRepository defaultModelsRepository;
 
   @Inject
@@ -30,12 +28,10 @@ public final class ToolFactory {
       final ToolService toolService,
       final CloudStorageService cloudStorageService,
       final KnowledgeService knowledgeService,
-      final AgentService agentService,
       final DefaultModelsRepository defaultModelsRepository) {
     this.toolService = toolService;
     this.cloudStorageService = cloudStorageService;
     this.knowledgeService = knowledgeService;
-    this.agentService = agentService;
     this.defaultModelsRepository = defaultModelsRepository;
   }
 
@@ -48,7 +44,7 @@ public final class ToolFactory {
   }
 
   public BaseTool getSearchKnowledgeTool() {
-    return new SearchKnowledgeTool(knowledgeService, agentService, defaultModelsRepository);
+    return new SearchKnowledgeTool(knowledgeService, defaultModelsRepository);
   }
 
   public List<BaseTool> buildTools(final List<ToolsConfig> toolConfigs) {

@@ -79,6 +79,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
   private static ChatModel buildOllama(
       final ChatModelConfig config, final ResponseFormat responseFormat) {
     return OllamaChatModel.builder()
+        .httpClientBuilder(LangchainUtils.httpClientBuilder())
         .modelName(config.getModel())
         .baseUrl(config.getBaseUrl())
         .temperature(config.getTemperature())
@@ -97,6 +98,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
       final ChatModelConfig config, final ResponseFormat responseFormat) {
     final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
     return OpenAiChatModel.builder()
+        .httpClientBuilder(LangchainUtils.httpClientBuilder())
         .modelName(config.getModel())
         .baseUrl(config.getBaseUrl())
         .apiKey(config.getApiKey())
@@ -112,6 +114,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
   private static StreamingChatModel buildOllamaStreaming(
       final ChatModelConfig config, final ResponseFormat responseFormat) {
     return OllamaStreamingChatModel.builder()
+        .httpClientBuilder(LangchainUtils.httpClientBuilder())
         .modelName(config.getModel())
         .baseUrl(config.getBaseUrl())
         .temperature(config.getTemperature())
@@ -130,6 +133,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
       final ChatModelConfig config, final ResponseFormat responseFormat) {
     final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
     return OpenAiStreamingChatModel.builder()
+        .httpClientBuilder(LangchainUtils.httpClientBuilder())
         .modelName(config.getModel())
         .baseUrl(config.getBaseUrl())
         .apiKey(config.getApiKey())

@@ -1,13 +1,12 @@
 package com.agentengine.agent.infra.tools.knowledge;
 
 import com.agentengine.agent.api.annotations.ToolArg;
+import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.tools.Tool;
-import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -44,17 +43,14 @@ public final class SearchKnowledgeTool extends Tool {
               + "Returns: { chunks: [...], total, offset, limit }.");
 
   private final KnowledgeService knowledgeService;
-  private final AgentService agentService;
   private final DefaultModelsRepository defaultModelsRepository;
 
   @ToolConstructor
   public SearchKnowledgeTool(
-      KnowledgeService knowledgeService,
-      final AgentService agentService,
+      final KnowledgeService knowledgeService,
       final DefaultModelsRepository defaultModelsRepository) {
     super(DESCRIPTOR);
     this.knowledgeService = knowledgeService;
-    this.agentService = agentService;
     this.defaultModelsRepository = defaultModelsRepository;
   }
 
@@ -95,10 +91,7 @@ public final class SearchKnowledgeTool extends Tool {
 
     final Filter semanticFilter =
         Filters.semanticSearch("text", query)
-            .withAdditional(
-                Map.of(
-                    EMBEDDING_MODEL_ID_KEY,
-                    resolveModelId(toolContext.invocationContext().agent().name())));
+            .withAdditional(Map.of(EMBEDDING_MODEL_ID_KEY, resolveModelId(toolContext)));
     final Filter combined = Filters.and(semanticFilter, scopeFilter);
 
     final Query searchQuery =
@@ -114,12 +107,12 @@ public final class SearchKnowledgeTool extends Tool {
             "limit", resolvedLimit));
   }
 
-  private String resolveModelId(final String agentId) {
-    final BaseAgentConfig agent = agentService.getAgent(agentId);
-    final KnowledgeSettings settings = agent.getKnowledgeSettings();
-    final String agentModelId = settings == null ? null : settings.getEmbeddingModelId();
-    if (StringUtils.isNotBlank(agentModelId)) {
-      return agentModelId;
+  private String resolveModelId(final ToolContext toolContext) {
+    if (toolContext.invocationContext().agent() instanceof Agent agent) {
+      final KnowledgeSettings settings = agent.getAgentConfig().getKnowledgeSettings();
+      if (settings != null && StringUtils.isNotBlank(settings.getEmbeddingModelId())) {
+        return settings.getEmbeddingModelId();
+      }
     }
     return defaultModelsRepository.getEmbeddingModelId();
   }
