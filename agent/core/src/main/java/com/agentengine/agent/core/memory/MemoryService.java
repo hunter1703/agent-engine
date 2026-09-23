@@ -19,6 +19,7 @@ import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.Query;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.apps.App;
 import com.google.adk.memory.BaseMemoryService;
 import com.google.adk.memory.MemoryEntry;
@@ -33,6 +34,7 @@ import io.reactivex.rxjava3.core.Single;
 import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -281,15 +283,14 @@ public class MemoryService implements BaseMemoryService {
     if (existing.isEmpty()) {
       sb.append("[]\n");
     } else {
-      sb.append("[\n");
-      for (final Memory m : existing) {
-        sb.append("  {\"id\": \"")
-            .append(m.getId())
-            .append("\", \"text\": \"")
-            .append(m.getText().replace("\"", "\\\""))
-            .append("\"}\n");
+      final List<Map<String, String>> minifiedMemory = new ArrayList<>();
+      for (final Memory memory : existing) {
+        final Map<String, String> entry = new LinkedHashMap<>();
+        entry.put("id", memory.getId());
+        entry.put("text", memory.getText());
+        minifiedMemory.add(entry);
       }
-      sb.append("]\n");
+      sb.append(JsonUtils.toJson(minifiedMemory)).append('\n');
     }
     sb.append("\nCONVERSATION:\n").append(conversation);
     return sb.toString();
@@ -300,7 +301,8 @@ public class MemoryService implements BaseMemoryService {
       return MemoryDecisions.empty();
     }
     try {
-      final MemoryDecisions parsed = JsonUtils.fromJson(responseText, MemoryDecisions.class);
+      final MemoryDecisions parsed =
+          JsonUtils.parseJsonPayload(responseText, new TypeReference<>() {});
       return new MemoryDecisions(
           CollectionUtils.nullSafeList(
               parsed == null || parsed.decisions() == null ? List.of() : parsed.decisions()));

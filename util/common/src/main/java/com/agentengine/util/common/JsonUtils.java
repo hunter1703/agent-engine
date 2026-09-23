@@ -160,26 +160,30 @@ public final class JsonUtils {
     JsonPath.using(Configuration.builder().build()).parse(jsonObject).delete(path);
   }
 
-  public static Map<String, Object> parseJsonPayload(final String text) {
+  public static <T> T parseJsonPayload(final String text, final TypeReference<T> typeReference) {
     if (text == null || text.isBlank()) {
       return null;
     }
     final String cleaned = StringUtils.stripCodeFences(text);
-    Map<String, Object> payload = null;
+    T payload = null;
     try {
-      payload = fromJson(cleaned, new TypeReference<>() {});
+      payload = fromJson(cleaned, typeReference);
     } catch (Exception ex) {
       final int start = cleaned.indexOf('{');
       final int end = cleaned.lastIndexOf('}');
       if (start >= 0 && end > start) {
         try {
-          payload = fromJson(cleaned.substring(start, end + 1), new TypeReference<>() {});
+          payload = fromJson(cleaned.substring(start, end + 1), typeReference);
         } catch (Exception innerEx) {
           LOGGER.warn("Failed to parse JSON payload from substring", innerEx);
         }
       }
     }
     return payload;
+  }
+
+  public static Map<String, Object> parseJsonPayload(final String text) {
+    return parseJsonPayload(text, new TypeReference<>() {});
   }
 
   public static JsonNode toJsonNode(final Object object) {
