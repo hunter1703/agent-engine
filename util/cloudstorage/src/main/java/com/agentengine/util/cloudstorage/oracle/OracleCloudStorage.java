@@ -232,12 +232,18 @@ public class OracleCloudStorage extends AbstractCloudStorageService {
                 + bucket
                 + "' does not exist and the server has no compartmentId to create it in");
       }
-      client.createBucket(
-          CreateBucketRequest.builder()
-              .namespaceName(namespace)
-              .createBucketDetails(
-                  CreateBucketDetails.builder().name(bucket).compartmentId(compartmentId).build())
-              .build());
+      try {
+        client.createBucket(
+            CreateBucketRequest.builder()
+                .namespaceName(namespace)
+                .createBucketDetails(
+                    CreateBucketDetails.builder().name(bucket).compartmentId(compartmentId).build())
+                .build());
+      } catch (final BmcException createException) {
+        if (createException.getStatusCode() != 409) {
+          throw createException;
+        }
+      }
     }
   }
 

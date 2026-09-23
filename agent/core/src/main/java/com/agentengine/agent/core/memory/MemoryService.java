@@ -177,10 +177,12 @@ public class MemoryService implements BaseMemoryService {
       final String responseText =
           runner
               .runAsync(AgentSession.DEFAULT_USER_ID, sessionId, prompt)
-              .filter(event -> event.turnComplete().orElse(false))
-              .map(event -> event.content().map(Content::text).orElse(null))
-              .filter(text -> !StringUtils.isBlank(text))
-              .firstElement()
+              .filter(event -> !AgentSession.DEFAULT_USER_ID.equalsIgnoreCase(event.author()))
+              .filter(event -> !event.partial().orElse(false))
+              .filter(event -> event.content().isPresent())
+              .map(event -> event.content().orElseThrow().text())
+              .filter(StringUtils::isNotBlank)
+              .lastElement()
               .blockingGet();
       agent.close().blockingAwait();
       return parseDecisions(responseText);
