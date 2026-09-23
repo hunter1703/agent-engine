@@ -10,6 +10,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.models.factories.EmbeddingModelFactory;
 import com.agentengine.util.models.factories.ModelProvider;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
 
@@ -34,6 +35,7 @@ public class ChunkingPipelineFactory {
   private final ModelProvider modelProvider;
   private final DefaultModelsRepository defaultModelsRepository;
 
+  @Inject
   public ChunkingPipelineFactory(
       final EmbeddingModelFactory embeddingModelFactory,
       final ModelProvider modelProvider,

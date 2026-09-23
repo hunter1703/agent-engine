@@ -33,6 +33,8 @@ public final class MongoUtils {
    */
   public static final String FIELD_MONGO_ID = "_id";
 
+  public static final String FIELD_MONGO_DISCRIMINATOR = "_t";
+
   private MongoUtils() {}
 
   public static MongoClientInfraConfig clientConfig(
@@ -162,10 +164,16 @@ public final class MongoUtils {
               + excludes);
     }
     if (!includes.isEmpty()) {
-      return Projections.include(includes.toArray(new String[0]));
+      final List<String> projected = new ArrayList<>(includes);
+      if (!projected.contains(FIELD_MONGO_DISCRIMINATOR)) {
+        projected.add(FIELD_MONGO_DISCRIMINATOR);
+      }
+      return Projections.include(projected.toArray(new String[0]));
     }
     if (!excludes.isEmpty()) {
-      return Projections.exclude(excludes.toArray(new String[0]));
+      final List<String> projected = new ArrayList<>(excludes);
+      projected.remove(FIELD_MONGO_DISCRIMINATOR);
+      return projected.isEmpty() ? null : Projections.exclude(projected.toArray(new String[0]));
     }
     return null;
   }

@@ -9,6 +9,7 @@ import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.repository.Repository;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -17,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Singleton
+@Unremovable
 public class KnowledgeServiceImpl implements KnowledgeService {
 
   private static final Logger LOG = LoggerFactory.getLogger(KnowledgeServiceImpl.class);
