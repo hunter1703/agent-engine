@@ -1,6 +1,7 @@
 package com.agentengine.util.models.factories;
 
 import com.agentengine.catalog.api.services.ModelService;
+import com.agentengine.util.agents.beans.config.DefaultModels;
 import com.agentengine.util.agents.beans.config.EmbeddingModelConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
@@ -79,7 +80,7 @@ public class EmbeddingModelFactory {
   }
 
   private String resolveModelId(final String modelId) {
-    if (StringUtils.isNotBlank(modelId)) {
+    if (StringUtils.isNotBlank(modelId) && !DefaultModels.ID.equalsIgnoreCase(modelId)) {
       return modelId;
     }
     return defaultModelsRepository.getEmbeddingModelId();

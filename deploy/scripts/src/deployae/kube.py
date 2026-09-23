@@ -97,6 +97,15 @@ def ensure_env_secret(namespace: str, env_file: Path | None) -> str:
         for key, value in dotenv_values(env_file).items():
             if key and _SECRET_KEY_PATTERN.match(key) and value is not None:
                 entries[key] = str(value)
+    elif os.environ.get("SECRETS_CONTEXT"):
+        import json
+
+        with contextlib.suppress(Exception):
+            secrets = json.loads(os.environ["SECRETS_CONTEXT"])
+            if isinstance(secrets, dict):
+                for key, value in secrets.items():
+                    if key and _SECRET_KEY_PATTERN.match(key) and value is not None:
+                        entries[key] = str(value)
 
     mongo_uri = os.environ.get("INFRA_MONGODB_URI")
     if mongo_uri:

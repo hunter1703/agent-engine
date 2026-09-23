@@ -1,7 +1,9 @@
 package com.agentengine.util.models.factories;
 
 import com.agentengine.catalog.api.services.ModelService;
+import com.agentengine.util.agents.beans.config.DefaultModels;
 import com.agentengine.util.agents.beans.config.ModelConfig;
+import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.RefCountedCache;
 import com.agentengine.util.common.StringUtils;
@@ -24,18 +26,21 @@ public class ModelProvider {
   private final Map<String, ModelFactory<?>> typeVsFactory;
   private final ModelFactory<?> defaultFactory;
   private final ModelService modelService;
+  private final DefaultModelsRepository defaultModelsRepository;
   private final RefCountedCache<String, BaseLlm> cache;
 
   @Inject
   public ModelProvider(
       final Instance<ModelFactory<?>> allFactories,
       final OpenAIModelFactory openAIModelFactory,
-      final ModelService modelService) {
+      final ModelService modelService,
+      final DefaultModelsRepository defaultModelsRepository) {
     this.typeVsFactory =
         CollectionUtils.transformToMap(
             allFactories.stream().toList(), ModelFactory::type, Function.identity());
     this.defaultFactory = openAIModelFactory;
     this.modelService = modelService;
+    this.defaultModelsRepository = defaultModelsRepository;
     this.cache =
         RefCountedCache.<String, BaseLlm>builder()
             .name("model-provider")
@@ -48,22 +53,30 @@ public class ModelProvider {
 
   public Flowable<LlmResponse> invokeAcquiring(
       final String modelId, Function<BaseLlm, Flowable<LlmResponse>> invocation) {
-    final BaseLlm model = acquire(modelId);
-    return invocation.apply(model).doFinally(() -> release(modelId));
+    final String resolvedId = resolveModelId(modelId);
+    final BaseLlm model = acquire(resolvedId);
+    return invocation.apply(model).doFinally(() -> release(resolvedId));
   }
 
   public BaseLlm acquire(final String modelId) {
-    if (StringUtils.isBlank(modelId)) {
-      throw new IllegalArgumentException("modelId cannot be blank");
-    }
-    return cache.getAndAcquire(modelId);
+    final String resolvedId = resolveModelId(modelId);
+    return cache.getAndAcquire(resolvedId);
   }
 
   public void release(final String modelId) {
-    if (StringUtils.isBlank(modelId)) {
-      return;
+    final String resolvedId = resolveModelId(modelId);
+    cache.release(resolvedId);
+  }
+
+  private String resolveModelId(final String modelId) {
+    if (StringUtils.isNotBlank(modelId) && !DefaultModels.ID.equalsIgnoreCase(modelId)) {
+      return modelId;
     }
-    cache.release(modelId);
+    final String defaultChatModelId = defaultModelsRepository.getChatModelId();
+    if (StringUtils.isBlank(defaultChatModelId)) {
+      throw new IllegalStateException("Default chat model not configured for customer");
+    }
+    return defaultChatModelId;
   }
 
   private BaseLlm buildModel(final String modelId) {
