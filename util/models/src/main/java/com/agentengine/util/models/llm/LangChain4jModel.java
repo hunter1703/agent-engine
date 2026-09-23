@@ -4,6 +4,7 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.context.Context;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.models.BaseLlmConnection;
@@ -103,6 +104,9 @@ public final class LangChain4jModel extends BaseLlm {
   @Override
   public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
     final ChatRequest chatRequest = toChatRequest(llmRequest);
+    // LangChain4j dispatches streaming callbacks on ForkJoinPool.commonPool threads;
+    // context.run rebinds the turn Context so downstream tool execution retains request context.
+    final Context context = Context.current().orElseThrow();
     if (stream) {
       if (streamingChatModel == null) {
         return Flowable.error(new IllegalStateException("StreamingChatModel is not configured"));
@@ -114,48 +118,58 @@ public final class LangChain4jModel extends BaseLlm {
                   new StreamingChatResponseHandler() {
                     @Override
                     public void onPartialResponse(final String token) {
-                      emitter.onNext(
-                          LlmResponse.builder()
-                              .content(
-                                  Content.builder()
-                                      .role("model")
-                                      .parts(Part.fromText(token))
-                                      .build())
-                              .partial(true)
-                              .build());
+                      context.run(
+                          () ->
+                              emitter.onNext(
+                                  LlmResponse.builder()
+                                      .content(
+                                          Content.builder()
+                                              .role("model")
+                                              .parts(Part.fromText(token))
+                                              .build())
+                                      .partial(true)
+                                      .build()));
                     }
 
                     @Override
                     public void onPartialThinking(final PartialThinking partialThinking) {
-                      emitter.onNext(
-                          LlmResponse.builder()
-                              .content(
-                                  Content.builder()
-                                      .role("model")
-                                      .parts(
-                                          Part.builder()
-                                              .text(partialThinking.text())
-                                              .thought(true)
+                      context.run(
+                          () ->
+                              emitter.onNext(
+                                  LlmResponse.builder()
+                                      .content(
+                                          Content.builder()
+                                              .role("model")
+                                              .parts(
+                                                  Part.builder()
+                                                      .text(partialThinking.text())
+                                                      .thought(true)
+                                                      .build())
                                               .build())
-                                      .build())
-                              .partial(true)
-                              .build());
+                                      .partial(true)
+                                      .build()));
                     }
 
                     @Override
                     public void onCompleteResponse(final ChatResponse chatResponse) {
-                      LOGGER.debug("Raw ChatResponse (onComplete): {}", chatResponse);
-                      final List<Part> parts = toParts(chatResponse.aiMessage(), chatRequest);
-                      if (CollectionUtils.isNotEmpty(parts)) {
-                        emitter.onNext(finalResponse(parts));
-                      }
-                      emitter.onComplete();
+                      context.run(
+                          () -> {
+                            LOGGER.debug("Raw ChatResponse (onComplete): {}", chatResponse);
+                            final List<Part> parts = toParts(chatResponse.aiMessage(), chatRequest);
+                            if (CollectionUtils.isNotEmpty(parts)) {
+                              emitter.onNext(finalResponse(parts));
+                            }
+                            emitter.onComplete();
+                          });
                     }
 
                     @Override
                     public void onError(final Throwable throwable) {
-                      LOGGER.debug("LangChain4jModel onError", throwable);
-                      emitter.onError(throwable);
+                      context.run(
+                          () -> {
+                            LOGGER.debug("LangChain4jModel onError", throwable);
+                            emitter.onError(throwable);
+                          });
                     }
                   }),
           BackpressureStrategy.BUFFER);

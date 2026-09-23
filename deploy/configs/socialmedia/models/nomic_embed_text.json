@@ -4,5 +4,6 @@
   "name": "Nomic Embed Text (Ollama)",
   "baseUrl": "https://afterlife-eating-energy.ngrok-free.dev",
   "provider": "OLLAMA",
-  "type": "EMBEDDING"
+  "type": "EMBEDDING",
+  "maxBatchSize": 32
 }

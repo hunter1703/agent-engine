@@ -1,6 +1,7 @@
 package com.agentengine.knowledge.api.chunking;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.ThreadUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +42,10 @@ public final class ChunkingPipeline {
   public List<KnowledgeChunk> run(final KnowledgeChunk seedChunk) {
     List<KnowledgeChunk> current = List.of(seedChunk);
     for (final ChunkingStage stage : stages) {
-      current = runOn(stage.cpuBound() ? CPU_EXECUTOR : IO_EXECUTOR, stage, current);
+      current =
+          runOn(stage.cpuBound() ? CPU_EXECUTOR : IO_EXECUTOR, stage, current).stream()
+              .filter(chunk -> StringUtils.isNotBlank(chunk.getText()))
+              .toList();
     }
     return current;
   }

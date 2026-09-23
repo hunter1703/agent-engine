@@ -21,14 +21,15 @@ from deployae.charts import REPO_ROOT, Chart
 from deployae.stages import (
     BuildDockerImageStage,
     BuildGradleStage,
+    CleanDockerCacheStage,
     DeployChartStage,
     EnsureEnvSecretStage,
     EnsureIngressControllerStage,
     EnsureLocalTlsCertStage,
     EnsureNamespaceStage,
     ProvisionStage,
-    SeedInfraConfigStage,
     SeedAppConfigStage,
+    SeedInfraConfigStage,
     Stage,
     UninstallChartStage,
     run_graph,
@@ -111,6 +112,12 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         "--timeout", default=helm.DEFAULT_TIMEOUT, help="Helm timeout (default: 10m)"
     )
     parser.add_argument(
+        "--clean-docker-cache",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Clean Docker build cache and dangling images before building (default: true)",
+    )
+    parser.add_argument(
         "--cleanup-internal",
         action="store_true",
         help="Uninstall the 'internal' release once index creation has finished — it's only "
@@ -154,6 +161,7 @@ def run(args: argparse.Namespace) -> None:
             dry_run=args.dry_run,
             timeout=args.timeout,
             cleanup_internal=args.cleanup_internal,
+            clean_docker_cache=bool(args.clean_docker_cache),
             env_file=env_path,
         )
     )
@@ -167,6 +175,7 @@ async def _deploy(
     dry_run: bool,
     timeout: str,
     cleanup_internal: bool = False,
+    clean_docker_cache: bool = True,
     env_file: Path | None = None,
 ) -> None:
     start_time = time.time()
@@ -181,6 +190,7 @@ async def _deploy(
         dry_run=dry_run,
         timeout=timeout,
         cleanup_internal=cleanup_internal,
+        clean_docker_cache=clean_docker_cache,
         env_file=env_file,
     )
     deploy_task = asyncio.ensure_future(run_graph(stages))
@@ -268,6 +278,7 @@ def build_stages(
     dry_run: bool,
     timeout: str,
     cleanup_internal: bool = False,
+    clean_docker_cache: bool = True,
     env_file: Path | None = None,
 ) -> list[Stage]:
     """Builds the full stage graph.
@@ -325,6 +336,12 @@ def build_stages(
     enabled_components = tuple(
         component for component in APP_COMPONENTS if Chart(component).is_enabled_for_tier(ctx.tier)
     )
+    clean_docker_stage = CleanDockerCacheStage(
+        name="clean-docker-cache",
+        enabled=clean_docker_cache and not dry_run,
+    )
+    stages.append(clean_docker_stage)
+
     gradle_stage = BuildGradleStage(
         name="build-gradle", components=enabled_components, enabled=not dry_run
     )
@@ -332,7 +349,7 @@ def build_stages(
     image_stage_by_component = {
         component: BuildDockerImageStage(
             name=f"build-image-{component}",
-            depends_on=(gradle_stage,),
+            depends_on=(gradle_stage, clean_docker_stage),
             component=component,
             tag=ctx.image_tag or "dev",
             registry_prefix=ctx.image_registry,

@@ -73,15 +73,12 @@ public final class SearchKnowledgeTool extends Tool {
           String knowledgeId,
       @ToolArg(name = "offset", description = "Pagination offset (default: 0).", optional = true)
           Integer offset,
-      @ToolArg(
-              name = "limit",
-              description = "Max results to return (default: 10).",
-              optional = true)
+      @ToolArg(name = "limit", description = "Max results to return (default: 5).", optional = true)
           Integer limit,
       ToolContext toolContext) {
 
     final int resolvedOffset = offset != null ? offset : 0;
-    final int resolvedLimit = limit != null ? limit : 10;
+    final int resolvedLimit = limit != null ? limit : 5;
 
     final Filter scopeFilter =
         StringUtils.isNotBlank(knowledgeId)

@@ -4,5 +4,6 @@
   "name": "Nomic Embed Text (Ollama)",
   "baseUrl": "http://host.docker.internal:11434",
   "provider": "OLLAMA",
-  "type": "EMBEDDING"
+  "type": "EMBEDDING",
+  "maxBatchSize": 32
 }

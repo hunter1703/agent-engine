@@ -121,6 +121,7 @@ Model config is polymorphic, discriminated by `type`:
 
 - `dimensions`
 - `contextLength`
+- `maxBatchSize` (default: `32` when omitted; maximum chunks sent in a single batched embedding request)
 
 Example chat model:
 

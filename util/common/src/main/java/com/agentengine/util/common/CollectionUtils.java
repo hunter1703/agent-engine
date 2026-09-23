@@ -285,6 +285,26 @@ public final class CollectionUtils {
     return walk(null, data, visitor);
   }
 
+  public static <T> List<List<T>> batches(List<T> data, int batchSize) {
+    if (isEmpty(data)) {
+      return Collections.emptyList();
+    }
+    final int size = data.size();
+    List<List<T>> batches = new ArrayList<>((size / batchSize) + (size % batchSize == 0 ? 0 : 1));
+    List<T> batch = new ArrayList<>();
+    for (final T datum : data) {
+      if (batch.size() >= batchSize) {
+        batches.add(batch);
+        batch = new ArrayList<>();
+      }
+      batch.add(datum);
+    }
+    if (!batch.isEmpty()) {
+      batches.add(batch);
+    }
+    return batches;
+  }
+
   private static Object walk(
       final Object key, final Object data, final BiFunction<Object, Object, Object> visitor) {
     switch (data) {

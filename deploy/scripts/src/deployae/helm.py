@@ -8,6 +8,7 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from deployae import output
 from deployae.charts import Chart, pekko_actor_conf
 
 DEFAULT_TIMEOUT = "10m"
@@ -106,6 +107,38 @@ def lint(chart: Chart, ctx: DeployContext) -> None:
     _run(args)
 
 
+def clear_pending_release(release_name: str, namespace: str) -> None:
+    """Removes any Helm release secret stuck in a 'pending-*' state from an interrupted deploy."""
+    result = subprocess.run(
+        [
+            "kubectl",
+            "get",
+            "secrets",
+            "-n",
+            namespace,
+            "-l",
+            f"owner=helm,name={release_name}",
+            "-o",
+            "jsonpath={range .items[*]}{.metadata.name}{' '}{.metadata.labels.status}{'\\n'}{end}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0 and result.stdout:
+        for line in result.stdout.strip().splitlines():
+            parts = line.split()
+            if len(parts) == 2:
+                secret_name, status = parts
+                if status.startswith("pending"):
+                    output.warn(
+                        f"Removing stuck Helm release secret {secret_name} (status: {status})"
+                    )
+                    subprocess.run(
+                        ["kubectl", "delete", "secret", secret_name, "-n", namespace],
+                        capture_output=True,
+                    )
+
+
 def upgrade_install(
     chart: Chart,
     ctx: DeployContext,
@@ -122,6 +155,7 @@ def upgrade_install(
     if dry_run:
         args = ["template", release_name, str(chart.path), "--namespace", chart_ns]
     else:
+        clear_pending_release(release_name, chart_ns)
         args = [
             "upgrade",
             "--install",

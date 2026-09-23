@@ -3,8 +3,8 @@ package com.agentengine.util.agents.beans.config;
 public class ChunkingStrategy {
   private String type = ChunkingType.RECURSIVE.name();
 
-  private int maxSegmentSize = 512;
-  private int maxOverlapSize = 50;
+  private int maxSegmentSize = 1200;
+  private int maxOverlapSize = 150;
 
   /**
    * Cosine similarity threshold for {@code SEMANTIC} chunking. Defaults to the 25th-percentile

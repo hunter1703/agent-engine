@@ -37,15 +37,15 @@ public class EmbeddingModelFactory {
 
   private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(2);
 
-  private final RefCountedCache<String, EmbeddingModel> cache;
   private final DefaultModelsRepository defaultModelsRepository;
+  private final RefCountedCache<String, Model> cache;
 
   @Inject
   public EmbeddingModelFactory(
       final ModelService modelService, final DefaultModelsRepository defaultModelsRepository) {
     this.defaultModelsRepository = defaultModelsRepository;
     this.cache =
-        RefCountedCache.<String, EmbeddingModel>builder()
+        RefCountedCache.<String, Model>builder()
             .name("model-provider")
             .idleTimeout(15, TimeUnit.MINUTES)
             .cleanupInterval(60, TimeUnit.SECONDS)
@@ -59,24 +59,23 @@ public class EmbeddingModelFactory {
             .onEvict(
                 (key, model) ->
                     LOGGER.debug(
-                        "Evicting embedding model : {} for key : {}", model.modelName(), key))
+                        "Evicting embedding model : {} for key : {}",
+                        model.embeddingModel().modelName(),
+                        key))
             .build();
   }
 
   public EmbeddingModel get(final String modelId) {
-    return cache.getAndAcquire(modelId);
+    return cache.getAndAcquire(modelId).embeddingModel();
   }
 
   public void release(final String modelId) {
     cache.release(modelId);
   }
 
-  /**
-   * Returns the effective embedding model ID, resolving from infra defaults when {@code modelId} is
-   * blank.
-   */
-  public String resolveDefaultModelId() {
-    return resolveModelId(null);
+  public int getMaxEmbeddingBatchSize(final String modelId) {
+    final EmbeddingModelConfig embeddingModelConfig = cache.getAndAcquire(modelId).modelConfig();
+    return embeddingModelConfig.getMaxBatchSize();
   }
 
   private String resolveModelId(final String modelId) {
@@ -86,28 +85,33 @@ public class EmbeddingModelFactory {
     return defaultModelsRepository.getEmbeddingModelId();
   }
 
-  private static EmbeddingModel build(final EmbeddingModelConfig config) {
+  private static Model build(final EmbeddingModelConfig config) {
     final ModelConfig.Provider provider = ModelConfig.Provider.fromType(config.getProvider());
     final String baseUrl = config.getBaseUrl();
     final String model = config.getModel();
-    return switch (provider) {
-      case OLLAMA ->
-          OllamaEmbeddingModel.builder()
-              .httpClientBuilder(LangchainUtils.httpClientBuilder())
-              .baseUrl(baseUrl)
-              .modelName(model)
-              .timeout(DEFAULT_TIMEOUT)
-              .build();
-      case OPEN_AI_COMPATIBLE ->
-          OpenAiEmbeddingModel.builder()
-              .httpClientBuilder(LangchainUtils.httpClientBuilder())
-              .baseUrl(baseUrl)
-              .apiKey(config.getApiKey())
-              .modelName(model)
-              .timeout(DEFAULT_TIMEOUT)
-              .build();
-      default ->
-          throw new IllegalArgumentException("Unsupported embedding model provider: " + provider);
-    };
+    final EmbeddingModel embeddingModel =
+        switch (provider) {
+          case OLLAMA ->
+              OllamaEmbeddingModel.builder()
+                  .httpClientBuilder(LangchainUtils.httpClientBuilder())
+                  .baseUrl(baseUrl)
+                  .modelName(model)
+                  .timeout(DEFAULT_TIMEOUT)
+                  .build();
+          case OPEN_AI_COMPATIBLE ->
+              OpenAiEmbeddingModel.builder()
+                  .httpClientBuilder(LangchainUtils.httpClientBuilder())
+                  .baseUrl(baseUrl)
+                  .apiKey(config.getApiKey())
+                  .modelName(model)
+                  .timeout(DEFAULT_TIMEOUT)
+                  .build();
+          default ->
+              throw new IllegalArgumentException(
+                  "Unsupported embedding model provider: " + provider);
+        };
+    return new Model(embeddingModel, config);
   }
+
+  private record Model(EmbeddingModel embeddingModel, EmbeddingModelConfig modelConfig) {}
 }

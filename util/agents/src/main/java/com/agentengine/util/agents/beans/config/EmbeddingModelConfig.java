@@ -21,6 +21,10 @@ public class EmbeddingModelConfig extends ModelConfig {
   @UiNumber
   private int contextLength;
 
+  @UiField(label = "Max Batch Size", step = "integration", order = 50)
+  @UiNumber
+  private int maxBatchSize = 32;
+
   public int getDimensions() {
     return dimensions;
   }
@@ -35,5 +39,13 @@ public class EmbeddingModelConfig extends ModelConfig {
 
   public void setContextLength(final int contextLength) {
     this.contextLength = contextLength;
+  }
+
+  public int getMaxBatchSize() {
+    return maxBatchSize;
+  }
+
+  public void setMaxBatchSize(final int maxBatchSize) {
+    this.maxBatchSize = maxBatchSize;
   }
 }

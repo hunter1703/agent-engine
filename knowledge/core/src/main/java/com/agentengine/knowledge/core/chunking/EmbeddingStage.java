@@ -2,10 +2,15 @@ package com.agentengine.knowledge.core.chunking;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.chunking.ChunkingStage;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.models.factories.EmbeddingModelFactory;
 import com.agentengine.util.vectordb.VectorDbUtils;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.output.Response;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -33,14 +38,25 @@ public final class EmbeddingStage extends ChunkingStage {
 
   @Override
   public List<KnowledgeChunk> apply(final List<KnowledgeChunk> chunks) {
+    if (CollectionUtils.isEmpty(chunks)) {
+      return chunks;
+    }
     final EmbeddingModel model = embeddingModelFactory.get(embeddingModelId);
     try {
+
       final String textVector = fieldVsVectorName.get().get(KnowledgeChunk.FIELD_TEXT);
-      for (final KnowledgeChunk chunk : chunks) {
-        final String text = chunk.getText();
-        if (text != null && !text.isBlank()) {
-          final float[] vector = model.embed(text).content().vector();
-          chunk.setVector(textVector, vector);
+      final int batchSize = embeddingModelFactory.getMaxEmbeddingBatchSize(embeddingModelId);
+      for (final List<KnowledgeChunk> batch : CollectionUtils.batches(chunks, batchSize)) {
+        final List<TextSegment> segments =
+            batch.stream().map(chunk -> TextSegment.from(chunk.getText())).toList();
+        final Response<List<Embedding>> response = model.embedAll(segments);
+        final List<Embedding> embeddings = response.content();
+
+        int i = 0;
+        final Iterator<KnowledgeChunk> chunkIterator = batch.iterator();
+        final Iterator<Embedding> embeddingIterator = embeddings.iterator();
+        while (chunkIterator.hasNext() && embeddingIterator.hasNext()) {
+          chunkIterator.next().setVector(textVector, embeddingIterator.next().vector());
         }
       }
       return chunks;
