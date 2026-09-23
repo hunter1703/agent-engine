@@ -83,8 +83,8 @@ metadata:
   name: {run_id}
   namespace: {namespace}
 spec:
-  ttlSecondsAfterFinished: 30
-  backoffLimit: 1
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
   template:
     spec:
       restartPolicy: Never
@@ -128,4 +128,5 @@ spec:
                 raise e
         finally:
             os.remove(job_file)
+
 

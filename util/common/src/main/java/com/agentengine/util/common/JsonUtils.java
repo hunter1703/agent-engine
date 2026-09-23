@@ -164,16 +164,7 @@ public final class JsonUtils {
     if (text == null || text.isBlank()) {
       return null;
     }
-    String cleaned = text.trim();
-    if (cleaned.startsWith("```")) {
-      final int end = cleaned.lastIndexOf("```");
-      if (end > 2) {
-        cleaned = cleaned.substring(3, end).trim();
-        if (cleaned.startsWith("json")) {
-          cleaned = cleaned.substring(4).trim();
-        }
-      }
-    }
+    final String cleaned = StringUtils.stripCodeFences(text);
     Map<String, Object> payload = null;
     try {
       payload = fromJson(cleaned, new TypeReference<>() {});

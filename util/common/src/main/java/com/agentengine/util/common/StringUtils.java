@@ -1,10 +1,12 @@
 package com.agentengine.util.common;
 
 import java.util.List;
+import java.util.regex.Pattern;
 import org.apache.commons.text.StringEscapeUtils;
 
 public final class StringUtils {
   public static final String MASK_STRING = "xxxxxxxxxx";
+  private static final Pattern FENCE_TAG = Pattern.compile("^[a-zA-Z0-9_+-]*\\r?\\n");
 
   private StringUtils() {}
 
@@ -65,5 +67,21 @@ public final class StringUtils {
 
   public static String wrapInQuotes(final String value) {
     return "\"" + StringEscapeUtils.escapeJava(value) + "\"";
+  }
+
+  public static String stripCodeFences(final String text) {
+    if (isBlank(text)) {
+      return text;
+    }
+    final String trimmed = text.trim();
+    if (!trimmed.startsWith("```")) {
+      return trimmed;
+    }
+    final int end = trimmed.lastIndexOf("```");
+    if (end <= 2) {
+      return trimmed;
+    }
+    final String content = trimmed.substring(3, end);
+    return FENCE_TAG.matcher(content).replaceFirst("").trim();
   }
 }
