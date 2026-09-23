@@ -49,7 +49,7 @@ public class VectorDbClientFactory
         "Connecting to Qdrant gRPC at {}:{}", serverConfig.getHost(), serverConfig.getGrpcPort());
     final QdrantGrpcClient.Builder builder =
         QdrantGrpcClient.newBuilder(
-                serverConfig.getHost(), serverConfig.getGrpcPort(), serverConfig.isTls())
+                serverConfig.getHost(), serverConfig.getGrpcPort(), serverConfig.isTls(), false)
             .withTimeout(REQUEST_TIMEOUT);
     final String apiKey = serverConfig.getApiKey();
     if (StringUtils.isNotBlank(apiKey)) {

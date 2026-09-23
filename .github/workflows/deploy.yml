@@ -20,7 +20,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
     steps:
@@ -69,12 +69,6 @@ jobs:
           username: ${{ secrets.OCIR_USERNAME }}
           password: ${{ secrets.OCIR_AUTH_TOKEN }}
 
-      # Registers binfmt handlers so plain `docker build` (what deployae's BuildDockerImageStage
-      # already calls) can cross-compile arm64 images on this x86 runner via DOCKER_DEFAULT_PLATFORM
-      # below — the OCI Ampere A1 nodes are the only place these images actually run.
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Helm
         uses: azure/setup-helm@v4
 
@@ -109,5 +103,6 @@ jobs:
             -t "${{ inputs.tier }}" \
             -e "${{ inputs.environment }}" \
             --image-tag latest \
-            --image-registry "${{ secrets.OCIR_REGISTRY }}/bmt6upkvrhpm"
+            --image-registry "${{ secrets.OCIR_REGISTRY }}/bmt6upkvrhpm" \
+            --no-clean-docker-cache
 

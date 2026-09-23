@@ -6,5 +6,5 @@ deploymentStrategy:
 
 image:
   repository: qdrant/qdrant
-  tag: "v1.13.6"
+  tag: "v1.17.1"
   pullPolicy: IfNotPresent
