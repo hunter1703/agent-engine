@@ -32,6 +32,13 @@ public final class AgentUtils {
     return agentConfig.getContextStrategy();
   }
 
+  public static String appName(final String agentId) {
+    if (StringUtils.isBlank(agentId)) {
+      return "_app";
+    }
+    return "_%s".formatted(agentId.replaceAll("[^a-zA-Z0-9_]", "_"));
+  }
+
   static String getAgentIdFromContext(final InvocationContext context) {
     if (context == null) {
       return "unknown";

@@ -18,6 +18,7 @@ import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.google.adk.tools.ToolContext;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +41,9 @@ public final class SearchKnowledgeTool extends Tool {
               + "whole with "
               + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
               + " instead. "
-              + "Returns: { chunks: [...], total, offset, limit }.");
+              + "Returns: { chunks: [...], offset, limit, hasMore }. "
+              + "hasMore indicates whether additional matching chunks potentially exist beyond the current page. "
+              + "Further chunks can be retrieved by increasing offset if more information is needed.");
 
   private final KnowledgeService knowledgeService;
   private final DefaultModelsRepository defaultModelsRepository;
@@ -96,12 +99,12 @@ public final class SearchKnowledgeTool extends Tool {
 
     final PaginatedResult<KnowledgeChunk> result = knowledgeService.searchInKnowledge(searchQuery);
     final List<KnowledgeChunk> chunks = result.getItems();
-    return ToolOutput.direct(
-        Map.of(
-            "chunks", chunks,
-            "total", result.getTotal() != null ? result.getTotal() : chunks.size(),
-            "offset", resolvedOffset,
-            "limit", resolvedLimit));
+    final Map<String, Object> output = new LinkedHashMap<>();
+    output.put("chunks", chunks);
+    output.put("offset", resolvedOffset);
+    output.put("limit", resolvedLimit);
+    output.put("hasMore", chunks.size() >= resolvedLimit);
+    return ToolOutput.direct(output);
   }
 
   private String resolveModelId(final ToolContext toolContext) {

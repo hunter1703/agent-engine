@@ -1,7 +1,6 @@
 package com.agentengine.agent.infra.utils;
 
 import com.agentengine.agent.api.model.NotebookGrants;
-import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.planning.PlanningUtils;
 import com.agentengine.knowledge.api.beans.Knowledge;
@@ -35,9 +34,7 @@ public final class SessionState {
   }
 
   public static SessionState buildFrom(
-      final List<Event> events,
-      final KnowledgeService knowledgeService,
-      final NotebookRepository notebookRepository) {
+      final List<Event> events, final KnowledgeService knowledgeService) {
     final SessionState state = new SessionState(knowledgeService);
     state.setRunState(RunState.buildFrom(events));
     state.updatePlan(PlanningUtils.buildFrom(events));
@@ -99,7 +96,8 @@ public final class SessionState {
     if (CollectionUtils.isEmpty(knowledgeIds)) {
       return;
     }
-    final Map<String, Knowledge> knowledges = knowledgeService.findByIds(knowledgeIds);
+    final Map<String, Knowledge> knowledges =
+        knowledgeService == null ? Map.of() : knowledgeService.findByIds(knowledgeIds);
     for (final Knowledge knowledge : knowledges.values()) {
       final String description = knowledge.getDescription();
       addKnowledgeIdReminder(

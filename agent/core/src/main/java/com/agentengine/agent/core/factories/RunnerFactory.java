@@ -12,6 +12,7 @@ import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.plugins.*;
 import com.agentengine.agent.infra.tools.ToolFactory;
+import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.catalog.api.services.SessionService;
@@ -83,7 +84,7 @@ public class RunnerFactory {
         App.builder()
             .plugins(buildPlugins(agent))
             .rootAgent(agent)
-            .name("_%s".formatted(agentId))
+            .name(AgentUtils.appName(agentId))
             .build();
     final InMemorySessionService inMemorySessionService =
         buildInMemorySessionService(app.name(), sessionId);
@@ -160,7 +161,7 @@ public class RunnerFactory {
 
     final List<BasePlugin> plugins =
         List.of(
-            new InitPlugin(knowledgeService, notebookRepository),
+            new InitPlugin(knowledgeService),
             new GuardrailPlugin(policies),
             new ContextManagementPlugin(contextManagers),
             new NotebookPlugin(notesRepository, agentsWithNotebook),

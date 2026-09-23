@@ -72,7 +72,7 @@ public class TextKnowledgeIndexer implements KnowledgeIndexer {
         chunks.get(i).setChunkIndex(i);
       }
 
-      chunks.forEach(vectorStore::save);
+      vectorStore.insertMany(chunks);
       LOG.info("Indexed {} chunks for knowledge {}", chunks.size(), knowledge.getId());
       return chunks.size();
     } catch (final IOException e) {

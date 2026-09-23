@@ -42,6 +42,9 @@ public class EncryptionServiceImpl implements EncryptionService {
 
   @Override
   public String decrypt(final String ciphertext) {
+    if (!isEncrypted(ciphertext)) {
+      return ciphertext;
+    }
     final int keyIdEnd = ciphertext.indexOf(SEPARATOR, PREFIX.length());
     if (keyIdEnd < 0) {
       throw new IllegalArgumentException("Ciphertext has no key id");

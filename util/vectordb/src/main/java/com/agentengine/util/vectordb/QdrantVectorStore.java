@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorStore<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(QdrantVectorStore.class);
+  private static final int DEFAULT_UPSERT_BATCH_SIZE = 50;
 
   private final String collection;
   private final VectorDbClientFactory clientFactory;
@@ -74,6 +75,9 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
             .setCollectionName(collectionName())
             .setLimit(maxResults)
             .setWithPayload(WithPayloadSelectorFactory.enable(true));
+    if (page.getOffset() > 0) {
+      request.setOffset(page.getOffset());
+    }
     if (qdrantFilter != null) {
       request.setFilter(qdrantFilter);
     }
@@ -123,11 +127,13 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     if (CollectionUtils.isEmpty(entities)) {
       return List.of();
     }
-    final List<Points.PointStruct> points = new ArrayList<>(entities.size());
-    for (final T entity : entities) {
-      points.add(toPoint(entity));
+    for (final List<T> batch : CollectionUtils.batches(entities, DEFAULT_UPSERT_BATCH_SIZE)) {
+      final List<Points.PointStruct> points = new ArrayList<>(batch.size());
+      for (final T entity : batch) {
+        points.add(toPoint(entity));
+      }
+      await(client().upsertAsync(collectionName(), points));
     }
-    await(client().upsertAsync(collectionName(), points));
     return entities;
   }
 
@@ -279,7 +285,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
   @Override
   public long count() {
-    throw new UnsupportedOperationException("Count is not supported on the vector store");
+    return await(client().countAsync(collectionName()));
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

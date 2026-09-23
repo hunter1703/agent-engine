@@ -3,7 +3,6 @@ package com.agentengine.agent.infra.utils;
 import static com.agentengine.agent.infra.utils.AgentUtils.getAgentIdFromContext;
 
 import com.agentengine.agent.api.model.ResourceGrants;
-import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -36,7 +35,6 @@ public final class SessionUtils {
   public static SessionState getOrInitSessionState(
       final InvocationContext context,
       final KnowledgeService knowledgeService,
-      final NotebookRepository notebookRepository,
       ExtendedRunConfig runConfig) {
     final SessionState existing = getSessionState(context, false);
     final boolean firstTimeForThisAgent = existing == null;
@@ -44,8 +42,7 @@ public final class SessionUtils {
     if (existing != null) {
       sessionState = existing;
     } else {
-      sessionState =
-          SessionState.buildFrom(context.session().events(), knowledgeService, notebookRepository);
+      sessionState = SessionState.buildFrom(context.session().events(), knowledgeService);
       final String agentId = getAgentIdFromContext(context);
       final Map<String, Object> state = state(context);
       if (state != null) {

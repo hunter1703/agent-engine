@@ -1,5 +1,6 @@
 package com.agentengine.util.crypto;
 
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
@@ -10,6 +11,7 @@ import com.oracle.bmc.keymanagement.KmsCryptoClient;
 import com.oracle.bmc.keymanagement.model.DecryptDataDetails;
 import com.oracle.bmc.keymanagement.requests.DecryptRequest;
 import jakarta.inject.Singleton;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -60,7 +62,11 @@ public class EncryptionClientProvider
                       + config.getKeyId());
         };
 
-    final byte[] decoded = Base64.getDecoder().decode(base64Key);
+    if (StringUtils.isBlank(base64Key)) {
+      throw new IllegalStateException("Empty or missing encryption key for " + config.getKeyId());
+    }
+
+    final byte[] decoded = Base64.getDecoder().decode(base64Key.trim());
     return new SecretKeySpec(decoded, "AES");
   }
 
@@ -69,17 +75,19 @@ public class EncryptionClientProvider
         KmsCryptoClient.builder()
             .endpoint(config.getCryptoEndpoint())
             .build(InstancePrincipalsAuthenticationDetailsProvider.builder().build())) {
-      return client
-          .decrypt(
-              DecryptRequest.builder()
-                  .decryptDataDetails(
-                      DecryptDataDetails.builder()
-                          .keyId(config.getVaultKeyId())
-                          .ciphertext(config.getKey())
-                          .build())
-                  .build())
-          .getDecryptedData()
-          .getPlaintext();
+      final String kmsPlaintext =
+          client
+              .decrypt(
+                  DecryptRequest.builder()
+                      .decryptDataDetails(
+                          DecryptDataDetails.builder()
+                              .keyId(config.getVaultKeyId())
+                              .ciphertext(config.getKey())
+                              .build())
+                      .build())
+              .getDecryptedData()
+              .getPlaintext();
+      return new String(Base64.getDecoder().decode(kmsPlaintext), StandardCharsets.UTF_8).trim();
     }
   }
 }

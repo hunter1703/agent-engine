@@ -1,6 +1,5 @@
 package com.agentengine.agent.infra.plugins;
 
-import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.utils.ExtendedRunConfig;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.knowledge.api.services.KnowledgeService;
@@ -14,12 +13,10 @@ import io.reactivex.rxjava3.core.Maybe;
 public final class InitPlugin extends BasePlugin {
 
   private final KnowledgeService knowledgeService;
-  private final NotebookRepository notebookRepository;
 
-  public InitPlugin(KnowledgeService knowledgeService, NotebookRepository notebookRepository) {
+  public InitPlugin(KnowledgeService knowledgeService) {
     super("init_plugin");
     this.knowledgeService = knowledgeService;
-    this.notebookRepository = notebookRepository;
   }
 
   @Override
@@ -33,8 +30,7 @@ public final class InitPlugin extends BasePlugin {
         invocationContext.runConfig() instanceof ExtendedRunConfig extendedRunConfig
             ? extendedRunConfig
             : null;
-    SessionUtils.getOrInitSessionState(
-        invocationContext, knowledgeService, notebookRepository, runConfig);
+    SessionUtils.getOrInitSessionState(invocationContext, knowledgeService, runConfig);
     return Maybe.empty();
   }
 }

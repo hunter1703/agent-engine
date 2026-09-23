@@ -89,8 +89,8 @@ Encryption details:
 - ciphertext is `encr_<keyId>_<base64>`; `<keyId>` names the key that encrypted it
 - keys: `ENCRYPTION_KEY` configs (`EncryptionKeyInfraConfig`), found by their `keyId`, and kept so
   existing values still decrypt
-- `provider` is `KEY` (base64 `key`) or `OCI_KMS` (`vaultKeyId`, `cryptoEndpoint`, and a
-  `wrappedKey` that the Vault unwraps via instance principal, so no key material is stored in
+- `provider` is `KEY` (base64 `key`) or `OCI_KMS` (`vaultKeyId`, `cryptoEndpoint`, and a KMS-encrypted
+  `key` ciphertext that the Vault unwraps via instance principal, so no key material is stored in
   plaintext)
 - each customer has an `ENCRYPTION_CLIENT` config (`EncryptionClientInfraConfig`) whose `serverId`
   is the `keyId` new values are encrypted with

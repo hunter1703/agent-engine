@@ -3,6 +3,9 @@ package com.agentengine.agent.core.memory;
 import com.agentengine.agent.api.services.CommunityRegistry;
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
+import com.agentengine.agent.infra.plugins.InitPlugin;
+import com.agentengine.agent.infra.plugins.ResponseValidationPlugin;
+import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
@@ -34,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -153,12 +157,19 @@ public class MemoryService implements BaseMemoryService {
       final Agent agent = agentProvider.create(config);
       final InMemorySessionService sessionService = new InMemorySessionService();
       final String sessionId = UUID.randomUUID().toString();
+      final String appName = AgentUtils.appName(config.getId());
       sessionService
-          .createSession(config.getId(), AgentSession.DEFAULT_USER_ID, null, sessionId)
+          .createSession(
+              appName, AgentSession.DEFAULT_USER_ID, new ConcurrentHashMap<>(), sessionId)
           .blockingGet();
       final Runner runner =
           Runner.builder()
-              .app(App.builder().rootAgent(agent).name(config.getId()).build())
+              .app(
+                  App.builder()
+                      .plugins(List.of(new InitPlugin(null), new ResponseValidationPlugin()))
+                      .rootAgent(agent)
+                      .name(appName)
+                      .build())
               .sessionService(sessionService)
               .build();
       final Content prompt =

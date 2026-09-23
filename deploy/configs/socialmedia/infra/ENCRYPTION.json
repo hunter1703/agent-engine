@@ -4,8 +4,8 @@
     "type": "ENCRYPTION_KEY",
     "keyId": "default",
     "provider": "OCI_KMS",
-    "vaultKeyId": "ocid1.key.oc1.REPLACE_ME",
-    "cryptoEndpoint": "https://REPLACE_ME-crypto.kms.REGION.oraclecloud.com",
-    "wrappedKey": "REPLACE_ME"
+    "vaultKeyId": "ocid1.key.oc1.ap-mumbai-1.fbvlhr7zaaddg.abrg6ljrjf3hbg2ogzpohriyu2xawozrecglxmskemrnbyuzfbf65ug3gudq",
+    "cryptoEndpoint": "https://fbvlhr7zaaddg-crypto.kms.ap-mumbai-1.oraclecloud.com",
+    "key": "Qe5Wy5Dw8Om8VK7L3uV3X8Jtyy7kWWz8zIL+OSfo5QHKfBXzZZeViyd9R5nmHo+Geb7WRGuggGf8qFCz92LIFttxgOYdo+GeyLysig9J/CWf"
   }
 ]
