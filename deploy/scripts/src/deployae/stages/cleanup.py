@@ -50,9 +50,10 @@ class CleanDockerCacheStage(Stage):
         import subprocess
 
         try:
-            print("Cleaning Docker build cache and dangling images...")
-            subprocess.run(["docker", "builder", "prune", "-f"], check=True)
+            print("Cleaning Docker build cache, dangling images, and stopped containers...")
+            subprocess.run(["docker", "builder", "prune", "-a", "-f"], check=True)
             subprocess.run(["docker", "image", "prune", "-f"], check=True)
-            print("Docker build cache and dangling images cleaned")
+            subprocess.run(["docker", "container", "prune", "-f"], check=True)
+            print("Docker build cache, dangling images, and stopped containers cleaned")
         except (subprocess.SubprocessError, FileNotFoundError) as e:
             print(f"Warning: Failed to clean Docker cache: {e}")

@@ -361,6 +361,13 @@ def build_stages(
     }
     stages.extend(image_stage_by_component.values())
 
+    post_clean_docker_stage = CleanDockerCacheStage(
+        name="clean-docker-cache-post-build",
+        depends_on=tuple(image_stage_by_component.values()),
+        enabled=clean_docker_cache and not dry_run,
+    )
+    stages.append(post_clean_docker_stage)
+
     # --- Infra charts ---
     infra_enabled = not (skip_infra or dry_run)
     infra_chart_enabled = {

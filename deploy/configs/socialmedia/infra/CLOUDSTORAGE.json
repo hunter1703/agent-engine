@@ -6,6 +6,7 @@
     "provider": "ORACLE",
     "region": "ap-mumbai-1",
     "namespace": "bmt6upkvrhpm",
-    "useInstancePrincipal": true
+    "useInstancePrincipal": true,
+    "compartmentId": "ocid1.tenancy.oc1..aaaaaaaasys5dibnsspt4aqhsu4rpl6vwlfsdlbxbozp6dqwirwbolncdesq"
   }
 ]
