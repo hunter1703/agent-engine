@@ -27,10 +27,11 @@ public final class SchedulerUtils {
    *
    * <p>Deduplicated and order-preserving, so declaring the class name explicitly is harmless.
    */
-  public static List<String> getJobTags(final JobDefinition jobDefinition) {
-    if (jobDefinition == null) {
-      return List.of();
+  public static List<String> getJobTags(final TriggerDefinition triggerDefinition) {
+    if (triggerDefinition == null) {
+      return null;
     }
+    final JobDefinition jobDefinition = triggerDefinition.getJobDefinition();
     final Set<String> tags = new LinkedHashSet<>();
     for (final String tag :
         jobDefinition.getTags() == null ? List.<String>of() : jobDefinition.getTags()) {
