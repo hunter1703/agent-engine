@@ -23,7 +23,7 @@ public class SessionCacheService {
   public SessionCacheService(
       final SessionService sessionService, final DistributedCacheManager cacheManager) {
     this.cache =
-        DistributedCache.<AgentSession>builder(SESSION_CACHE_NAME, cacheManager)
+        new DistributedCache.Builder<AgentSession>(SESSION_CACHE_NAME, cacheManager)
             .localCache(CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS))
             .loader(sessionId -> sessionService.getSession(sessionId, LOADED_FIELDS))
             .build();

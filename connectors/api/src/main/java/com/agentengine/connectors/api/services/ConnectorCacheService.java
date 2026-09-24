@@ -25,7 +25,7 @@ public class ConnectorCacheService {
   public ConnectorCacheService(
       ConnectionService connectionService, DistributedCacheManager cacheManager) {
     this.connectionsCache =
-        DistributedCache.<List<String>>builder(CONNECTION_IDS_CACHE_NAME, cacheManager)
+        new DistributedCache.Builder<List<String>>(CONNECTION_IDS_CACHE_NAME, cacheManager)
             .tags(Set.of(ConnectionCacheTag.CONNECTIONS))
             .localCache(CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS))
             .loader(
@@ -39,7 +39,7 @@ public class ConnectorCacheService {
             .build();
 
     this.connectorMetadataCache =
-        DistributedCache.<ConnectorMetadata>builder(CONNECTOR_METADATA_CACHE_NAME, cacheManager)
+        new DistributedCache.Builder<ConnectorMetadata>(CONNECTOR_METADATA_CACHE_NAME, cacheManager)
             .localCache(CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS))
             .loader(
                 key -> {

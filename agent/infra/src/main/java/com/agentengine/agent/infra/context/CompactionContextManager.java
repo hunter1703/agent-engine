@@ -7,9 +7,11 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.scripts.TemplateUtils;
 import com.google.adk.models.LlmRequest;
@@ -188,10 +190,10 @@ public final class CompactionContextManager implements ContextManager {
                         .parts(List.of(Part.fromText(prompt)))
                         .build()))
             .build();
-    final LlmResponse response =
-        modelProvider
-            .invokeAcquiring(modelId, model -> model.generateContent(request, false))
-            .blockingSingle();
+    final LlmResponse response;
+    try (RefCounted<Model.LLMModel> refCounted = modelProvider.get(modelId)) {
+      response = refCounted.value().model().generateContent(request, false).blockingSingle();
+    }
     return response.content().map(Content::text).orElse(null);
   }
 

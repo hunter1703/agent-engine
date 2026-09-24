@@ -8,7 +8,6 @@ import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.models.factories.EmbeddingModelFactory;
 import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -31,16 +30,12 @@ import java.util.List;
 @Singleton
 public class ChunkingPipelineFactory {
 
-  private final EmbeddingModelFactory embeddingModelFactory;
   private final ModelProvider modelProvider;
   private final DefaultModelsRepository defaultModelsRepository;
 
   @Inject
   public ChunkingPipelineFactory(
-      final EmbeddingModelFactory embeddingModelFactory,
-      final ModelProvider modelProvider,
-      final DefaultModelsRepository defaultModelsRepository) {
-    this.embeddingModelFactory = embeddingModelFactory;
+      final ModelProvider modelProvider, final DefaultModelsRepository defaultModelsRepository) {
     this.modelProvider = modelProvider;
     this.defaultModelsRepository = defaultModelsRepository;
   }
@@ -64,7 +59,7 @@ public class ChunkingPipelineFactory {
         builder.then(stage);
       }
     }
-    builder.then(new EmbeddingStage(embeddingModelId, embeddingModelFactory));
+    builder.then(new EmbeddingStage(embeddingModelId, modelProvider));
     return builder.build();
   }
 
@@ -87,7 +82,7 @@ public class ChunkingPipelineFactory {
           List.of(
               new LangchainSplitterStage(ChunkingType.SENTENCE, maxSegmentSize, maxOverlapSize),
               new CosineBoundaryStage(
-                  maxSegmentSize, similarityThreshold, embeddingModelId, embeddingModelFactory));
+                  maxSegmentSize, similarityThreshold, embeddingModelId, modelProvider));
       case LLM ->
           List.of(
               new LangchainSplitterStage(ChunkingType.PARAGRAPH, maxSegmentSize, maxOverlapSize),

@@ -2,26 +2,28 @@ package com.agentengine.util.distributed;
 
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.context.Context;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class DistributedCache<V> {
-  private static final String SEPARATOR = ":";
 
   private final String cacheName;
   private final CacheScope scope;
   private final Set<CacheTag> tags;
-  private final Cache<String, V> localCache;
+  protected final Cache<String, V> localCache;
   private final DistributedCacheManager cacheManager;
 
-  private DistributedCache(final Builder<V> builder) {
+  protected DistributedCache(final Builder<V> builder) {
     this.cacheName = builder.cacheName;
     this.scope = builder.scope;
     this.tags = CollectionUtils.nullSafeSet(builder.tags);
@@ -33,11 +35,16 @@ public class DistributedCache<V> {
             namespacedKey -> loader.apply(unwrapKey(namespacedKey)),
             builder.removalListener);
     cacheManager.register(this);
-  }
-
-  public static <V> Builder<V> builder(
-      final String cacheName, final DistributedCacheManager cacheManager) {
-    return new Builder<>(cacheName, cacheManager);
+    if (builder.reapWhen != null) {
+      final ScheduledExecutorService reaper =
+          Executors.newSingleThreadScheduledExecutor(
+              Thread.ofVirtual().name(cacheName + "-reaper-", 0).factory());
+      reaper.scheduleAtFixedRate(
+          () -> localCache.invalidateIf(builder.reapWhen),
+          builder.reapIntervalMillis,
+          builder.reapIntervalMillis,
+          TimeUnit.MILLISECONDS);
+    }
   }
 
   public String getCacheName() {
@@ -85,7 +92,7 @@ public class DistributedCache<V> {
     cacheManager.broadcastInvalidation(cacheName, namespacedKey);
   }
 
-  void invalidateNamespacedLocally(final String namespacedKey) {
+  public void invalidateNamespacedLocally(final String namespacedKey) {
     localCache.invalidate(namespacedKey);
   }
 
@@ -108,39 +115,15 @@ public class DistributedCache<V> {
     localCache.cleanUp();
   }
 
-  private String namespacedKey(final String key) {
-    return switch (scope) {
-      case GLOBAL -> key;
-      case CUSTOMER -> customerId() + SEPARATOR + key;
-      case USER -> customerId() + SEPARATOR + userId() + SEPARATOR + key;
-      case UNKNOWN -> throw new IllegalStateException("Cache " + cacheName + " has no scope");
-    };
+  protected String namespacedKey(final String key) {
+    return scope.namespace(cacheName, key);
   }
 
-  private String unwrapKey(final String namespacedKey) {
-    final int segments = scope.namespaceSegments();
-    return segments == 0 ? namespacedKey : namespacedKey.split(SEPARATOR, segments + 1)[segments];
+  protected String unwrapKey(final String namespacedKey) {
+    return scope.unwrap(namespacedKey);
   }
 
-  private String customerId() {
-    return Context.customerId().map(String::valueOf).orElseThrow(() -> noIdentity("customer"));
-  }
-
-  private String userId() {
-    return Context.userId().map(String::valueOf).orElseThrow(() -> noIdentity("user"));
-  }
-
-  private IllegalStateException noIdentity(final String identity) {
-    return new IllegalStateException(
-        "Cache "
-            + cacheName
-            + " is "
-            + scope
-            + "-scoped but the current context has no "
-            + identity);
-  }
-
-  public static final class Builder<V> {
+  public static class Builder<V> {
     private final String cacheName;
     private final DistributedCacheManager cacheManager;
     private CacheScope scope = CacheScope.CUSTOMER;
@@ -148,8 +131,10 @@ public class DistributedCache<V> {
     private CacheBuilder<Object, Object> localCache = CacheBuilder.newBuilder();
     private Function<String, ? extends V> loader;
     private Consumer<? super V> removalListener = _ -> {};
+    private Predicate<V> reapWhen;
+    private long reapIntervalMillis;
 
-    private Builder(final String cacheName, final DistributedCacheManager cacheManager) {
+    public Builder(final String cacheName, final DistributedCacheManager cacheManager) {
       this.cacheName = cacheName;
       this.cacheManager = cacheManager;
     }
@@ -179,12 +164,23 @@ public class DistributedCache<V> {
       return this;
     }
 
+    public Builder<V> reapWhen(
+        final Predicate<V> reapWhen, final long interval, final TimeUnit unit) {
+      this.reapWhen = reapWhen;
+      this.reapIntervalMillis = unit.toMillis(interval);
+      return this;
+    }
+
     public DistributedCache<V> build() {
+      validate();
+      return new DistributedCache<>(this);
+    }
+
+    protected void validate() {
       if (scope == CacheScope.UNKNOWN) {
         throw new IllegalArgumentException("Cache " + cacheName + " has no scope");
       }
       Objects.requireNonNull(localCache, "localCache");
-      return new DistributedCache<>(this);
     }
   }
 }

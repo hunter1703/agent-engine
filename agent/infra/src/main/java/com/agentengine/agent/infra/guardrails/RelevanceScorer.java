@@ -4,8 +4,10 @@ import static com.agentengine.util.common.JsonUtils.parseJsonPayload;
 
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
+import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
@@ -73,11 +75,16 @@ public final class RelevanceScorer {
                         .parts(Part.fromText(prompt))
                         .build()))
             .build();
-    final LlmResponse response =
-        modelProvider
-            .invokeAcquiring(modelId, model -> model.generateContent(request, false))
-            .timeout(MODEL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .blockingSingle();
+    final LlmResponse response;
+    try (RefCounted<Model.LLMModel> refCounted = modelProvider.get(modelId)) {
+      response =
+          refCounted
+              .value()
+              .model()
+              .generateContent(request, false)
+              .timeout(MODEL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+              .blockingSingle();
+    }
     final String text = response.content().map(Content::text).orElse("");
     return parseScore(text);
   }

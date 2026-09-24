@@ -33,10 +33,10 @@ public class DistributedCacheManager {
     this.jgroupsService = jgroupsService;
   }
 
-  public void register(final DistributedCache<?> distributedCache) {
-    addToTag(distributedCache, distributedCache.getCacheName());
-    for (final CacheTag tag : distributedCache.getTags()) {
-      addToTag(distributedCache, tag.name());
+  public void register(final DistributedCache<?> cache) {
+    addToTag(cache, cache.getCacheName());
+    for (final CacheTag tag : cache.getTags()) {
+      addToTag(cache, tag.name());
     }
   }
 
@@ -60,7 +60,7 @@ public class DistributedCacheManager {
     jgroupsService.broadcast(EventCategory.CACHE_EVICTION, tag + ":" + key);
   }
 
-  private void addToTag(final DistributedCache<?> distributedCache, final String tag) {
-    tagVsCaches.computeIfAbsent(tag, _ -> new CopyOnWriteArrayList<>()).add(distributedCache);
+  private void addToTag(final DistributedCache<?> cache, final String tag) {
+    tagVsCaches.computeIfAbsent(tag, _ -> new CopyOnWriteArrayList<>()).add(cache);
   }
 }

@@ -2,8 +2,9 @@ package com.agentengine.knowledge.core.chunking;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.chunking.ChunkingStage;
-import com.agentengine.util.models.factories.EmbeddingModelFactory;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import com.agentengine.util.common.RefCounted;
+import com.agentengine.util.models.factories.Model.EmbeddingModel;
+import com.agentengine.util.models.factories.ModelProvider;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,17 +17,17 @@ public final class CosineBoundaryStage extends ChunkingStage {
   private final int maxSegmentSize;
   private final double similarityThreshold;
   private final String embeddingModelId;
-  private final EmbeddingModelFactory embeddingModelFactory;
+  private final ModelProvider modelProvider;
 
   public CosineBoundaryStage(
       final int maxSegmentSize,
       final double similarityThreshold,
       final String embeddingModelId,
-      final EmbeddingModelFactory embeddingModelFactory) {
+      final ModelProvider modelProvider) {
     this.maxSegmentSize = maxSegmentSize;
     this.similarityThreshold = similarityThreshold;
     this.embeddingModelId = embeddingModelId;
-    this.embeddingModelFactory = embeddingModelFactory;
+    this.modelProvider = modelProvider;
   }
 
   @Override
@@ -35,11 +36,11 @@ public final class CosineBoundaryStage extends ChunkingStage {
       return chunks;
     }
 
-    final EmbeddingModel embeddingModel = embeddingModelFactory.get(embeddingModelId);
-    try {
+    try (RefCounted<EmbeddingModel> refCounted =
+        modelProvider.getEmbeddingModel(embeddingModelId)) {
       final float[][] vectors =
           chunks.stream()
-              .map(chunk -> embeddingModel.embed(chunk.getText()).content().vector())
+              .map(chunk -> refCounted.value().model().embed(chunk.getText()).content().vector())
               .toArray(float[][]::new);
 
       final double[] similarities = new double[vectors.length - 1];
@@ -70,8 +71,6 @@ public final class CosineBoundaryStage extends ChunkingStage {
         result.add(ChunkUtils.mergeTexts(chunkBatch, globalIndex));
       }
       return result;
-    } finally {
-      embeddingModelFactory.release(embeddingModelId);
     }
   }
 

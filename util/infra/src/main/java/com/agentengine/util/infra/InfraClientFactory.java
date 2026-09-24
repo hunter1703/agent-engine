@@ -32,7 +32,7 @@ public abstract class InfraClientFactory<
     this.infraConfigService = infraConfigService;
     this.serverType = serverType;
     this.connections =
-        DistributedCache.<T>builder("INFRA_CONNECTION_CACHE_" + serverType, cacheManager)
+        new DistributedCache.Builder<T>("INFRA_CONNECTION_CACHE_" + serverType, cacheManager)
             .scope(CacheScope.GLOBAL)
             .tags(Set.of(InfraCacheTag.INFRA_CONNECTION))
             .removalListener(InfraClientFactory::close)

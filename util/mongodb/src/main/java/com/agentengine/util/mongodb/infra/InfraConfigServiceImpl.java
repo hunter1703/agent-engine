@@ -35,7 +35,7 @@ public class InfraConfigServiceImpl implements InfraConfigService {
     this.mongoClientFactory = mongoClientFactory;
     this.cacheManager = cacheManager;
     this.cache =
-        DistributedCache.<InfraConfig>builder(CACHE_NAME, cacheManager)
+        new DistributedCache.Builder<InfraConfig>(CACHE_NAME, cacheManager)
             .scope(CacheScope.GLOBAL)
             .localCache(CacheBuilder.newBuilder().maximumSize(2048))
             .build();

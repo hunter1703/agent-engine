@@ -1,5 +1,6 @@
 package com.agentengine.catalog.core.services;
 
+import com.agentengine.catalog.api.services.ModelCacheTag;
 import com.agentengine.catalog.api.services.ModelService;
 import com.agentengine.catalog.core.repository.ModelRepository;
 import com.agentengine.util.agents.beans.config.ModelConfig;
@@ -10,6 +11,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.distributed.DistributedCacheManager;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
@@ -25,10 +27,13 @@ public class ModelServiceImpl implements ModelService {
       BuilderDefinitionUtils.generate(ModelConfig.class);
 
   private final ModelRepository modelRepository;
+  private final DistributedCacheManager cacheManager;
 
   @Inject
-  public ModelServiceImpl(final ModelRepository modelRepository) {
+  public ModelServiceImpl(
+      final ModelRepository modelRepository, final DistributedCacheManager cacheManager) {
     this.modelRepository = modelRepository;
+    this.cacheManager = cacheManager;
   }
 
   @Override
@@ -74,19 +79,31 @@ public class ModelServiceImpl implements ModelService {
     if (mode == BuilderMode.EDIT) {
       sanitized.setId(id);
     }
-    return modelRepository.save(sanitized);
+    final ModelConfig saved = modelRepository.save(sanitized);
+    invalidateCached(saved.getId());
+    return saved;
   }
 
   @Override
   @WithSpan
   public ModelConfig updateModel(final String id, final ModelConfig model) {
-    return modelRepository.update(id, sanitize(model, BuilderMode.EDIT));
+    final ModelConfig updated = modelRepository.update(id, sanitize(model, BuilderMode.EDIT));
+    invalidateCached(id);
+    return updated;
   }
 
   @Override
   @WithSpan
   public boolean deleteModel(String id) {
-    return modelRepository.deleteById(id);
+    final boolean deleted = modelRepository.deleteById(id);
+    if (deleted) {
+      invalidateCached(id);
+    }
+    return deleted;
+  }
+
+  private void invalidateCached(final String id) {
+    cacheManager.invalidate(ModelCacheTag.MODELS, id);
   }
 
   private static ModelConfig sanitize(final ModelConfig config, final BuilderMode mode) {

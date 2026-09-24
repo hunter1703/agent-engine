@@ -6,7 +6,9 @@ import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
@@ -89,16 +91,15 @@ public class SessionTitleGenerator {
     final Content content = Content.fromParts(Part.fromText(sb.toString()));
     final LlmRequest request =
         LlmRequest.builder().contents(List.of(INSTRUCTIONS, content)).build();
-    final LlmResponse response =
-        modelProvider
-            .invokeAcquiring(
-                titleGeneratorModelCache.get("model"),
-                model -> model.generateContent(request, false))
-            .blockingSingle();
-    final Content responseContent = response.content().orElse(null);
-    if (responseContent == null) {
-      return null;
+    try (RefCounted<Model.LLMModel> refCounted =
+        modelProvider.get(titleGeneratorModelCache.get("model"))) {
+      final LlmResponse response =
+          refCounted.value().model().generateContent(request, false).blockingSingle();
+      final Content responseContent = response.content().orElse(null);
+      if (responseContent == null) {
+        return null;
+      }
+      return responseContent.text();
     }
-    return responseContent.text();
   }
 }

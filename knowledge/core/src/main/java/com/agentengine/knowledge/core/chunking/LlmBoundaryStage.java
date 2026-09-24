@@ -2,6 +2,8 @@ package com.agentengine.knowledge.core.chunking;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.chunking.ChunkingStage;
+import com.agentengine.util.common.RefCounted;
+import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
@@ -137,11 +139,16 @@ public final class LlmBoundaryStage extends ChunkingStage {
               .contents(contents)
               .build();
 
-      final String responseText =
-          modelProvider
-              .invokeAcquiring(chatModelId, model -> model.generateContent(request, false))
-              .map(response -> response.content().map(Content::text).orElseThrow())
-              .blockingSingle();
+      final String responseText;
+      try (RefCounted<Model.LLMModel> refCounted = modelProvider.get(chatModelId)) {
+        responseText =
+            refCounted
+                .value()
+                .model()
+                .generateContent(request, false)
+                .map(response -> response.content().map(Content::text).orElseThrow())
+                .blockingSingle();
+      }
       final Matcher matcher = ANSWER_PATTERN.matcher(responseText);
       if (matcher.find()) {
         return Integer.parseInt(matcher.group(1));

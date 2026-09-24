@@ -1,7 +1,9 @@
 package com.agentengine.agent.core.memory;
 
+import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.beans.AssetClass;
-import com.agentengine.util.models.factories.EmbeddingModelFactory;
+import com.agentengine.util.models.factories.Model;
+import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.vectordb.QdrantVectorStore;
 import com.agentengine.util.vectordb.VectorDbClientFactory;
 import jakarta.inject.Inject;
@@ -18,15 +20,18 @@ import java.util.Map;
 public class MemoryStore extends QdrantVectorStore<Memory> {
 
   @Inject
-  public MemoryStore(
-      final VectorDbClientFactory clientFactory,
-      final EmbeddingModelFactory embeddingModelFactory) {
+  public MemoryStore(final VectorDbClientFactory clientFactory, final ModelProvider modelProvider) {
     super(
         AssetClass.MEMORY,
         Memory.class,
         AgentVectorStoreClientType.MEMORY,
         clientFactory,
-        (modelId, query) -> embeddingModelFactory.get(modelId).embed(query).content().vector());
+        (modelId, query) -> {
+          try (RefCounted<Model.EmbeddingModel> refCounted =
+              modelProvider.getEmbeddingModel(modelId)) {
+            return refCounted.value().model().embed(query).content().vector();
+          }
+        });
   }
 
   @Override

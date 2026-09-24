@@ -1,8 +1,10 @@
 package com.agentengine.knowledge.core.store;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
+import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.beans.AssetClass;
-import com.agentengine.util.models.factories.EmbeddingModelFactory;
+import com.agentengine.util.models.factories.Model;
+import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.vectordb.QdrantVectorStore;
 import com.agentengine.util.vectordb.VectorDbClientFactory;
 import jakarta.inject.Inject;
@@ -28,14 +30,18 @@ public class KnowledgeChunkStore extends QdrantVectorStore<KnowledgeChunk> {
 
   @Inject
   public KnowledgeChunkStore(
-      final VectorDbClientFactory clientFactory,
-      final EmbeddingModelFactory embeddingModelFactory) {
+      final VectorDbClientFactory clientFactory, final ModelProvider modelProvider) {
     super(
         AssetClass.KNOWLEDGE_CHUNK,
         KnowledgeChunk.class,
         KnowledgeVectorStoreClientType.KNOWLEDGE,
         clientFactory,
-        (modelId, query) -> embeddingModelFactory.get(modelId).embed(query).content().vector());
+        (modelId, query) -> {
+          try (RefCounted<Model.EmbeddingModel> refCounted =
+              modelProvider.getEmbeddingModel(modelId)) {
+            return refCounted.value().model().embed(query).content().vector();
+          }
+        });
   }
 
   @Override

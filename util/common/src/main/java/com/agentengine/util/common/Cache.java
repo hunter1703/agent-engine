@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class Cache<K, V> {
   private final com.google.common.cache.Cache<K, Holder<? extends V>> delegate;
@@ -32,23 +33,26 @@ public class Cache<K, V> {
     this.defaultLoader = input -> new Holder<>(defaultLoader.apply(input));
   }
 
-  public V getIfPresent(final K key) {
+  public <Value extends V> Value getIfPresent(final K key) {
     final Holder<? extends V> holder = delegate.getIfPresent(key);
-    return holder == null ? null : holder.value;
+    //noinspection unchecked
+    return holder == null ? null : (Value) holder.value;
   }
 
-  public V get(final K key) {
+  public <Value extends V> Value get(final K key) {
     try {
       final Holder<? extends V> holder = delegate.get(key, () -> defaultLoader.apply(key));
-      return holder.value;
+      //noinspection unchecked
+      return (Value) holder.value;
     } catch (ExecutionException exception) {
       throw new RuntimeException(exception);
     }
   }
 
-  public V get(final K key, final Function<K, ? extends V> loader) {
+  public <Value extends V> Value get(final K key, final Function<K, ? extends Value> loader) {
     try {
-      return delegate.get(key, () -> new Holder<>(loader.apply(key))).value;
+      //noinspection unchecked
+      return (Value) delegate.get(key, () -> new Holder<>(loader.apply(key))).value;
     } catch (final ExecutionException exception) {
       throw new RuntimeException(exception);
     }
@@ -79,6 +83,14 @@ public class Cache<K, V> {
 
   public void invalidateAll() {
     delegate.invalidateAll();
+  }
+
+  public void invalidateIf(final Predicate<V> shouldInvalidate) {
+    for (final Map.Entry<K, Holder<? extends V>> entry : delegate.asMap().entrySet()) {
+      if (shouldInvalidate.test(entry.getValue().value)) {
+        delegate.invalidate(entry.getKey());
+      }
+    }
   }
 
   public long size() {

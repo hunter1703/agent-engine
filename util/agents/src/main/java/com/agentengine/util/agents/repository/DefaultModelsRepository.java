@@ -29,7 +29,7 @@ public class DefaultModelsRepository extends AbstractMongoRepository<DefaultMode
         DefaultModels.class,
         validationService);
     this.cache =
-        DistributedCache.<DefaultModels>builder(CACHE_NAME, cacheManager)
+        new DistributedCache.Builder<DefaultModels>(CACHE_NAME, cacheManager)
             .loader(this::findById)
             .build();
   }

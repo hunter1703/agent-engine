@@ -1,85 +1,94 @@
 package com.agentengine.util.models.factories;
 
+import com.agentengine.catalog.api.services.ModelCacheTag;
 import com.agentengine.catalog.api.services.ModelService;
 import com.agentengine.util.agents.beans.config.DefaultModels;
+import com.agentengine.util.agents.beans.config.EmbeddingModelConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.RefCountedCache;
+import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.distributed.DistributedCacheManager;
+import com.agentengine.util.distributed.RefCountedDistributedCache;
+import com.agentengine.util.models.factories.Model.LLMModel;
 import com.google.adk.models.BaseLlm;
-import com.google.adk.models.LlmResponse;
-import io.reactivex.rxjava3.core.Flowable;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
+import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Singleton
 public class ModelProvider {
   private static final Logger LOG = LoggerFactory.getLogger(ModelProvider.class);
+  private static final Duration DEFAULT_EMBEDDING_TIMEOUT = Duration.ofMinutes(2);
 
   private final Map<String, ModelFactory<?>> typeVsFactory;
   private final ModelFactory<?> defaultFactory;
   private final ModelService modelService;
   private final DefaultModelsRepository defaultModelsRepository;
-  private final RefCountedCache<String, BaseLlm> cache;
+  private final RefCountedDistributedCache<Model<?>> cache;
 
   @Inject
   public ModelProvider(
       final Instance<ModelFactory<?>> allFactories,
       final OpenAIModelFactory openAIModelFactory,
       final ModelService modelService,
-      final DefaultModelsRepository defaultModelsRepository) {
+      final DefaultModelsRepository defaultModelsRepository,
+      final DistributedCacheManager cacheManager) {
     this.typeVsFactory =
         CollectionUtils.transformToMap(
             allFactories.stream().toList(), ModelFactory::type, Function.identity());
     this.defaultFactory = openAIModelFactory;
     this.modelService = modelService;
     this.defaultModelsRepository = defaultModelsRepository;
-    this.cache =
-        RefCountedCache.<String, BaseLlm>builder()
-            .name("model-provider")
+    final RefCountedDistributedCache.Builder<Model<?>> cacheBuilder =
+        new RefCountedDistributedCache.Builder<Model<?>>("model-cache", cacheManager)
             .idleTimeout(15, TimeUnit.MINUTES)
             .cleanupInterval(60, TimeUnit.SECONDS)
-            .creator(this::buildModel)
-            .onEvict((_, model) -> tryClose(model))
-            .build();
+            .onEvict(ModelProvider::tryClose)
+            .tags(Set.of(ModelCacheTag.MODELS));
+    this.cache = cacheBuilder.build();
   }
 
-  public Flowable<LlmResponse> invokeAcquiring(
-      final String modelId, Function<BaseLlm, Flowable<LlmResponse>> invocation) {
-    final String resolvedId = resolveModelId(modelId);
-    final BaseLlm model = acquire(resolvedId);
-    return invocation.apply(model).doFinally(() -> release(resolvedId));
+  public RefCounted<LLMModel> get(final String modelId) {
+    final String resolvedId = resolveModelId(modelId, defaultModelsRepository::getChatModelId);
+    return cache.getOrLoad(resolvedId, _ -> new LLMModel(buildChatModel(resolvedId)));
   }
 
-  public BaseLlm acquire(final String modelId) {
-    final String resolvedId = resolveModelId(modelId);
-    return cache.getAndAcquire(resolvedId);
+  public RefCounted<Model.EmbeddingModel> getEmbeddingModel(final String modelId) {
+    final String resolvedId = resolveModelId(modelId, defaultModelsRepository::getEmbeddingModelId);
+    return cache.getOrLoad(
+        resolvedId,
+        _ -> {
+          final EmbeddingModelConfig config = (EmbeddingModelConfig) modelService.getModel(modelId);
+          return new Model.EmbeddingModel(buildEmbeddingModel(config), config.getMaxBatchSize());
+        });
   }
 
-  public void release(final String modelId) {
-    final String resolvedId = resolveModelId(modelId);
-    cache.release(resolvedId);
-  }
-
-  private String resolveModelId(final String modelId) {
+  private static String resolveModelId(
+      final String modelId, final Supplier<String> defaultModelId) {
     if (StringUtils.isNotBlank(modelId) && !DefaultModels.ID.equalsIgnoreCase(modelId)) {
       return modelId;
     }
-    final String defaultChatModelId = defaultModelsRepository.getChatModelId();
-    if (StringUtils.isBlank(defaultChatModelId)) {
-      throw new IllegalStateException("Default chat model not configured for customer");
+    final String resolved = defaultModelId.get();
+    if (StringUtils.isBlank(resolved)) {
+      throw new IllegalStateException("Default model not configured for customer");
     }
-    return defaultChatModelId;
+    return resolved;
   }
 
-  private BaseLlm buildModel(final String modelId) {
+  private BaseLlm buildChatModel(final String modelId) {
     final ModelConfig config = modelService.getModel(modelId);
     if (config == null) {
       throw new IllegalStateException("Model config missing for model_id=" + modelId);
@@ -89,7 +98,32 @@ public class ModelProvider {
     return factory.build(config);
   }
 
-  private static void tryClose(final BaseLlm model) {
+  private EmbeddingModel buildEmbeddingModel(final ModelConfig config) {
+    final ModelConfig.Provider provider = ModelConfig.Provider.fromType(config.getProvider());
+    final String baseUrl = config.getBaseUrl();
+    final String model = config.getModel();
+    return switch (provider) {
+      case OLLAMA ->
+          OllamaEmbeddingModel.builder()
+              .httpClientBuilder(LangchainUtils.httpClientBuilder())
+              .baseUrl(baseUrl)
+              .modelName(model)
+              .timeout(DEFAULT_EMBEDDING_TIMEOUT)
+              .build();
+      case OPEN_AI_COMPATIBLE ->
+          OpenAiEmbeddingModel.builder()
+              .httpClientBuilder(LangchainUtils.httpClientBuilder())
+              .baseUrl(baseUrl)
+              .apiKey(config.getApiKey())
+              .modelName(model)
+              .timeout(DEFAULT_EMBEDDING_TIMEOUT)
+              .build();
+      default ->
+          throw new IllegalArgumentException("Unsupported embedding model provider: " + provider);
+    };
+  }
+
+  private static void tryClose(final Model<?> model) {
     if (model instanceof AutoCloseable closeable) {
       try {
         closeable.close();

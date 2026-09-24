@@ -45,7 +45,7 @@ public class ConnectorToolDeclarationCache {
       final DistributedCacheManager cacheManager) {
     this.connectorCacheService = connectorCacheService;
     this.cache =
-        DistributedCache.<FunctionDeclaration>builder("TOOL_DECLARATION_CACHE", cacheManager)
+        new DistributedCache.Builder<FunctionDeclaration>("TOOL_DECLARATION_CACHE", cacheManager)
             .scope(CacheScope.USER)
             .tags(Set.of(ConnectionCacheTag.CONNECTIONS))
             .localCache(CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS))

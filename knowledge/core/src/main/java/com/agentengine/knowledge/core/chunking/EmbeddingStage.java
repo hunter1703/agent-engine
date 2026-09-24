@@ -4,11 +4,12 @@ import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.chunking.ChunkingStage;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.LazyLoader;
-import com.agentengine.util.models.factories.EmbeddingModelFactory;
+import com.agentengine.util.common.RefCounted;
+import com.agentengine.util.models.factories.Model;
+import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.vectordb.VectorDbUtils;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import java.util.Iterator;
 import java.util.List;
@@ -16,7 +17,7 @@ import java.util.Map;
 
 /**
  * Terminal pipeline stage that populates the {@link KnowledgeChunk#getVector()} field for each
- * chunk by calling the configured {@link EmbeddingModel}.
+ * chunk by calling the configured {@link Model.EmbeddingModel}.
  *
  * <p>This stage must be the last in every pipeline so that all prior splitting and merging is
  * complete before embeddings are computed (embeddings are expensive and should not be wasted on
@@ -25,13 +26,12 @@ import java.util.Map;
 public final class EmbeddingStage extends ChunkingStage {
 
   private final String embeddingModelId;
-  private final EmbeddingModelFactory embeddingModelFactory;
+  private final ModelProvider modelProvider;
   private final LazyLoader<Map<String, String>> fieldVsVectorName;
 
-  public EmbeddingStage(
-      final String embeddingModelId, final EmbeddingModelFactory embeddingModelFactory) {
+  public EmbeddingStage(final String embeddingModelId, final ModelProvider modelProvider) {
     this.embeddingModelId = embeddingModelId;
-    this.embeddingModelFactory = embeddingModelFactory;
+    this.modelProvider = modelProvider;
     this.fieldVsVectorName =
         new LazyLoader<>(() -> VectorDbUtils.vectorNames(KnowledgeChunk.class));
   }
@@ -41,18 +41,17 @@ public final class EmbeddingStage extends ChunkingStage {
     if (CollectionUtils.isEmpty(chunks)) {
       return chunks;
     }
-    final EmbeddingModel model = embeddingModelFactory.get(embeddingModelId);
-    try {
-
+    try (RefCounted<Model.EmbeddingModel> refCounted =
+        modelProvider.getEmbeddingModel(embeddingModelId)) {
       final String textVector = fieldVsVectorName.get().get(KnowledgeChunk.FIELD_TEXT);
-      final int batchSize = embeddingModelFactory.getMaxEmbeddingBatchSize(embeddingModelId);
-      for (final List<KnowledgeChunk> batch : CollectionUtils.batches(chunks, batchSize)) {
+      final Model.EmbeddingModel model = refCounted.value();
+      for (final List<KnowledgeChunk> batch :
+          CollectionUtils.batches(chunks, model.maxBatchSize())) {
         final List<TextSegment> segments =
             batch.stream().map(chunk -> TextSegment.from(chunk.getText())).toList();
-        final Response<List<Embedding>> response = model.embedAll(segments);
+        final Response<List<Embedding>> response = model.model().embedAll(segments);
         final List<Embedding> embeddings = response.content();
 
-        int i = 0;
         final Iterator<KnowledgeChunk> chunkIterator = batch.iterator();
         final Iterator<Embedding> embeddingIterator = embeddings.iterator();
         while (chunkIterator.hasNext() && embeddingIterator.hasNext()) {
@@ -60,8 +59,6 @@ public final class EmbeddingStage extends ChunkingStage {
         }
       }
       return chunks;
-    } finally {
-      embeddingModelFactory.release(embeddingModelId);
     }
   }
 }

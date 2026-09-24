@@ -5,10 +5,11 @@ import com.agentengine.agent.infra.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.agent.infra.utils.PromptUtils;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.common.RefCounted;
+import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.models.llm.AbstractLLM;
 import com.google.adk.agents.LlmAgent;
-import com.google.adk.models.BaseLlm;
 import com.google.adk.tools.BaseTool;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,9 +26,9 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
 
   protected BaseLlmAgentBuilder createLlmAgentBuilder(final BaseAgentConfig config) {
     final String modelId = config.getModelId();
-    final BaseLlm model = modelProvider.acquire(modelId);
-    if (!(model instanceof AbstractLLM)) {
-      modelProvider.release(modelId);
+    final RefCounted<Model.LLMModel> refCounted = modelProvider.get(modelId);
+    if (!(refCounted.value().model() instanceof AbstractLLM)) {
+      refCounted.close();
       throw new IllegalStateException("Model factory did not return an AbstractLLM instance.");
     }
 
@@ -36,7 +37,7 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
         .disallowTransferToParent(false)
         .disallowTransferToPeers(false)
         .maxSteps(config.getRuntime().getMaxSteps())
-        .model(model);
+        .model(refCounted.value().model());
     final List<BaseTool> tools = new ArrayList<>(toolFactory.buildTools(config.getTools()));
     if (config.getRuntime().isResumable()) {
       tools.add(toolFactory.getHITLTool());
@@ -49,6 +50,6 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
         .appendTools(tools)
         .appendToolSets(toolFactory.buildToolsets(config.getTools()))
         .agentConfig(config)
-        .closeHook(() -> modelProvider.release(modelId));
+        .closeHook(refCounted::close);
   }
 }
