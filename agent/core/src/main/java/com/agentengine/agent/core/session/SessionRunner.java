@@ -9,7 +9,6 @@ import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.utils.ContentUtils;
 import com.agentengine.agent.infra.utils.ExtendedRunConfig;
 import com.agentengine.util.agents.beans.ResumeRequest;
-import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.ExceptionUtils;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.runner.Runner;
@@ -27,17 +26,20 @@ public final class SessionRunner {
   private final ActorRef<SessionCommand> sessionActor;
   private final Agent agent;
   private final Runner runner;
+  private final String ownerUserId;
   private Disposable disposable;
 
   public SessionRunner(
       final String sessionId,
       final ActorRef<SessionCommand> sessionActor,
       final Agent agent,
-      final Runner runner) {
+      final Runner runner,
+      final String ownerUserId) {
     this.sessionId = sessionId;
     this.sessionActor = sessionActor;
     this.agent = agent;
     this.runner = runner;
+    this.ownerUserId = ownerUserId;
   }
 
   public synchronized void start(final UserMessage userMessage, final ResourceGrants grants) {
@@ -48,7 +50,7 @@ public final class SessionRunner {
 
     disposable =
         runner
-            .runAsync(AgentSession.DEFAULT_USER_ID, sessionId, userContent, runConfig(grants, true))
+            .runAsync(ownerUserId, sessionId, userContent, runConfig(grants, true))
             .doOnNext(
                 event -> {
                   LOG.debug(
@@ -84,7 +86,7 @@ public final class SessionRunner {
     disposable =
         runner
             .runAsync(
-                AgentSession.DEFAULT_USER_ID,
+                ownerUserId,
                 sessionId,
                 ContentUtils.buildResumeContent(resumeRequests),
                 runConfig(grants, false))

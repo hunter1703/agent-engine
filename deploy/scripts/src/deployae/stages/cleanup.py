@@ -50,10 +50,14 @@ class CleanDockerCacheStage(Stage):
         import subprocess
 
         try:
-            print("Cleaning Docker build cache, dangling images, and stopped containers...")
+            print("Cleaning Docker build cache, unused images, and stopped containers...")
             subprocess.run(["docker", "builder", "prune", "-a", "-f"], check=True)
-            subprocess.run(["docker", "image", "prune", "-f"], check=True)
+            # -a (not just dangling/untagged) is what actually reclaims space here: every
+            # deploy tags its images with the git SHA, so a plain `image prune` never touches
+            # a previous deploy's now-unreferenced images and they accumulate across deploys
+            # until the node runs out of ephemeral storage and the kubelet starts evicting pods.
+            subprocess.run(["docker", "image", "prune", "-a", "-f"], check=True)
             subprocess.run(["docker", "container", "prune", "-f"], check=True)
-            print("Docker build cache, dangling images, and stopped containers cleaned")
+            print("Docker build cache, unused images, and stopped containers cleaned")
         except (subprocess.SubprocessError, FileNotFoundError) as e:
             print(f"Warning: Failed to clean Docker cache: {e}")

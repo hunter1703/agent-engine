@@ -1335,10 +1335,11 @@ public final class SessionActor
             if (session == null) {
               return;
             }
+            final int ownerUserId = session.getOwnerUserId();
             final Session adkSession =
                 Session.builder(rootSessionId)
                     .appName(session.getAgentId())
-                    .userId(AgentSession.DEFAULT_USER_ID)
+                    .userId(String.valueOf(ownerUserId))
                     .build();
             memoryService.addSessionToMemory(adkSession).blockingAwait();
           } catch (final Exception e) {

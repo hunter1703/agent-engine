@@ -100,7 +100,7 @@ public final class SessionUtils {
         new ConcurrentHashMap<>(CollectionUtils.nullSafeMap(agentSession.getState()));
     return Session.builder(agentSession.getId())
         .appName(agentSession.getAgentId())
-        .userId(AgentSession.DEFAULT_USER_ID)
+        .userId(Integer.toString(agentSession.getOwnerUserId()))
         .state(sessionState)
         .events(events == null ? new ArrayList<>() : new ArrayList<>(events))
         .lastUpdateTime(Instant.ofEpochMilli(agentSession.getUpdatedTime()))

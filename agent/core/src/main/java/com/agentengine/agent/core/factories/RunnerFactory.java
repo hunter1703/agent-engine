@@ -86,21 +86,22 @@ public class RunnerFactory {
             .rootAgent(agent)
             .name(AgentUtils.appName(agentId))
             .build();
+    final AgentSession agentSession = sessionService.getSession(sessionId);
+    final String ownerUserId = Integer.toString(agentSession.getOwnerUserId());
     final InMemorySessionService inMemorySessionService =
-        buildInMemorySessionService(app.name(), sessionId);
+        buildInMemorySessionService(app.name(), sessionId, agentSession);
     final Runner runner =
         Runner.builder()
             .app(app)
             .sessionService(inMemorySessionService)
             .memoryService(memoryService)
             .build();
-    return new SessionRunner(sessionId, actor, agent, runner);
+    return new SessionRunner(sessionId, actor, agent, runner, ownerUserId);
   }
 
   private InMemorySessionService buildInMemorySessionService(
-      final String appId, final String sessionId) {
+      final String appId, final String sessionId, final AgentSession agentSession) {
     final InMemorySessionService inMemorySessionService = new InMemorySessionService();
-    final AgentSession agentSession = sessionService.getSession(sessionId);
     final Session persistedSession = SessionUtils.toSession(agentSession, getEvents(sessionId));
 
     final ConcurrentHashMap<String, Object> initialState =
@@ -110,7 +111,8 @@ public class RunnerFactory {
                 persistedSession.state() == null ? Map.of() : persistedSession.state());
     final Session session =
         inMemorySessionService
-            .createSession(appId, AgentSession.DEFAULT_USER_ID, initialState, sessionId)
+            .createSession(
+                appId, Integer.toString(agentSession.getOwnerUserId()), initialState, sessionId)
             .blockingGet();
 
     if (persistedSession != null) {
