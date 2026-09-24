@@ -8,6 +8,7 @@ import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
+import io.reactivex.rxjava3.core.Flowable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -70,19 +71,27 @@ public final class LlmBoundaryStage extends ChunkingStage {
   }
 
   @Override
-  public List<KnowledgeChunk> apply(final List<KnowledgeChunk> chunks) {
+  public Flowable<KnowledgeChunk> apply(final Flowable<KnowledgeChunk> chunks) {
+    return chunks.toList().flatMapPublisher(this::cutBoundaries);
+  }
+
+  /**
+   * The sliding window walks forward across the whole document asking the LLM where each boundary
+   * falls, so — like {@link CosineBoundaryStage} — the full input has to be known up front; there's
+   * no per-element streaming opportunity here.
+   */
+  private Flowable<KnowledgeChunk> cutBoundaries(final List<KnowledgeChunk> chunks) {
     if (chunks.size() <= 1) {
-      return chunks;
+      return Flowable.fromIterable(chunks);
     }
     final List<KnowledgeChunk> result = new ArrayList<>();
     int windowStart = 0;
-    int globalIndex = 0;
     while (windowStart < chunks.size()) {
       final int windowEnd = buildWindowEnd(chunks, windowStart);
 
       // If the window only has one paragraph left, merge the rest as the final chunk
       if (windowEnd - windowStart <= 1) {
-        result.add(mergeRange(chunks, windowStart, chunks.size(), globalIndex++));
+        result.add(mergeRange(chunks, windowStart, chunks.size()));
         break;
       }
 
@@ -93,15 +102,15 @@ public final class LlmBoundaryStage extends ChunkingStage {
             "LlmBoundaryStage: no boundary in window [{}, {}), treating as single chunk",
             windowStart,
             windowEnd);
-        result.add(mergeRange(chunks, windowStart, windowEnd, globalIndex++));
+        result.add(mergeRange(chunks, windowStart, windowEnd));
         windowStart = windowEnd;
       } else {
-        result.add(mergeRange(chunks, windowStart, boundaryId, globalIndex++));
+        result.add(mergeRange(chunks, windowStart, boundaryId));
         windowStart = boundaryId;
       }
     }
 
-    return result;
+    return Flowable.fromIterable(result);
   }
 
   private int buildWindowEnd(final List<KnowledgeChunk> chunks, final int start) {
@@ -165,8 +174,7 @@ public final class LlmBoundaryStage extends ChunkingStage {
    * first and last chunk in the range.
    */
   private static KnowledgeChunk mergeRange(
-      final List<KnowledgeChunk> chunks, final int from, final int to, final int index) {
-    final List<KnowledgeChunk> slice = chunks.subList(from, to);
-    return ChunkUtils.mergeTexts(slice, index);
+      final List<KnowledgeChunk> chunks, final int from, final int to) {
+    return ChunkUtils.mergeTexts(chunks.subList(from, to));
   }
 }

@@ -3,8 +3,7 @@ package com.agentengine.knowledge.core.chunking;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.chunking.ChunkingStage;
 import com.agentengine.util.common.StringUtils;
-import java.util.ArrayList;
-import java.util.List;
+import io.reactivex.rxjava3.core.Flowable;
 
 /**
  * Splits each input chunk's text into fixed-size character windows with a fixed character overlap —
@@ -29,30 +28,39 @@ public final class FixedWindowSplitterStage extends ChunkingStage {
   }
 
   @Override
-  public List<KnowledgeChunk> apply(final List<KnowledgeChunk> chunks) {
-    final List<KnowledgeChunk> result = new ArrayList<>();
+  public Flowable<KnowledgeChunk> apply(final Flowable<KnowledgeChunk> chunks) {
+    return chunks.concatMap(this::split);
+  }
+
+  private Flowable<KnowledgeChunk> split(final KnowledgeChunk parent) {
+    final String text = parent.getText() != null ? parent.getText() : "";
     final int step = Math.max(1, maxSegmentSize - maxOverlapSize);
-    int globalIndex = 0;
-    for (final KnowledgeChunk parent : chunks) {
-      final String text = parent.getText() != null ? parent.getText() : "";
-      for (int start = 0; start < text.length(); start += step) {
-        final int end = Math.min(start + maxSegmentSize, text.length());
-        final String part = text.substring(start, end);
-        if (StringUtils.isNotBlank(part)) {
-          final KnowledgeChunk child = new KnowledgeChunk();
-          child.setKnowledgeId(parent.getKnowledgeId());
-          child.setAgentId(parent.getAgentId());
-          child.setChunkIndex(globalIndex++);
-          child.setText(part);
-          child.setChunkStart(parent.getChunkStart() + start);
-          child.setChunkEnd(parent.getChunkStart() + end);
-          result.add(child);
-        }
-        if (end == text.length()) {
-          break;
-        }
-      }
-    }
-    return result;
+    return Flowable.generate(
+        () -> new int[] {0},
+        (state, emitter) -> {
+          int start = state[0];
+          while (start < text.length()) {
+            final int end = Math.min(start + maxSegmentSize, text.length());
+            final boolean atEnd = end == text.length();
+            final String part = text.substring(start, end);
+            if (StringUtils.isNotBlank(part)) {
+              final KnowledgeChunk child = new KnowledgeChunk();
+              child.setKnowledgeId(parent.getKnowledgeId());
+              child.setAgentId(parent.getAgentId());
+              child.setText(part);
+              child.setChunkStart(parent.getChunkStart() + start);
+              child.setChunkEnd(parent.getChunkStart() + end);
+              emitter.onNext(child);
+              state[0] = atEnd ? text.length() : start + step;
+              return;
+            }
+            if (atEnd) {
+              break;
+            }
+            start += step;
+          }
+          state[0] = text.length();
+          emitter.onComplete();
+        });
   }
 }

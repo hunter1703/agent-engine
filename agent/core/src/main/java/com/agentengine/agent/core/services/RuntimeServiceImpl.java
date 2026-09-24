@@ -210,7 +210,9 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     return new UserMessage(
-        message.parts(), new ResourceGrants(knowledgeIds, knowledgeFiles, grants.notebookGrants()));
+        message.parts(),
+        new ResourceGrants(knowledgeIds, knowledgeFiles, grants.notebookGrants()),
+        message.attachments());
   }
 
   /** Whether a text attachment is over {@link #INDEXING_THRESHOLD_BYTES} once its size is known. */

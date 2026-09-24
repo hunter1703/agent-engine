@@ -33,7 +33,7 @@ app-base:
       quarkus.shutdown.timeout: 5S
 
       quarkus.http.cors.enabled: "true"
-      quarkus.http.cors.origins: "http://localhost:3000"
+      quarkus.http.cors.origins: "http://localhost:3000,https://agent-console-iota.vercel.app"
       quarkus.http.cors.methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH"
       quarkus.http.cors.headers: "accept,authorization,content-type,x-requested-with"
       quarkus.http.cors.exposed-headers: "Content-Disposition"

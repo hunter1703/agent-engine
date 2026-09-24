@@ -24,6 +24,7 @@ dependencies {
     implementation platform(libs.quarkus.bom)
 
     implementation libs.langchain4j.core
+    implementation libs.rxjava
     implementation libs.quarkus.mongodb.client
     implementation libs.quarkus.arc
     implementation libs.quarkus.hibernate.validator

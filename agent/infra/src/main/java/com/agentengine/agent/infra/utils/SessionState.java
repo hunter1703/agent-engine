@@ -113,10 +113,17 @@ public final class SessionState {
     }
   }
 
+  /**
+   * {@code hint} can run long (a sampled excerpt spans the whole document), so the id — the one
+   * piece of this line a caller must actually use verbatim as a tool argument — goes right next to
+   * the name it's naturally read alongside, not appended after however much text {@code hint}
+   * happens to carry. A model given only the name would otherwise reach for that as if it were the
+   * id, since nothing else nearby looks like one.
+   */
   public void addKnowledgeIdReminder(final String knowledgeId, final String hint) {
     final Reminder reminder =
         new Reminder(
-            Reminder.GROUP_KNOWLEDGE_IDS, knowledgeId, "%s (id: %s)".formatted(hint, knowledgeId));
+            Reminder.GROUP_KNOWLEDGE_IDS, knowledgeId, "(id: %s) %s".formatted(knowledgeId, hint));
     addReminder(reminder);
   }
 

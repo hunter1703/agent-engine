@@ -25,7 +25,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +43,7 @@ public class TextKnowledgeIndexer implements KnowledgeIndexer {
   private static final int PREVIEW_SAMPLE_SIZE = 10;
   private static final int PREVIEW_EXCERPT_LENGTH = 200;
   private static final long DESCRIPTION_TIMEOUT_SECONDS = 8L;
+  private static final int INSERT_BATCH_SIZE = 100;
 
   private final ChunkingPipelineFactory chunkingPipelineFactory;
   private final KnowledgeChunkStore vectorStore;
@@ -84,25 +87,39 @@ public class TextKnowledgeIndexer implements KnowledgeIndexer {
       seed.setChunkStart(0);
       seed.setChunkEnd(text.length());
 
-      final List<KnowledgeChunk> chunks = pipeline.run(seed);
+      // Chunks are assigned their final id/index/grants, persisted in batches, and sampled for the
+      // content preview as they arrive — the pipeline's output is never fully materialized here,
+      // even though it can run to thousands of embedded (text + vector) chunks. The final count
+      // is a running counter, not a list size; the preview sample is a fixed-size reservoir
+      // (Algorithm R), not a list looked up by position, since a stream's length isn't known
+      // until it ends.
+      final AtomicInteger nextIndex = new AtomicInteger();
+      final List<KnowledgeChunk> sample = new ArrayList<>(PREVIEW_SAMPLE_SIZE);
+      pipeline
+          .run(seed)
+          .doOnNext(
+              chunk -> {
+                // Qdrant requires point IDs to be either unsigned integers or UUIDs
+                final int i = nextIndex.getAndIncrement();
+                chunk.setId(generateChunkId(knowledge.getId(), i));
+                chunk.setChunkIndex(i);
+                chunk.setGrants(knowledge.getGrants());
+                reservoirSample(sample, chunk, i);
+              })
+          .buffer(INSERT_BATCH_SIZE)
+          .doOnNext(vectorStore::insertMany)
+          .ignoreElements()
+          .blockingAwait();
 
-      // Qdrant requires point IDs to be either unsigned integers or UUIDs
-      for (int i = 0; i < chunks.size(); i++) {
-        final String deterministicId = generateChunkId(knowledge.getId(), i);
-        chunks.get(i).setId(deterministicId);
-        chunks.get(i).setChunkIndex(i);
-        chunks.get(i).setGrants(knowledge.getGrants());
-      }
+      final int totalChunks = nextIndex.get();
+      LOG.info("Indexed {} chunks for knowledge {}", totalChunks, knowledge.getId());
 
-      vectorStore.insertMany(chunks);
-      LOG.info("Indexed {} chunks for knowledge {}", chunks.size(), knowledge.getId());
-
-      final String preview = contentPreview(sampleChunks(chunks));
+      final String preview = contentPreview(sample);
       final String generatedDescription =
           StringUtils.isBlank(knowledge.getDescription())
               ? generateDescription(knowledge.getId(), preview)
               : null;
-      return new IndexResult(chunks.size(), preview, generatedDescription);
+      return new IndexResult(totalChunks, preview, generatedDescription);
     } catch (final IOException e) {
       throw new RuntimeException("Failed to index knowledge " + knowledge.getId(), e);
     }
@@ -117,16 +134,23 @@ public class TextKnowledgeIndexer implements KnowledgeIndexer {
     return java.util.UUID.nameUUIDFromBytes(name.getBytes(UTF_8)).toString();
   }
 
-  private static List<KnowledgeChunk> sampleChunks(final List<KnowledgeChunk> chunks) {
-    if (chunks.isEmpty()) {
-      return List.of();
+  /**
+   * Reservoir sampling (Algorithm R): maintains a uniform random sample of up to {@link
+   * #PREVIEW_SAMPLE_SIZE} chunks seen so far, in {@code O(PREVIEW_SAMPLE_SIZE)} space regardless of
+   * how many chunks the document produces in total — the total isn't known until the chunk stream
+   * ends, so a caller can't sample by position (e.g. "every Nth chunk") without first materializing
+   * the whole thing. {@code index} is each chunk's 0-based position in arrival order.
+   */
+  private static void reservoirSample(
+      final List<KnowledgeChunk> reservoir, final KnowledgeChunk chunk, final int index) {
+    if (index < PREVIEW_SAMPLE_SIZE) {
+      reservoir.add(chunk);
+      return;
     }
-    final int sampleSize = Math.min(PREVIEW_SAMPLE_SIZE, chunks.size());
-    final List<KnowledgeChunk> sampled = new ArrayList<>(sampleSize);
-    for (int i = 0; i < sampleSize; i++) {
-      sampled.add(chunks.get(i * chunks.size() / sampleSize));
+    final int replaceAt = ThreadLocalRandom.current().nextInt(index + 1);
+    if (replaceAt < PREVIEW_SAMPLE_SIZE) {
+      reservoir.set(replaceAt, chunk);
     }
-    return sampled;
   }
 
   private static String contentPreview(final List<KnowledgeChunk> sampledChunks) {

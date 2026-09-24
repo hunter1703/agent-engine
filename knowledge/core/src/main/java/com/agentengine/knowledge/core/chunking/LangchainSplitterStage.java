@@ -10,7 +10,7 @@ import dev.langchain4j.data.document.splitter.DocumentByParagraphSplitter;
 import dev.langchain4j.data.document.splitter.DocumentBySentenceSplitter;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
-import java.util.List;
+import io.reactivex.rxjava3.core.Flowable;
 
 /**
  * Wraps LangChain4j's built-in splitters for {@code RECURSIVE}, {@code SENTENCE}, and {@code
@@ -36,7 +36,7 @@ public final class LangchainSplitterStage extends ChunkingStage {
   }
 
   @Override
-  public List<KnowledgeChunk> apply(final List<KnowledgeChunk> chunks) {
+  public Flowable<KnowledgeChunk> apply(final Flowable<KnowledgeChunk> chunks) {
     final DocumentSplitter splitter =
         switch (type) {
           case SENTENCE -> new DocumentBySentenceSplitter(maxSegmentSize, maxOverlapSize);

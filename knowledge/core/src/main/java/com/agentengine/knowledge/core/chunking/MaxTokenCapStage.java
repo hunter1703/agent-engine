@@ -5,6 +5,7 @@ import com.agentengine.knowledge.api.chunking.ChunkingStage;
 import com.agentengine.util.common.StringUtils;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.splitter.DocumentBySentenceSplitter;
+import io.reactivex.rxjava3.core.Flowable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +29,7 @@ public final class MaxTokenCapStage extends ChunkingStage {
   }
 
   @Override
-  public List<KnowledgeChunk> apply(final List<KnowledgeChunk> chunks) {
+  public Flowable<KnowledgeChunk> apply(final Flowable<KnowledgeChunk> chunks) {
     final int maxChars = maxTokensPerSegment * approxCharsPerToken;
     return ChunkUtils.splitChunks(
         chunks,

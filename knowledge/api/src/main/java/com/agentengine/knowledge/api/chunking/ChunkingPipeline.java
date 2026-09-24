@@ -3,19 +3,25 @@ package com.agentengine.knowledge.api.chunking;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.ThreadUtils;
+import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Scheduler;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * An ordered sequence of {@link ChunkingStage}s.
  *
- * <p>The pipeline operates on {@link KnowledgeChunk} instances throughout. The first stage receives
- * a single-element list containing a seed chunk with only the document text set. Subsequent stages
- * refine, split, or enrich the chunks (e.g. adding vectors).
+ * <p>The pipeline streams {@link KnowledgeChunk} instances throughout, rather than materializing a
+ * full list between stages: the first stage receives a single-element stream containing a seed
+ * chunk with only the document text set, and each later stage transforms that stream further —
+ * splitting, merging, or enriching it (e.g. adding vectors) — so a downstream consumer can start
+ * acting on early results (e.g. persisting them) before the whole document has finished processing.
  */
 public final class ChunkingPipeline {
 
@@ -30,6 +36,9 @@ public final class ChunkingPipeline {
       ThreadUtils.newFixedThreadExecutor(
           "chunking-", Math.max(MIN_CPU_THREADS, Runtime.getRuntime().availableProcessors()));
 
+  private static final Scheduler IO_SCHEDULER = Schedulers.from(IO_EXECUTOR);
+  private static final Scheduler CPU_SCHEDULER = Schedulers.from(CPU_EXECUTOR);
+
   private final List<ChunkingStage> stages;
 
   private ChunkingPipeline(final List<ChunkingStage> stages) {
@@ -37,43 +46,34 @@ public final class ChunkingPipeline {
   }
 
   /**
-   * Runs the pipeline starting from a seed chunk containing only the document text. Returns
-   * fully-formed {@link KnowledgeChunk}s ready to persist.
+   * Runs the pipeline starting from a seed chunk containing only the document text. Returns a
+   * stream of fully-formed {@link KnowledgeChunk}s ready to persist, emitted as each becomes
+   * available rather than only once the whole document has been processed.
    *
-   * <p>Every stage runs on a thread this pipeline owns, whatever thread calls it: CPU-bound stages
-   * on a dedicated platform pool, all others (which wait on model calls) on virtual threads.
+   * <p>Every stage runs on a thread this pipeline owns: CPU-bound stages on a dedicated platform
+   * pool, all others (which wait on model calls) on virtual threads.
    */
-  public List<KnowledgeChunk> run(final KnowledgeChunk seedChunk) {
-    List<KnowledgeChunk> current = List.of(seedChunk);
+  public Flowable<KnowledgeChunk> run(final KnowledgeChunk seedChunk) {
+    Flowable<KnowledgeChunk> current = Flowable.just(seedChunk);
     for (final ChunkingStage stage : stages) {
-      final long startNanos = System.nanoTime();
+      final Scheduler scheduler = stage.cpuBound() ? CPU_SCHEDULER : IO_SCHEDULER;
+      final AtomicLong startNanos = new AtomicLong();
+      final AtomicInteger count = new AtomicInteger();
       current =
-          runOn(stage.cpuBound() ? CPU_EXECUTOR : IO_EXECUTOR, stage, current).stream()
+          stage
+              .apply(current.observeOn(scheduler))
               .filter(chunk -> StringUtils.isNotBlank(chunk.getText()))
-              .toList();
-      LOG.info(
-          "Chunking stage {} took {}ms, producing {} chunks",
-          stage.getClass().getSimpleName(),
-          (System.nanoTime() - startNanos) / 1_000_000,
-          current.size());
+              .doOnSubscribe(_ -> startNanos.set(System.nanoTime()))
+              .doOnNext(_ -> count.incrementAndGet())
+              .doOnComplete(
+                  () ->
+                      LOG.info(
+                          "Chunking stage {} took {}ms, producing {} chunks",
+                          stage.getClass().getSimpleName(),
+                          (System.nanoTime() - startNanos.get()) / 1_000_000,
+                          count.get()));
     }
     return current;
-  }
-
-  private static List<KnowledgeChunk> runOn(
-      final ExecutorService executor,
-      final ChunkingStage stage,
-      final List<KnowledgeChunk> chunks) {
-    try {
-      return executor.submit(() -> stage.apply(chunks)).get();
-    } catch (final InterruptedException ex) {
-      Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted while running " + stage.getClass(), ex);
-    } catch (final ExecutionException ex) {
-      throw ex.getCause() instanceof RuntimeException runtime
-          ? runtime
-          : new IllegalStateException(ex.getCause());
-    }
   }
 
   public static Builder builder() {

@@ -10,5 +10,8 @@ dependencies {
     implementation project(':util:agents')
     implementation project(':util:ms:client')
     api project(':tenancy')
+    // ChunkingStage/ChunkingPipeline expose Flowable in their own public signatures, so this must
+    // be api, not implementation: a consumer calling those methods needs it on its own classpath.
+    api libs.rxjava
     compileOnly libs.jakarta.inject.api
 }

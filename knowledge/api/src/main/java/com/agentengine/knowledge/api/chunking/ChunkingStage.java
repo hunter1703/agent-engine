@@ -1,24 +1,26 @@
 package com.agentengine.knowledge.api.chunking;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
-import java.util.List;
+import io.reactivex.rxjava3.core.Flowable;
 
 /**
  * A single step in a {@link ChunkingPipeline}.
  *
- * <p>Each stage receives a list of {@link KnowledgeChunk}s from the previous stage and returns a
- * refined list. The first stage always receives a single-element list containing a chunk with only
- * the full document text set (no vector, no offsets yet).
+ * <p>Each stage transforms a stream of {@link KnowledgeChunk}s from the previous stage into a
+ * refined stream. The first stage always receives a single-element stream containing a chunk with
+ * only the full document text set (no vector, no offsets yet).
  *
- * <p>Splitting stages produce new chunks from the text of each input chunk. The embedding stage
- * populates the vector on each chunk.
+ * <p>Splitting stages produce new chunks from the text of each input chunk. A stage that needs to
+ * see several/all upstream chunks at once to do its work (e.g. to compare adjacent chunks, or
+ * window several together) buffers what it needs internally — the pipeline itself never forces that
+ * buffering. The embedding stage populates the vector on each chunk.
  *
  * <p>Implementations must be stateless — the same instance may be reused across concurrent indexing
  * operations.
  */
 public abstract class ChunkingStage {
 
-  protected abstract List<KnowledgeChunk> apply(List<KnowledgeChunk> chunks);
+  protected abstract Flowable<KnowledgeChunk> apply(Flowable<KnowledgeChunk> chunks);
 
   /**
    * Whether this stage is pure computation with no blocking I/O. The pipeline runs such stages on a
