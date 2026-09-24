@@ -22,6 +22,13 @@ import java.util.function.ToIntFunction;
  * <p>Also a {@link Queue}: given a {@code keyExtractor}, {@link #offer} derives the key from the
  * value itself, so one {@code FairQueue} can serve as the per-key inner queue of another — e.g. a
  * queue fair across tenants whose own per-tenant queues are, in turn, fair across tags.
+ *
+ * <p>Each key's own queue is capacity-restricted by {@code maxSizePerKey}: once a key's queue is at
+ * that limit, {@link #enqueue} and {@link #offer} drop the value and return {@code false}, matching
+ * {@link Queue#offer}'s documented contract for a bounded queue. Nesting a {@code FairQueue} as
+ * another's per-key inner queue composes two independent limits — the outer bounds how much one key
+ * can hold in total, the inner bounds how much one of ITS keys can hold — so one hot key one level
+ * down can't consume the whole budget of the key that owns it.
  */
 public final class FairQueue<K, V> extends AbstractQueue<V> {
 
@@ -31,6 +38,7 @@ public final class FairQueue<K, V> extends AbstractQueue<V> {
   private final ToIntFunction<K> tokensPerRound;
   private final Function<K, Queue<V>> queueFactory;
   private final Function<V, K> keyExtractor;
+  private final ToIntFunction<K> maxSizePerKey;
   private int cursor = 0;
   private int size = 0;
 
@@ -39,11 +47,11 @@ public final class FairQueue<K, V> extends AbstractQueue<V> {
   }
 
   public FairQueue(final Function<K, Queue<V>> queueFactory) {
-    this(null, _ -> 1, _ -> 1, queueFactory);
+    this(null, _ -> 1, _ -> 1, queueFactory, _ -> Integer.MAX_VALUE);
   }
 
   public FairQueue(final Function<V, K> keyExtractor, final Function<K, Queue<V>> queueFactory) {
-    this(keyExtractor, _ -> 1, _ -> 1, queueFactory);
+    this(keyExtractor, _ -> 1, _ -> 1, queueFactory, _ -> Integer.MAX_VALUE);
   }
 
   public FairQueue(
@@ -51,22 +59,36 @@ public final class FairQueue<K, V> extends AbstractQueue<V> {
       final ToIntFunction<V> weigher,
       final ToIntFunction<K> tokensPerRound,
       final Function<K, Queue<V>> queueFactory) {
+    this(keyExtractor, weigher, tokensPerRound, queueFactory, _ -> Integer.MAX_VALUE);
+  }
+
+  public FairQueue(
+      final Function<V, K> keyExtractor,
+      final ToIntFunction<V> weigher,
+      final ToIntFunction<K> tokensPerRound,
+      final Function<K, Queue<V>> queueFactory,
+      final ToIntFunction<K> maxSizePerKey) {
     this.keyExtractor = keyExtractor;
     this.weigher = weigher;
     this.tokensPerRound = tokensPerRound;
     this.queueFactory = queueFactory;
+    this.maxSizePerKey = maxSizePerKey;
   }
 
-  public void enqueue(final K key, final V value) {
+  public boolean enqueue(final K key, final V value) {
     final QueueContext<V> ctx =
         queueMap.computeIfAbsent(
             key, k -> new QueueContext<>(queueFactory.apply(k), tokensPerRound.applyAsInt(k)));
+    if (ctx.queue.size() >= maxSizePerKey.applyAsInt(key)) {
+      return false;
+    }
     final boolean wasEmpty = ctx.queue.isEmpty();
     ctx.queue.offer(value);
     if (wasEmpty) {
       activeQueueKeys.add(key);
     }
     size++;
+    return true;
   }
 
   @Override
@@ -75,8 +97,7 @@ public final class FairQueue<K, V> extends AbstractQueue<V> {
       throw new UnsupportedOperationException(
           "This FairQueue has no keyExtractor; call enqueue(key, value) instead of offer(value)");
     }
-    enqueue(keyExtractor.apply(value), value);
-    return true;
+    return enqueue(keyExtractor.apply(value), value);
   }
 
   @Override

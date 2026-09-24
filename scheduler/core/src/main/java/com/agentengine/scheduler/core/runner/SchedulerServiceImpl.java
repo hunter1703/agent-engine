@@ -86,6 +86,6 @@ public class SchedulerServiceImpl implements SchedulerService {
     final TriggerDefinition savedTrigger = triggerDefinitionRepository.save(triggerDefinition);
     schedulerActorFactory
         .getSchedulerRef()
-        .tell(new SchedulerActor.Command.JobScheduled(savedTrigger.getId()));
+        .tell(new SchedulerActor.Command.JobScheduled(savedTrigger));
   }
 }

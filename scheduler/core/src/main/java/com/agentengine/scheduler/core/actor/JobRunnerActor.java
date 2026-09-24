@@ -20,9 +20,7 @@ import com.agentengine.util.pekko.PekkoSerializable;
 import com.agentengine.util.pekko.actor.ContextualInterceptor;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -172,12 +170,12 @@ public final class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Comman
   }
 
   private Behavior<Command> finish(final JobResult jobResult, final boolean success) {
-    final boolean rescheduled = success && SchedulerUtils.nextScheduledTime(trigger).isPresent();
-    final Update update = success ? rescheduleUpdate(trigger, jobResult) : failedUpdate();
+    final boolean reschedule = success && reschedule(jobResult);
+    final Update update = reschedule ? rescheduleUpdate(trigger) : failedUpdate();
     try {
       triggerDefinitionRepository.update(trigger.getId(), update);
-      if (rescheduled) {
-        worker.tell(new WorkerActor.Command.TriggerRescheduled(trigger.getId()));
+      if (reschedule) {
+        worker.tell(new WorkerActor.Command.TriggerRescheduled(trigger));
       }
     } catch (final RuntimeException exception) {
       getContext().getLog().error("Failed to update trigger {}", trigger.getId(), exception);
@@ -186,23 +184,27 @@ public final class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Comman
     return Behaviors.stopped();
   }
 
-  private static Update rescheduleUpdate(final TriggerDefinition trigger, final JobResult result) {
-    final List<Operation> operations = new ArrayList<>();
-    final Map<String, Object> jobResult = CollectionUtils.nullSafeMutableMap(result.data());
-    operations.add(Operation.set(TriggerDefinition.FIELD_PREVIOUS_RESULT, jobResult));
+  private boolean reschedule(final JobResult jobResult) {
     final Optional<Instant> nextSchedule = SchedulerUtils.nextScheduledTime(trigger);
+    trigger.setPreviousResult(CollectionUtils.nullSafeMutableMap(jobResult.data()));
     if (nextSchedule.isEmpty()) {
-      operations.add(Operation.set(TriggerDefinition.FIELD_STATUS, TriggerStatus.SUCCEEDED));
-      return new Update(operations);
+      return false;
     }
     final Instant scheduled = nextSchedule.get();
-    operations.add(Operation.set(TriggerDefinition.FIELD_STATUS, TriggerStatus.WAITING));
-    operations.add(Operation.set(TriggerDefinition.FIELD_SCHEDULED_FOR, scheduled.toEpochMilli()));
-    operations.add(
-        Operation.set(
-            TriggerDefinition.FIELD_DUE_AT,
-            CronUtils.applyJitter(scheduled, Instant.now(), JITTER_FRACTION).toEpochMilli()));
-    return new Update(operations);
+    trigger.setStatus(TriggerStatus.WAITING);
+    trigger.setScheduledFor(scheduled.toEpochMilli());
+    trigger.setDueAt(
+        CronUtils.applyJitter(scheduled, Instant.now(), JITTER_FRACTION).toEpochMilli());
+    return true;
+  }
+
+  private static Update rescheduleUpdate(final TriggerDefinition trigger) {
+    return new Update(
+        List.of(
+            Operation.set(TriggerDefinition.FIELD_PREVIOUS_RESULT, trigger.getPreviousResult()),
+            Operation.set(TriggerDefinition.FIELD_STATUS, trigger.getStatus()),
+            Operation.set(TriggerDefinition.FIELD_SCHEDULED_FOR, trigger.getScheduledFor()),
+            Operation.set(TriggerDefinition.FIELD_DUE_AT, trigger.getDueAt())));
   }
 
   private static Update failedUpdate() {

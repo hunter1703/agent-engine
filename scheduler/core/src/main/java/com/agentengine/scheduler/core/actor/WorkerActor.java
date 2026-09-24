@@ -113,7 +113,7 @@ public final class WorkerActor extends AbstractBehavior<WorkerActor.Command> {
   }
 
   private Behavior<Command> onTriggerRescheduled(final Command.TriggerRescheduled command) {
-    scheduler.tell(new SchedulerActor.Command.JobScheduled(command.triggerId()));
+    scheduler.tell(new SchedulerActor.Command.JobScheduled(command.trigger()));
     return this;
   }
 
@@ -168,7 +168,7 @@ public final class WorkerActor extends AbstractBehavior<WorkerActor.Command> {
 
     record RunCompleted(String triggerId) implements Command {}
 
-    record TriggerRescheduled(String triggerId) implements Command {}
+    record TriggerRescheduled(TriggerDefinition trigger) implements Command {}
 
     record RunnerStopped() implements Command {}
   }
