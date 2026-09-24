@@ -6,6 +6,12 @@ public enum ChunkingType {
   UNKNOWN,
   /** Recursively splits on paragraph, sentence, then character boundaries (default). */
   RECURSIVE,
+  /**
+   * Fixed-size character windows with a fixed character overlap — no boundary detection, no
+   * language model. The cheapest strategy; offsets are exact by construction since each window is a
+   * direct substring of the source text.
+   */
+  FIXED,
   /** Splits on sentence boundaries. */
   SENTENCE,
   /** Splits on paragraph boundaries. */

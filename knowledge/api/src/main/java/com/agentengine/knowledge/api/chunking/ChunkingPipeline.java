@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An ordered sequence of {@link ChunkingStage}s.
@@ -16,6 +18,8 @@ import java.util.concurrent.ExecutorService;
  * refine, split, or enrich the chunks (e.g. adding vectors).
  */
 public final class ChunkingPipeline {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ChunkingPipeline.class);
 
   private static final int MIN_CPU_THREADS = 8;
 
@@ -42,10 +46,16 @@ public final class ChunkingPipeline {
   public List<KnowledgeChunk> run(final KnowledgeChunk seedChunk) {
     List<KnowledgeChunk> current = List.of(seedChunk);
     for (final ChunkingStage stage : stages) {
+      final long startNanos = System.nanoTime();
       current =
           runOn(stage.cpuBound() ? CPU_EXECUTOR : IO_EXECUTOR, stage, current).stream()
               .filter(chunk -> StringUtils.isNotBlank(chunk.getText()))
               .toList();
+      LOG.info(
+          "Chunking stage {} took {}ms, producing {} chunks",
+          stage.getClass().getSimpleName(),
+          (System.nanoTime() - startNanos) / 1_000_000,
+          current.size());
     }
     return current;
   }

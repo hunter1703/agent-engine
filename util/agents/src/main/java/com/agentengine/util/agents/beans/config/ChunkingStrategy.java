@@ -1,7 +1,7 @@
 package com.agentengine.util.agents.beans.config;
 
 public class ChunkingStrategy {
-  private String type = ChunkingType.RECURSIVE.name();
+  private String type = ChunkingType.FIXED.name();
 
   private int maxSegmentSize = 1200;
   private int maxOverlapSize = 150;
@@ -34,7 +34,7 @@ public class ChunkingStrategy {
   }
 
   public void setType(final String type) {
-    this.type = type == null ? ChunkingType.RECURSIVE.name() : type;
+    this.type = type == null ? ChunkingType.FIXED.name() : type;
   }
 
   public int getMaxSegmentSize() {

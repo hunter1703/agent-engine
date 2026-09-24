@@ -91,9 +91,10 @@ public class ChunkingPipelineFactory {
                   LlmBoundaryStage.WINDOW_TOKEN_BUDGET / 5), // ~5 paragraphs per LLM window
               new LlmBoundaryStage(approxCharsPerToken, chatModelId, modelProvider),
               new MaxTokenCapStage(approxCharsPerToken, maxTokensPerSegment));
-      default ->
+      case RECURSIVE ->
           List.of(
               new LangchainSplitterStage(ChunkingType.RECURSIVE, maxSegmentSize, maxOverlapSize));
+      default -> List.of(new FixedWindowSplitterStage(maxSegmentSize, maxOverlapSize));
     };
   }
 }
