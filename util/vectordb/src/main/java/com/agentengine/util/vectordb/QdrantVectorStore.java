@@ -109,10 +109,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     }
 
     final List<Points.ScoredPoint> points = await(client().queryAsync(request.build()));
-    final List<T> results =
-        points.stream()
-            .map(point -> fromPayload(VectorDbUtils.fromValues(point.getPayloadMap())))
-            .toList();
+    final List<T> results = points.stream().map(this::toEntity).toList();
     return PaginatedResult.create(results, page, null);
   }
 
@@ -305,8 +302,24 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
    */
   private static Points.Vectors buildNamedVectors(final VectorEntity entity) {
     final Map<String, Points.Vector> result = new HashMap<>();
-    entity.getVectors().forEach((field, vector) -> result.put(field, VectorFactory.vector(vector)));
+    if (entity.getVectors() != null) {
+      entity
+          .getVectors()
+          .forEach((field, vector) -> result.put(field, VectorFactory.vector(vector)));
+    }
     return VectorsFactory.namedVectors(result);
+  }
+
+  private T toEntity(final Points.ScoredPoint point) {
+    final T entity = fromPayload(VectorDbUtils.fromValues(point.getPayloadMap()));
+    if (point.hasId()) {
+      entity.setId(pointIdToString(point.getId()));
+    }
+    return entity;
+  }
+
+  private static String pointIdToString(final Common.PointId pointId) {
+    return pointId.hasUuid() ? pointId.getUuid() : String.valueOf(pointId.getNum());
   }
 
   private static Common.PointId pointId(final String id) {

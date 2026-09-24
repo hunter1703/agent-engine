@@ -395,19 +395,8 @@ def build_stages(
 
     def deploy_app_chart(name: str, *extra_deps: Stage) -> DeployChartStage:
         chart = Chart(name)
-        # Every app service reads Mongo-backed infra config at startup somewhere (encryption,
-        # microservice client wiring, Pekko cluster config, vector DB, cloud storage, ...) via
-        # InfraConfigService.findById(), which returns null — not an error — for a document
-        # that hasn't been saved yet. Without this dependency, app charts and the infra config
-        # save race, and whichever finishes startup first decides whether that config exists.
-        # global-properties doesn't read infra config, and internal is what saves it, so
-        # neither can wait on it.
-        infra_config_dep = (
-            () if name in ("global-properties", "internal") else (infra_config_stage,)
-        )
         depends_on = (
             *_chart_prerequisites(chart, ctx, namespace_stages, env_secret_stages, ingress_stage, tls_cert_stages),
-            *infra_config_dep,
             *extra_deps,
         )
         stage = DeployChartStage(

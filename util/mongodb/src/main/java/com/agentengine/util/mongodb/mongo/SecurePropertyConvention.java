@@ -98,12 +98,9 @@ public final class SecurePropertyConvention implements Convention {
       }
 
       final String raw = reader.readString();
-      if (!encryptionService.isEncryptionEnabled()) {
-        return raw;
-      }
       try {
         return encryptionService.decrypt(raw);
-      } catch (Exception exception) {
+      } catch (final Exception exception) {
         LOG.error("Failed to decrypt secure value", exception);
         throw new RuntimeException("Failed to decrypt secure value", exception);
       }
