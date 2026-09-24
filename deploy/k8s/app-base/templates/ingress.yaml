@@ -6,15 +6,20 @@ metadata:
   namespace: {{ include "agent-engine.app-base.namespace" . }}
   labels:
     {{- include "agent-engine.app-base.labels" . | nindent 4 }}
-  {{- /*
-  cert-manager watches for this annotation on any Ingress and automatically requests/renews a
-  certificate from the named ClusterIssuer, storing it in the Secret this Ingress's own `tls`
-  block already names below — nothing else needs wiring up. `local`'s mkcert-based TLS doesn't
-  set ingress.clusterIssuer, so it gets no annotation and is unaffected.
-  */}}
-  {{- if .Values.ingress.clusterIssuer }}
+  {{- if or .Values.ingress.clusterIssuer .Values.ingress.maxBodySize }}
   annotations:
+    {{- /*
+    cert-manager watches for this annotation on any Ingress and automatically requests/renews a
+    certificate from the named ClusterIssuer, storing it in the Secret this Ingress's own `tls`
+    block already names below — nothing else needs wiring up. `local`'s mkcert-based TLS doesn't
+    set ingress.clusterIssuer, so it gets no annotation and is unaffected.
+    */}}
+    {{- if .Values.ingress.clusterIssuer }}
     cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer }}
+    {{- end }}
+    {{- if .Values.ingress.maxBodySize }}
+    nginx.ingress.kubernetes.io/proxy-body-size: {{ .Values.ingress.maxBodySize | quote }}
+    {{- end }}
   {{- end }}
 spec:
   {{- if .Values.ingress.className }}

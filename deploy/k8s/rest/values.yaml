@@ -6,6 +6,7 @@ app-base:
     enabled: true
     className: nginx
     tlsEnabled: true
+    maxBodySize: "50m"
     hosts:
       - host: agents.com
         paths:

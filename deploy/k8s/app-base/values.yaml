@@ -29,6 +29,9 @@ java:
 
 ingress:
   enabled: false
+  # Max request body size ingress-nginx will accept (its own default is 1m), e.g. "50m". Empty
+  # leaves ingress-nginx's default in place.
+  maxBodySize: ""
 
 # One namespace-wide Secret (created by deployae as `agent-engine-secrets`) injected into
 # every app pod via envFrom. Keys become container environment variables as-is, so
