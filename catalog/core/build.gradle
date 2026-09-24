@@ -14,6 +14,7 @@ dependencies {
     implementation project(':util:mongodb')
     implementation project(':util:agents')
     implementation project(':util:infra')
+    implementation project(':util:distributed')
     runtimeOnly project(':util:ms:server')
 
     implementation platform(libs.quarkus.bom)

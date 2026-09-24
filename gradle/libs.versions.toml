@@ -183,6 +183,11 @@ aws-sts = { group = "software.amazon.awssdk", name = "sts", version.ref = "aws-s
 oci-objectstorage = { group = "com.oracle.oci.sdk", name = "oci-java-sdk-objectstorage", version.ref = "oci-sdk" }
 oci-common = { group = "com.oracle.oci.sdk", name = "oci-java-sdk-common", version.ref = "oci-sdk" }
 oci-common-httpclient-jersey3 = { group = "com.oracle.oci.sdk", name = "oci-java-sdk-common-httpclient-jersey3", version.ref = "oci-sdk" }
+# Quarkus's BOM excludes commons-logging (it standardizes on JBoss Logging) without substituting
+# an API-compatible shim, so Apache HttpClient 4.x (pulled in transitively by the OCI SDK's Jersey3
+# HTTP transport via jersey-apache-connector) throws NoClassDefFoundError on first use unless this
+# shim is present. Quarkus-BOM-managed, hence no version.ref.
+commons-logging-jboss-logging = { group = "org.jboss.logging", name = "commons-logging-jboss-logging" }
 oci-keymanagement = { group = "com.oracle.oci.sdk", name = "oci-java-sdk-keymanagement", version.ref = "oci-sdk" }
 oci-core = { group = "com.oracle.oci.sdk", name = "oci-java-sdk-core", version.ref = "oci-sdk" }
 
@@ -223,3 +228,10 @@ grpc-protoc-gen-java = { group = "io.grpc", name = "protoc-gen-grpc-java", versi
 # Build plugins
 spotless-gradle-plugin = { group = "com.diffplug.spotless", name = "spotless-plugin-gradle", version.ref = "spotless" }
 jandex-gradle-plugin = { group = "org.kordamp.gradle", name = "jandex-gradle-plugin", version.ref = "jandex" }
+
+[bundles]
+# The OCI SDK's Jersey3 HTTP transport pulls in Apache HttpClient 4.x transitively, which needs
+# the commons-logging shim (see commons-logging-jboss-logging above) — bundled so every module
+# that uses this transport gets the shim automatically, without modules that don't touch OCI
+# paying for it.
+oci-httpclient-jersey3 = ["oci-common-httpclient-jersey3", "commons-logging-jboss-logging"]

@@ -82,6 +82,7 @@ public final class WorkerActor extends AbstractBehavior<WorkerActor.Command> {
         .onMessage(Command.Poll.class, _ -> onPoll())
         .onMessage(Command.WorkReceived.class, this::onWorkReceived)
         .onMessage(Command.RunCompleted.class, this::onRunCompleted)
+        .onMessage(Command.TriggerRescheduled.class, this::onTriggerRescheduled)
         .onMessage(Command.RunnerStopped.class, _ -> onRunnerStopped())
         .build();
   }
@@ -108,6 +109,11 @@ public final class WorkerActor extends AbstractBehavior<WorkerActor.Command> {
 
   private Behavior<Command> onRunCompleted(final Command.RunCompleted command) {
     scheduler.tell(new SchedulerActor.Command.RunFinished(command.triggerId()));
+    return this;
+  }
+
+  private Behavior<Command> onTriggerRescheduled(final Command.TriggerRescheduled command) {
+    scheduler.tell(new SchedulerActor.Command.JobScheduled(command.triggerId()));
     return this;
   }
 
@@ -161,6 +167,8 @@ public final class WorkerActor extends AbstractBehavior<WorkerActor.Command> {
     record WorkReceived(List<TriggerDefinition> triggers, Throwable failure) implements Command {}
 
     record RunCompleted(String triggerId) implements Command {}
+
+    record TriggerRescheduled(String triggerId) implements Command {}
 
     record RunnerStopped() implements Command {}
   }

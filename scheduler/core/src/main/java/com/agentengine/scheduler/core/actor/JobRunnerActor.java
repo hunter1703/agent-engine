@@ -172,9 +172,13 @@ public final class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Comman
   }
 
   private Behavior<Command> finish(final JobResult jobResult, final boolean success) {
+    final boolean rescheduled = success && SchedulerUtils.nextScheduledTime(trigger).isPresent();
     final Update update = success ? rescheduleUpdate(trigger, jobResult) : failedUpdate();
     try {
       triggerDefinitionRepository.update(trigger.getId(), update);
+      if (rescheduled) {
+        worker.tell(new WorkerActor.Command.TriggerRescheduled(trigger.getId()));
+      }
     } catch (final RuntimeException exception) {
       getContext().getLog().error("Failed to update trigger {}", trigger.getId(), exception);
     }

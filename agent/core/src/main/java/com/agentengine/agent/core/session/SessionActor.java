@@ -371,7 +371,7 @@ public final class SessionActor
   private Effect<SessionFact, SessionActorState> start(
       final SessionActorState state, final StartCommand command) {
     final SessionTopology topology = state.topology();
-    final UniqueRecord<UserMessage> message = command.getMessage();
+    final UniqueRecord<UserMessage> message = command.message();
     final UniqueRecord<UserMessage> currentMessage = state.currentMessage();
     boolean isDuplicate =
         Objects.equals(currentMessage, message) || state.queue().contains(message);
@@ -383,31 +383,31 @@ public final class SessionActor
           self.tell(new StartNextQueuedMessageCommand());
           yield Effect()
               .none()
-              .thenReply(command.getReplyTo(), _ -> new StartSessionResult.DuplicateRequest());
+              .thenReply(command.replyTo(), _ -> new StartSessionResult.DuplicateRequest());
         } else {
           yield thenRun(
                   Effect().persist(new MessageEnqueuedFact(message)),
                   _ -> self.tell(new StartNextQueuedMessageCommand()))
-              .thenReply(command.getReplyTo(), _ -> new StartSessionResult.Accepted());
+              .thenReply(command.replyTo(), _ -> new StartSessionResult.Accepted());
         }
       }
       default -> {
         if (isDuplicate) {
           yield Effect()
               .none()
-              .thenReply(command.getReplyTo(), _ -> new StartSessionResult.DuplicateRequest());
+              .thenReply(command.replyTo(), _ -> new StartSessionResult.DuplicateRequest());
         }
         if (topology.isRoot()) {
           yield Effect()
               .persist(new MessageEnqueuedFact(message))
               .thenReply(
-                  command.getReplyTo(),
+                  command.replyTo(),
                   newState -> new StartSessionResult.Queued(newState.queue().size()));
         }
         yield Effect()
             .none()
             .thenReply(
-                command.getReplyTo(),
+                command.replyTo(),
                 _ ->
                     new StartSessionResult.Rejected(
                         "Cannot start the child session yet. Await on the session for it to produce result first"));
@@ -417,10 +417,10 @@ public final class SessionActor
 
   private Effect<SessionFact, SessionActorState> resume(
       final SessionActorState state, final ResumeCommand command) {
-    final ResumeRequest resumeRequest = command.getResumeRequest();
+    final ResumeRequest resumeRequest = command.resumeRequest();
     final String childSessionId = state.getPausedChild(resumeRequest);
 
-    final ActorRef<ResumeResult> replyTo = command.getReplyTo();
+    final ActorRef<ResumeResult> replyTo = command.replyTo();
     if (childSessionId != null) {
       final Optional<ChildSession> child = state.child(childSessionId);
       if (child.isEmpty()) {
@@ -1054,7 +1054,7 @@ public final class SessionActor
     return Effect()
         .none()
         .thenReply(
-            command.getReplyTo(),
+            command.replyTo(),
             newState -> {
               final SessionTopology topology = newState.topology();
               final List<SessionEvent> events =
@@ -1074,21 +1074,19 @@ public final class SessionActor
     if (state.sessionState() == SessionState.RUNNING) {
       return Effect()
           .none()
-          .thenReply(
-              command.getReplyTo(), _ -> new RollbackResult.Rejected("A run is in progress"));
+          .thenReply(command.replyTo(), _ -> new RollbackResult.Rejected("A run is in progress"));
     }
-    final Integer rollbackSequence = state.findRunStartSequence(command.getRunId());
+    final Integer rollbackSequence = state.findRunStartSequence(command.runId());
     if (rollbackSequence == null) {
       // No run with this id ever started, so there is nothing to invalidate or reset back to.
-      return Effect().none().thenReply(command.getReplyTo(), _ -> new RollbackResult.Applied());
+      return Effect().none().thenReply(command.replyTo(), _ -> new RollbackResult.Applied());
     }
     // RollbackFact persists first: it's the source of truth, so a crash before it lands means the
     // rollback simply never happened, and the caller's ask times out with nothing changed.
     return thenRun(
-            Effect().persist(new RollbackFact(command.getRunId())),
-            (newState ->
-                invalidateRolledBackEvents(newState, command.getRunId(), rollbackSequence)))
-        .thenReply(command.getReplyTo(), _ -> new RollbackResult.Applied());
+            Effect().persist(new RollbackFact(command.runId())),
+            (newState -> invalidateRolledBackEvents(newState, command.runId(), rollbackSequence)))
+        .thenReply(command.replyTo(), _ -> new RollbackResult.Applied());
   }
 
   private void invalidateRolledBackEvents(

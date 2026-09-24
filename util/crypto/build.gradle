@@ -17,5 +17,5 @@ dependencies {
 
     implementation libs.oci.keymanagement
     implementation libs.oci.common
-    implementation libs.oci.common.httpclient.jersey3
+    implementation libs.bundles.oci.httpclient.jersey3
 }
