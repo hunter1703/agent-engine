@@ -364,6 +364,12 @@ def build_stages(
     post_clean_docker_stage = CleanDockerCacheStage(
         name="clean-docker-cache-post-build",
         depends_on=tuple(image_stage_by_component.values()),
+        # This deploy's own images are, by definition, not yet referenced by any container at
+        # this point (their pods are still being scheduled by the concurrently running
+        # deploy_app_chart stages) — pruning "unused" images here would delete them out from
+        # under the deploy. Reclaiming stale images from earlier deploys is the pre-build
+        # stage's job, not this one's.
+        prune_unused_images=False,
         enabled=clean_docker_cache and not dry_run,
     )
     stages.append(post_clean_docker_stage)

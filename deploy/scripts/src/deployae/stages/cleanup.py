@@ -43,6 +43,17 @@ class RemoveLocalstackResourcesStage(Stage):
 
 @dataclass(eq=False, kw_only=True)
 class CleanDockerCacheStage(Stage):
+    # Only safe to prune *all* unused images (-a, not just dangling) before this deploy's own
+    # builds have run: at that point every candidate is genuinely stale, left over from an
+    # earlier deploy whose pods have already been rolled past it. Running the same -a prune
+    # again right after this deploy's own builds finish is a race against every deploy_app_chart
+    # stage that's concurrently trying to get its own freshly built image pulled by a pod —
+    # `docker image prune -a` treats "not yet referenced by any container" as unused, so a
+    # component whose Helm install/pod-schedule hasn't caught up yet loses its just-built image
+    # out from under it. Post-build cleanup must stick to the build cache and stopped
+    # containers, never images, however tempting it is to reuse this same stage for both.
+    prune_unused_images: bool = True
+
     async def run(self) -> None:
         await asyncio.to_thread(self._clean)
 
@@ -50,14 +61,12 @@ class CleanDockerCacheStage(Stage):
         import subprocess
 
         try:
-            print("Cleaning Docker build cache, unused images, and stopped containers...")
+            print("Cleaning Docker build cache and stopped containers...")
             subprocess.run(["docker", "builder", "prune", "-a", "-f"], check=True)
-            # -a (not just dangling/untagged) is what actually reclaims space here: every
-            # deploy tags its images with the git SHA, so a plain `image prune` never touches
-            # a previous deploy's now-unreferenced images and they accumulate across deploys
-            # until the node runs out of ephemeral storage and the kubelet starts evicting pods.
-            subprocess.run(["docker", "image", "prune", "-a", "-f"], check=True)
+            if self.prune_unused_images:
+                print("Cleaning unused Docker images...")
+                subprocess.run(["docker", "image", "prune", "-a", "-f"], check=True)
             subprocess.run(["docker", "container", "prune", "-f"], check=True)
-            print("Docker build cache, unused images, and stopped containers cleaned")
+            print("Docker build cache and stopped containers cleaned")
         except (subprocess.SubprocessError, FileNotFoundError) as e:
             print(f"Warning: Failed to clean Docker cache: {e}")
