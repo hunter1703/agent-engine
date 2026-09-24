@@ -2,7 +2,9 @@ package com.agentengine.util.common.query;
 
 import com.agentengine.util.common.CollectionUtils;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Query {
   private Filter filter;
@@ -11,6 +13,7 @@ public class Query {
   private List<String> includeFields = new ArrayList<>();
   private List<String> excludeFields = new ArrayList<>();
   private boolean includeCount = false;
+  private Map<String, Object> additional;
 
   public Query() {}
 
@@ -24,6 +27,7 @@ public class Query {
     this.includeFields = other.includeFields;
     this.excludeFields = other.excludeFields;
     this.includeCount = other.includeCount;
+    this.additional = other.additional;
   }
 
   public Filter getFilter() {
@@ -120,5 +124,26 @@ public class Query {
 
   public void setIncludeCount(final boolean includeCount) {
     this.includeCount = includeCount;
+  }
+
+  public Map<String, Object> getAdditional() {
+    return additional;
+  }
+
+  public void setAdditional(final Map<String, Object> additional) {
+    this.additional = CollectionUtils.nullSafeMutableMap(additional);
+  }
+
+  public Query withAdditional(final Map<String, Object> additional) {
+    this.additional = CollectionUtils.nullSafeMutableMap(additional);
+    return this;
+  }
+
+  public Query addAdditional(final String key, final Object value) {
+    if (additional == null) {
+      additional = new HashMap<>();
+    }
+    additional.put(key, value);
+    return this;
   }
 }

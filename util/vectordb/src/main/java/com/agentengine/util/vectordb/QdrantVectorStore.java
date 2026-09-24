@@ -1,6 +1,7 @@
 package com.agentengine.util.vectordb;
 
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.GrantUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.query.Filter;
@@ -115,8 +116,10 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
   @Override
   public T save(final T entity) {
-    await(client().upsertAsync(collectionName(), List.of(toPoint(entity))));
-    return entity;
+    if (entity != null && StringUtils.isBlank(entity.getId())) {
+      return insert(entity);
+    }
+    return replaceEntity(entity);
   }
 
   @Override
@@ -127,6 +130,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     for (final List<T> batch : CollectionUtils.batches(entities, DEFAULT_UPSERT_BATCH_SIZE)) {
       final List<Points.PointStruct> points = new ArrayList<>(batch.size());
       for (final T entity : batch) {
+        sanitizeForWrite(entity);
         points.add(toPoint(entity));
       }
       await(client().upsertAsync(collectionName(), points));
@@ -135,19 +139,46 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
   }
 
   @Override
-  public boolean deleteById(final String id) {
-    await(client().deleteAsync(collectionName(), List.of(pointId(id))));
-    return true;
-  }
-
-  @Override
   public T insert(final T entity) {
-    return save(entity);
+    if (StringUtils.isBlank(entity.getId())) {
+      entity.setId(UUID.randomUUID().toString());
+    }
+    sanitizeForWrite(entity);
+    await(client().upsertAsync(collectionName(), List.of(toPoint(entity))));
+    return entity;
   }
 
   @Override
   public T update(final String id, final T entity) {
-    return save(entity);
+    entity.setId(id);
+    return replaceEntity(entity);
+  }
+
+  private T replaceEntity(final T entity) {
+    sanitizeForWrite(entity);
+    await(client().upsertAsync(collectionName(), List.of(toPoint(entity))));
+    return entity;
+  }
+
+  private void sanitizeForWrite(final T entity) {
+    entity.copyContextualFieldsFrom((id, fields) -> findById(id, fields, null));
+    if (entity.getOwnerUserId() == null) {
+      entity.setOwnerUserId(Context.userId().orElse(null));
+    }
+    final long now = System.currentTimeMillis();
+    if (entity.getCreatedTime() == 0) {
+      entity.setCreatedTime(now);
+    }
+    entity.setUpdatedTime(now);
+    if (permissioned) {
+      entity.setGrants(GrantUtils.getGrants(entity));
+    }
+  }
+
+  @Override
+  public boolean deleteById(final String id) {
+    await(client().deleteAsync(collectionName(), List.of(pointId(id))));
+    return true;
   }
 
   @Override
@@ -367,6 +398,13 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
           .build();
     }
 
+    if (op == Operator.IN && filter.getField() != null && CollectionUtils.isNotEmpty(values)) {
+      final List<String> keywords = values.stream().map(String::valueOf).toList();
+      return Common.Filter.newBuilder()
+          .addMust(ConditionFactory.matchKeywords(filter.getField(), keywords))
+          .build();
+    }
+
     if (op.isCompound() && CollectionUtils.isNotEmpty(values)) {
       final Common.Filter.Builder result = Common.Filter.newBuilder();
       for (final Object child : values) {
@@ -430,5 +468,10 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
       return n.intValue();
     }
     return 0;
+  }
+
+  protected static List<String> strList(final Map<String, Object> payload, final String key) {
+    final Object value = payload.get(key);
+    return value instanceof List<?> list ? list.stream().map(String::valueOf).toList() : List.of();
   }
 }

@@ -34,9 +34,11 @@ import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FileUtils;
+import com.agentengine.util.common.GrantUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.beans.Permission;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -155,7 +157,7 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private void startTurn(final String agentId, final String sessionId, final UserMessage message) {
     LOG.debug("Starting session {}:{}", agentId, sessionId);
-    final UserMessage resolvedMessage = resolveKnowledgeFiles(agentId, message);
+    final UserMessage resolvedMessage = resolveKnowledgeFiles(agentId, sessionId, message);
     sessionActorFactory
         .entityRef(sessionId)
         .<StartSessionResult>ask(
@@ -171,7 +173,8 @@ public class RuntimeServiceImpl implements RuntimeService {
             });
   }
 
-  private UserMessage resolveKnowledgeFiles(final String agentId, final UserMessage message) {
+  private UserMessage resolveKnowledgeFiles(
+      final String agentId, final String sessionId, final UserMessage message) {
     final ResourceGrants grants = message.grants();
     if (grants == null || CollectionUtils.isEmpty(grants.knowledgeFiles())) {
       return message;
@@ -190,7 +193,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     final List<Callable<String>> indexing =
         toIndex.stream()
             .<Callable<String>>map(
-                fileDetails -> () -> indexAsKnowledge(agentId, fileDetails).getId())
+                fileDetails -> () -> indexAsKnowledge(agentId, sessionId, fileDetails).getId())
             .toList();
     final List<String> knowledgeIds = new ArrayList<>(grants.knowledgeIds());
     final List<StructuredConcurrencyUtils.TaskOutcome<String>> outcomes =
@@ -222,11 +225,14 @@ public class RuntimeServiceImpl implements RuntimeService {
     return size > INDEXING_THRESHOLD_BYTES;
   }
 
-  private Knowledge indexAsKnowledge(final String agentId, final AgentFileDetails fileDetails) {
+  private Knowledge indexAsKnowledge(
+      final String agentId, final String sessionId, final AgentFileDetails fileDetails) {
     final IndexRequest request = new IndexRequest();
     request.setAgentId(agentId);
     request.setFileDetails(fileDetails.toFileDetails());
     request.setTitle(fileDetails.name());
+    request.setGrants(
+        List.of(GrantUtils.build(Permission.READ, AssetClass.AGENT_SESSION, sessionId)));
     request.setWaitForCompletion(true);
     return knowledgeService.create(request);
   }

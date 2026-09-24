@@ -91,6 +91,7 @@ public class TextKnowledgeIndexer implements KnowledgeIndexer {
         final String deterministicId = generateChunkId(knowledge.getId(), i);
         chunks.get(i).setId(deterministicId);
         chunks.get(i).setChunkIndex(i);
+        chunks.get(i).setGrants(knowledge.getGrants());
       }
 
       vectorStore.insertMany(chunks);

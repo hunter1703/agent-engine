@@ -1,9 +1,14 @@
 package com.agentengine.util.mongodb.mongo;
 
+import com.agentengine.util.common.GrantUtils;
 import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.annotations.Indexed;
+import com.agentengine.util.common.annotations.Permissioned;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.beans.Permission;
+import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
@@ -38,6 +43,7 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
   protected final MongoStoreClientType clientType;
   private final String collectionName;
   protected final Class<T> entityClass;
+  protected final boolean permissioned;
 
   public AbstractMongoReadRepository(
       final MongoClientFactory mongoClientFactory,
@@ -47,6 +53,7 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
     this.clientType = clientType;
     this.collectionName = entityClass.getSimpleName();
     this.entityClass = entityClass;
+    this.permissioned = entityClass.isAnnotationPresent(Permissioned.class);
   }
 
   @Override
@@ -95,15 +102,17 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
 
   @Override
   public PaginatedResult<T> findByQuery(final Query query) {
+    final Query decorated = decorateWithPermissionFilter(query);
     try {
-      final Page page = query == null ? new Page(0, 20) : query.getPage();
+      final Page page = decorated == null ? new Page(0, 20) : decorated.getPage();
       final List<T> entities = new ArrayList<>();
 
-      final Bson bsonFilter = MongoUtils.toBson(query == null ? null : query.getFilter());
+      final Bson bsonFilter = MongoUtils.toBson(decorated == null ? null : decorated.getFilter());
 
       if (page.getLimit() != 0) {
-        final Bson bsonSort = MongoUtils.toSortBson(query == null ? null : query.getSorts());
-        final Bson projection = MongoUtils.toProjectionBson(query);
+        final Bson bsonSort =
+            MongoUtils.toSortBson(decorated == null ? null : decorated.getSorts());
+        final Bson projection = MongoUtils.toProjectionBson(decorated);
         FindIterable<T> iterable = getCollection().find(bsonFilter, entityClass);
         if (projection != null) {
           iterable = iterable.projection(projection);
@@ -121,7 +130,7 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
         }
       }
 
-      final Long total = query != null && query.isIncludeCount() ? count(bsonFilter) : null;
+      final Long total = decorated != null && decorated.isIncludeCount() ? count(bsonFilter) : null;
       return PaginatedResult.create(entities, page, total);
     } catch (final Exception exception) {
       LOG.error(
@@ -131,6 +140,26 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
           exception);
       throw new RuntimeException("Error finding all entities in " + collectionName, exception);
     }
+  }
+
+  protected Query decorateWithPermissionFilter(final Query query) {
+    if (!permissioned) {
+      return query;
+    }
+    final Integer userId = Context.userId().orElse(null);
+    if (userId == null) {
+      return query;
+    }
+    final Filter permissionFilter =
+        com.agentengine.util.common.query.Filters.in(
+            BaseEntity.FIELD_GRANTS,
+            List.of(GrantUtils.build(Permission.READ, AssetClass.USER, String.valueOf(userId))));
+    final Filter existing = query == null ? null : query.getFilter();
+    final Filter combined =
+        existing == null
+            ? permissionFilter
+            : com.agentengine.util.common.query.Filters.and(existing, permissionFilter);
+    return new Query(query).withFilter(combined);
   }
 
   @Override

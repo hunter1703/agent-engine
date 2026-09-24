@@ -1,16 +1,21 @@
 package com.agentengine.knowledge.core.store;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
+import com.agentengine.knowledge.core.KnowledgeUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.query.Filter;
+import com.agentengine.util.common.query.Filters;
+import com.agentengine.util.common.query.Query;
 import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.vectordb.QdrantVectorStore;
 import com.agentengine.util.vectordb.VectorDbClientFactory;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Qdrant-backed vector store for {@link KnowledgeChunk}.
@@ -49,6 +54,7 @@ public class KnowledgeChunkStore extends QdrantVectorStore<KnowledgeChunk> {
     final Map<String, Object> payload = new HashMap<>();
     payload.put(KEY_KNOWLEDGE_ID, chunk.getKnowledgeId());
     payload.put(KEY_AGENT_ID, chunk.getAgentId());
+    payload.put(BaseEntity.FIELD_GRANTS, CollectionUtils.nullSafeList(chunk.getGrants()));
     payload.put(KEY_CHUNK_INDEX, chunk.getChunkIndex());
     payload.put(KEY_TEXT, chunk.getText());
     payload.put(KEY_CHUNK_START, chunk.getChunkStart());
@@ -61,10 +67,26 @@ public class KnowledgeChunkStore extends QdrantVectorStore<KnowledgeChunk> {
     final KnowledgeChunk chunk = new KnowledgeChunk();
     chunk.setKnowledgeId(strValue(payload, KEY_KNOWLEDGE_ID));
     chunk.setAgentId(strValue(payload, KEY_AGENT_ID));
+    chunk.setGrants(strList(payload, BaseEntity.FIELD_GRANTS));
     chunk.setChunkIndex(intVal(payload, KEY_CHUNK_INDEX));
     chunk.setText(strValue(payload, KEY_TEXT));
     chunk.setChunkStart(intVal(payload, KEY_CHUNK_START));
     chunk.setChunkEnd(intVal(payload, KEY_CHUNK_END));
     return chunk;
+  }
+
+  @Override
+  protected Query decorateWithPermissionFilter(final Query query) {
+    final Map<String, Object> additional =
+        CollectionUtils.nullSafeMap(query == null ? null : query.getAdditional());
+    final List<String> grants = KnowledgeUtils.readGrants(additional);
+    if (CollectionUtils.isEmpty(grants)) {
+      return super.decorateWithPermissionFilter(query);
+    }
+    final Filter permissionFilter = Filters.in(BaseEntity.FIELD_GRANTS, grants);
+    final Filter existing = query == null ? null : query.getFilter();
+    final Filter combined =
+        existing == null ? permissionFilter : Filters.and(existing, permissionFilter);
+    return new Query(query).withFilter(combined);
   }
 }

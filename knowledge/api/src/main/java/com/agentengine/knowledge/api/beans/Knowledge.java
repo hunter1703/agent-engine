@@ -1,10 +1,12 @@
 package com.agentengine.knowledge.api.beans;
 
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
+import com.agentengine.util.common.annotations.Permissioned;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.FileDetails;
-import java.util.List;
 
+@Permissioned(assetClass = AssetClass.KNOWLEDGE)
 public class Knowledge extends BaseEntity {
   public static final String FIELD_INDEXING_STATUS = "indexingStatus";
   public static final String FIELD_TOTAL_CHUNKS = "totalChunks";
@@ -14,7 +16,6 @@ public class Knowledge extends BaseEntity {
   public static final String FIELD_ERROR = "error";
 
   private String agentId;
-  private List<String> grants;
   private FileDetails fileDetails;
   private String title;
   private String description;
@@ -31,14 +32,6 @@ public class Knowledge extends BaseEntity {
 
   public void setAgentId(final String agentId) {
     this.agentId = agentId;
-  }
-
-  public List<String> getGrants() {
-    return grants;
-  }
-
-  public void setGrants(final List<String> grants) {
-    this.grants = grants;
   }
 
   public String getTitle() {

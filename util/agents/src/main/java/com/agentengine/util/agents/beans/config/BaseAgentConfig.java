@@ -13,6 +13,7 @@ import com.agentengine.util.agents.builder.annotations.UiSelect;
 import com.agentengine.util.agents.builder.annotations.UiStep;
 import com.agentengine.util.agents.builder.annotations.UiSteps;
 import com.agentengine.util.agents.builder.annotations.UiText;
+import com.agentengine.util.common.annotations.Permissioned;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.NamedEntity;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -59,6 +60,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
       @UiStep(id = "guardrails", label = "Guardrails", order = 2),
       @UiStep(id = "runtime", label = "Runtime", order = 3)
     })
+@Permissioned(assetClass = AssetClass.AGENT)
 public abstract class BaseAgentConfig extends NamedEntity implements Config {
   public static final String FIELD_DESCRIPTION = "description";
 

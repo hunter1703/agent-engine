@@ -5,6 +5,7 @@ public interface AssetClass {
   String CONNECTION = "Connection";
   String MODEL = "Model";
   String AGENT_SESSION = "AgentSession";
+  String USER = "User";
   String KNOWLEDGE = "Knowledge";
   String KNOWLEDGE_CHUNK = "KnowledgeChunk";
   String TOOL = "Tool";

@@ -6,6 +6,7 @@ import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
+import com.agentengine.knowledge.api.services.KnowledgeCache;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
@@ -26,9 +27,7 @@ import com.google.adk.models.LlmResponse;
 import com.google.adk.tools.ToolContext;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,33 +51,8 @@ public final class SearchKnowledgeTool extends Tool {
       new ToolDescriptor(
           Constants.ToolNames.SEARCH_KNOWLEDGE,
           """
-                  Semantic search over the agent's indexed knowledge. The query is matched against
-                  document text, so write it as a CONTENT phrase, not as an instruction to this tool.
-
-                  HOW TO WRITE THE QUERY
-                  - Shape: a short, standalone phrase (~5-15 words) naming the topic, entities, and
-                    aspects you want to match. Prefer noun phrases over full questions.
-                        good: "refund policy eligibility window"
-                        bad:  "can you please find the refund policy?"
-                  - Drop meta-language directed at this tool or at the act of retrieval itself:
-                    "summarize", "find", "tell me", "please", "in the document", "from the
-                    knowledge base" — and their noun forms, like "summary" or "overview" as a stand-
-                    in for the topic. A query is a guess at words the matching passage itself would
-                    contain; a phrase that names the KIND of information you want, rather than the
-                    information itself, rarely appears verbatim in any source and matches poorly.
-                  - Drop pronouns: replace "it", "this", "the file" with the actual nouns.
-                  - Avoid negation ("not expensive") - it matches poorly. Query the positive concept
-                    instead ("low-cost budget option").
-                  - Add recall terms: synonyms, domain jargon, product/person names, dates, section
-                    hints. More relevant terms => more relevant passages matched.
-
-                  IF YOU DON'T KNOW THE SOURCE'S FORM YET
-                  You won't always know upfront whether a source reads as prose, dialogue,
-                  transcript, tabular data, legal clauses, etc. Don't guess — query the topic itself
-                  (not a label for what you want from it) and treat the first call as exploratory.
-                  The chunks that come back show you the source's actual phrasing and register;
-                  reuse that vocabulary and style in follow-up queries rather than repeating a query
-                  shape that didn't match well.
+                  Semantic search over the agent's indexed knowledge. See the query parameter's own
+                  description for exactly how to phrase it.
 
                   ONE IDEA PER CALL
                   Each call retrieves chunks for one direction. For broad, comparative, or multi-part
@@ -101,16 +75,19 @@ public final class SearchKnowledgeTool extends Tool {
                   """);
 
   private final KnowledgeService knowledgeService;
+  private final KnowledgeCache knowledgeCache;
   private final DefaultModelsRepository defaultModelsRepository;
   private final ModelProvider modelProvider;
 
   @ToolConstructor
   public SearchKnowledgeTool(
       final KnowledgeService knowledgeService,
+      final KnowledgeCache knowledgeCache,
       final DefaultModelsRepository defaultModelsRepository,
       final ModelProvider modelProvider) {
     super(DESCRIPTOR);
     this.knowledgeService = knowledgeService;
+    this.knowledgeCache = knowledgeCache;
     this.defaultModelsRepository = defaultModelsRepository;
     this.modelProvider = modelProvider;
   }
@@ -128,25 +105,33 @@ public final class SearchKnowledgeTool extends Tool {
       @ToolArg(
               name = "query",
               description =
-                  "Content-shaped search phrase, NOT an instruction to this tool. The phrase is "
-                      + "matched against document text, so write it the way the content itself "
-                      + "would be phrased. "
-                      + "Rules: (1) ~5-15 words, one topic; "
-                      + "(2) prefer noun phrases over questions - "
-                      + "'refund policy eligibility window', not 'what is the refund policy?'; "
-                      + "(3) no meta-words directed at this tool or the retrieval act "
-                      + "('summarize', 'find', 'please', 'in the document') - including their noun "
-                      + "forms used as a stand-in for the topic ('summary', 'overview'), since a "
-                      + "name for the KIND of information you want rarely appears verbatim in any "
-                      + "source; no pronouns ('it', 'this file'), no negations; "
-                      + "(4) include synonyms, domain terms, names and dates to surface more "
-                      + "relevant passages; "
-                      + "(5) don't know the source's form yet (prose, dialogue, tabular, etc.)? "
-                      + "Query the topic itself and treat the first call as exploratory - the "
-                      + "chunks that come back show you the source's real phrasing, so reuse it in "
-                      + "follow-up queries. "
-                      + "For multi-part questions, call this tool several times with different "
-                      + "queries rather than once with a long one.")
+                  """
+                  Content-shaped search phrase, NOT an instruction to this tool. The query is \
+                  matched against document text, so write it the way the content itself would \
+                  be phrased, not as a question or command.
+                      good: "refund policy eligibility window"
+                      bad:  "can you please find the refund policy?"
+
+                  Drop meta-language directed at this tool or the retrieval act itself \
+                  ("summarize", "find", "tell me", "please", "in the document", "from the \
+                  knowledge base") — including their noun forms used as a stand-in for the \
+                  topic ("summary", "overview"). A phrase naming the KIND of information you \
+                  want, rather than the information itself, rarely appears verbatim in any \
+                  source and matches poorly.
+
+                  Drop pronouns ("it", "this file") for the actual nouns. Avoid negation \
+                  ("not expensive") — query the positive concept instead ("low-cost budget \
+                  option"). Include synonyms, domain jargon, product/person names, dates, and \
+                  section hints — more relevant terms surface more relevant passages.
+
+                  Don't know the source's form yet (prose, dialogue, transcript, tabular, \
+                  legal clauses, etc.)? Don't guess — query the topic itself and treat the \
+                  first call as exploratory. The chunks that come back show you the source's \
+                  real phrasing; reuse that vocabulary and register in follow-up queries \
+                  rather than repeating a query shape that didn't match well.
+
+                  ~5-15 words, one topic per call.
+                  """)
           String query,
       @ToolArg(
               name = Constants.ToolArgs.KNOWLEDGE_ID,
@@ -181,20 +166,24 @@ public final class SearchKnowledgeTool extends Tool {
     final int resolvedOffset = offset != null ? offset : 0;
     final int resolvedLimit = limit != null ? limit : 5;
 
-    final Filter scopeFilter =
-        StringUtils.isNotBlank(knowledgeId)
-            ? Filters.eq(KnowledgeChunk.FIELD_KNOWLEDGE_ID, knowledgeId)
-            : Filters.eq(
-                KnowledgeChunk.FIELD_AGENT_ID, toolContext.invocationContext().agent().name());
+    final List<Filter> filters = new ArrayList<>();
+    if (StringUtils.isNotBlank(knowledgeId)) {
+      filters.add(Filters.eq(KnowledgeChunk.FIELD_KNOWLEDGE_ID, knowledgeId));
+    }
 
     final String embeddingText = hypotheticalPassage(query, knowledgeId);
+    LOG.info("Hypothetical passage : {}", embeddingText);
     final Filter semanticFilter =
         Filters.semanticSearch("text", embeddingText)
             .withAdditional(Map.of(EMBEDDING_MODEL_ID_KEY, resolveModelId(toolContext)));
-    final Filter combined = Filters.and(semanticFilter, scopeFilter);
+    filters.add(semanticFilter);
+    final Filter combined = Filters.and(filters.toArray(Filter[]::new));
 
     final Query searchQuery =
-        new Query().withFilter(combined).withPage(new Page(resolvedOffset, resolvedLimit));
+        new Query()
+            .withFilter(combined)
+            .withPage(new Page(resolvedOffset, resolvedLimit))
+            .withAdditional(permissionContext(toolContext));
 
     final PaginatedResult<KnowledgeChunk> result = knowledgeService.searchInKnowledge(searchQuery);
     final List<KnowledgeChunk> chunks = result.getItems();
@@ -245,10 +234,7 @@ public final class SearchKnowledgeTool extends Tool {
   }
 
   private String contentPreview(final String knowledgeId) {
-    if (StringUtils.isBlank(knowledgeId)) {
-      return null;
-    }
-    final Knowledge knowledge = knowledgeService.findById(knowledgeId);
+    final Knowledge knowledge = knowledgeCache.get(knowledgeId);
     return knowledge == null ? null : knowledge.getContentPreview();
   }
 
@@ -280,5 +266,12 @@ public final class SearchKnowledgeTool extends Tool {
       }
     }
     return defaultModelsRepository.getEmbeddingModelId();
+  }
+
+  private static Map<String, Object> permissionContext(final ToolContext toolContext) {
+    final Map<String, Object> additional = new HashMap<>();
+    additional.put(KnowledgeChunk.ADDITIONAL_AGENT_ID, toolContext.agentName());
+    additional.put(KnowledgeChunk.ADDITIONAL_SESSION_ID, toolContext.sessionId());
+    return additional;
   }
 }

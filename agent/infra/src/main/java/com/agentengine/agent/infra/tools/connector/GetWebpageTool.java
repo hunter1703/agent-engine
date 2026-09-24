@@ -9,8 +9,11 @@ import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.common.GrantUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.FileDetails;
+import com.agentengine.util.common.beans.Permission;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +68,8 @@ public final class GetWebpageTool extends Tool {
     request.setAgentId(agentName);
     request.setFileDetails(FileDetails.fromUrl(url));
     request.setTitle(url);
-    request.setGrants(List.of("S/" + sessionId));
+    request.setGrants(
+        List.of(GrantUtils.build(Permission.READ, AssetClass.AGENT_SESSION, sessionId)));
     request.setWaitForCompletion(true);
     final Knowledge knowledge = knowledgeService.create(request);
     return ToolOutput.knowledge(knowledge.getId(), "Webpage '%s' indexed.".formatted(url));

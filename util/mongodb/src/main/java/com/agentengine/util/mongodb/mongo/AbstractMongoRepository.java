@@ -2,6 +2,7 @@ package com.agentengine.util.mongodb.mongo;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.ExceptionUtils;
+import com.agentengine.util.common.GrantUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -54,7 +55,6 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
       if (StringUtils.isBlank(entity.getId())) {
         entity.setId(new ObjectId().toHexString());
       }
-      entity.setOwnerUserId(Context.userId().orElse(null));
       sanitizeForWrite(entity);
       try {
         getCollection().insertOne(entity);
@@ -79,7 +79,6 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
         if (StringUtils.isBlank(entity.getId())) {
           entity.setId(new ObjectId().toHexString());
         }
-        entity.setOwnerUserId(Context.userId().orElse(null));
         sanitizeForWrite(entity);
       }
       getCollection().insertMany(entities);
@@ -193,7 +192,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
     final long currentVersion = entity.getVersion();
     entity.setId(id);
     entity.setVersion(currentVersion + 1);
-    entity.setOwnerUserId(ownerOf(id));
+    entity.copyContextualFieldsFrom((entityId, fields) -> findById(entityId, fields, null));
     sanitizeForWrite(entity);
     try {
       final Bson filter =
@@ -219,11 +218,6 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
       LOG.error("Error replacing entity: {}", entity, exception);
       throw ExceptionUtils.wrapInRuntimeException(exception, "Error replacing entity");
     }
-  }
-
-  private Integer ownerOf(final String id) {
-    final T existing = findById(id, List.of(BaseEntity.FIELD_OWNER_USER_ID), null);
-    return existing != null ? existing.getOwnerUserId() : Context.userId().orElse(null);
   }
 
   /**
@@ -252,11 +246,17 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
   }
 
   private void sanitizeForWrite(final T entity) {
+    if (entity.getOwnerUserId() == null) {
+      entity.setOwnerUserId(Context.userId().orElse(null));
+    }
     final long now = System.currentTimeMillis();
     if (entity.getCreatedTime() == 0) {
       entity.setCreatedTime(now);
     }
     entity.setUpdatedTime(now);
+    if (permissioned) {
+      entity.setGrants(GrantUtils.getGrants(entity));
+    }
   }
 
   private RuntimeException translateWriteException(
