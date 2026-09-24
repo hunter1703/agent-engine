@@ -40,12 +40,12 @@ public class SessionTitleGenerator {
         new Cache<>(
             CacheBuilder.newBuilder().maximumSize(1000),
             _ -> {
-              final String titleModelId = defaultModelsRepository.getTitleModelId();
-              if (titleModelId == null) {
+              final String fastModelId = defaultModelsRepository.getFastModelId();
+              if (fastModelId == null) {
                 throw new IllegalStateException(
-                    "Default title model not configured. Ensure infra configs are seeded before starting the runtime.");
+                    "Default fast model not configured. Ensure infra configs are seeded before starting the runtime.");
               }
-              return titleModelId;
+              return fastModelId;
             });
     this.modelProvider = modelProvider;
   }

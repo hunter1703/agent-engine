@@ -41,8 +41,8 @@ public class DefaultModelsRepository extends AbstractMongoRepository<DefaultMode
     return saved;
   }
 
-  public String getTitleModelId() {
-    return get(DefaultModels::getTitleModelId);
+  public String getFastModelId() {
+    return get(DefaultModels::getFastModelId);
   }
 
   public String getCompactionModelId() {

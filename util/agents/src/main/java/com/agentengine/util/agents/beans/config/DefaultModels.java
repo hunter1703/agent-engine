@@ -6,7 +6,7 @@ public class DefaultModels extends BaseEntity {
 
   public static final String ID = "default";
 
-  private String titleModelId;
+  private String fastModelId;
   private String compactionModelId;
   private String evaluatorModelId;
   private String embeddingModelId;
@@ -16,12 +16,12 @@ public class DefaultModels extends BaseEntity {
     super(ID);
   }
 
-  public String getTitleModelId() {
-    return titleModelId;
+  public String getFastModelId() {
+    return fastModelId;
   }
 
-  public void setTitleModelId(final String titleModelId) {
-    this.titleModelId = titleModelId;
+  public void setFastModelId(final String fastModelId) {
+    this.fastModelId = fastModelId;
   }
 
   public String getCompactionModelId() {

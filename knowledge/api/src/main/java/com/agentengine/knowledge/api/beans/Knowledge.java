@@ -9,6 +9,8 @@ public class Knowledge extends BaseEntity {
   public static final String FIELD_INDEXING_STATUS = "indexingStatus";
   public static final String FIELD_TOTAL_CHUNKS = "totalChunks";
   public static final String FIELD_INDEXED_AT = "indexedAt";
+  public static final String FIELD_CONTENT_PREVIEW = "contentPreview";
+  public static final String FIELD_DESCRIPTION = "description";
   public static final String FIELD_ERROR = "error";
 
   private String agentId;
@@ -20,6 +22,7 @@ public class Knowledge extends BaseEntity {
   private String indexingStatus = IndexingStatus.PENDING.name();
   private int totalChunks;
   private long indexedAt;
+  private String contentPreview;
   private String error;
 
   public String getAgentId() {
@@ -92,6 +95,14 @@ public class Knowledge extends BaseEntity {
 
   public void setIndexedAt(final long indexedAt) {
     this.indexedAt = indexedAt;
+  }
+
+  public String getContentPreview() {
+    return contentPreview;
+  }
+
+  public void setContentPreview(final String contentPreview) {
+    this.contentPreview = contentPreview;
   }
 
   public String getError() {

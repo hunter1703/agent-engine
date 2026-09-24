@@ -100,12 +100,16 @@ public final class SessionState {
         knowledgeService == null ? Map.of() : knowledgeService.findByIds(knowledgeIds);
     for (final Knowledge knowledge : knowledges.values()) {
       final String description = knowledge.getDescription();
+      final String contentPreview = knowledge.getContentPreview();
       addKnowledgeIdReminder(
           knowledge.getId(),
           "["
               + knowledge.getTitle()
               + "]"
-              + (StringUtils.isNotBlank(description) ? " " + description : ""));
+              + (StringUtils.isNotBlank(description) ? " " + description : "")
+              + (StringUtils.isNotBlank(contentPreview)
+                  ? " (sample excerpt: \"" + contentPreview + "\")"
+                  : ""));
     }
   }
 

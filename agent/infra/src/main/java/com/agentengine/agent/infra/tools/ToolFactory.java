@@ -7,6 +7,7 @@ import com.agentengine.util.agents.beans.config.ToolsConfig;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;
 import jakarta.inject.Inject;
@@ -22,17 +23,20 @@ public final class ToolFactory {
   private final CloudStorageService cloudStorageService;
   private final KnowledgeService knowledgeService;
   private final DefaultModelsRepository defaultModelsRepository;
+  private final ModelProvider modelProvider;
 
   @Inject
   public ToolFactory(
       final ToolService toolService,
       final CloudStorageService cloudStorageService,
       final KnowledgeService knowledgeService,
-      final DefaultModelsRepository defaultModelsRepository) {
+      final DefaultModelsRepository defaultModelsRepository,
+      final ModelProvider modelProvider) {
     this.toolService = toolService;
     this.cloudStorageService = cloudStorageService;
     this.knowledgeService = knowledgeService;
     this.defaultModelsRepository = defaultModelsRepository;
+    this.modelProvider = modelProvider;
   }
 
   public HumanInTheLoopTool getHITLTool() {
@@ -44,7 +48,7 @@ public final class ToolFactory {
   }
 
   public BaseTool getSearchKnowledgeTool() {
-    return new SearchKnowledgeTool(knowledgeService, defaultModelsRepository);
+    return new SearchKnowledgeTool(knowledgeService, defaultModelsRepository, modelProvider);
   }
 
   public List<BaseTool> buildTools(final List<ToolsConfig> toolConfigs) {

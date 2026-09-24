@@ -129,15 +129,20 @@ public class KnowledgeServiceImpl implements KnowledgeService {
               .findFirst()
               .orElseThrow(() -> new RuntimeException("No suitable indexer found"));
       LOG.info("Selected indexer: {}", indexer.getClass().getSimpleName());
-      final int chunks = indexer.index(knowledge);
+      final KnowledgeIndexer.IndexResult result = indexer.index(knowledge);
 
-      knowledgeRepo.update(
-          id,
-          Update.of(
-              Operation.set(Knowledge.FIELD_INDEXING_STATUS, IndexingStatus.COMPLETED.name()),
-              Operation.set(Knowledge.FIELD_INDEXED_AT, System.currentTimeMillis()),
-              Operation.set(Knowledge.FIELD_TOTAL_CHUNKS, chunks)));
-      LOG.info("Indexed knowledge {} — {} chunks", id, chunks);
+      final List<Operation> operations =
+          new ArrayList<>(
+              List.of(
+                  Operation.set(Knowledge.FIELD_INDEXING_STATUS, IndexingStatus.COMPLETED.name()),
+                  Operation.set(Knowledge.FIELD_INDEXED_AT, System.currentTimeMillis()),
+                  Operation.set(Knowledge.FIELD_TOTAL_CHUNKS, result.chunkCount()),
+                  Operation.set(Knowledge.FIELD_CONTENT_PREVIEW, result.contentPreview())));
+      if (result.generatedDescription() != null) {
+        operations.add(Operation.set(Knowledge.FIELD_DESCRIPTION, result.generatedDescription()));
+      }
+      knowledgeRepo.update(id, new Update(operations));
+      LOG.info("Indexed knowledge {} — {} chunks", id, result.chunkCount());
     } catch (Exception e) {
       LOG.error("Indexing failed for knowledge {}", id, e);
       markStatus(id, IndexingStatus.FAILED, e.getMessage());

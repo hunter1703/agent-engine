@@ -3,7 +3,7 @@
     "id": 1,
     "name": "local",
     "defaultModels": {
-      "titleModelId": "gemma4",
+      "fastModelId": "gemma4",
       "compactionModelId": "gemma4",
       "evaluatorModelId": "gemma4",
       "embeddingModelId": "nomic-embed-text",
