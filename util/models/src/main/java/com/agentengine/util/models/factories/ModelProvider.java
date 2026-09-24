@@ -63,17 +63,12 @@ public class ModelProvider {
 
   public RefCounted<LLMModel> get(final String modelId) {
     final String resolvedId = resolveModelId(modelId, defaultModelsRepository::getChatModelId);
-    return cache.getOrLoad(resolvedId, _ -> new LLMModel(buildChatModel(resolvedId)));
+    return cache.getOrLoad(resolvedId, id -> new LLMModel(buildChatModel(id))).acquire();
   }
 
   public RefCounted<Model.EmbeddingModel> getEmbeddingModel(final String modelId) {
     final String resolvedId = resolveModelId(modelId, defaultModelsRepository::getEmbeddingModelId);
-    return cache.getOrLoad(
-        resolvedId,
-        _ -> {
-          final EmbeddingModelConfig config = (EmbeddingModelConfig) modelService.getModel(modelId);
-          return new Model.EmbeddingModel(buildEmbeddingModel(config), config.getMaxBatchSize());
-        });
+    return cache.getOrLoad(resolvedId, this::loadEmbeddingModel).acquire();
   }
 
   private static String resolveModelId(
@@ -96,6 +91,14 @@ public class ModelProvider {
     final ModelFactory<?> factory =
         typeVsFactory.getOrDefault(config.getProvider(), defaultFactory);
     return factory.build(config);
+  }
+
+  private Model.EmbeddingModel loadEmbeddingModel(final String modelId) {
+    final EmbeddingModelConfig config = (EmbeddingModelConfig) modelService.getModel(modelId);
+    if (config == null) {
+      throw new IllegalStateException("Embedding model config missing for model_id=" + modelId);
+    }
+    return new Model.EmbeddingModel(buildEmbeddingModel(config), config.getMaxBatchSize());
   }
 
   private EmbeddingModel buildEmbeddingModel(final ModelConfig config) {

@@ -10,6 +10,8 @@ public final class SchedulerConfigs {
   private static final String POLL_INTERVAL_KEY = "agent-engine.scheduler.poll-interval-millis";
   private static final String MAX_TRIGGERS_PER_SCAN_KEY =
       "agent-engine.scheduler.max-triggers-per-scan";
+  private static final String MAX_TRIGGERS_PER_TAG_PER_SCAN_KEY =
+      "agent-engine.scheduler.max-triggers-per-tag-per-scan";
   private static final String MAX_CONCURRENT_JOBS_KEY =
       "agent-engine.scheduler.max-concurrent-jobs";
   private static final String WORK_REQUEST_TIMEOUT_KEY =
@@ -24,6 +26,7 @@ public final class SchedulerConfigs {
       Duration.ofMinutes(1).toMillis();
   private static final long DEFAULT_POLL_INTERVAL_MILLIS = Duration.ofSeconds(1).toMillis();
   private static final int DEFAULT_MAX_TRIGGERS_PER_SCAN = 10_000;
+  private static final int DEFAULT_MAX_TRIGGERS_PER_TAG_PER_SCAN = 1_000;
   private static final int DEFAULT_MAX_CONCURRENT_JOBS = 20;
   private static final long DEFAULT_WORK_REQUEST_TIMEOUT_MILLIS = Duration.ofSeconds(10).toMillis();
   private static final long DEFAULT_HEARTBEAT_INTERVAL_MILLIS = Duration.ofSeconds(20).toMillis();
@@ -44,6 +47,14 @@ public final class SchedulerConfigs {
    * scheduling everywhere, and would do so again on restart while the backlog remains.
    */
   private final int maxTriggersPerScan;
+
+  /**
+   * The same safety valve as {@link #maxTriggersPerScan}, one level down: how many due triggers
+   * sharing one tag, for one tenant, can be held in memory at once. Without it, one job class
+   * repeatedly rescheduling itself for a single tenant could consume the tenant's entire {@link
+   * #maxTriggersPerScan} budget on its own, crowding out that tenant's other job classes.
+   */
+  private final int maxTriggersPerTagPerScan;
 
   private final int maxConcurrentJobs;
 
@@ -69,6 +80,9 @@ public final class SchedulerConfigs {
             applicationConfig.getLong(POLL_INTERVAL_KEY, DEFAULT_POLL_INTERVAL_MILLIS));
     this.maxTriggersPerScan =
         applicationConfig.getInt(MAX_TRIGGERS_PER_SCAN_KEY, DEFAULT_MAX_TRIGGERS_PER_SCAN);
+    this.maxTriggersPerTagPerScan =
+        applicationConfig.getInt(
+            MAX_TRIGGERS_PER_TAG_PER_SCAN_KEY, DEFAULT_MAX_TRIGGERS_PER_TAG_PER_SCAN);
     this.maxConcurrentJobs =
         applicationConfig.getInt(MAX_CONCURRENT_JOBS_KEY, DEFAULT_MAX_CONCURRENT_JOBS);
     this.workRequestTimeout =
@@ -96,6 +110,10 @@ public final class SchedulerConfigs {
 
   public int maxTriggersPerScan() {
     return maxTriggersPerScan;
+  }
+
+  public int maxTriggersPerTagPerScan() {
+    return maxTriggersPerTagPerScan;
   }
 
   public int maxConcurrentJobs() {
