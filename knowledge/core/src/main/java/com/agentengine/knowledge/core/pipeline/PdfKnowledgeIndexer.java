@@ -42,7 +42,7 @@ public class PdfKnowledgeIndexer extends AbstractTextKnowledgeIndexer {
   }
 
   @Override
-  protected Reader read(final InputStream content) {
+  protected Reader read(final Knowledge knowledge, final InputStream content) {
     return new StringReader(new ApachePdfBoxDocumentParser().parse(content).text());
   }
 

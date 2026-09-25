@@ -61,6 +61,10 @@ public class DefaultModelsRepository extends AbstractMongoRepository<DefaultMode
     return get(DefaultModels::getChatModelId);
   }
 
+  public String getVisionModelId() {
+    return get(DefaultModels::getVisionModelId);
+  }
+
   private String get(final Function<DefaultModels, String> getModelId) {
     return Optional.ofNullable(cache.get(DefaultModels.ID)).map(getModelId).orElse(null);
   }

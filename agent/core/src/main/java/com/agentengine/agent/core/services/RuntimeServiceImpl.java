@@ -221,7 +221,8 @@ public class RuntimeServiceImpl implements RuntimeService {
     final FileDetails fileDetails = agentFileDetails.toFileDetails();
     if (!FileUtils.isTextFile(fileDetails)
         && !FileUtils.isOfficeFile(fileDetails)
-        && !FileUtils.isPdfFile(fileDetails)) {
+        && !FileUtils.isPdfFile(fileDetails)
+        && !FileUtils.isImageFile(fileDetails)) {
       return false;
     }
     final long size =

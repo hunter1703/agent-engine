@@ -35,7 +35,7 @@ public class TextKnowledgeIndexer extends AbstractTextKnowledgeIndexer {
   }
 
   @Override
-  protected Reader read(final InputStream content) {
+  protected Reader read(final Knowledge knowledge, final InputStream content) {
     return new InputStreamReader(content, UTF_8);
   }
 

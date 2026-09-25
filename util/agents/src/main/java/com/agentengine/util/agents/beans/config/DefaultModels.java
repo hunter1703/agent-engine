@@ -11,6 +11,7 @@ public class DefaultModels extends BaseEntity {
   private String evaluatorModelId;
   private String embeddingModelId;
   private String chatModelId;
+  private String visionModelId;
 
   public DefaultModels() {
     super(ID);
@@ -54,5 +55,13 @@ public class DefaultModels extends BaseEntity {
 
   public void setChatModelId(final String chatModelId) {
     this.chatModelId = chatModelId;
+  }
+
+  public String getVisionModelId() {
+    return visionModelId;
+  }
+
+  public void setVisionModelId(final String visionModelId) {
+    this.visionModelId = visionModelId;
   }
 }

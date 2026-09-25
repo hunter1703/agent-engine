@@ -56,6 +56,21 @@ public final class FileUtils {
   private static final Set<String> OFFICE_EXTENSIONS =
       Set.of(".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx");
 
+  // Raster formats only — SVG is text/XML (already covered by isTextFile's "+xml" suffix match)
+  // and doesn't need a vision model to read.
+  private static final Set<String> IMAGE_MIME_TYPES =
+      Set.of(
+          "image/jpeg",
+          "image/png",
+          "image/gif",
+          "image/webp",
+          "image/bmp",
+          "image/tiff",
+          "image/heic",
+          "image/heif");
+  private static final Set<String> IMAGE_EXTENSIONS =
+      Set.of(".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".tif", ".heic", ".heif");
+
   private FileUtils() {}
 
   public static boolean isTextFile(final FileDetails fileDetails) {
@@ -88,6 +103,10 @@ public final class FileUtils {
   /** Whether {@code fileDetails} is a Word, PowerPoint, or Excel document (old or OOXML format). */
   public static boolean isOfficeFile(final FileDetails fileDetails) {
     return matches(fileDetails, OFFICE_MIME_TYPES, OFFICE_EXTENSIONS);
+  }
+
+  public static boolean isImageFile(final FileDetails fileDetails) {
+    return matches(fileDetails, IMAGE_MIME_TYPES, IMAGE_EXTENSIONS);
   }
 
   private static boolean matches(

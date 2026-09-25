@@ -7,7 +7,8 @@
       "compactionModelId": "gemma4",
       "evaluatorModelId": "gemma4",
       "embeddingModelId": "nomic-embed-text",
-      "chatModelId": "gemma4"
+      "chatModelId": "gemma4",
+      "visionModelId": "gemma4"
     }
   }
 ]

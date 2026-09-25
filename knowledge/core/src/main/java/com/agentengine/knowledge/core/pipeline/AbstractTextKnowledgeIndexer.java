@@ -52,8 +52,8 @@ public abstract class AbstractTextKnowledgeIndexer implements KnowledgeIndexer {
   private final ChunkingPipelineFactory chunkingPipelineFactory;
   private final KnowledgeChunkStore vectorStore;
   private final FileService fileService;
-  private final DefaultModelsRepository defaultModelsRepository;
-  private final ModelProvider modelProvider;
+  protected final DefaultModelsRepository defaultModelsRepository;
+  protected final ModelProvider modelProvider;
 
   protected AbstractTextKnowledgeIndexer(
       final ChunkingPipelineFactory chunkingPipelineFactory,
@@ -71,16 +71,17 @@ public abstract class AbstractTextKnowledgeIndexer implements KnowledgeIndexer {
   /**
    * Turns {@code content} into the text {@link ChunkingPipeline} chunks — a plain decoding {@link
    * Reader} for a format that's already text (read lazily, so a streaming-capable chunking strategy
-   * never has the whole document forced into memory up front), or one wrapping text extracted from
-   * a binary format (necessarily read fully first — there's no way to extract text from most binary
-   * document formats incrementally).
+   * never has the whole document forced into memory up front), or one wrapping text extracted or
+   * generated from a binary format (necessarily read fully first — there's no way to extract text
+   * from most binary formats incrementally). {@code knowledge} is available for a subclass that
+   * needs more than the bytes themselves — its file's mime type, or its configured model ids.
    */
-  protected abstract Reader read(InputStream content) throws IOException;
+  protected abstract Reader read(Knowledge knowledge, InputStream content) throws IOException;
 
   @Override
   public IndexResult index(final Knowledge knowledge) {
     try (final InputStream content = fileService.getContent(knowledge.getFileDetails());
-        final Reader reader = read(content)) {
+        final Reader reader = read(knowledge, content)) {
       final ChunkingPipeline pipeline = chunkingPipelineFactory.create(knowledge);
 
       // Chunks are assigned their final id/index/grants, persisted in batches, and sampled for the

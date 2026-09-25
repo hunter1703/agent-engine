@@ -37,6 +37,12 @@ public class KnowledgeSettings {
   private String chatModelId;
 
   /**
+   * ID of the vision-capable chat model to use for describing image knowledge. Falls back to {@code
+   * DefaultModels.visionModelId} when null.
+   */
+  private String visionModelId;
+
+  /**
    * Explicit ordered pipeline of chunking stages. Each entry is a fully configured {@link
    * ChunkingStrategy} describing one stage and its parameters.
    */
@@ -56,6 +62,14 @@ public class KnowledgeSettings {
 
   public void setChatModelId(final String chatModelId) {
     this.chatModelId = chatModelId;
+  }
+
+  public String getVisionModelId() {
+    return visionModelId;
+  }
+
+  public void setVisionModelId(final String visionModelId) {
+    this.visionModelId = visionModelId;
   }
 
   public List<ChunkingStrategy> getChunkingStrategy() {
