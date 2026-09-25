@@ -1,5 +1,6 @@
 package com.agentengine.knowledge.core.chunking;
 
+import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.util.common.StringUtils;
 import io.reactivex.rxjava3.core.Flowable;
@@ -30,6 +31,16 @@ public final class ChunkUtils {
   private static final int OFFSET_SEARCH_WINDOW = 8192;
 
   private ChunkUtils() {}
+
+  /**
+   * Stamps {@code chunk} with {@code knowledge}'s id and agent id — the identity every chunk
+   * produced for one document shares, for a stage building chunks that have no parent of their own
+   * to inherit it from.
+   */
+  public static void addMetadata(final Knowledge knowledge, final KnowledgeChunk chunk) {
+    chunk.setKnowledgeId(knowledge.getId());
+    chunk.setAgentId(knowledge.getAgentId());
+  }
 
   /**
    * Splits each chunk in {@code parents} by applying {@code splitter} to its text, producing new

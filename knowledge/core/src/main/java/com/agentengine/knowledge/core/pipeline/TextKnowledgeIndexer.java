@@ -8,7 +8,6 @@ import com.agentengine.knowledge.api.chunking.ChunkingPipeline;
 import com.agentengine.knowledge.core.chunking.ChunkingPipelineFactory;
 import com.agentengine.knowledge.core.store.KnowledgeChunkStore;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.RefCounted;
@@ -23,6 +22,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -73,19 +73,7 @@ public class TextKnowledgeIndexer implements KnowledgeIndexer {
   @Override
   public IndexResult index(final Knowledge knowledge) {
     try (final InputStream content = fileService.getContent(knowledge.getFileDetails())) {
-      final String text = new String(content.readAllBytes(), UTF_8);
-      final KnowledgeSettings settings = knowledge.getSettings();
-      final ChunkingPipeline pipeline = chunkingPipelineFactory.create(settings);
-
-      // Seed chunk carries the full document text and identity metadata.
-      // Pipeline stages split, merge, and finally embed — producing ready-to-persist chunks.
-      final KnowledgeChunk seed = new KnowledgeChunk();
-      seed.setKnowledgeId(knowledge.getId());
-      seed.setAgentId(knowledge.getAgentId());
-      seed.setChunkIndex(0);
-      seed.setText(text);
-      seed.setChunkStart(0);
-      seed.setChunkEnd(text.length());
+      final ChunkingPipeline pipeline = chunkingPipelineFactory.create(knowledge);
 
       // Chunks are assigned their final id/index/grants, persisted in batches, and sampled for the
       // content preview as they arrive — the pipeline's output is never fully materialized here,
@@ -96,7 +84,7 @@ public class TextKnowledgeIndexer implements KnowledgeIndexer {
       final AtomicInteger nextIndex = new AtomicInteger();
       final List<KnowledgeChunk> sample = new ArrayList<>(PREVIEW_SAMPLE_SIZE);
       pipeline
-          .run(seed)
+          .run(new InputStreamReader(content, UTF_8))
           .doOnNext(
               chunk -> {
                 // Qdrant requires point IDs to be either unsigned integers or UUIDs

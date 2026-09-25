@@ -15,8 +15,9 @@ import io.reactivex.rxjava3.core.Flowable;
  * window several together) buffers what it needs internally — the pipeline itself never forces that
  * buffering. The embedding stage populates the vector on each chunk.
  *
- * <p>Implementations must be stateless — the same instance may be reused across concurrent indexing
- * operations.
+ * <p>A fresh set of stages is built for every indexing run (see {@code ChunkingPipelineFactory}) —
+ * never reused across documents or shared as a singleton — so an implementation is free to hold
+ * state specific to the document it was built for (e.g. its {@code knowledgeId}).
  */
 public abstract class ChunkingStage {
 
