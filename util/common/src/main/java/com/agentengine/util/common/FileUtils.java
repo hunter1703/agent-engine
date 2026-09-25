@@ -42,6 +42,20 @@ public final class FileUtils {
           ".conf",
           ".cfg");
 
+  private static final Set<String> PDF_MIME_TYPES = Set.of("application/pdf");
+  private static final Set<String> PDF_EXTENSIONS = Set.of(".pdf");
+
+  private static final Set<String> OFFICE_MIME_TYPES =
+      Set.of(
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/vnd.ms-powerpoint",
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          "application/vnd.ms-excel",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  private static final Set<String> OFFICE_EXTENSIONS =
+      Set.of(".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx");
+
   private FileUtils() {}
 
   public static boolean isTextFile(final FileDetails fileDetails) {
@@ -62,6 +76,31 @@ public final class FileUtils {
       final int dot = name.lastIndexOf('.');
       if (dot >= 0) {
         return TEXT_EXTENSIONS.contains(name.substring(dot).toLowerCase());
+      }
+    }
+    return false;
+  }
+
+  public static boolean isPdfFile(final FileDetails fileDetails) {
+    return matches(fileDetails, PDF_MIME_TYPES, PDF_EXTENSIONS);
+  }
+
+  /** Whether {@code fileDetails} is a Word, PowerPoint, or Excel document (old or OOXML format). */
+  public static boolean isOfficeFile(final FileDetails fileDetails) {
+    return matches(fileDetails, OFFICE_MIME_TYPES, OFFICE_EXTENSIONS);
+  }
+
+  private static boolean matches(
+      final FileDetails fileDetails, final Set<String> mimeTypes, final Set<String> extensions) {
+    final String mimeType = fileDetails.mimeType();
+    if (mimeType != null && mimeTypes.contains(mimeType.toLowerCase())) {
+      return true;
+    }
+    final String name = fileDetails.name();
+    if (name != null) {
+      final int dot = name.lastIndexOf('.');
+      if (dot >= 0) {
+        return extensions.contains(name.substring(dot).toLowerCase());
       }
     }
     return false;

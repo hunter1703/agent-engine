@@ -104,6 +104,7 @@ public class ChunkingPipelineFactory {
           List.of(
               new LangchainSplitterStage(
                   knowledge, ChunkingType.RECURSIVE, maxSegmentSize, maxOverlapSize));
+      case MARKDOWN -> List.of(new MarkdownSplitterStage(knowledge));
       default -> List.of(new FixedWindowSplitterStage(knowledge, maxSegmentSize, maxOverlapSize));
     };
   }

@@ -38,6 +38,7 @@ import com.agentengine.util.common.GrantUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.beans.Permission;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
@@ -216,14 +217,17 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   /** Whether a text attachment is over {@link #INDEXING_THRESHOLD_BYTES} once its size is known. */
-  private boolean needsIndexing(final AgentFileDetails fileDetails) {
-    if (!FileUtils.isTextFile(fileDetails.toFileDetails())) {
+  private boolean needsIndexing(final AgentFileDetails agentFileDetails) {
+    final FileDetails fileDetails = agentFileDetails.toFileDetails();
+    if (!FileUtils.isTextFile(fileDetails)
+        && !FileUtils.isOfficeFile(fileDetails)
+        && !FileUtils.isPdfFile(fileDetails)) {
       return false;
     }
     final long size =
-        fileDetails.size() < 1
-            ? cloudStorageService.getSize(fileDetails.source())
-            : fileDetails.size();
+        agentFileDetails.size() < 1
+            ? cloudStorageService.getSize(agentFileDetails.source())
+            : agentFileDetails.size();
     return size > INDEXING_THRESHOLD_BYTES;
   }
 
