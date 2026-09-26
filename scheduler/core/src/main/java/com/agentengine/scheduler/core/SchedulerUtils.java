@@ -46,23 +46,32 @@ public final class SchedulerUtils {
   }
 
   /**
-   * The exact cron occurrence following the trigger's current one, or empty when its job has no
-   * schedule or the schedule is exhausted.
+   * The exact cron occurrence following the trigger's current one, or the job's single {@code
+   * runAt} instant if the trigger hasn't fired yet and the job isn't cron-scheduled at all, or
+   * empty when neither applies — a one-off job's schedule is exhausted the moment it's fired once,
+   * same as a cron whose occurrences have run out.
    *
    * <p>Anchors on {@link TriggerDefinition#getScheduledFor()} — the exact occurrence — rather than
    * on {@code dueAt}, the jittered time the run actually fired at. A run that jitter moved early
    * would otherwise resolve back to its own occurrence and fire twice. Taking the later of that and
    * now also keeps a schedule moving forward when a run overran its own interval, collapsing the
    * missed occurrences into one. A trigger not yet scheduled has an occurrence of zero and so
-   * resolves from now.
+   * resolves from now — which doubles as how a one-off job is told apart from one that already
+   * fired: {@code scheduledFor} is still zero only the first time this runs for it.
    */
   public static Optional<Instant> nextScheduledTime(final TriggerDefinition trigger) {
     final JobDefinition jobDefinition = trigger == null ? null : trigger.getJobDefinition();
-    if (jobDefinition == null || StringUtils.isBlank(jobDefinition.getCronSchedule())) {
+    if (jobDefinition == null) {
       return Optional.empty();
     }
-    final Instant after =
-        Instant.ofEpochMilli(Math.max(trigger.getScheduledFor() + 1, System.currentTimeMillis()));
-    return CronUtils.nextTriggerTime(jobDefinition.getCronSchedule(), after);
+    if (StringUtils.isNotBlank(jobDefinition.getCronSchedule())) {
+      final Instant after =
+          Instant.ofEpochMilli(Math.max(trigger.getScheduledFor() + 1, System.currentTimeMillis()));
+      return CronUtils.nextTriggerTime(jobDefinition.getCronSchedule(), after);
+    }
+    if (jobDefinition.getRunAt() != null && trigger.getScheduledFor() == 0) {
+      return Optional.of(Instant.ofEpochMilli(jobDefinition.getRunAt()));
+    }
+    return Optional.empty();
   }
 }

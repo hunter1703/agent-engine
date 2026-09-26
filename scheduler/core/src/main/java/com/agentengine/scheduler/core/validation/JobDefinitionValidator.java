@@ -30,7 +30,7 @@ public class JobDefinitionValidator implements Validator<JobDefinition> {
       return;
     }
     validateJobClass(jobDefinition.getJobClassName(), errors);
-    validateCron(jobDefinition.getCronSchedule(), errors);
+    validateSchedule(jobDefinition, errors);
     validateTags(jobDefinition, errors);
   }
 
@@ -62,11 +62,20 @@ public class JobDefinitionValidator implements Validator<JobDefinition> {
     }
   }
 
-  private void validateCron(final String cronSchedule, final ValidationCollector errors) {
-    if (StringUtils.isBlank(cronSchedule)) {
-      errors.add("cronSchedule is required");
+  private void validateSchedule(
+      final JobDefinition jobDefinition, final ValidationCollector errors) {
+    final boolean hasCron = StringUtils.isNotBlank(jobDefinition.getCronSchedule());
+    final boolean hasRunAt = jobDefinition.getRunAt() != null;
+    if (hasCron == hasRunAt) {
+      errors.add("exactly one of cronSchedule or runAt is required");
       return;
     }
+    if (hasCron) {
+      validateCron(jobDefinition.getCronSchedule(), errors);
+    }
+  }
+
+  private void validateCron(final String cronSchedule, final ValidationCollector errors) {
     try {
       CronUtils.validate(cronSchedule);
     } catch (final IllegalArgumentException exception) {

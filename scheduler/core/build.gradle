@@ -10,6 +10,7 @@ dependencies {
     implementation project(':util:ms:client')
     implementation project(':util:infra')
     runtimeOnly project(':agent:jobs')
+    runtimeOnly project(':knowledge:jobs')
     implementation project(':util:common')
     implementation project(':util:context')
     implementation project(':util:mongodb')

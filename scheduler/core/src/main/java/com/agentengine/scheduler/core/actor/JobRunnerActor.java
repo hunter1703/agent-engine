@@ -171,7 +171,14 @@ public final class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Comman
 
   private Behavior<Command> finish(final JobResult jobResult, final boolean success) {
     final boolean reschedule = success && reschedule(jobResult);
-    final Update update = reschedule ? rescheduleUpdate(trigger) : failedUpdate();
+    final Update update;
+    if (!success) {
+      update = failedUpdate();
+    } else if (reschedule) {
+      update = rescheduleUpdate(trigger);
+    } else {
+      update = succeededUpdate(trigger);
+    }
     try {
       triggerDefinitionRepository.update(trigger.getId(), update);
       if (reschedule) {
@@ -209,6 +216,13 @@ public final class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Comman
 
   private static Update failedUpdate() {
     return Update.of(Operation.set(TriggerDefinition.FIELD_STATUS, TriggerStatus.FAILED));
+  }
+
+  private static Update succeededUpdate(final TriggerDefinition trigger) {
+    return new Update(
+        List.of(
+            Operation.set(TriggerDefinition.FIELD_PREVIOUS_RESULT, trigger.getPreviousResult()),
+            Operation.set(TriggerDefinition.FIELD_STATUS, TriggerStatus.SUCCEEDED)));
   }
 
   private static Job instantiate(final TriggerDefinition trigger)

@@ -13,7 +13,16 @@ public class JobDefinition extends BaseEntity {
 
   private UserContext userContext;
   private String jobClassName;
+
+  /** Exactly one of this and {@link #runAt} must be set — see their own docs. */
   private String cronSchedule;
+
+  /**
+   * Epoch millis for a job that fires exactly once, at this instant, instead of on a recurring cron
+   * schedule — mutually exclusive with {@link #cronSchedule}.
+   */
+  private Long runAt;
+
   private Map<String, Object> payload;
 
   public UserContext getUserContext() {
@@ -38,6 +47,14 @@ public class JobDefinition extends BaseEntity {
 
   public void setCronSchedule(final String cronSchedule) {
     this.cronSchedule = cronSchedule;
+  }
+
+  public Long getRunAt() {
+    return runAt;
+  }
+
+  public void setRunAt(final Long runAt) {
+    this.runAt = runAt;
   }
 
   public Map<String, Object> getPayload() {

@@ -5,7 +5,8 @@ import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.knowledge.core.pipeline.KnowledgeIndexer;
 import com.agentengine.knowledge.core.repository.KnowledgeRepository;
 import com.agentengine.knowledge.core.store.KnowledgeChunkStore;
-import com.agentengine.util.common.ThreadUtils;
+import com.agentengine.scheduler.api.models.JobDefinition;
+import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.repository.Repository;
 import com.agentengine.util.common.update.Operation;
@@ -15,7 +16,6 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,22 +24,33 @@ import org.slf4j.LoggerFactory;
 public class KnowledgeServiceImpl implements KnowledgeService {
 
   private static final Logger LOG = LoggerFactory.getLogger(KnowledgeServiceImpl.class);
-  private static final ExecutorService INDEXING_EXECUTOR =
-      ThreadUtils.newVirtualThreadExecutor("knowledge-indexing-");
+
+  /**
+   * Not a compile dependency on {@code knowledge:jobs} — the scheduler loads the job class
+   * reflectively at fire time (see {@code JobRunnerActor}), so only its name is needed here, the
+   * same way {@code InvokeAgentJobAssetHandler} names {@code InvokeAgentJob}.
+   */
+  private static final String KNOWLEDGE_INDEXING_JOB_CLASS_NAME =
+      "com.agentengine.knowledge.jobs.KnowledgeIndexingJob";
+
+  private static final String KNOWLEDGE_ID_KEY = "knowledgeId";
 
   private final KnowledgeRepository knowledgeRepo;
   private final List<KnowledgeIndexer> indexers;
   private final Repository<KnowledgeChunk> vectorStore;
+  private final SchedulerService schedulerService;
 
   @Inject
   public KnowledgeServiceImpl(
       final KnowledgeRepository knowledgeRepo,
       final Instance<KnowledgeIndexer> indexers,
-      final KnowledgeChunkStore vectorStore) {
+      final KnowledgeChunkStore vectorStore,
+      final SchedulerService schedulerService) {
     this.knowledgeRepo = knowledgeRepo;
     this.indexers =
         indexers.stream().sorted(Comparator.comparingInt(KnowledgeIndexer::priority)).toList();
     this.vectorStore = vectorStore;
+    this.schedulerService = schedulerService;
     LOG.info(
         "KnowledgeServiceImpl initialized with {} indexers: {}",
         this.indexers.size(),
@@ -90,6 +101,16 @@ public class KnowledgeServiceImpl implements KnowledgeService {
   }
 
   @Override
+  public void runIndexing(final String knowledgeId) {
+    final Knowledge knowledge = knowledgeRepo.findById(knowledgeId);
+    if (knowledge == null) {
+      LOG.warn("Knowledge {} not found; skipping indexing", knowledgeId);
+      return;
+    }
+    runIndexing(knowledge);
+  }
+
+  @Override
   public boolean deleteById(final String id) {
     final boolean deleted = knowledgeRepo.deleteById(id);
     if (deleted) {
@@ -103,8 +124,16 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     return vectorStore.findByQuery(query);
   }
 
+  /**
+   * Runs the indexing pipeline on the scheduler's own workers rather than this pod's, via a one-off
+   * {@link JobDefinition} that fires immediately (see {@link KnowledgeService#runIndexing}).
+   */
   private void scheduleIndexing(final Knowledge knowledge) {
-    INDEXING_EXECUTOR.execute(() -> runIndexing(knowledge));
+    final JobDefinition jobDefinition = new JobDefinition();
+    jobDefinition.setJobClassName(KNOWLEDGE_INDEXING_JOB_CLASS_NAME);
+    jobDefinition.setRunAt(System.currentTimeMillis());
+    jobDefinition.setPayload(Map.of(KNOWLEDGE_ID_KEY, knowledge.getId()));
+    schedulerService.schedule(jobDefinition);
   }
 
   private void runIndexing(final Knowledge knowledge) {

@@ -1,0 +1,16 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+group = 'com.agentengine.knowledge'
+
+dependencies {
+    implementation project(':scheduler:api')
+    implementation project(':knowledge:api')
+    implementation project(':util:common')
+    implementation project(':util:ms:client')
+
+    implementation platform(libs.quarkus.bom)
+    implementation libs.quarkus.arc
+    implementation libs.jakarta.inject.api
+}

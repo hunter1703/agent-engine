@@ -20,6 +20,13 @@ public interface KnowledgeService {
 
   Knowledge reindex(String id, IndexRequest request);
 
+  /**
+   * Runs the indexing pipeline for an already-existing knowledge record — the work {@link #create}
+   * and {@link #reindex} schedule asynchronously, and what {@code KnowledgeIndexingJob} calls when
+   * the scheduler fires it.
+   */
+  void runIndexing(String knowledgeId);
+
   boolean deleteById(String id);
 
   PaginatedResult<KnowledgeChunk> searchInKnowledge(Query query);

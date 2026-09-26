@@ -17,6 +17,8 @@ dependencies {
     runtimeOnly project(':util:ms:server')
     implementation project(':catalog:api')
     implementation project(':connectors:api')
+    implementation project(':scheduler:api')
+    implementation project(':agent:api')
     implementation project(':util:models')
     implementation project(':util:cloudstorage')
 

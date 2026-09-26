@@ -39,6 +39,7 @@ include 'util:distributed'
 
 include 'knowledge:api'
 include 'knowledge:core'
+include 'knowledge:jobs'
 
 include 'chaos:api'
 include 'chaos:core'
