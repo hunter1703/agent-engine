@@ -5,14 +5,17 @@ import com.agentengine.agent.infra.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.agent.infra.utils.PromptUtils;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.models.llm.AbstractLLM;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.BaseTool;
+import com.google.genai.types.GenerateContentConfig;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends Agent>
     implements AgentFactory<C, A> {
@@ -38,6 +41,14 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
         .disallowTransferToPeers(false)
         .maxSteps(config.getRuntime().getMaxSteps())
         .model(refCounted.value().model());
+    final Map<String, Object> responseFormat = config.getResponseFormat();
+    if (CollectionUtils.isNotEmpty(responseFormat)) {
+      builder.generateContentConfig(
+          GenerateContentConfig.builder()
+              .responseMimeType("application/json")
+              .responseJsonSchema(responseFormat)
+              .build());
+    }
     final List<BaseTool> tools = new ArrayList<>(toolFactory.buildTools(config.getTools()));
     if (config.getRuntime().isResumable()) {
       tools.add(toolFactory.getHITLTool());
