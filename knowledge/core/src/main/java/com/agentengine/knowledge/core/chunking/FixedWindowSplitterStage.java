@@ -1,15 +1,15 @@
 package com.agentengine.knowledge.core.chunking;
 
-import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
-import com.agentengine.knowledge.api.chunking.ChunkingStage;
-import com.agentengine.knowledge.api.chunking.StreamingChunkingStage;
 import com.agentengine.util.common.StringUtils;
 import io.reactivex.rxjava3.core.Flowable;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Splits the document into fixed-size character windows with a fixed character overlap — no
@@ -18,24 +18,21 @@ import java.io.UncheckedIOException;
  * known position. The cheapest available chunking strategy, scaling predictably with document size
  * regardless of its structure or language.
  *
- * <p>When this is the pipeline's first stage, {@link #apply(Reader)} reads the source incrementally
- * — one window's worth of characters at a time, sliding forward by {@code maxSegmentSize -
- * maxOverlapSize} — since arithmetic windowing needs no semantic understanding of the text and so,
- * unlike a strategy that must see whole sentences or paragraphs, never has reason to hold more than
- * the current window in memory regardless of document size. {@link #apply(Flowable)} is used
- * instead when this stage runs later in a configured chain, splitting each already-produced chunk's
- * text the same way.
+ * <p>When this is the pipeline's first stage, {@link #apply(InputStream)} reads the source
+ * incrementally — one window's worth of characters at a time, sliding forward by {@code
+ * maxSegmentSize - maxOverlapSize} — since arithmetic windowing needs no semantic understanding of
+ * the text and so, unlike a strategy that must see whole sentences or paragraphs, never has reason
+ * to hold more than the current window in memory regardless of document size. {@link
+ * #apply(Flowable)} is used instead when this stage runs later in a configured chain, splitting
+ * each already-produced chunk's text the same way.
  */
 public final class FixedWindowSplitterStage extends ChunkingStage
     implements StreamingChunkingStage {
 
-  private final Knowledge knowledge;
   private final int maxSegmentSize;
   private final int maxOverlapSize;
 
-  public FixedWindowSplitterStage(
-      final Knowledge knowledge, final int maxSegmentSize, final int maxOverlapSize) {
-    this.knowledge = knowledge;
+  public FixedWindowSplitterStage(final int maxSegmentSize, final int maxOverlapSize) {
     this.maxSegmentSize = maxSegmentSize;
     this.maxOverlapSize = maxOverlapSize;
   }
@@ -58,8 +55,9 @@ public final class FixedWindowSplitterStage extends ChunkingStage
    * sized to {@code maxSegmentSize} up front so the first {@code mark} call never has to grow it.
    */
   @Override
-  public Flowable<KnowledgeChunk> apply(final Reader content) {
-    final BufferedReader reader = new BufferedReader(content, maxSegmentSize);
+  public Flowable<KnowledgeChunk> apply(final InputStream content) {
+    final BufferedReader reader =
+        new BufferedReader(new InputStreamReader(content, StandardCharsets.UTF_8), maxSegmentSize);
     final int step = Math.max(1, maxSegmentSize - maxOverlapSize);
     final char[] buffer = new char[maxSegmentSize];
     return Flowable.generate(
@@ -87,7 +85,6 @@ public final class FixedWindowSplitterStage extends ChunkingStage
 
   private KnowledgeChunk toChunk(final char[] buffer, final int length, final int offset) {
     final KnowledgeChunk child = new KnowledgeChunk();
-    ChunkUtils.addMetadata(knowledge, child);
     child.setText(new String(buffer, 0, length));
     child.setChunkStart(offset);
     child.setChunkEnd(offset + length);
@@ -108,6 +105,9 @@ public final class FixedWindowSplitterStage extends ChunkingStage
   }
 
   private Flowable<KnowledgeChunk> split(final KnowledgeChunk parent) {
+    if (ChunkUtils.isMedia(parent)) {
+      return Flowable.just(parent);
+    }
     final String text = parent.getText() != null ? parent.getText() : "";
     final int step = Math.max(1, maxSegmentSize - maxOverlapSize);
     return Flowable.generate(
@@ -120,7 +120,6 @@ public final class FixedWindowSplitterStage extends ChunkingStage
             final String part = text.substring(start, end);
             if (StringUtils.isNotBlank(part)) {
               final KnowledgeChunk child = new KnowledgeChunk();
-              ChunkUtils.addMetadata(knowledge, child);
               child.setText(part);
               child.setChunkStart(parent.getChunkStart() + start);
               child.setChunkEnd(parent.getChunkStart() + end);

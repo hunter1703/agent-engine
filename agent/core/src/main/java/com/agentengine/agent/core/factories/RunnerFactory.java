@@ -47,7 +47,6 @@ public class RunnerFactory {
 
   private final KnowledgeService knowledgeService;
   private final MemoryService memoryService;
-  private final NotebookRepository notebookRepository;
   private final NotesRepository notesRepository;
   private final ToolFactory toolFactory;
 
@@ -71,7 +70,6 @@ public class RunnerFactory {
     this.sessionEventsRepository = sessionEventsRepository;
     this.knowledgeService = knowledgeService;
     this.memoryService = memoryService;
-    this.notebookRepository = notebookRepository;
     this.notesRepository = notesRepository;
     this.toolFactory = toolFactory;
   }

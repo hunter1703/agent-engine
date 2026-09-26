@@ -61,8 +61,18 @@ public class ModelProvider {
     this.cache = cacheBuilder.build();
   }
 
+  /**
+   * {@code modelId} may be a real model id, or one of the sentinels {@link DefaultModels#CHAT_ID} /
+   * {@link DefaultModels#VISION_ID} — resolved here to the customer's configured default chat or
+   * vision model respectively, since a shared agent config (e.g. a community expert) can't hardcode
+   * a real, deployment-specific model id.
+   */
   public RefCounted<LLMModel> get(final String modelId) {
-    final String resolvedId = resolveModelId(modelId, defaultModelsRepository::getChatModelId);
+    final Supplier<String> defaultModelId =
+        DefaultModels.VISION_ID.equalsIgnoreCase(modelId)
+            ? defaultModelsRepository::getVisionModelId
+            : defaultModelsRepository::getChatModelId;
+    final String resolvedId = resolveModelId(modelId, defaultModelId);
     return cache.getOrLoad(resolvedId, id -> new LLMModel(buildChatModel(id))).acquire();
   }
 
@@ -73,7 +83,7 @@ public class ModelProvider {
 
   private static String resolveModelId(
       final String modelId, final Supplier<String> defaultModelId) {
-    if (StringUtils.isNotBlank(modelId) && !DefaultModels.ID.equalsIgnoreCase(modelId)) {
+    if (StringUtils.isNotBlank(modelId) && !isDefaultSentinel(modelId)) {
       return modelId;
     }
     final String resolved = defaultModelId.get();
@@ -81,6 +91,11 @@ public class ModelProvider {
       throw new IllegalStateException("Default model not configured for customer");
     }
     return resolved;
+  }
+
+  private static boolean isDefaultSentinel(final String modelId) {
+    return DefaultModels.CHAT_ID.equalsIgnoreCase(modelId)
+        || DefaultModels.VISION_ID.equalsIgnoreCase(modelId);
   }
 
   private BaseLlm buildChatModel(final String modelId) {

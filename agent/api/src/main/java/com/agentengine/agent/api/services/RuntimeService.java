@@ -40,4 +40,6 @@ public interface RuntimeService {
   Publisher<Event> subscribeToSessionAgui(String sessionId, boolean liveOnly);
 
   void rollbackSession(String sessionId, String runId);
+
+  String invokeExpert(String expertId, String modelId, UserMessage userMessage);
 }

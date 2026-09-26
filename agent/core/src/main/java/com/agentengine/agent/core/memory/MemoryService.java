@@ -1,15 +1,11 @@
 package com.agentengine.agent.core.memory;
 
-import com.agentengine.agent.api.services.CommunityRegistry;
-import com.agentengine.agent.infra.agents.Agent;
+import com.agentengine.agent.api.model.UserMessage;
+import com.agentengine.agent.api.services.CommunityExpertsService;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
-import com.agentengine.agent.infra.plugins.InitPlugin;
-import com.agentengine.agent.infra.plugins.ResponseValidationPlugin;
-import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.util.agents.beans.config.DefaultModels;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.CollectionUtils;
@@ -20,12 +16,9 @@ import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.Query;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.google.adk.apps.App;
 import com.google.adk.memory.BaseMemoryService;
 import com.google.adk.memory.MemoryEntry;
 import com.google.adk.memory.SearchMemoryResponse;
-import com.google.adk.runner.Runner;
-import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
@@ -39,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,19 +53,19 @@ public class MemoryService implements BaseMemoryService {
   private static final int MAX_CONVERSATION_CHARS = 8000;
   private static final String EMBEDDING_MODEL_ID_KEY = "embeddingModelId";
 
-  private final CommunityRegistry communityRegistry;
+  private final CommunityExpertsService communityExpertsService;
   private final SessionEventsRepository sessionEventsRepository;
   private final AgentProvider agentProvider;
   private final MemoryStore memoryStore;
   private final DefaultModelsRepository defaultModelsRepository;
 
   public MemoryService(
-      final CommunityRegistry communityRegistry,
+      final CommunityExpertsService communityExpertsService,
       final SessionEventsRepository sessionEventsRepository,
       final AgentProvider agentProvider,
       final MemoryStore memoryStore,
       final DefaultModelsRepository defaultModelsRepository) {
-    this.communityRegistry = communityRegistry;
+    this.communityExpertsService = communityExpertsService;
     this.sessionEventsRepository = sessionEventsRepository;
     this.agentProvider = agentProvider;
     this.memoryStore = memoryStore;
@@ -150,48 +142,12 @@ public class MemoryService implements BaseMemoryService {
    */
   private MemoryDecisions invokeMemoryAgent(
       final String conversation, final List<Memory> existing) {
-    final BaseAgentConfig config = communityRegistry.getExpert(CommunityRegistry.MEMORY_AGENT);
-    if (config == null) {
-      LOG.warn("Memory agent config not found in community registry; skipping memory extraction.");
-      return MemoryDecisions.empty();
-    }
-    try {
-      final Agent agent = agentProvider.create(config);
-      final InMemorySessionService sessionService = new InMemorySessionService();
-      final String sessionId = UUID.randomUUID().toString();
-      final String appName = AgentUtils.appName(config.getId());
-      sessionService
-          .createSession(
-              appName, AgentSession.DEFAULT_USER_ID, new ConcurrentHashMap<>(), sessionId)
-          .blockingGet();
-      final Runner runner =
-          Runner.builder()
-              .app(
-                  App.builder()
-                      .plugins(List.of(new InitPlugin(null), new ResponseValidationPlugin()))
-                      .rootAgent(agent)
-                      .name(appName)
-                      .build())
-              .sessionService(sessionService)
-              .build();
-      final Content prompt =
-          Content.fromParts(Part.fromText(buildPromptBody(conversation, existing)));
-      final String responseText =
-          runner
-              .runAsync(AgentSession.DEFAULT_USER_ID, sessionId, prompt)
-              .filter(event -> !AgentSession.DEFAULT_USER_ID.equalsIgnoreCase(event.author()))
-              .filter(event -> !event.partial().orElse(false))
-              .filter(event -> event.content().isPresent())
-              .map(event -> event.content().orElseThrow().text())
-              .filter(StringUtils::isNotBlank)
-              .lastElement()
-              .blockingGet();
-      agent.close().blockingAwait();
-      return parseDecisions(responseText);
-    } catch (final Exception e) {
-      LOG.warn("Memory agent invocation failed; skipping memory extraction.", e);
-      return MemoryDecisions.empty();
-    }
+    final String response =
+        communityExpertsService.invokeExpert(
+            CommunityExpertsService.MEMORY_AGENT,
+            DefaultModels.CHAT_ID,
+            UserMessage.ofText(buildPromptBody(conversation, existing)));
+    return parseDecisions(response);
   }
 
   private void applyDecisions(

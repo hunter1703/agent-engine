@@ -42,6 +42,9 @@ public final class FileUtils {
           ".conf",
           ".cfg");
 
+  private static final Set<String> MARKDOWN_MIME_TYPES = Set.of("text/markdown");
+  private static final Set<String> MARKDOWN_EXTENSIONS = Set.of(".md", ".markdown");
+
   private static final Set<String> PDF_MIME_TYPES = Set.of("application/pdf");
   private static final Set<String> PDF_EXTENSIONS = Set.of(".pdf");
 
@@ -58,7 +61,7 @@ public final class FileUtils {
 
   // Raster formats only — SVG is text/XML (already covered by isTextFile's "+xml" suffix match)
   // and doesn't need a vision model to read.
-  private static final Set<String> IMAGE_MIME_TYPES =
+  public static final Set<String> IMAGE_MIME_TYPES =
       Set.of(
           "image/jpeg",
           "image/png",
@@ -94,6 +97,10 @@ public final class FileUtils {
       }
     }
     return false;
+  }
+
+  public static boolean isMarkdownFile(final FileDetails fileDetails) {
+    return matches(fileDetails, MARKDOWN_MIME_TYPES, MARKDOWN_EXTENSIONS);
   }
 
   public static boolean isPdfFile(final FileDetails fileDetails) {

@@ -84,4 +84,8 @@ public final class StringUtils {
     final String content = trimmed.substring(3, end);
     return FENCE_TAG.matcher(content).replaceFirst("").trim();
   }
+
+  public static String getOrDefault(final String val, final String defaultVal) {
+    return isNotBlank(val) ? val : defaultVal;
+  }
 }

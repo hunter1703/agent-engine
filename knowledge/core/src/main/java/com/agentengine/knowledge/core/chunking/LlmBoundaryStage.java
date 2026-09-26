@@ -1,7 +1,7 @@
 package com.agentengine.knowledge.core.chunking;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
-import com.agentengine.knowledge.api.chunking.ChunkingStage;
+import com.agentengine.util.common.Batcher;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
@@ -11,6 +11,7 @@ import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -36,6 +37,17 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Falls back to returning the original chunks unchanged if the model is unavailable or the
  * response cannot be parsed.
+ *
+ * <p>Chunks are folded into the current window one at a time as they arrive — like {@link
+ * CosineBoundaryStage}, the whole input never needs to be materialized, since a window is only ever
+ * as large as its own token budget regardless of how much of the document lies beyond it. An image
+ * chunk (see {@link ChunkUtils#isMedia}) is never included in a window sent to the model — it
+ * forces whatever window is pending to resolve immediately, passes through unchanged, and the
+ * sliding window resumes fresh on whatever text chunks follow it.
+ *
+ * <p>When a found boundary doesn't consume the whole window, the leftover past it seeds the next
+ * window rather than being discarded — the LumberChunker algorithm's boundary chunk becomes the
+ * first chunk of the next one.
  */
 public final class LlmBoundaryStage extends ChunkingStage {
 
@@ -72,69 +84,38 @@ public final class LlmBoundaryStage extends ChunkingStage {
 
   @Override
   public Flowable<KnowledgeChunk> apply(final Flowable<KnowledgeChunk> chunks) {
-    return chunks.toList().flatMapPublisher(this::cutBoundaries);
+    final List<KnowledgeChunk> results = new ArrayList<>();
+    final WindowBatcher batcher = new WindowBatcher(results::addAll);
+    return chunks
+        .concatMap(
+            chunk -> {
+              results.clear();
+              if (ChunkUtils.isMedia(chunk)) {
+                batcher.flush();
+                results.add(chunk);
+              } else {
+                batcher.add(chunk);
+              }
+              return Flowable.fromIterable(List.copyOf(results));
+            })
+        .concatWith(
+            Flowable.defer(
+                () -> {
+                  results.clear();
+                  batcher.flush();
+                  return Flowable.fromIterable(List.copyOf(results));
+                }));
   }
 
   /**
-   * The sliding window walks forward across the whole document asking the LLM where each boundary
-   * falls, so — like {@link CosineBoundaryStage} — the full input has to be known up front; there's
-   * no per-element streaming opportunity here.
-   */
-  private Flowable<KnowledgeChunk> cutBoundaries(final List<KnowledgeChunk> chunks) {
-    if (chunks.size() <= 1) {
-      return Flowable.fromIterable(chunks);
-    }
-    final List<KnowledgeChunk> result = new ArrayList<>();
-    int windowStart = 0;
-    while (windowStart < chunks.size()) {
-      final int windowEnd = buildWindowEnd(chunks, windowStart);
-
-      // If the window only has one paragraph left, merge the rest as the final chunk
-      if (windowEnd - windowStart <= 1) {
-        result.add(mergeRange(chunks, windowStart, chunks.size()));
-        break;
-      }
-
-      final int boundaryId = askForBoundary(chunks, windowStart, windowEnd);
-
-      if (boundaryId <= windowStart || boundaryId >= windowEnd) {
-        LOG.debug(
-            "LlmBoundaryStage: no boundary in window [{}, {}), treating as single chunk",
-            windowStart,
-            windowEnd);
-        result.add(mergeRange(chunks, windowStart, windowEnd));
-        windowStart = windowEnd;
-      } else {
-        result.add(mergeRange(chunks, windowStart, boundaryId));
-        windowStart = boundaryId;
-      }
-    }
-
-    return Flowable.fromIterable(result);
-  }
-
-  private int buildWindowEnd(final List<KnowledgeChunk> chunks, final int start) {
-    int chars = 0;
-    int i = start;
-    while (i < chunks.size()) {
-      final String text = chunks.get(i).getText();
-      chars += text != null ? text.length() : 0;
-      i++;
-      if (chars >= WINDOW_TOKEN_BUDGET * approxCharsPerToken) {
-        break;
-      }
-    }
-    return i;
-  }
-
-  /**
-   * Builds the numbered document window and asks the LLM for the boundary paragraph ID. Returns the
+   * Builds the numbered window and asks the LLM for the boundary paragraph's index within it (not
+   * an absolute document position — the window is all this stage ever sees at once). Returns the
    * 0-based index of the boundary paragraph, or {@code -1} on failure.
    */
-  private int askForBoundary(final List<KnowledgeChunk> chunks, final int start, final int end) {
+  private int askForBoundary(final List<KnowledgeChunk> window) {
     final StringBuilder doc = new StringBuilder();
-    for (int i = start; i < end; i++) {
-      final String text = chunks.get(i).getText();
+    for (int i = 0; i < window.size(); i++) {
+      final String text = window.get(i).getText();
       doc.append("ID %04d: %s%n".formatted(i, text != null ? text : ""));
     }
 
@@ -170,11 +151,40 @@ public final class LlmBoundaryStage extends ChunkingStage {
   }
 
   /**
-   * Merges chunks in {@code [from, to)} into a single chunk, preserving offset metadata from the
-   * first and last chunk in the range.
+   * Flushes once the window (which already includes the chunk just added) reaches {@link
+   * #WINDOW_TOKEN_BUDGET}. Overrides {@link #flush} (rather than just {@link #shouldFlush}) because
+   * a window doesn't always flush whole: the LLM's boundary can land mid-window, and the chunks
+   * past it need to seed the next window rather than being discarded (see the class doc) — {@link
+   * Batcher}'s default flush-the-whole-buffer behavior doesn't leave room for that. Loops until the
+   * buffer is fully drained rather than resolving one boundary and stopping, so a final flush at
+   * the end of the stream (or before an image chunk) doesn't strand a mid-window remainder
+   * unresolved — nothing would call {@link #flush} again to pick it up.
    */
-  private static KnowledgeChunk mergeRange(
-      final List<KnowledgeChunk> chunks, final int from, final int to) {
-    return ChunkUtils.mergeTexts(chunks.subList(from, to));
+  private final class WindowBatcher extends Batcher<KnowledgeChunk> {
+
+    WindowBatcher(final Consumer<List<KnowledgeChunk>> onFlush) {
+      super(onFlush);
+    }
+
+    @Override
+    protected boolean shouldFlush() {
+      return buffer.stream().mapToInt(ChunkUtils::textLength).sum()
+          >= WINDOW_TOKEN_BUDGET * approxCharsPerToken;
+    }
+
+    @Override
+    public void flush() {
+      while (!buffer.isEmpty()) {
+        final int boundaryId = buffer.size() <= 1 ? -1 : askForBoundary(buffer);
+        final boolean foundBoundary = boundaryId > 0 && boundaryId < buffer.size();
+        final KnowledgeChunk merged =
+            ChunkUtils.mergeTexts(foundBoundary ? buffer.subList(0, boundaryId) : buffer);
+        final List<KnowledgeChunk> remainder =
+            foundBoundary ? new ArrayList<>(buffer.subList(boundaryId, buffer.size())) : List.of();
+        buffer.clear();
+        buffer.addAll(remainder);
+        onFlush.accept(List.of(merged));
+      }
+    }
   }
 }

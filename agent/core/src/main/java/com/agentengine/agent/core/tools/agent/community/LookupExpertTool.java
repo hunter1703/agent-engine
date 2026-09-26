@@ -1,7 +1,7 @@
 package com.agentengine.agent.core.tools.agent.community;
 
 import com.agentengine.agent.api.annotations.ToolArg;
-import com.agentengine.agent.api.services.CommunityRegistry;
+import com.agentengine.agent.api.services.CommunityExpertsService;
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
@@ -33,11 +33,11 @@ public final class LookupExpertTool extends Tool {
               + "is the identifier to provide when invoking that expert. "
               + "Returns: { experts: [{expert_id, name, description, capabilities}], count }.");
 
-  private final CommunityRegistry communityRegistry;
+  private final CommunityExpertsService communityExpertsService;
 
-  public LookupExpertTool(final CommunityRegistry communityRegistry) {
+  public LookupExpertTool(final CommunityExpertsService communityExpertsService) {
     super(DESCRIPTOR);
-    this.communityRegistry = communityRegistry;
+    this.communityExpertsService = communityExpertsService;
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -48,7 +48,7 @@ public final class LookupExpertTool extends Tool {
                       + "regardless of this value.",
               optional = true)
           final String query) {
-    final List<BaseAgentConfig> experts = communityRegistry.findExperts(query);
+    final List<BaseAgentConfig> experts = communityExpertsService.findExperts(query);
     final List<Map<String, Object>> expertList = new ArrayList<>();
     for (final BaseAgentConfig expert : experts) {
       final Map<String, Object> expertMap = new HashMap<>();

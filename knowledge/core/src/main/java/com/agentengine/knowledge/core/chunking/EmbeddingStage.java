@@ -1,7 +1,6 @@
 package com.agentengine.knowledge.core.chunking;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
-import com.agentengine.knowledge.api.chunking.ChunkingStage;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.models.factories.Model;

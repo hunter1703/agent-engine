@@ -28,12 +28,31 @@ public class KnowledgeChunk extends VectorEntity {
 
   public static final String ADDITIONAL_SESSION_ID = "sessionId";
 
+  /** Default {@link #mimeType} for a chunk whose content is text, as almost every chunk's is. */
+  public static final String MIME_TYPE_TEXT = "text/plain";
+
   @Indexed private String knowledgeId;
   @Indexed private String agentId;
   private int chunkIndex;
 
   @Indexed(vector = true)
   private String text;
+
+  /**
+   * The kind of content this chunk carries — {@link #MIME_TYPE_TEXT} unless it's still an
+   * undescribed media chunk (see {@link #bytes}), in which case it's that media's own mime type
+   * (e.g. {@code image/png}). A stage whose logic only makes sense for text (splitting by sentence,
+   * merging by embedding similarity) checks this rather than assuming every chunk it sees is text.
+   */
+  private String mimeType = MIME_TYPE_TEXT;
+
+  /**
+   * Raw bytes of the media (e.g. an image) this chunk represents, set only while it's still
+   * awaiting description by a media-description stage — {@code null} once description has replaced
+   * it with {@link #text} (and {@link #mimeType} reverts to {@link #MIME_TYPE_TEXT}), and for every
+   * chunk that was never media. Pipeline-internal state, never persisted.
+   */
+  private transient byte[] bytes;
 
   private int chunkStart;
   private int chunkEnd;
@@ -68,6 +87,22 @@ public class KnowledgeChunk extends VectorEntity {
 
   public void setText(final String text) {
     this.text = text;
+  }
+
+  public String getMimeType() {
+    return mimeType;
+  }
+
+  public void setMimeType(final String mimeType) {
+    this.mimeType = mimeType;
+  }
+
+  public byte[] getBytes() {
+    return bytes;
+  }
+
+  public void setBytes(final byte[] bytes) {
+    this.bytes = bytes;
   }
 
   public int getChunkStart() {

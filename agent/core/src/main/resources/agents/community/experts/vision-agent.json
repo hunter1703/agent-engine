@@ -1,0 +1,25 @@
+{
+  "type": "DEFAULT",
+  "id": "vision-agent",
+  "name": "Vision Agent",
+  "modelId": "default-vision",
+  "systemPrompt": "You analyze images for a search index. Given an image, produce two things: a detailed description (subject, setting, colors, mood) and a verbatim transcription of any text visible in the image.",
+  "contextStrategy": {
+    "type": "LAST_N"
+  },
+  "responseFormat": {
+    "type": "object",
+    "properties": {
+      "description": {
+        "type": "string",
+        "description": "A detailed description of the image: subject, setting, colors, and mood. Does not include transcribed text."
+      },
+      "ocrText": {
+        "type": "string",
+        "description": "Verbatim transcription of all text visible in the image, in reading order. Empty string if the image has no visible text."
+      }
+    },
+    "required": ["description", "ocrText"],
+    "additionalProperties": false
+  }
+}

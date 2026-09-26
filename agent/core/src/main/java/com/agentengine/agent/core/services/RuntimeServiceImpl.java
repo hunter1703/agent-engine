@@ -5,6 +5,7 @@ import static com.agentengine.util.common.Defaults.STREAMING_BATCH_SIZE;
 import com.agentengine.agent.api.model.AgentFileDetails;
 import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
+import com.agentengine.agent.api.services.CommunityExpertsService;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.core.session.CurrentTurnEvents;
 import com.agentengine.agent.core.session.ResumeResult;
@@ -86,6 +87,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   private final SessionEventsRepository sessionEventsRepository;
   private final KnowledgeService knowledgeService;
   private final CloudStorageService cloudStorageService;
+  private final CommunityExpertsService communityExpertsService;
 
   @Inject
   public RuntimeServiceImpl(
@@ -94,13 +96,15 @@ public class RuntimeServiceImpl implements RuntimeService {
       final SessionService sessionService,
       final SessionEventsRepository sessionEventsRepository,
       final KnowledgeService knowledgeService,
-      final CloudStorageService cloudStorageService) {
+      final CloudStorageService cloudStorageService,
+      final CommunityExpertsService communityExpertsService) {
     this.sessionActorFactory = sessionActorFactory;
     this.eventChannel = eventChannel;
     this.sessionService = sessionService;
     this.sessionEventsRepository = sessionEventsRepository;
     this.knowledgeService = knowledgeService;
     this.cloudStorageService = cloudStorageService;
+    this.communityExpertsService = communityExpertsService;
   }
 
   @Override
@@ -273,6 +277,12 @@ public class RuntimeServiceImpl implements RuntimeService {
     if (result instanceof RollbackResult.Rejected(String reason)) {
       throw new IllegalStateException("Rollback rejected: " + reason);
     }
+  }
+
+  @Override
+  public String invokeExpert(
+      final String expertId, final String modelId, final UserMessage userMessage) {
+    return communityExpertsService.invokeExpert(expertId, modelId, userMessage);
   }
 
   @Override

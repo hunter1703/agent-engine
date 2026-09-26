@@ -1,8 +1,6 @@
 package com.agentengine.knowledge.core.chunking;
 
-import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
-import com.agentengine.knowledge.api.chunking.ChunkingStage;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,21 +12,13 @@ import java.util.regex.Pattern;
  * carries the heading it belongs under.
  *
  * <p>Purely structural: section length is otherwise unbounded, and it makes no attempt at further
- * semantic refinement within a section. Configure it as the first entry of {@link
- * com.agentengine.util.agents.beans.config.KnowledgeSettings#getChunkingStrategy()}'s ordered list
- * with a second entry (e.g. {@code SEMANTIC} or {@code SENTENCE}) to refine and bound each section
- * — {@link ChunkingPipelineFactory} chains every configured strategy's stages into one pipeline, so
- * the second strategy's stages run on this one's output.
+ * semantic refinement within a section. {@code MarkdownKnowledgeIndexer} runs this as the
+ * pipeline's first stage, with the knowledge's own configured chunking strategy (e.g. {@code
+ * SEMANTIC} or {@code SENTENCE}) running next to refine and bound each section.
  */
 public final class MarkdownSplitterStage extends ChunkingStage {
 
   private static final Pattern ATX_HEADER = Pattern.compile("^#{1,6}[ \\t].*");
-
-  private final Knowledge knowledge;
-
-  public MarkdownSplitterStage(final Knowledge knowledge) {
-    this.knowledge = knowledge;
-  }
 
   @Override
   protected boolean cpuBound() {
@@ -37,11 +27,7 @@ public final class MarkdownSplitterStage extends ChunkingStage {
 
   @Override
   protected Flowable<KnowledgeChunk> apply(final Flowable<KnowledgeChunk> chunks) {
-    // The chunk this stage receives when it runs first in a pipeline carries no identity — see
-    // LangchainSplitterStage for why every chunk produced is stamped from this stage's own
-    // knowledge rather than trusting whatever (if anything) the parent already had.
-    return ChunkUtils.splitChunks(chunks, MarkdownSplitterStage::splitSections)
-        .doOnNext(chunk -> ChunkUtils.addMetadata(knowledge, chunk));
+    return ChunkUtils.splitChunks(chunks, MarkdownSplitterStage::splitSections);
   }
 
   private static List<String> splitSections(final String text) {

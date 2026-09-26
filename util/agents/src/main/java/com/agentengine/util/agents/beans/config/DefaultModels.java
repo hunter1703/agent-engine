@@ -5,6 +5,8 @@ import com.agentengine.util.common.beans.BaseEntity;
 public class DefaultModels extends BaseEntity {
 
   public static final String ID = "default";
+  public static final String CHAT_ID = "default-chat";
+  public static final String VISION_ID = "default-vision";
 
   private String fastModelId;
   private String compactionModelId;

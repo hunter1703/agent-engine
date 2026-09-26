@@ -138,7 +138,7 @@ After a session ends, `addSessionToMemory` is called:
 ### Configuration dependency
 
 Memory extraction is skipped silently if:
-- the `memory-agent` expert is absent from `CommunityRegistry`, or
+- the `memory-agent` expert is absent from `CommunityExpertsService`, or
 - `InfraConfig.embeddingModelId` is blank (retrieval returns empty; extraction cannot find existing memories to reconcile).
 
 ## 2.10 Knowledge Indexing

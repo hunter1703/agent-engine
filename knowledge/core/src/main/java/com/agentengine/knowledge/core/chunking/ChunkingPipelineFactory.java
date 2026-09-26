@@ -1,12 +1,11 @@
 package com.agentengine.knowledge.core.chunking;
 
 import com.agentengine.knowledge.api.beans.Knowledge;
-import com.agentengine.knowledge.api.chunking.ChunkingPipeline;
-import com.agentengine.knowledge.api.chunking.ChunkingStage;
 import com.agentengine.util.agents.beans.config.ChunkingStrategy;
 import com.agentengine.util.agents.beans.config.ChunkingType;
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
+import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.models.factories.ModelProvider;
@@ -15,13 +14,19 @@ import jakarta.inject.Singleton;
 import java.util.List;
 
 /**
- * Assembles a {@link ChunkingPipeline} for a {@link Knowledge}, using its {@link
- * KnowledgeSettings}.
+ * Resolves a {@link Knowledge}'s configured chunking strategy into {@link ChunkingStage}s (see
+ * {@link #getStages}), and assembles a full {@link ChunkingPipeline} from a caller-supplied stage
+ * list (see {@link #create}).
  *
- * <p>An {@link EmbeddingStage} is always appended as the final stage so that vectors are populated
- * once all splitting and merging is complete.
+ * <p>An indexer whose file type needs stages beyond the configured strategy — reading a format no
+ * strategy stage can parse directly, or describing embedded media — wraps or replaces {@link
+ * #getStages}'s result with its own (see {@code AbstractTextKnowledgeIndexer#stages} and its
+ * overrides in {@code PdfKnowledgeIndexer}, {@code OfficeKnowledgeIndexer}, {@code
+ * ImageKnowledgeIndexer}); this class only resolves the knowledge-configured part and appends the
+ * terminal {@link EmbeddingStage} that every pipeline ends with, so vectors are populated once all
+ * splitting, merging, and describing is done.
  *
- * <p>Adding a new technique requires only:
+ * <p>Adding a new splitting/merging technique requires only:
  *
  * <ol>
  *   <li>A new {@link ChunkingStage} implementation
@@ -34,48 +39,50 @@ public class ChunkingPipelineFactory {
 
   private final ModelProvider modelProvider;
   private final DefaultModelsRepository defaultModelsRepository;
+  private final FileService fileService;
 
   @Inject
   public ChunkingPipelineFactory(
-      final ModelProvider modelProvider, final DefaultModelsRepository defaultModelsRepository) {
+      final ModelProvider modelProvider,
+      final DefaultModelsRepository defaultModelsRepository,
+      final FileService fileService) {
     this.modelProvider = modelProvider;
     this.defaultModelsRepository = defaultModelsRepository;
+    this.fileService = fileService;
   }
 
-  public ChunkingPipeline create(final Knowledge knowledge) {
-    final KnowledgeSettings settings = knowledge.getSettings();
-    List<ChunkingStrategy> stages = settings != null ? settings.getChunkingStrategy() : null;
-    stages = CollectionUtils.isEmpty(stages) ? List.of(new ChunkingStrategy()) : stages;
-
-    final String embeddingModelId =
-        resolveModelId(
-            settings == null ? null : settings.getEmbeddingModelId(),
-            defaultModelsRepository.getEmbeddingModelId());
-    final String chatModelId =
-        resolveModelId(
-            settings == null ? null : settings.getChatModelId(),
-            defaultModelsRepository.getChatModelId());
-
-    final ChunkingPipeline.Builder builder = ChunkingPipeline.builder();
-    for (final ChunkingStrategy stageStrategy : stages) {
-      for (final ChunkingStage stage :
-          toStages(knowledge, stageStrategy, embeddingModelId, chatModelId)) {
-        builder.then(stage);
-      }
-    }
-    builder.then(new EmbeddingStage(embeddingModelId, modelProvider));
+  public ChunkingPipeline create(final Knowledge knowledge, final List<ChunkingStage> stages) {
+    final ChunkingPipeline.Builder builder = ChunkingPipeline.builder(knowledge, fileService);
+    stages.forEach(builder::then);
+    builder.then(new EmbeddingStage(embeddingModelId(knowledge), modelProvider));
     return builder.build();
   }
 
-  private static String resolveModelId(final String configured, final String defaultModelId) {
-    return StringUtils.isNotBlank(configured) ? configured : defaultModelId;
+  public List<ChunkingStage> getStages(final Knowledge knowledge) {
+    final KnowledgeSettings settings = knowledge.getSettings();
+    List<ChunkingStrategy> strategies = settings != null ? settings.getChunkingStrategy() : null;
+    strategies = CollectionUtils.isEmpty(strategies) ? List.of(new ChunkingStrategy()) : strategies;
+
+    final String embeddingModelId = embeddingModelId(knowledge);
+    final String chatModelId =
+        StringUtils.getOrDefault(
+            settings == null ? null : settings.getChatModelId(),
+            defaultModelsRepository.getChatModelId());
+
+    return strategies.stream()
+        .flatMap(strategy -> toStages(strategy, embeddingModelId, chatModelId).stream())
+        .toList();
+  }
+
+  private String embeddingModelId(final Knowledge knowledge) {
+    final KnowledgeSettings settings = knowledge.getSettings();
+    return StringUtils.getOrDefault(
+        settings == null ? null : settings.getEmbeddingModelId(),
+        defaultModelsRepository.getEmbeddingModelId());
   }
 
   private List<ChunkingStage> toStages(
-      final Knowledge knowledge,
-      final ChunkingStrategy strategy,
-      final String embeddingModelId,
-      final String chatModelId) {
+      final ChunkingStrategy strategy, final String embeddingModelId, final String chatModelId) {
     final ChunkingType type = ChunkingType.valueOfOrDefault(strategy.getType());
     final int maxSegmentSize = strategy.getMaxSegmentSize();
     final int maxOverlapSize = strategy.getMaxOverlapSize();
@@ -84,17 +91,15 @@ public class ChunkingPipelineFactory {
     final int approxCharsPerToken = strategy.getApproxCharsPerToken();
     return switch (type) {
       case SENTENCE, PARAGRAPH ->
-          List.of(new LangchainSplitterStage(knowledge, type, maxSegmentSize, maxOverlapSize));
+          List.of(new LangchainSplitterStage(type, maxSegmentSize, maxOverlapSize));
       case SEMANTIC ->
           List.of(
-              new LangchainSplitterStage(
-                  knowledge, ChunkingType.SENTENCE, maxSegmentSize, maxOverlapSize),
+              new LangchainSplitterStage(ChunkingType.SENTENCE, maxSegmentSize, maxOverlapSize),
               new CosineBoundaryStage(
                   maxSegmentSize, similarityThreshold, embeddingModelId, modelProvider));
       case LLM ->
           List.of(
-              new LangchainSplitterStage(
-                  knowledge, ChunkingType.PARAGRAPH, maxSegmentSize, maxOverlapSize),
+              new LangchainSplitterStage(ChunkingType.PARAGRAPH, maxSegmentSize, maxOverlapSize),
               new MaxTokenCapStage(
                   approxCharsPerToken,
                   LlmBoundaryStage.WINDOW_TOKEN_BUDGET / 5), // ~5 paragraphs per LLM window
@@ -102,10 +107,8 @@ public class ChunkingPipelineFactory {
               new MaxTokenCapStage(approxCharsPerToken, maxTokensPerSegment));
       case RECURSIVE ->
           List.of(
-              new LangchainSplitterStage(
-                  knowledge, ChunkingType.RECURSIVE, maxSegmentSize, maxOverlapSize));
-      case MARKDOWN -> List.of(new MarkdownSplitterStage(knowledge));
-      default -> List.of(new FixedWindowSplitterStage(knowledge, maxSegmentSize, maxOverlapSize));
+              new LangchainSplitterStage(ChunkingType.RECURSIVE, maxSegmentSize, maxOverlapSize));
+      default -> List.of(new FixedWindowSplitterStage(maxSegmentSize, maxOverlapSize));
     };
   }
 }

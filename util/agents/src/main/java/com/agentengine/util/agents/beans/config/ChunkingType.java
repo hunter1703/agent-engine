@@ -16,8 +16,6 @@ public enum ChunkingType {
   SENTENCE,
   /** Splits on paragraph boundaries. */
   PARAGRAPH,
-  /** Splits at Markdown ATX headers ({@code #} through {@code ######}), one section per header. */
-  MARKDOWN,
   /** Embedding cosine-similarity breakpoint — cuts where topic similarity drops. */
   SEMANTIC,
   /**

@@ -2,21 +2,21 @@ package com.agentengine.knowledge.core.pipeline;
 
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.core.chunking.ChunkingPipelineFactory;
+import com.agentengine.knowledge.core.chunking.ChunkingStage;
+import com.agentengine.knowledge.core.chunking.OfficeTextExtractionStage;
 import com.agentengine.knowledge.core.store.KnowledgeChunkStore;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
-import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.FileUtils;
 import com.agentengine.util.models.factories.ModelProvider;
-import dev.langchain4j.data.document.parser.apache.poi.ApachePoiDocumentParser;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.io.InputStream;
-import java.io.Reader;
-import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Indexes Word, PowerPoint, and Excel knowledge (old or OOXML format) by extracting its text with
- * Apache POI before chunking.
+ * Indexes Word, PowerPoint, and Excel knowledge (old or OOXML format): {@link
+ * OfficeTextExtractionStage} extracts its text with Apache POI as the pipeline's first stage, then
+ * the knowledge's configured chunking strategy runs on the result.
  */
 @Singleton
 public class OfficeKnowledgeIndexer extends AbstractTextKnowledgeIndexer {
@@ -27,11 +27,9 @@ public class OfficeKnowledgeIndexer extends AbstractTextKnowledgeIndexer {
   public OfficeKnowledgeIndexer(
       final ChunkingPipelineFactory chunkingPipelineFactory,
       final KnowledgeChunkStore vectorStore,
-      final FileService fileService,
       final DefaultModelsRepository defaultModelsRepository,
       final ModelProvider modelProvider) {
-    super(
-        chunkingPipelineFactory, vectorStore, fileService, defaultModelsRepository, modelProvider);
+    super(chunkingPipelineFactory, vectorStore, defaultModelsRepository, modelProvider);
   }
 
   @Override
@@ -40,8 +38,11 @@ public class OfficeKnowledgeIndexer extends AbstractTextKnowledgeIndexer {
   }
 
   @Override
-  protected Reader read(final Knowledge knowledge, final InputStream content) {
-    return new StringReader(new ApachePoiDocumentParser().parse(content).text());
+  protected List<ChunkingStage> stages(final Knowledge knowledge) {
+    final List<ChunkingStage> stages = new ArrayList<>();
+    stages.add(new OfficeTextExtractionStage());
+    stages.addAll(super.stages(knowledge));
+    return stages;
   }
 
   @Override

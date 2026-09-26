@@ -2,6 +2,7 @@ package com.agentengine.knowledge.core.chunking;
 
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
+import com.agentengine.util.common.FileUtils;
 import com.agentengine.util.common.StringUtils;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.ArrayList;
@@ -43,6 +44,39 @@ public final class ChunkUtils {
   }
 
   /**
+   * Whether {@code chunk} is sourced from plain text, per its {@link KnowledgeChunk#getMimeType()}
+   * — {@code true} for every chunk except one sourced from some other media (see {@link #isMedia}).
+   * {@code mimeType} names what the chunk is *about*, not the literal type of its {@code text}
+   * field (always a plain string): a chunk describing an image keeps an image mime type
+   * permanently, even once it holds a text description rather than raw bytes.
+   */
+  public static boolean isText(final KnowledgeChunk chunk) {
+    return chunk.getMimeType() == null || chunk.getMimeType().startsWith("text/");
+  }
+
+  /**
+   * Whether {@code chunk} is sourced from some non-text media (e.g. an image) rather than plain
+   * text — set by a source stage that extracts embedded media (e.g. {@code PdfSplitterStage}) and
+   * never cleared, including once {@code ImageChunkingStage} replaces its raw bytes with a text
+   * description (see {@link KnowledgeChunk#getBytes()} for the separate "still needs describing"
+   * signal). A splitting or merging stage checks this to leave such a chunk whole rather than
+   * treating its text as content to divide or fold in, whether or not it's been described yet.
+   */
+  public static boolean isMedia(final KnowledgeChunk chunk) {
+    return !isText(chunk);
+  }
+
+  /** Whether {@code chunk}'s mime type is one of the raster image formats. */
+  public static boolean isImage(final KnowledgeChunk chunk) {
+    return FileUtils.IMAGE_MIME_TYPES.contains(chunk.getMimeType());
+  }
+
+  /** {@code chunk}'s text length, or 0 if it has none. */
+  public static int textLength(final KnowledgeChunk chunk) {
+    return chunk.getText() != null ? chunk.getText().length() : 0;
+  }
+
+  /**
    * Splits each chunk in {@code parents} by applying {@code splitter} to its text, producing new
    * chunks that inherit the parent's {@code knowledgeId} and {@code agentId}. {@code chunkIndex} is
    * left unset — whatever ultimately consumes the full chunk stream assigns the real, sequential
@@ -65,6 +99,9 @@ public final class ChunkUtils {
 
   private static List<KnowledgeChunk> split(
       final KnowledgeChunk parent, final Function<String, List<String>> splitter) {
+    if (isMedia(parent)) {
+      return List.of(parent);
+    }
     final String parentText = parent.getText() != null ? parent.getText() : "";
     final List<String> parts = splitter.apply(parentText);
     final List<KnowledgeChunk> result = new ArrayList<>(parts.size());

@@ -1,4 +1,4 @@
-package com.agentengine.knowledge.api.chunking;
+package com.agentengine.knowledge.core.chunking;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import io.reactivex.rxjava3.core.Flowable;
