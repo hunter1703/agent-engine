@@ -15,8 +15,7 @@ import io.quarkus.arc.Arc;
 import io.quarkus.arc.ArcContainer;
 import io.quarkus.arc.InstanceHandle;
 import jakarta.enterprise.inject.Any;
-import jakarta.enterprise.inject.Instance;
-import jakarta.inject.Inject;
+import jakarta.enterprise.inject.spi.Bean;
 import jakarta.inject.Singleton;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -35,23 +34,26 @@ import java.util.Objects;
 public final class DiscoveredToolProviders {
   private final LazyLoader<List<ToolProvider>> providers;
 
-  @Inject
-  public DiscoveredToolProviders(final @Any Instance<Tool> tools) {
-    this.providers =
-        new LazyLoader<>(
-            () -> {
-              final Map<String, ToolProvider> resolvedProviders = new LinkedHashMap<>();
-              for (final Tool tool : tools) {
-                try {
-                  final ToolDefinition definition = buildDefinition(tool.getClass());
-                  resolvedProviders.putIfAbsent(
-                      definition.descriptor().name(), new DiscoveredToolProvider(definition));
-                } finally {
-                  tools.destroy(tool);
-                }
-              }
-              return List.copyOf(resolvedProviders.values());
-            });
+  public DiscoveredToolProviders() {
+    this.providers = new LazyLoader<>(DiscoveredToolProviders::discoverProviders);
+  }
+
+  /**
+   * Resolves each discoverable tool's bean class from CDI {@link Bean} metadata without
+   * constructing the bean itself, so a tool's own dependencies are only required when it is
+   * actually created (see {@link DiscoveredToolProvider#create}), not merely discovered.
+   */
+  private static List<ToolProvider> discoverProviders() {
+    final Map<String, ToolProvider> resolvedProviders = new LinkedHashMap<>();
+    final ArcContainer container = Arc.container();
+    for (final Bean<?> bean : container.beanManager().getBeans(Tool.class, Any.Literal.INSTANCE)) {
+      @SuppressWarnings("unchecked")
+      final Class<? extends Tool> toolClass = (Class<? extends Tool>) bean.getBeanClass();
+      final ToolDefinition definition = buildDefinition(toolClass);
+      resolvedProviders.putIfAbsent(
+          definition.descriptor().name(), new DiscoveredToolProvider(definition));
+    }
+    return List.copyOf(resolvedProviders.values());
   }
 
   private static ToolDefinition buildDefinition(final Class<? extends Tool> toolClass) {

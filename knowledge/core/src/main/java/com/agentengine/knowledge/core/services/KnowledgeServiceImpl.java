@@ -7,6 +7,7 @@ import com.agentengine.knowledge.core.repository.KnowledgeRepository;
 import com.agentengine.knowledge.core.store.KnowledgeChunkStore;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
+import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.repository.Repository;
 import com.agentengine.util.common.update.Operation;
@@ -36,7 +37,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
   private static final String KNOWLEDGE_ID_KEY = "knowledgeId";
 
   private final KnowledgeRepository knowledgeRepo;
-  private final List<KnowledgeIndexer> indexers;
+  private final LazyLoader<List<KnowledgeIndexer>> indexers;
   private final Repository<KnowledgeChunk> vectorStore;
   private final SchedulerService schedulerService;
 
@@ -48,13 +49,20 @@ public class KnowledgeServiceImpl implements KnowledgeService {
       final SchedulerService schedulerService) {
     this.knowledgeRepo = knowledgeRepo;
     this.indexers =
-        indexers.stream().sorted(Comparator.comparingInt(KnowledgeIndexer::priority)).toList();
+        new LazyLoader<>(
+            () -> {
+              final List<KnowledgeIndexer> sorted =
+                  indexers.stream()
+                      .sorted(Comparator.comparingInt(KnowledgeIndexer::priority))
+                      .toList();
+              LOG.info(
+                  "KnowledgeServiceImpl initialized with {} indexers: {}",
+                  sorted.size(),
+                  sorted.stream().map(i -> i.getClass().getSimpleName()).toList());
+              return sorted;
+            });
     this.vectorStore = vectorStore;
     this.schedulerService = schedulerService;
-    LOG.info(
-        "KnowledgeServiceImpl initialized with {} indexers: {}",
-        this.indexers.size(),
-        this.indexers.stream().map(i -> i.getClass().getSimpleName()).toList());
   }
 
   @Override
@@ -142,10 +150,13 @@ public class KnowledgeServiceImpl implements KnowledgeService {
       deleteChunks(id);
       markStatus(id, IndexingStatus.IN_PROGRESS, null);
 
+      final List<KnowledgeIndexer> availableIndexers = indexers.get();
       LOG.debug(
-          "Looking for indexer for knowledge {} among {} available indexers", id, indexers.size());
+          "Looking for indexer for knowledge {} among {} available indexers",
+          id,
+          availableIndexers.size());
       final KnowledgeIndexer indexer =
-          indexers.stream()
+          availableIndexers.stream()
               .filter(
                   knowledgeIndexer -> {
                     final boolean canIndex = knowledgeIndexer.canIndex(knowledge);
