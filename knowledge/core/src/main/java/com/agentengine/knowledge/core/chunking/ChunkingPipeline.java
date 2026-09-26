@@ -6,7 +6,6 @@ import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.ExceptionUtils;
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.ThreadUtils;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Scheduler;
@@ -99,7 +98,6 @@ public final class ChunkingPipeline {
     final AtomicLong startNanos = new AtomicLong();
     final AtomicInteger count = new AtomicInteger();
     return stageOutput
-        .filter(chunk -> StringUtils.isNotBlank(chunk.getText()))
         .doOnSubscribe(_ -> startNanos.set(System.nanoTime()))
         .doOnNext(_ -> count.incrementAndGet())
         .doOnComplete(
