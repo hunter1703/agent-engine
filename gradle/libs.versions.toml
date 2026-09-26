@@ -8,6 +8,7 @@ quarkus = "3.34.0"
 langchain4j = "1.10.0"
 langchain4j-plugin = "1.10.0"
 qdrant-client = "1.17.0"
+pdfbox = "2.0.32"
 google-adk = "1.4.0"
 google-genai = "1.44.0"
 pekko = "1.2.1"
@@ -119,8 +120,8 @@ langchain4j-open-ai = { group = "dev.langchain4j", name = "langchain4j-open-ai",
 langchain4j-ollama = { group = "dev.langchain4j", name = "langchain4j-ollama", version.ref = "langchain4j-plugin" }
 langchain4j-qdrant = { group = "dev.langchain4j", name = "langchain4j-community-qdrant", version.ref = "langchain4j-plugin" }
 langchain4j-http-client-jdk = { group = "dev.langchain4j", name = "langchain4j-http-client-jdk" }
-langchain4j-pdfbox = { group = "dev.langchain4j", name = "langchain4j-document-parser-apache-pdfbox" }
 langchain4j-poi = { group = "dev.langchain4j", name = "langchain4j-document-parser-apache-poi" }
+pdfbox = { group = "org.apache.pdfbox", name = "pdfbox", version.ref = "pdfbox" }
 qdrant-client = { group = "io.qdrant", name = "client", version.ref = "qdrant-client" }
 quarkus-mongodb-client = { group = "io.quarkus", name = "quarkus-mongodb-client" }
 quarkus-logging-json = { group = "io.quarkus", name = "quarkus-logging-json" }
