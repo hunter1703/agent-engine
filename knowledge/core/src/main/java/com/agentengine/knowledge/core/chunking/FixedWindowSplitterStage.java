@@ -70,7 +70,9 @@ public final class FixedWindowSplitterStage extends ChunkingStage
               emitter.onComplete();
               return;
             }
-            emitter.onNext(toChunk(buffer, read, offset[0]));
+            if (StringUtils.isNotBlank(new String(buffer, 0, read))) {
+              emitter.onNext(toChunk(buffer, read, offset[0]));
+            }
             if (read < buffer.length) {
               emitter.onComplete();
               return;
