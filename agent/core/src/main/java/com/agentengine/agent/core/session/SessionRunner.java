@@ -47,7 +47,7 @@ public final class SessionRunner {
 
     final Content userContent =
         ContentUtils.buildUserContent(
-            ContentUtils.textParts(userMessage.parts()), grants.knowledges());
+            ContentUtils.textParts(userMessage.parts()), userMessage.attachments());
 
     disposable =
         runner
