@@ -12,6 +12,7 @@ import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
@@ -34,6 +35,13 @@ public class AbstractAgentTool extends Tool {
   public static final String GOAL_SCHEMA_DESCRIPTION =
       """
       A concise, one-sentence summary of what this exchange with the child is for — specific enough that you (or a later, unrelated turn) can tell its purpose at a glance without rereading the message. Do not restate or paraphrase the message itself here — that belongs in 'message'. Do not leave it vague either (e.g. 'chat', 'follow-up', 'task') — name the concrete objective or question.""";
+
+  public static final String KNOWLEDGES_ACCESS_DESCRIPTION =
+      "Grants the ability to search an already-indexed file (one with a knowledgeId) with "
+          + Constants.ToolNames.SEARCH_KNOWLEDGE
+          + ", or to read a not-yet-indexed file (one with no knowledgeId) in full with "
+          + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
+          + ".";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAgentTool.class);
   protected final ActorSystemProvider actorSystemProvider;

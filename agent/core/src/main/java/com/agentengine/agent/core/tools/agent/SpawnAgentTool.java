@@ -48,12 +48,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
   private static final Schema KNOWLEDGES_SCHEMA =
       ToolUtils.buildSchemaFromType(new TypeReference<List<AgentFileDetails>>() {}.getType())
           .toBuilder()
-          .description(
-              "Knowledge to grant the spawned agent. Grants the ability to search an already-indexed file (one with a knowledgeId) with "
-                  + Constants.ToolNames.SEARCH_KNOWLEDGE
-                  + ", or to read a not-yet-indexed file (one with no knowledgeId) in full with "
-                  + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
-                  + ". Optional.")
+          .description("Knowledge to grant the spawned agent. " + KNOWLEDGES_ACCESS_DESCRIPTION)
           .build();
 
   private static final Schema NOTEBOOK_GRANTS_SCHEMA =
