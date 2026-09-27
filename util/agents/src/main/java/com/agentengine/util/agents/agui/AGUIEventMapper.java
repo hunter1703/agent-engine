@@ -1,10 +1,10 @@
 package com.agentengine.util.agents.agui;
 
+import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.*;
 import com.agentengine.util.common.Violation;
-import com.agentengine.util.common.beans.FileDetails;
 import com.agui.community.core.event.*;
 import com.agui.community.core.interrupt.SuccessOutcome;
 import com.google.genai.types.Content;
@@ -103,10 +103,10 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
     // Emit attachment events for any event that carried file metadata, regardless of author.
     // Attachments are stored in event metadata (keyed by SessionEventUtils.ATTACHMENTS) rather
     // than as fileData Parts, so they survive the single-text LLM message constraint.
-    final List<FileDetails> attachments =
+    final List<AgentFileDetails> attachments =
         CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.ATTACHMENTS);
-    for (final FileDetails fileDetails : CollectionUtils.nullSafeList(attachments)) {
-      flowable = flowable.concatWith(textMapper.mapAttachment(fileDetails));
+    for (final AgentFileDetails fileDetails : CollectionUtils.nullSafeList(attachments)) {
+      flowable = flowable.concatWith(textMapper.mapAttachment(fileDetails.toFileDetails()));
     }
 
     return flowable.concatWith(finishStepIfNeeded(event));

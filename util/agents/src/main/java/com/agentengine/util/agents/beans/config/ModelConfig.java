@@ -123,6 +123,7 @@ public abstract class ModelConfig extends NamedEntity implements Config {
   @UiRule(
       effect = UiRuleEffect.VISIBLE,
       field = "provider",
+      operator = UiConditionOperator.IN,
       values = {"GEMINI", "OPEN_AI_COMPATIBLE"})
   private String apiKey;
 
