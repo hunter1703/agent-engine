@@ -920,7 +920,7 @@ public final class SessionActor
                     topology.sessionId(),
                     String.valueOf(turnId),
                     events,
-                    eventSequence),
+                    state.nextSequence()),
                 invocationId);
 
         turnEvents.clear();
