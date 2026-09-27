@@ -78,12 +78,12 @@ public final class SendMessageTool extends AbstractAgentTool {
               name = Constants.ToolArgs.KNOWLEDGES,
               description =
                   """
-                  Ids of knowledge to grant the child, on top of whatever it already has from earlier calls — grants accumulate, so omit ids it can already search and list only new ones. Grants the same ability to search them with """
+                  Knowledge to grant the child, on top of whatever it already has from earlier calls — grants accumulate, so omit files it can already access and list only new ones. Grants the ability to search an already-indexed file (one with a knowledgeId) with """
                       + Constants.ToolNames.SEARCH_KNOWLEDGE
                       + """
-                      . Not knowledge sources — those go in """
-                      + Constants.ToolArgs.KNOWLEDGE_SOURCES
-                      + " instead.",
+                      , or to read a not-yet-indexed file (one with no knowledgeId) in full with """
+                      + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
+                      + ".",
               optional = true)
           final List<AgentFileDetails> knowledges,
       @ToolArg(

@@ -45,6 +45,17 @@ public final class SpawnAgentTool extends AbstractAgentTool {
           Returns: { child_session_id } on success, or { error } on failure.""",
           Map.of());
 
+  private static final Schema KNOWLEDGES_SCHEMA =
+      ToolUtils.buildSchemaFromType(new TypeReference<List<AgentFileDetails>>() {}.getType())
+          .toBuilder()
+          .description(
+              "Knowledge to grant the spawned agent. Grants the ability to search an already-indexed file (one with a knowledgeId) with "
+                  + Constants.ToolNames.SEARCH_KNOWLEDGE
+                  + ", or to read a not-yet-indexed file (one with no knowledgeId) in full with "
+                  + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
+                  + ". Optional.")
+          .build();
+
   private static final Schema NOTEBOOK_GRANTS_SCHEMA =
       ToolUtils.buildSchemaFromType(
               new TypeReference<List<NotebookGrants.NotebookGrant>>() {}.getType())
@@ -110,31 +121,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .description(
                 "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been spawned.")
             .build());
-    properties.put(
-        Constants.ToolArgs.KNOWLEDGE_IDS,
-        Schema.builder()
-            .type(Known.ARRAY)
-            .items(Schema.builder().type(Known.STRING).build())
-            .description(
-                """
-                Ids of knowledge you have access to. Grants the spawned agent the same ability to search them with %s. Not knowledge sources — those go in %s instead. Optional.\
-                """
-                    .formatted(
-                        Constants.ToolNames.SEARCH_KNOWLEDGE, Constants.ToolArgs.KNOWLEDGE_SOURCES))
-            .build());
-    properties.put(
-        Constants.ToolArgs.KNOWLEDGE_SOURCES,
-        Schema.builder()
-            .type(Known.ARRAY)
-            .items(Schema.builder().type(Known.STRING).build())
-            .description(
-                """
-                Knowledge sources you have access to. Grants the spawned agent the same ability to read them in full with %s. Not knowledge ids — those go in %s instead. Optional.\
-                """
-                    .formatted(
-                        Constants.ToolNames.READ_KNOWLEDGE_SOURCE,
-                        Constants.ToolArgs.KNOWLEDGE_IDS))
-            .build());
+    properties.put(Constants.ToolArgs.KNOWLEDGES, KNOWLEDGES_SCHEMA);
     properties.put(Constants.ToolArgs.NOTEBOOK_GRANTS, NOTEBOOK_GRANTS_SCHEMA);
     properties.put(Constants.ToolArgs.NOTE_GRANTS, NOTE_GRANTS_SCHEMA);
     final Schema params =
@@ -154,15 +141,41 @@ public final class SpawnAgentTool extends AbstractAgentTool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolArg(name = "agent_id") final String childAgentId,
-      @ToolArg(name = "message") String message,
-      @ToolArg(name = "goal") final String goal,
-      @ToolArg(name = "await_completion", optional = true) Boolean awaitCompletion,
-      @ToolArg(name = Constants.ToolArgs.KNOWLEDGES, optional = true)
+      @ToolArg(name = "agent_id", description = "ID of the agent to spawn.")
+          final String childAgentId,
+      @ToolArg(name = "message", description = "Initial message to send to the spawned agent.")
+          String message,
+      @ToolArg(name = Constants.ToolArgs.GOAL, description = GOAL_SCHEMA_DESCRIPTION)
+          final String goal,
+      @ToolArg(
+              name = "await_completion",
+              description =
+                  "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been spawned.",
+              optional = true)
+          Boolean awaitCompletion,
+      @ToolArg(
+              name = Constants.ToolArgs.KNOWLEDGES,
+              description =
+                  """
+                  Knowledge to grant the spawned agent. Grants the ability to search an already-indexed file (one with a knowledgeId) with """
+                      + Constants.ToolNames.SEARCH_KNOWLEDGE
+                      + """
+                      , or to read a not-yet-indexed file (one with no knowledgeId) in full with """
+                      + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
+                      + ".",
+              optional = true)
           final List<AgentFileDetails> knowledges,
-      @ToolArg(name = Constants.ToolArgs.NOTEBOOK_GRANTS, optional = true)
+      @ToolArg(
+              name = Constants.ToolArgs.NOTEBOOK_GRANTS,
+              description =
+                  "Notebook-wide access to grant the spawned agent — lets it add new notes anywhere in the given notebooks.",
+              optional = true)
           final List<NotebookGrants.NotebookGrant> notebookGrants,
-      @ToolArg(name = Constants.ToolArgs.NOTE_GRANTS, optional = true)
+      @ToolArg(
+              name = Constants.ToolArgs.NOTE_GRANTS,
+              description =
+                  "Read or edit permission to grant the spawned agent for specific, already-existing notes.",
+              optional = true)
           final List<NotebookGrants.NoteGrant> noteGrants) {
 
     final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
