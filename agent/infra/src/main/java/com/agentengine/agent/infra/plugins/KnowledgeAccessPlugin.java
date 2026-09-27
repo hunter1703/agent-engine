@@ -48,13 +48,15 @@ public final class KnowledgeAccessPlugin extends BasePlugin {
     final Map<String, BaseTool> declaredTools = llmRequestBuilder.build().tools();
     final List<BaseTool> toolsToGrant = new ArrayList<>(2);
     final ResourceGrants grants = extendedRunConfig.grants();
-    if (CollectionUtils.isNotEmpty(grants.knowledgeSources())
-        && !declaredTools.containsKey(Constants.ToolNames.READ_KNOWLEDGE_SOURCE)) {
-      toolsToGrant.add(readKnowledgeSourceTool);
-    }
-    if (CollectionUtils.isNotEmpty(grants.knowledgeIds())
-        && !declaredTools.containsKey(Constants.ToolNames.SEARCH_KNOWLEDGE)) {
-      toolsToGrant.add(searchKnowledgeTool);
+    if (grants != null) {
+      if (CollectionUtils.isNotEmpty(grants.nonIndexedKnowledgeSources())
+          && !declaredTools.containsKey(Constants.ToolNames.READ_KNOWLEDGE_SOURCE)) {
+        toolsToGrant.add(readKnowledgeSourceTool);
+      }
+      if (CollectionUtils.isNotEmpty(grants.indexedKnowledgeIds())
+          && !declaredTools.containsKey(Constants.ToolNames.SEARCH_KNOWLEDGE)) {
+        toolsToGrant.add(searchKnowledgeTool);
+      }
     }
     if (!toolsToGrant.isEmpty()) {
       llmRequestBuilder.appendTools(toolsToGrant);

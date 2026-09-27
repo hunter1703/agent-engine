@@ -1,7 +1,7 @@
 package com.agentengine.agent.api.model;
 
-import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.api.utils.NotebookUtils;
+import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.Permission;
