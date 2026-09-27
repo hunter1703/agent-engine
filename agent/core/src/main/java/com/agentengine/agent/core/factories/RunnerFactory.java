@@ -167,7 +167,6 @@ public class RunnerFactory {
             new ContextManagementPlugin(contextManagers),
             new NotebookPlugin(notesRepository, agentsWithNotebook),
             new KnowledgeAccessPlugin(toolFactory),
-            new UserMessageEnrichmentPlugin(),
             new ReminderPlugin(),
             new PlanningPlugin(),
             new ResponseValidationPlugin());
