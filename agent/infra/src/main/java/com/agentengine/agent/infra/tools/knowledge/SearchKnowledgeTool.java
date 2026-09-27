@@ -1,8 +1,6 @@
 package com.agentengine.agent.infra.tools.knowledge;
 
-import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.infra.agents.Agent;
-import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
@@ -13,6 +11,8 @@ import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
+import com.agentengine.util.agents.tools.ToolArg;
+import com.agentengine.util.agents.tools.ToolConstructor;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.query.Filter;

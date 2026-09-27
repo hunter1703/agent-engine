@@ -1,14 +1,14 @@
 package com.agentengine.agent.infra.tools.connector;
 
-import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
-import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.knowledge.api.beans.IndexRequest;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.agents.tools.ToolArg;
+import com.agentengine.util.agents.tools.ToolConstructor;
 import com.agentengine.util.common.GrantUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;

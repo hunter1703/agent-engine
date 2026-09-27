@@ -1,10 +1,6 @@
 package com.agentengine.agent.core.tools.agent;
 
-import com.agentengine.agent.api.annotations.ToolArg;
-import com.agentengine.agent.api.model.MessagePart;
-import com.agentengine.agent.api.model.NotebookGrants;
-import com.agentengine.agent.api.model.ResourceGrants;
-import com.agentengine.agent.api.model.UserMessage;
+import com.agentengine.agent.api.model.*;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.SendMessageCommand;
@@ -12,9 +8,11 @@ import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
+import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
@@ -77,7 +75,7 @@ public final class SendMessageTool extends AbstractAgentTool {
               optional = true)
           Boolean awaitCompletion,
       @ToolArg(
-              name = Constants.ToolArgs.KNOWLEDGE_IDS,
+              name = Constants.ToolArgs.KNOWLEDGES,
               description =
                   """
                   Ids of knowledge to grant the child, on top of whatever it already has from earlier calls — grants accumulate, so omit ids it can already search and list only new ones. Grants the same ability to search them with """
@@ -87,19 +85,7 @@ public final class SendMessageTool extends AbstractAgentTool {
                       + Constants.ToolArgs.KNOWLEDGE_SOURCES
                       + " instead.",
               optional = true)
-          final List<String> knowledgeIds,
-      @ToolArg(
-              name = Constants.ToolArgs.KNOWLEDGE_SOURCES,
-              description =
-                  """
-                  Knowledge sources to grant the child, on top of whatever it already has from earlier calls — grants accumulate, so omit sources it can already read and list only new ones. Grants the same ability to read them in full with """
-                      + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
-                      + """
-                      . Not knowledge ids — those go in """
-                      + Constants.ToolArgs.KNOWLEDGE_IDS
-                      + " instead.",
-              optional = true)
-          final List<String> knowledgeSources,
+          final List<AgentFileDetails> knowledges,
       @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_GRANTS,
               description =
@@ -123,7 +109,7 @@ public final class SendMessageTool extends AbstractAgentTool {
     message = buildFullMessage(goal, message);
     final List<MessagePart> parts = List.of(new MessagePart.TextPart(message));
     final ResourceGrants resourceGrants =
-        AgentUtils.buildResourceGrants(knowledgeIds, knowledgeSources, notebookGrants, noteGrants);
+        AgentUtils.buildResourceGrants(knowledges, notebookGrants, noteGrants);
     final ToolOutput<Map<String, Object>> violationOutput =
         validateGrants(notebookGrants, noteGrants, notebookRepository, notesRepository);
     if (violationOutput != null) {

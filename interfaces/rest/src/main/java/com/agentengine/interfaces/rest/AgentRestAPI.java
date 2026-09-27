@@ -4,7 +4,6 @@ import static com.agentengine.interfaces.rest.handlers.catalog.InvokeAgentJobAss
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
-import com.agentengine.agent.api.model.AgentFileDetails;
 import com.agentengine.agent.api.model.MessagePart;
 import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
@@ -12,6 +11,7 @@ import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
+import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.*;
 import com.agentengine.util.common.SimpleJsonCodec;
@@ -219,20 +219,20 @@ public class AgentRestAPI {
   }
 
   private static UserMessage extractUserMessage(final RunAgentInput request) {
-    final List<Message> msgs = request.messages();
+    final List<Message> messages = request.messages();
     final List<MessagePart> parts = new ArrayList<>();
     final List<AgentFileDetails> knowledgeFiles = new ArrayList<>();
     for (final Context context : CollectionUtils.nullSafeList(request.context())) {
       knowledgeFiles.add(
           new AgentFileDetails(JsonUtils.fromJson(context.value(), FileDetails.class)));
     }
-    for (final Message msg : CollectionUtils.nullSafeList(msgs)) {
+    for (final Message msg : CollectionUtils.nullSafeList(messages)) {
       if (msg instanceof com.agui.community.core.message.UserMessage aguiUserMessage) {
         parts.add(new MessagePart.TextPart(aguiUserMessage.content()));
       }
     }
     if (CollectionUtils.isNotEmpty(parts)) {
-      return new UserMessage(parts, new ResourceGrants(null, knowledgeFiles, null));
+      return new UserMessage(parts, new ResourceGrants(knowledgeFiles, null));
     }
     throw new WebApplicationException("No user message found in messages array", 400);
   }

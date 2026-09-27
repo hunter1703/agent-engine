@@ -2,8 +2,8 @@ package com.agentengine.agent.infra.utils;
 
 import static com.agentengine.util.common.Utils.*;
 
-import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Utils;

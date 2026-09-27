@@ -66,8 +66,8 @@ public final class SessionUtils {
       // added/removed by another session) even when the grant set itself is unchanged. A resume
       // re-enters this same agent's runAsync without starting a new run, so it must reuse what
       // was already computed rather than repeat the (Mongo-backed) notebook lookup.
-      sessionState.addKnowledgeIdReminders(grants.knowledgeIds());
-      sessionState.addKnowledgeSourceReminders(grants.knowledgeSources());
+      sessionState.addKnowledgeIdReminders(grants.indexedKnowledgeIds());
+      sessionState.addKnowledgeSourceReminders(grants.nonIndexedKnowledgeSources());
       sessionState.addNotebookReminders(grants.notebookGrants());
     }
     return sessionState;

@@ -8,11 +8,11 @@ import com.agentengine.agent.infra.context.ContextManager;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.agent.infra.factories.context.ContextManagerProvider;
 import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
-import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.plugins.*;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.agent.infra.utils.AgentUtils;
+import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.catalog.api.services.SessionService;
@@ -59,7 +59,6 @@ public class RunnerFactory {
       final SessionEventsRepository sessionEventsRepository,
       final KnowledgeService knowledgeService,
       final MemoryService memoryService,
-      final NotebookRepository notebookRepository,
       final NotesRepository notesRepository,
       final ToolFactory toolFactory) {
     this.agentService = agentService;
@@ -115,8 +114,10 @@ public class RunnerFactory {
 
     if (persistedSession != null) {
 
-      for (final var event : CollectionUtils.nullSafeList(persistedSession.events())) {
-        inMemorySessionService.appendEvent(session, event).blockingGet();
+      for (final Event event : CollectionUtils.nullSafeList(persistedSession.events())) {
+        inMemorySessionService
+            .appendEvent(session, EventUtils.enrichWithAttachments(event))
+            .blockingGet();
       }
     }
     return inMemorySessionService;
@@ -166,6 +167,7 @@ public class RunnerFactory {
             new ContextManagementPlugin(contextManagers),
             new NotebookPlugin(notesRepository, agentsWithNotebook),
             new KnowledgeAccessPlugin(toolFactory),
+            new UserMessageEnrichmentPlugin(),
             new ReminderPlugin(),
             new PlanningPlugin(),
             new ResponseValidationPlugin());

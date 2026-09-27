@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra.tools.beans;
 
-import com.agentengine.agent.api.annotations.ToolArg;
+import com.agentengine.util.agents.tools.ToolArg;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.UUID;
 

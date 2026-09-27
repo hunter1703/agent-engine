@@ -1,10 +1,10 @@
 package com.agentengine.agent.infra.tools;
 
-import com.agentengine.agent.infra.annotations.ToolConstructor;
-import com.agentengine.agent.infra.annotations.ToolParam;
 import com.agentengine.agent.infra.utils.SchemaUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.agents.tools.ToolConstructor;
+import com.agentengine.util.agents.tools.ToolParam;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.LazyLoader;

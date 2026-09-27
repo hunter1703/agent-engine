@@ -2,7 +2,6 @@ package com.agentengine.agent.core.services;
 
 import static com.agentengine.util.common.Defaults.STREAMING_BATCH_SIZE;
 
-import com.agentengine.agent.api.model.AgentFileDetails;
 import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.CommunityExpertsService;
@@ -25,6 +24,7 @@ import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.knowledge.api.beans.IndexRequest;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.services.KnowledgeService;
+import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.ResumeRequest;
@@ -126,7 +126,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     final String resolvedSessionId = initializeSession(agentId, sessionId);
     final AgentSession session = sessionService.getSession(resolvedSessionId);
     final String rootSessionId =
-        session != null && StringUtils.isNotBlank(session.getRootSessionId())
+        StringUtils.isNotBlank(session.getRootSessionId())
             ? session.getRootSessionId()
             : resolvedSessionId;
     // Reusing an existing session is a new turn, not a replay subscription. The previous turn
@@ -162,7 +162,7 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private void startTurn(final String agentId, final String sessionId, final UserMessage message) {
     LOG.debug("Starting session {}:{}", agentId, sessionId);
-    final UserMessage resolvedMessage = resolveKnowledgeFiles(agentId, sessionId, message);
+    final UserMessage resolvedMessage = resolveMessage(agentId, sessionId, message);
     sessionActorFactory
         .entityRef(sessionId)
         .<StartSessionResult>ask(
@@ -178,20 +178,20 @@ public class RuntimeServiceImpl implements RuntimeService {
             });
   }
 
-  private UserMessage resolveKnowledgeFiles(
+  private UserMessage resolveMessage(
       final String agentId, final String sessionId, final UserMessage message) {
     final ResourceGrants grants = message.grants();
-    if (grants == null || CollectionUtils.isEmpty(grants.knowledgeFiles())) {
+    if (grants == null || CollectionUtils.isEmpty(grants.knowledges())) {
       return message;
     }
 
     final List<AgentFileDetails> toIndex = new ArrayList<>();
-    final List<AgentFileDetails> knowledgeFiles = new ArrayList<>();
-    for (final AgentFileDetails fileDetails : grants.knowledgeFiles()) {
+    final List<AgentFileDetails> knowledges = new ArrayList<>();
+    for (final AgentFileDetails fileDetails : grants.knowledges()) {
       if (needsIndexing(fileDetails)) {
         toIndex.add(fileDetails);
       } else {
-        knowledgeFiles.add(fileDetails);
+        knowledges.add(fileDetails);
       }
     }
 
@@ -200,12 +200,12 @@ public class RuntimeServiceImpl implements RuntimeService {
             .<Callable<String>>map(
                 fileDetails -> () -> indexAsKnowledge(agentId, sessionId, fileDetails).getId())
             .toList();
-    final List<String> knowledgeIds = new ArrayList<>(grants.knowledgeIds());
     final List<StructuredConcurrencyUtils.TaskOutcome<String>> outcomes =
         StructuredConcurrencyUtils.runConcurrentlyUntil("knowledge-indexing", indexing, _ -> false);
+
     for (final StructuredConcurrencyUtils.TaskOutcome<String> outcome : outcomes) {
       if (outcome.state() == Subtask.State.SUCCESS) {
-        knowledgeIds.add(outcome.value());
+        knowledges.add(toIndex.get(outcome.index()).withKnowledgeId(outcome.value()));
       } else {
         LOG.warn(
             "Indexing failed for {}; dropping it from the message's grants",
@@ -215,9 +215,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     return new UserMessage(
-        message.parts(),
-        new ResourceGrants(knowledgeIds, knowledgeFiles, grants.notebookGrants()),
-        message.attachments());
+        message.parts(), new ResourceGrants(knowledges, grants.notebookGrants()));
   }
 
   /** Whether a text attachment is over {@link #INDEXING_THRESHOLD_BYTES} once its size is known. */

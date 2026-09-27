@@ -1,6 +1,5 @@
 package com.agentengine.agent.infra.utils;
 
-import com.agentengine.agent.api.model.AgentFileDetails;
 import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.utils.NotebookUtils;
@@ -8,14 +7,13 @@ import com.agentengine.agent.infra.notebook.Note;
 import com.agentengine.agent.infra.notebook.Notebook;
 import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.notebook.NotesRepository;
+import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.CompactionContextStrategyConfig;
 import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.FileUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Violation;
-import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.beans.Permission;
 import com.google.adk.agents.InvocationContext;
 import java.util.ArrayList;
@@ -57,28 +55,14 @@ public final class AgentUtils {
    * them via {@link #validate} first.
    */
   public static ResourceGrants buildResourceGrants(
-      final List<String> knowledgeIds,
-      final List<String> knowledgeSources,
+      final List<AgentFileDetails> knowledges,
       final List<NotebookGrants.NotebookGrant> notebookGrants,
       final List<NotebookGrants.NoteGrant> noteGrants) {
     final NotebookGrants resolvedGrants = new NotebookGrants(notebookGrants, noteGrants);
-    if (CollectionUtils.isEmpty(knowledgeIds)
-        && CollectionUtils.isEmpty(knowledgeSources)
-        && resolvedGrants.grants().isEmpty()) {
+    if (CollectionUtils.isEmpty(knowledges) && resolvedGrants.grants().isEmpty()) {
       return null;
     }
-    final List<AgentFileDetails> knowledgeFiles =
-        CollectionUtils.nullSafeList(knowledgeSources).stream()
-            .map(
-                source ->
-                    new AgentFileDetails(
-                        FileUtils.nameFromSource(source),
-                        source,
-                        FileDetails.StorageType.CLOUDSTORAGE,
-                        null,
-                        -1L))
-            .toList();
-    return new ResourceGrants(knowledgeIds, knowledgeFiles, resolvedGrants);
+    return new ResourceGrants(knowledges, resolvedGrants);
   }
 
   /**

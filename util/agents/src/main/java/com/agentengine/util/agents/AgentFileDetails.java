@@ -1,12 +1,12 @@
-package com.agentengine.agent.api.model;
+package com.agentengine.util.agents;
 
-import com.agentengine.agent.api.annotations.ToolArg;
+import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.beans.FileDetails.StorageType;
 import java.util.Objects;
 
 public record AgentFileDetails(
-    String name, String source, StorageType type, String mimeType, long size) {
+    String name, String source, StorageType type, String mimeType, long size, String knowledgeId) {
 
   public AgentFileDetails(
       @ToolArg(
@@ -36,11 +36,7 @@ public record AgentFileDetails(
               description = "File size in bytes. Use -1 if unknown.",
               optional = true)
           final long size) {
-    this.name = name;
-    this.source = source;
-    this.type = type;
-    this.mimeType = mimeType;
-    this.size = size;
+    this(name, source, type, mimeType, size, null);
   }
 
   public AgentFileDetails(final FileDetails fileDetails) {
@@ -49,7 +45,12 @@ public record AgentFileDetails(
         fileDetails.source(),
         fileDetails.type(),
         fileDetails.mimeType(),
-        fileDetails.size());
+        fileDetails.size(),
+        null);
+  }
+
+  public AgentFileDetails withKnowledgeId(final String knowledgeId) {
+    return new AgentFileDetails(name, source, type, mimeType, size, knowledgeId);
   }
 
   public FileDetails toFileDetails() {

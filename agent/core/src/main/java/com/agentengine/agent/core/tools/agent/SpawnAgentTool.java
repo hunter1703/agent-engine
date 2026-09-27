@@ -1,10 +1,6 @@
 package com.agentengine.agent.core.tools.agent;
 
-import com.agentengine.agent.api.annotations.ToolArg;
-import com.agentengine.agent.api.model.MessagePart;
-import com.agentengine.agent.api.model.NotebookGrants;
-import com.agentengine.agent.api.model.ResourceGrants;
-import com.agentengine.agent.api.model.UserMessage;
+import com.agentengine.agent.api.model.*;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartChildResult;
 import com.agentengine.agent.core.session.StartSessionResult;
@@ -14,9 +10,11 @@ import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
+import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -160,10 +158,8 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       @ToolArg(name = "message") String message,
       @ToolArg(name = "goal") final String goal,
       @ToolArg(name = "await_completion", optional = true) Boolean awaitCompletion,
-      @ToolArg(name = Constants.ToolArgs.KNOWLEDGE_IDS, optional = true)
-          final List<String> knowledgeIds,
-      @ToolArg(name = Constants.ToolArgs.KNOWLEDGE_SOURCES, optional = true)
-          final List<String> knowledgeSources,
+      @ToolArg(name = Constants.ToolArgs.KNOWLEDGES, optional = true)
+          final List<AgentFileDetails> knowledges,
       @ToolArg(name = Constants.ToolArgs.NOTEBOOK_GRANTS, optional = true)
           final List<NotebookGrants.NotebookGrant> notebookGrants,
       @ToolArg(name = Constants.ToolArgs.NOTE_GRANTS, optional = true)
@@ -187,7 +183,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
 
     final List<MessagePart> parts = List.of(new MessagePart.TextPart(message));
     final ResourceGrants resourceGrants =
-        AgentUtils.buildResourceGrants(knowledgeIds, knowledgeSources, notebookGrants, noteGrants);
+        AgentUtils.buildResourceGrants(knowledges, notebookGrants, noteGrants);
     final ToolOutput<Map<String, Object>> violationOutput =
         validateGrants(notebookGrants, noteGrants, notebookRepository, notesRepository);
     if (violationOutput != null) {

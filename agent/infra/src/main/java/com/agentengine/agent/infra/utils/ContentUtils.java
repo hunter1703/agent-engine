@@ -1,6 +1,7 @@
 package com.agentengine.agent.infra.utils;
 
 import com.agentengine.agent.api.model.MessagePart;
+import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
@@ -126,7 +127,8 @@ public final class ContentUtils {
         .toList();
   }
 
-  public static Content buildUserContent(final List<MessagePart.TextPart> textParts) {
+  public static Content buildUserContent(
+      final List<MessagePart.TextPart> textParts, final List<AgentFileDetails> knowledges) {
     final StringBuilder text = new StringBuilder();
     for (final MessagePart.TextPart textPart : textParts) {
       if (!text.isEmpty()) {
@@ -134,10 +136,13 @@ public final class ContentUtils {
       }
       text.append(textPart.text());
     }
-    return Content.builder()
-        .role(Constants.AUTHOR_USER)
-        .parts(List.of(Part.fromText(text.toString())))
-        .build();
+
+    final Content content =
+        Content.builder()
+            .role(Constants.AUTHOR_USER)
+            .parts(List.of(Part.fromText(text.toString())))
+            .build();
+    return addAttachmentsToContent(content, knowledges);
   }
 
   public static Content buildResumeContent(final Collection<ResumeRequest> resumeRequests) {
@@ -154,5 +159,26 @@ public final class ContentUtils {
             .flatMap(List::stream)
             .toList();
     return Content.builder().role(Constants.AUTHOR_USER).parts(parts).build();
+  }
+
+  public static Content addAttachmentsToContent(
+      final Content content, final List<AgentFileDetails> attachments) {
+    final StringBuilder text = new StringBuilder();
+    for (final AgentFileDetails attachment : CollectionUtils.nullSafeList(attachments)) {
+      if (StringUtils.isBlank(attachment.knowledgeId())) {
+        continue;
+      }
+      text.append("\n(The attached file \"")
+          .append(attachment.name())
+          .append("\" is indexed as knowledgeId \"")
+          .append(attachment.knowledgeId())
+          .append("\").");
+    }
+    if (text.isEmpty()) {
+      return content;
+    }
+    final List<Part> parts = new ArrayList<>(content.parts().orElse(List.of()));
+    parts.add(Part.fromText(text.toString()));
+    return content.toBuilder().parts(parts).build();
   }
 }

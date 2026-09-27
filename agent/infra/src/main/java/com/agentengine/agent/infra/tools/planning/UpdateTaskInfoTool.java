@@ -1,9 +1,9 @@
 package com.agentengine.agent.infra.tools.planning;
 
-import com.agentengine.agent.api.annotations.ToolArg;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.agents.tools.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 

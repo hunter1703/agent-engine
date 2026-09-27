@@ -1,12 +1,12 @@
 package com.agentengine.agent.infra.tools.knowledge;
 
-import com.agentengine.agent.api.annotations.ToolArg;
-import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.agent.infra.utils.ExtendedRunConfig;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.agents.tools.ToolArg;
+import com.agentengine.util.agents.tools.ToolConstructor;
 import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.common.FileUtils;
 import com.google.adk.tools.ToolContext;
@@ -47,7 +47,7 @@ public final class ReadKnowledgeSourceTool extends Tool {
           final String source) {
     final boolean granted =
         toolContext.invocationContext().runConfig() instanceof ExtendedRunConfig extended
-            && extended.grants().knowledgeSources().contains(source);
+            && extended.grants().nonIndexedKnowledgeSources().contains(source);
     if (!granted) {
       return ToolOutput.direct(Map.of("error", "Not granted access to this knowledge source."));
     }

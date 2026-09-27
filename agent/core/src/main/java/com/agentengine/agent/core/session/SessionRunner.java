@@ -46,7 +46,8 @@ public final class SessionRunner {
     LOG.debug("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called", sessionId);
 
     final Content userContent =
-        ContentUtils.buildUserContent(ContentUtils.textParts(userMessage.parts()));
+        ContentUtils.buildUserContent(
+            ContentUtils.textParts(userMessage.parts()), grants.knowledges());
 
     disposable =
         runner
