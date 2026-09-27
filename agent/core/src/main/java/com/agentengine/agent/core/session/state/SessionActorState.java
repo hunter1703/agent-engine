@@ -124,15 +124,11 @@ public record SessionActorState(
       final UniqueRecord<UserMessage> message, final long messagePickedTimestamp) {
     final String runId = message != null ? message.getId() : null;
     final ResourceGrants incomingGrants = message != null ? message.getRecord().grants() : null;
-    // Computed before finishing the previous run: finished() clears its lastCommittedTurn, which
-    // nextSequence() would otherwise read as "this run never committed anything," falling back to
-    // that run's own start instead of where its committed turns actually left off.
-    final int startSequence = nextSequence();
     if (!runs.isEmpty()) {
       runs.set(runs.size() - 1, runs.getLast().finished());
     }
     runs.add(
-        new RunState(runId, message, messagePickedTimestamp, startSequence, null, Set.of(), null));
+        new RunState(runId, message, messagePickedTimestamp, nextSequence(), null, Set.of(), null));
     return new SessionActorState(
         sessionState,
         queue,

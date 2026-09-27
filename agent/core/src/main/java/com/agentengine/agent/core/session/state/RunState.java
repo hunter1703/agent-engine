@@ -40,6 +40,6 @@ public record RunState(
   }
 
   public RunState finished() {
-    return new RunState(runId, null, -1L, startSequence, null, Set.of(), null);
+    return new RunState(runId, null, -1L, startSequence, lastCommittedTurn, Set.of(), null);
   }
 }
