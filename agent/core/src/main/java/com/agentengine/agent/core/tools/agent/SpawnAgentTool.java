@@ -89,9 +89,6 @@ public final class SpawnAgentTool extends AbstractAgentTool {
 
   @Override
   public Optional<FunctionDeclaration> declaration() {
-    if (subAgentIds.isEmpty()) {
-      return super.declaration();
-    }
     final String agentList = String.join(", ", subAgentIds);
     final Map<String, Schema> properties = new LinkedHashMap<>();
     properties.put(
@@ -141,41 +138,15 @@ public final class SpawnAgentTool extends AbstractAgentTool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolArg(name = "agent_id", description = "ID of the agent to spawn.")
-          final String childAgentId,
-      @ToolArg(name = "message", description = "Initial message to send to the spawned agent.")
-          String message,
-      @ToolArg(name = Constants.ToolArgs.GOAL, description = GOAL_SCHEMA_DESCRIPTION)
-          final String goal,
-      @ToolArg(
-              name = "await_completion",
-              description =
-                  "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been spawned.",
-              optional = true)
-          Boolean awaitCompletion,
-      @ToolArg(
-              name = Constants.ToolArgs.KNOWLEDGES,
-              description =
-                  """
-                  Knowledge to grant the spawned agent. Grants the ability to search an already-indexed file (one with a knowledgeId) with """
-                      + Constants.ToolNames.SEARCH_KNOWLEDGE
-                      + """
-                      , or to read a not-yet-indexed file (one with no knowledgeId) in full with """
-                      + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
-                      + ".",
-              optional = true)
+      @ToolArg(name = "agent_id") final String childAgentId,
+      @ToolArg(name = "message") String message,
+      @ToolArg(name = "goal") final String goal,
+      @ToolArg(name = "await_completion", optional = true) Boolean awaitCompletion,
+      @ToolArg(name = Constants.ToolArgs.KNOWLEDGES, optional = true)
           final List<AgentFileDetails> knowledges,
-      @ToolArg(
-              name = Constants.ToolArgs.NOTEBOOK_GRANTS,
-              description =
-                  "Notebook-wide access to grant the spawned agent — lets it add new notes anywhere in the given notebooks.",
-              optional = true)
+      @ToolArg(name = Constants.ToolArgs.NOTEBOOK_GRANTS, optional = true)
           final List<NotebookGrants.NotebookGrant> notebookGrants,
-      @ToolArg(
-              name = Constants.ToolArgs.NOTE_GRANTS,
-              description =
-                  "Read or edit permission to grant the spawned agent for specific, already-existing notes.",
-              optional = true)
+      @ToolArg(name = Constants.ToolArgs.NOTE_GRANTS, optional = true)
           final List<NotebookGrants.NoteGrant> noteGrants) {
 
     final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
