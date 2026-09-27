@@ -70,6 +70,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
   private final List<String> subAgentIds;
   private final NotebookRepository notebookRepository;
   private final NotesRepository notesRepository;
+  private final FunctionDeclaration declaration;
 
   public SpawnAgentTool(
       final ActorSystemProvider actorSystemProvider,
@@ -80,54 +81,12 @@ public final class SpawnAgentTool extends AbstractAgentTool {
     this.subAgentIds = List.copyOf(subAgentIds);
     this.notebookRepository = notebookRepository;
     this.notesRepository = notesRepository;
+    this.declaration = buildDeclaration(this.subAgentIds);
   }
 
   @Override
   public Optional<FunctionDeclaration> declaration() {
-    final String agentList = String.join(", ", subAgentIds);
-    final Map<String, Schema> properties = new LinkedHashMap<>();
-    properties.put(
-        "agent_id",
-        Schema.builder()
-            .type(Known.STRING)
-            .enum_(subAgentIds)
-            .description(
-                "ID of the agent to spawn. Available agents: %s. Required.".formatted(agentList))
-            .build());
-    properties.put(
-        "message",
-        Schema.builder()
-            .type(Known.STRING)
-            .description("Initial message to send to the spawned agent. Required.")
-            .build());
-    properties.put(
-        Constants.ToolArgs.GOAL,
-        Schema.builder()
-            .type(Known.STRING)
-            .description(GOAL_SCHEMA_DESCRIPTION + " Required.")
-            .build());
-    properties.put(
-        Constants.ToolArgs.AWAIT_COMPLETION,
-        Schema.builder()
-            .type(Known.BOOLEAN)
-            .description(
-                "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been spawned.")
-            .build());
-    properties.put(Constants.ToolArgs.KNOWLEDGES, KNOWLEDGES_SCHEMA);
-    properties.put(Constants.ToolArgs.NOTEBOOK_GRANTS, NOTEBOOK_GRANTS_SCHEMA);
-    properties.put(Constants.ToolArgs.NOTE_GRANTS, NOTE_GRANTS_SCHEMA);
-    final Schema params =
-        Schema.builder()
-            .type(Known.OBJECT)
-            .properties(properties)
-            .required(List.of("agent_id", "message", "goal"))
-            .build();
-    return Optional.of(
-        FunctionDeclaration.builder()
-            .name(Constants.ToolNames.SPAWN_AGENT)
-            .description(DESCRIPTOR.description() + " Available agents: " + agentList + ".")
-            .parameters(params)
-            .build());
+    return Optional.of(declaration);
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -206,5 +165,51 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                   position));
       default -> ToolOutput.direct(Map.of("error", "Failed to spawn agent: unknown response"));
     };
+  }
+
+  private static FunctionDeclaration buildDeclaration(final List<String> subAgentIds) {
+    final String agentList = String.join(", ", subAgentIds);
+    final Map<String, Schema> properties = new LinkedHashMap<>();
+    properties.put(
+        "agent_id",
+        Schema.builder()
+            .type(Known.STRING)
+            .enum_(subAgentIds)
+            .description(
+                "ID of the agent to spawn. Available agents: %s. Required.".formatted(agentList))
+            .build());
+    properties.put(
+        "message",
+        Schema.builder()
+            .type(Known.STRING)
+            .description("Initial message to send to the spawned agent. Required.")
+            .build());
+    properties.put(
+        Constants.ToolArgs.GOAL,
+        Schema.builder()
+            .type(Known.STRING)
+            .description(GOAL_SCHEMA_DESCRIPTION + " Required.")
+            .build());
+    properties.put(
+        Constants.ToolArgs.AWAIT_COMPLETION,
+        Schema.builder()
+            .type(Known.BOOLEAN)
+            .description(
+                "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been spawned.")
+            .build());
+    properties.put(Constants.ToolArgs.KNOWLEDGES, KNOWLEDGES_SCHEMA);
+    properties.put(Constants.ToolArgs.NOTEBOOK_GRANTS, NOTEBOOK_GRANTS_SCHEMA);
+    properties.put(Constants.ToolArgs.NOTE_GRANTS, NOTE_GRANTS_SCHEMA);
+    final Schema params =
+        Schema.builder()
+            .type(Known.OBJECT)
+            .properties(properties)
+            .required(List.of("agent_id", "message", "goal"))
+            .build();
+    return FunctionDeclaration.builder()
+        .name(Constants.ToolNames.SPAWN_AGENT)
+        .description(DESCRIPTOR.description() + " Available agents: " + agentList + ".")
+        .parameters(params)
+        .build();
   }
 }
