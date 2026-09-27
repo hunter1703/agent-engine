@@ -87,11 +87,13 @@ public final class ChunkingPipeline {
               stage,
               stage.apply(current.observeOn(stage.cpuBound() ? CPU_SCHEDULER : IO_SCHEDULER)));
     }
-    return current.doOnNext(
-        chunk -> {
-          chunk.setKnowledgeId(knowledge.getId());
-          chunk.setAgentId(knowledge.getAgentId());
-        });
+    return current
+        .filter(chunk -> StringUtils.isNotBlank(chunk.getText()))
+        .doOnNext(
+            chunk -> {
+              chunk.setKnowledgeId(knowledge.getId());
+              chunk.setAgentId(knowledge.getAgentId());
+            });
   }
 
   private Flowable<KnowledgeChunk> withInstrumentation(
