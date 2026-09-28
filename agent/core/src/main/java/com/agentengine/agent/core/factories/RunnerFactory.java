@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.factories;
 
+import com.agentengine.agent.api.services.AgentCacheTag;
 import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.SessionRunner;
 import com.agentengine.agent.core.session.commands.SessionCommand;
@@ -23,6 +24,8 @@ import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.distributed.DistributedCache;
+import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.apps.App;
 import com.google.adk.events.Event;
@@ -38,6 +41,8 @@ import org.apache.pekko.actor.typed.ActorRef;
 @Singleton
 public class RunnerFactory {
 
+  private static final String CACHE_NAME = "session-runner-cache";
+
   private final AgentService agentService;
   private final AgentProvider agentProvider;
   private final ContextManagerProvider contextManagerProvider;
@@ -49,6 +54,7 @@ public class RunnerFactory {
   private final MemoryService memoryService;
   private final NotesRepository notesRepository;
   private final ToolFactory toolFactory;
+  private final DistributedCache<SessionRunner> cache;
 
   public RunnerFactory(
       AgentService agentService,
@@ -60,7 +66,8 @@ public class RunnerFactory {
       final KnowledgeService knowledgeService,
       final MemoryService memoryService,
       final NotesRepository notesRepository,
-      final ToolFactory toolFactory) {
+      final ToolFactory toolFactory,
+      final DistributedCacheManager cacheManager) {
     this.agentService = agentService;
     this.agentProvider = agentProvider;
     this.contextManagerProvider = contextManagerProvider;
@@ -71,9 +78,27 @@ public class RunnerFactory {
     this.memoryService = memoryService;
     this.notesRepository = notesRepository;
     this.toolFactory = toolFactory;
+    this.cache =
+        new DistributedCache.Builder<SessionRunner>(CACHE_NAME, cacheManager)
+            .tags(Set.of(AgentCacheTag.RUNNERS))
+            .removalListener(SessionRunner::close)
+            .build();
   }
 
-  public SessionRunner buildRunner(
+  public SessionRunner getOrBuild(
+      final String agentId, final String sessionId, final ActorRef<SessionCommand> actor) {
+    return cache.get(cacheKey(agentId, sessionId), key -> build(agentId, sessionId, actor));
+  }
+
+  public void stop(final String agentId, final String sessionId) {
+    cache.invalidateLocally(cacheKey(agentId, sessionId));
+  }
+
+  private static String cacheKey(final String agentId, final String sessionId) {
+    return agentId + ":" + sessionId;
+  }
+
+  private SessionRunner build(
       final String agentId, final String sessionId, final ActorRef<SessionCommand> actor) {
     final BaseAgentConfig config = agentService.getAgent(agentId);
     final Agent agent = agentProvider.create(config);

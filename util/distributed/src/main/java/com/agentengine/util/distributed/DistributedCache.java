@@ -1,6 +1,7 @@
 package com.agentengine.util.distributed;
 
 import com.agentengine.util.common.Cache;
+import com.agentengine.util.common.CacheTag;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
@@ -93,8 +94,22 @@ public class DistributedCache<V> {
     cacheManager.broadcastInvalidation(cacheName, namespacedKey);
   }
 
+  public void invalidateLocally(final String key) {
+    localCache.invalidate(namespacedKey(key));
+  }
+
   public void invalidateNamespacedLocally(final String namespacedKey) {
     localCache.invalidate(namespacedKey);
+  }
+
+  public void invalidateByPrefix(final String keyPrefix) {
+    final String namespacedPrefix = namespacedKey(keyPrefix);
+    invalidateByPrefixLocally(namespacedPrefix);
+    cacheManager.broadcastInvalidation(cacheName, namespacedPrefix + "*");
+  }
+
+  public void invalidateByPrefixLocally(final String namespacedPrefix) {
+    localCache.invalidateKeysIf(namespacedKey -> namespacedKey.startsWith(namespacedPrefix));
   }
 
   public void invalidateAll(final boolean localOnly) {

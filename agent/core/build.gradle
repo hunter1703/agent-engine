@@ -15,6 +15,7 @@ dependencies {
     implementation project(':knowledge:api')
     implementation project(':catalog:api')
     implementation project(':util:common')
+    implementation project(':util:distributed')
     implementation project(':util:context')
     implementation project(':util:pekko')
     implementation project(':util:mongodb')
