@@ -36,8 +36,7 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
     NORMAL,
     ERROR,
     TERMINAL,
-    LIVE_MARKER,
-    RUN_STARTED;
+    LIVE_MARKER;
 
     public static Type valueOfOrDefault(final String value) {
       if (value == null) {
@@ -194,12 +193,6 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
 
   @BsonIgnore
   @JsonIgnore
-  public boolean isRunStarted() {
-    return getType() == Type.RUN_STARTED;
-  }
-
-  @BsonIgnore
-  @JsonIgnore
   public boolean isError() {
     return getType() == Type.ERROR;
   }
@@ -315,25 +308,6 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
     final Event rawEvent = Event.builder().id(id).timestamp(System.currentTimeMillis()).build();
     return new SessionEvent(
         id, null, null, sessionId, Long.MAX_VALUE, Type.TERMINAL, null, rawEvent);
-  }
-
-  public static SessionEvent runStarted(
-      final String rootSessionId,
-      final String parentSessionId,
-      final String sessionId,
-      final String runId,
-      final String author,
-      final long sequence) {
-    final String id = UUID.randomUUID().toString();
-    final Event rawEvent =
-        Event.builder()
-            .id(id)
-            .invocationId(runId)
-            .author(author)
-            .timestamp(System.currentTimeMillis())
-            .build();
-    return new SessionEvent(
-        id, rootSessionId, parentSessionId, sessionId, sequence, Type.RUN_STARTED, null, rawEvent);
   }
 
   /**
