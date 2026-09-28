@@ -84,7 +84,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
   }
 
   private Flowable<Event> mapEventInternal(final SessionEvent event) {
-    if (SessionEventUtils.isInternal(event)) {
+    if (SessionEventUtils.isInternal(event) || event.isRunStarted()) {
       return Flowable.empty();
     }
     Flowable<Event> flowable = startStepIfNeeded();

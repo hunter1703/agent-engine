@@ -5,6 +5,7 @@ import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.catalog.api.services.ModelService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.connectors.api.services.ConnectionService;
+import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import io.quarkus.arc.DefaultBean;
@@ -54,6 +55,13 @@ public class ClientProducer {
   @Singleton
   @DefaultBean
   public ConnectionService connectionService(MicroServiceClientProvider provider) {
-    return provider.get(com.agentengine.connectors.api.services.ConnectionService.class);
+    return provider.get(ConnectionService.class);
+  }
+
+  @Produces
+  @Singleton
+  @DefaultBean
+  public ConnectorService connectorService(MicroServiceClientProvider provider) {
+    return provider.get(ConnectorService.class);
   }
 }
