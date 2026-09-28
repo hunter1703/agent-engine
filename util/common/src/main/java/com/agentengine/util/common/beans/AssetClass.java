@@ -10,6 +10,8 @@ public interface AssetClass {
   String KNOWLEDGE_CHUNK = "KnowledgeChunk";
   String TOOL = "Tool";
   String TOOL_CONFIGS = "ToolConfigs";
+  String CONNECTOR_APP = "ConnectorApp";
+  String CONNECTOR = "Connector";
   String MEMORY = "Memory";
   String JOB_DEFINITION = "JobDefinition";
   String TRIGGER_DEFINITION = "TriggerDefinition";

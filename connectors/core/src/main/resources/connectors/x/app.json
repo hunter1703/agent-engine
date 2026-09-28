@@ -1,0 +1,30 @@
+{
+  "connector": {
+    "auth": {
+      "TOKEN": {
+        "type": "HEADER",
+        "headers": {
+          "Authorization": "Bearer {{ auth.input.token }}"
+        }
+      }
+    }
+  },
+  "connection": {
+    "authConfigs": {
+      "TOKEN": {}
+    },
+    "schema": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string",
+          "description": "The X (Twitter) API OAuth 2.0 bearer token.",
+          "sensitive": true
+        }
+      },
+      "required": [
+        "token"
+      ]
+    }
+  }
+}

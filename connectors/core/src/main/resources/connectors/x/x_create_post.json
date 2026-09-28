@@ -1,0 +1,28 @@
+{
+  "name": "x_create_post",
+  "description": "Create a new post on X (Twitter).",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string",
+        "description": "Post text, up to 280 characters."
+      }
+    },
+    "required": ["text"]
+  },
+  "spec": {
+    "executor": {
+      "type": "HTTP",
+      "baseUrl": "https://api.twitter.com/2",
+      "path": "/tweets",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "text": "{{ input.text }}"
+      }
+    }
+  }
+}

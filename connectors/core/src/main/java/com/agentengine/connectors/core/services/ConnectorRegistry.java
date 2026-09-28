@@ -10,6 +10,7 @@ import com.agentengine.util.common.SimpleJsonCodec;
 import com.agentengine.util.common.StringUtils;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.slf4j.Logger;
@@ -32,6 +33,43 @@ public final class ConnectorRegistry {
   public Connector get(final String appName, final String connectorName) {
     return connectorCache.computeIfAbsent(
         appName + ":" + connectorName, _ -> load(appName, connectorName));
+  }
+
+  public List<String> listApps() {
+    return ResourceUtils.listResourceNames(CONNECTORS_DIRECTORY).stream()
+        .map(name -> name.substring(CONNECTORS_DIRECTORY.length() + 1))
+        .filter(name -> name.contains("/"))
+        .map(name -> name.substring(0, name.indexOf('/')))
+        .distinct()
+        .sorted()
+        .toList();
+  }
+
+  public List<String> listConnectors(final String appName) {
+    final String directory = CONNECTORS_DIRECTORY + "/" + appName;
+    final String suffix = ".json";
+    return ResourceUtils.listResourceNames(directory).stream()
+        .map(name -> name.substring(name.lastIndexOf('/') + 1))
+        .filter(fileName -> fileName.endsWith(suffix) && !fileName.equals(APP_CONFIG_FILE_NAME))
+        .map(fileName -> fileName.substring(0, fileName.length() - suffix.length()))
+        .filter(connectorName -> !isAuthResource(appName, connectorName))
+        .sorted()
+        .toList();
+  }
+
+  public ConnectionSpec getConnectionSpec(final String appName) {
+    final String appContent =
+        ResourceUtils.loadResourceAsString(
+            "/%s/%s/%s".formatted(CONNECTORS_DIRECTORY, appName, APP_CONFIG_FILE_NAME));
+    if (StringUtils.isBlank(appContent)) {
+      return null;
+    }
+    try {
+      Application app = jsonCodec.deserialize(appContent, Application.class);
+      return app != null ? app.connection() : null;
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   private Connector load(final String appName, final String connectorName) {
@@ -62,21 +100,6 @@ public final class ConnectorRegistry {
         connector.authResource());
   }
 
-  public ConnectionSpec getConnectionSpec(final String appName) {
-    final String appContent =
-        ResourceUtils.loadResourceAsString(
-            "/%s/%s/%s".formatted(CONNECTORS_DIRECTORY, appName, APP_CONFIG_FILE_NAME));
-    if (StringUtils.isBlank(appContent)) {
-      return null;
-    }
-    try {
-      Application app = jsonCodec.deserialize(appContent, Application.class);
-      return app != null ? app.connection() : null;
-    } catch (Exception e) {
-      return null;
-    }
-  }
-
   private ConnectorSpec readAppSpec(final String appContent) {
     if (StringUtils.isBlank(appContent)) {
       return null;
@@ -86,5 +109,10 @@ public final class ConnectorRegistry {
     } catch (Exception e) {
       return null;
     }
+  }
+
+  private boolean isAuthResource(final String appName, final String connectorName) {
+    final Connector connector = get(appName, connectorName);
+    return connector != null && connector.authResource();
   }
 }
