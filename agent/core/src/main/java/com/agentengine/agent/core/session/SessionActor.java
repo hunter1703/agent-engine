@@ -1294,14 +1294,15 @@ public final class SessionActor
     final boolean isFailed = runResult != null && runResult.isFailure();
     updateSessionStatus(state, isFailed ? SessionStatus.FAILED : SessionStatus.COMPLETED);
     if (isFailed) {
+      final CommittedTurn lastCommittedTurn = state.lastCommittedTurn();
       eventChannel.publish(
           rootSessionId,
           SessionEvent.error(
               rootSessionId,
               sessionId,
               runResult.failureMessage(),
-              Long.MAX_VALUE - 1,
-              String.valueOf(state.lastCommittedTurn().turnId())));
+              lastCommittedTurn.startSequence() + lastCommittedTurn.count() - 1,
+              String.valueOf(lastCommittedTurn.turnId())));
     }
     if (topology.isRoot()) {
       generateSessionTitle(rootSessionId, isRecovery);
