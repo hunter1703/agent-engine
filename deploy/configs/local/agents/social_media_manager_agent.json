@@ -18,11 +18,14 @@
     {
       "toolName": "connectors",
       "configs": {
-        "connectors": {
-          "reddit": [
-            "reddit_create_post"
-          ]
-        }
+        "connectors": [
+          {
+            "app": "reddit",
+            "connectors": [
+              "reddit_create_post"
+            ]
+          }
+        ]
       }
     }
   ]

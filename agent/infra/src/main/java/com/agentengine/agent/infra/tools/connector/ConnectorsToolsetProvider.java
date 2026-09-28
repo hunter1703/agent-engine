@@ -4,6 +4,8 @@ import com.agentengine.agent.infra.tools.ToolsetProvider;
 import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.agents.builder.BuilderDefinition;
+import com.agentengine.util.agents.builder.BuilderDefinitionUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.ReadonlyContext;
 import com.google.adk.tools.BaseTool;
@@ -11,6 +13,7 @@ import com.google.adk.tools.BaseToolset;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -22,11 +25,8 @@ import java.util.Map.Entry;
 @Singleton
 public final class ConnectorsToolsetProvider implements ToolsetProvider {
   private static final String CONNECTORS_CONFIG_KEY = "connectors";
-  private static final ToolDescriptor TOOLSET_DESCRIPTOR =
-      new ToolDescriptor(
-          "connectors",
-          "Exposes configured connectors as individual tools, one per connector.",
-          Map.of());
+  private static final String APP_KEY = "app";
+  private static final ToolDescriptor TOOLSET_DESCRIPTOR = buildDescriptor();
 
   private final ConnectionService connectionService;
   private final ConnectorCacheService connectorCacheService;
@@ -49,10 +49,24 @@ public final class ConnectorsToolsetProvider implements ToolsetProvider {
 
   @Override
   public BaseToolset create(final Map<String, Object> toolConfig) {
-    final Map<String, List<String>> connectorConfigs =
-        CollectionUtils.getMapFromMap(toolConfig, CONNECTORS_CONFIG_KEY);
+    final List<ConnectorToolConfig> configs =
+        CollectionUtils.getValueFromMap(toolConfig, CONNECTORS_CONFIG_KEY);
+    final Map<String, List<String>> connectorConfigs = new LinkedHashMap<>();
+    for (final ConnectorToolConfig config : CollectionUtils.nullSafeList(configs)) {
+      connectorConfigs.put(config.app(), CollectionUtils.nullSafeList(config.connectors()));
+    }
     return new ConnectorsToolset(
         connectionService, connectorCacheService, connectorToolDeclarationCache, connectorConfigs);
+  }
+
+  private static ToolDescriptor buildDescriptor() {
+    final BuilderDefinition definition =
+        BuilderDefinitionUtils.generate(ConnectorToolConfigsList.class);
+    return new ToolDescriptor(
+        "connectors",
+        "Exposes configured connectors as individual tools, one per connector.",
+        definition.schema(),
+        definition.layout());
   }
 
   private static final class ConnectorsToolset implements BaseToolset {

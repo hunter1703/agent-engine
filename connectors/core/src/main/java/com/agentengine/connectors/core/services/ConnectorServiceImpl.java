@@ -10,6 +10,7 @@ import com.agentengine.connectors.infra.builders.ConnectorExecutorFactory;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.List;
 import java.util.Map;
 
 @Singleton
@@ -38,6 +39,16 @@ public class ConnectorServiceImpl implements ConnectorService {
     final Connector connector = getConnector(appName, connectorName);
     return new ConnectorMetadata(
         appName, connectorName, connector.description(), connector.inputSchema());
+  }
+
+  @Override
+  public List<String> findAllConnectorAppNames() {
+    return registry.listApps();
+  }
+
+  @Override
+  public List<String> findAllConnectorNames(String appName) {
+    return registry.listConnectors(appName);
   }
 
   private Connector getConnector(final String appName, final String connectorName)

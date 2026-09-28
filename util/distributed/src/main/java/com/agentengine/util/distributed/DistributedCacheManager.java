@@ -56,7 +56,8 @@ public class DistributedCacheManager {
    * there's nothing local to derive the right namespaced key from, so this broadcasts {@code key}
    * namespaced under every {@link CacheScope} a remote cache might use instead. A remote node whose
    * cache doesn't use that scope, or whose context can't resolve it, simply finds no matching entry
-   * and does nothing — a redundant broadcast costs nothing more than rebuilding a cache entry would.
+   * and does nothing — a redundant broadcast costs nothing more than rebuilding a cache entry
+   * would.
    */
   public void invalidate(final CacheTag tag, final String key) {
     final List<DistributedCache<?>> caches = tagVsCaches.get(tag.name());
