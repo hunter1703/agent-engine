@@ -1,13 +1,13 @@
-package com.agentengine.catalog.api.services;
+package com.agentengine.agent.api.services;
 
-import com.agentengine.util.distributed.CacheTag;
+import com.agentengine.util.common.CacheTag;
 import java.util.Locale;
 
-public enum RunnerCacheTag implements CacheTag {
+public enum AgentCacheTag implements CacheTag {
   RUNNERS,
   UNKNOWN;
 
-  public static RunnerCacheTag valueOfOrDefault(final String value) {
+  public static AgentCacheTag valueOfOrDefault(final String value) {
     if (value == null) {
       return UNKNOWN;
     }

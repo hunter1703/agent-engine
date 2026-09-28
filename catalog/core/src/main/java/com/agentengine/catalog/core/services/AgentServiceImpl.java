@@ -1,7 +1,7 @@
 package com.agentengine.catalog.core.services;
 
+import com.agentengine.agent.api.services.AgentCacheTag;
 import com.agentengine.catalog.api.services.AgentService;
-import com.agentengine.catalog.api.services.RunnerCacheTag;
 import com.agentengine.catalog.core.repository.AgentRepository;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.GuardrailRule;
@@ -77,7 +77,7 @@ public class AgentServiceImpl implements AgentService {
         agentRepository.save(
             sanitizeConfig(id, agent, isEdit ? BuilderMode.EDIT : BuilderMode.CREATE));
     if (isEdit) {
-      invalidateCachedRunners();
+      invalidateCachedRunners(id);
     }
     return saved;
   }
@@ -86,7 +86,7 @@ public class AgentServiceImpl implements AgentService {
   @WithSpan
   public BaseAgentConfig updateAgent(final String id, final BaseAgentConfig agent) {
     final BaseAgentConfig updated = agentRepository.update(id, sanitize(agent, BuilderMode.EDIT));
-    invalidateCachedRunners();
+    invalidateCachedRunners(id);
     return updated;
   }
 
@@ -96,15 +96,8 @@ public class AgentServiceImpl implements AgentService {
     return agentRepository.deleteById(id);
   }
 
-  /**
-   * Clears every cached {@code SessionRunner} across the fleet, not just this agent's - the runner
-   * cache is keyed by session id, not agent id, so there's no cheaper way to reach exactly the
-   * sessions this agent owns. Safe to do liberally: agent edits are rare, and an evicted session's
-   * runner is rebuilt from its current config on its next turn regardless, the same as it would be
-   * after a normal actor restart.
-   */
-  private void invalidateCachedRunners() {
-    cacheManager.invalidateAll(RunnerCacheTag.RUNNERS);
+  private void invalidateCachedRunners(final String agentId) {
+    cacheManager.invalidateByPrefix(AgentCacheTag.RUNNERS, agentId + ":");
   }
 
   private static BaseAgentConfig sanitize(final BaseAgentConfig config, final BuilderMode mode) {

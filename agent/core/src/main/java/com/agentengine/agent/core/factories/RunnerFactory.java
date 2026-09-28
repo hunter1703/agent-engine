@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.factories;
 
+import com.agentengine.agent.api.services.AgentCacheTag;
 import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.SessionRunner;
 import com.agentengine.agent.core.session.commands.SessionCommand;
@@ -15,7 +16,6 @@ import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.AgentService;
-import com.agentengine.catalog.api.services.RunnerCacheTag;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
@@ -80,28 +80,26 @@ public class RunnerFactory {
     this.toolFactory = toolFactory;
     this.cache =
         new DistributedCache.Builder<SessionRunner>(CACHE_NAME, cacheManager)
-            .tags(Set.of(RunnerCacheTag.RUNNERS))
+            .tags(Set.of(AgentCacheTag.RUNNERS))
             .removalListener(SessionRunner::close)
             .build();
   }
 
-  /**
-   * Returns the session's {@link SessionRunner}, building and caching it on first use. Every
-   * session keeps the same runner instance - with its own in-memory ADK session and any in-flight
-   * run's not-yet-committed events - for as long as this cache entry survives, exactly like the
-   * {@code SessionActor} field it replaces. An agent config update (see {@link
-   * com.agentengine.catalog.core.services.AgentServiceImpl}) evicts every cached runner cluster-wide,
-   * since only a fresh build re-reads the agent's current config; the next call for an evicted
-   * session simply rebuilds it, same as a normal actor restart already does.
-   */
   public SessionRunner getOrBuild(
       final String agentId, final String sessionId, final ActorRef<SessionCommand> actor) {
-    return cache.get(sessionId, key -> build(agentId, sessionId, actor));
+    return cache.get(cacheKey(agentId, sessionId), key -> build(agentId, sessionId, actor));
   }
 
-  /** Evicts and closes {@code sessionId}'s cached runner, if any - e.g. when its actor stops. */
-  public void evict(final String sessionId) {
-    cache.invalidate(sessionId);
+  public void evict(final String agentId, final String sessionId) {
+    cache.invalidate(cacheKey(agentId, sessionId));
+  }
+
+  public void evictLocal(final String agentId, final String sessionId) {
+    cache.invalidateLocally(cacheKey(agentId, sessionId));
+  }
+
+  private static String cacheKey(final String agentId, final String sessionId) {
+    return agentId + ":" + sessionId;
   }
 
   private SessionRunner build(

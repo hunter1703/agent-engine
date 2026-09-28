@@ -84,13 +84,6 @@ public final class SessionActor
   private final List<Event> turnEvents = new LinkedList<>();
   private Integer turnId;
 
-  /**
-   * Interrupt IDs already fed to the session's current runner via {@code resume}, so a later {@link
-   * #continueRun} within the same still-open turn does not hand it the same {@link ResumeRequest}
-   * twice. Deliberately actor-local rather than persisted state: on recovery, {@link #recover} evicts
-   * the cached runner so a truly fresh one is built, having seen nothing yet, so this must also start
-   * empty then, not be replayed as already-populated.
-   */
   private final Set<String> resumedInterruptIds = new HashSet<>();
 
   private final java.util.function.Function<String, EntityRef<SessionCommand>> refSupplier;
@@ -125,7 +118,6 @@ public final class SessionActor
     this.sessionId = entityId;
   }
 
-  /** The session's runner, built (or fetched from cache) fresh on every call - see {@link RunnerFactory#getOrBuild}. */
   private SessionRunner runner(final SessionTopology topology) {
     return runnerFactory.getOrBuild(topology.agentId(), topology.sessionId(), self);
   }
@@ -164,7 +156,9 @@ public final class SessionActor
 
   @Override
   protected void onPostStop(final SessionActorState state) {
-    runnerFactory.evict(sessionId);
+    if (state != null && state.topology() != null) {
+      runnerFactory.evictLocal(state.topology().agentId(), sessionId);
+    }
   }
 
   @Override
@@ -185,10 +179,7 @@ public final class SessionActor
         sessionService.deleteSession(sessionId);
       }
     }
-    // A cached runner from a prior incarnation of this actor (if this node still had one warm)
-    // would have seen resumes this fresh actor's resumedInterruptIds knows nothing about - evict it
-    // so recovery always gets a truly fresh runner, matching resumedInterruptIds starting empty.
-    runnerFactory.evict(sessionId);
+    runnerFactory.evictLocal(topology.agentId(), sessionId);
     init(topology);
     // Redone unconditionally: a crash could have landed between RollbackFact persisting and this
     // Mongo write completing, and there's no record of whether it already succeeded. Safe to redo

@@ -1,6 +1,6 @@
 package com.agentengine.connectors.api.services;
 
-import com.agentengine.util.distributed.CacheTag;
+import com.agentengine.util.common.CacheTag;
 import java.util.Locale;
 
 public enum ConnectionCacheTag implements CacheTag {

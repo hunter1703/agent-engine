@@ -1,5 +1,6 @@
 package com.agentengine.util.distributed;
 
+import com.agentengine.util.common.CacheTag;
 import com.agentengine.util.common.RefCounted;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;

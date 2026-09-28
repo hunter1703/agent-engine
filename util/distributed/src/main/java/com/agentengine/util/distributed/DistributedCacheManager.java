@@ -1,5 +1,6 @@
 package com.agentengine.util.distributed;
 
+import com.agentengine.util.common.CacheTag;
 import com.agentengine.util.common.CollectionUtils;
 import jakarta.inject.Singleton;
 import java.util.List;
@@ -25,6 +26,8 @@ public class DistributedCacheManager {
               CollectionUtils.nullSafeList(tagVsCaches.get(tag))) {
             if ("*".equals(key)) {
               cache.invalidateAll(true);
+            } else if (key.endsWith("*")) {
+              cache.invalidateByPrefixLocally(key.substring(0, key.length() - 1));
             } else {
               cache.invalidateNamespacedLocally(key);
             }
@@ -62,7 +65,7 @@ public class DistributedCacheManager {
   public void invalidate(final CacheTag tag, final String key) {
     final List<DistributedCache<?>> caches = tagVsCaches.get(tag.name());
     if (CollectionUtils.isEmpty(caches)) {
-      broadcastInvalidationForEveryScope(tag.name(), key);
+      broadcastInvalidationForEveryScope(tag.name(), key, false);
       return;
     }
     for (final DistributedCache<?> cache : caches) {
@@ -70,17 +73,30 @@ public class DistributedCacheManager {
     }
   }
 
+  public void invalidateByPrefix(final CacheTag tag, final String keyPrefix) {
+    final List<DistributedCache<?>> caches = tagVsCaches.get(tag.name());
+    if (CollectionUtils.isEmpty(caches)) {
+      broadcastInvalidationForEveryScope(tag.name(), keyPrefix, true);
+      return;
+    }
+    for (final DistributedCache<?> cache : caches) {
+      cache.invalidateByPrefix(keyPrefix);
+    }
+  }
+
   public void broadcastInvalidation(final String tag, final String key) {
     jgroupsService.broadcast(EventCategory.CACHE_EVICTION, tag + ":" + key);
   }
 
-  private void broadcastInvalidationForEveryScope(final String tag, final String key) {
+  private void broadcastInvalidationForEveryScope(
+      final String tag, final String key, final boolean asPrefix) {
     for (final CacheScope scope : CacheScope.values()) {
       if (scope == CacheScope.UNKNOWN) {
         continue;
       }
       try {
-        broadcastInvalidation(tag, scope.namespace(tag, key));
+        final String namespacedKey = scope.namespace(tag, key);
+        broadcastInvalidation(tag, asPrefix ? namespacedKey + "*" : namespacedKey);
       } catch (final IllegalStateException ex) {
         // The current context can't resolve this scope's customer/user id, so no cache using it
         // could have namespaced this key that way either — nothing to invalidate for it here.

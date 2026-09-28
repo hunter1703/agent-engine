@@ -93,6 +93,14 @@ public class Cache<K, V> {
     }
   }
 
+  public void invalidateKeysIf(final Predicate<K> shouldInvalidate) {
+    for (final K key : delegate.asMap().keySet()) {
+      if (shouldInvalidate.test(key)) {
+        delegate.invalidate(key);
+      }
+    }
+  }
+
   public long size() {
     return delegate.size();
   }
