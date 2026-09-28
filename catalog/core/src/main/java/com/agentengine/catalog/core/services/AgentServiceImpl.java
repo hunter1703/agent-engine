@@ -1,6 +1,7 @@
 package com.agentengine.catalog.core.services;
 
 import com.agentengine.catalog.api.services.AgentService;
+import com.agentengine.catalog.api.services.RunnerCacheTag;
 import com.agentengine.catalog.core.repository.AgentRepository;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.GuardrailRule;
@@ -12,6 +13,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.distributed.DistributedCacheManager;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
@@ -26,10 +28,13 @@ public class AgentServiceImpl implements AgentService {
       BuilderDefinitionUtils.generate(BaseAgentConfig.class);
 
   private final AgentRepository agentRepository;
+  private final DistributedCacheManager cacheManager;
 
   @Inject
-  public AgentServiceImpl(final AgentRepository agentRepository) {
+  public AgentServiceImpl(
+      final AgentRepository agentRepository, final DistributedCacheManager cacheManager) {
     this.agentRepository = agentRepository;
+    this.cacheManager = cacheManager;
   }
 
   @Override
@@ -67,20 +72,39 @@ public class AgentServiceImpl implements AgentService {
       throw new IllegalArgumentException("Agent should be non-null");
     }
     final String id = agent.getId();
-    return agentRepository.save(
-        sanitizeConfig(id, agent, StringUtils.isBlank(id) ? BuilderMode.CREATE : BuilderMode.EDIT));
+    final boolean isEdit = StringUtils.isNotBlank(id);
+    final BaseAgentConfig saved =
+        agentRepository.save(
+            sanitizeConfig(id, agent, isEdit ? BuilderMode.EDIT : BuilderMode.CREATE));
+    if (isEdit) {
+      invalidateCachedRunners();
+    }
+    return saved;
   }
 
   @Override
   @WithSpan
   public BaseAgentConfig updateAgent(final String id, final BaseAgentConfig agent) {
-    return agentRepository.update(id, sanitize(agent, BuilderMode.EDIT));
+    final BaseAgentConfig updated = agentRepository.update(id, sanitize(agent, BuilderMode.EDIT));
+    invalidateCachedRunners();
+    return updated;
   }
 
   @Override
   @WithSpan
   public boolean deleteAgent(String id) {
     return agentRepository.deleteById(id);
+  }
+
+  /**
+   * Clears every cached {@code SessionRunner} across the fleet, not just this agent's - the runner
+   * cache is keyed by session id, not agent id, so there's no cheaper way to reach exactly the
+   * sessions this agent owns. Safe to do liberally: agent edits are rare, and an evicted session's
+   * runner is rebuilt from its current config on its next turn regardless, the same as it would be
+   * after a normal actor restart.
+   */
+  private void invalidateCachedRunners() {
+    cacheManager.invalidateAll(RunnerCacheTag.RUNNERS);
   }
 
   private static BaseAgentConfig sanitize(final BaseAgentConfig config, final BuilderMode mode) {

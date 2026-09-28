@@ -85,11 +85,11 @@ public final class SessionActor
   private Integer turnId;
 
   /**
-   * Interrupt IDs already fed to {@link #runner}'s current instance via {@code runner.resume}, so a
-   * later {@link #continueRun} within the same still-open turn does not hand it the same {@link
-   * ResumeRequest} twice. Deliberately actor-local rather than persisted state: on recovery, {@code
-   * runner} is rebuilt from scratch and has seen nothing yet, so this must also start empty then,
-   * not be replayed as already-populated.
+   * Interrupt IDs already fed to the session's current runner via {@code resume}, so a later {@link
+   * #continueRun} within the same still-open turn does not hand it the same {@link ResumeRequest}
+   * twice. Deliberately actor-local rather than persisted state: on recovery, {@link #recover} evicts
+   * the cached runner so a truly fresh one is built, having seen nothing yet, so this must also start
+   * empty then, not be replayed as already-populated.
    */
   private final Set<String> resumedInterruptIds = new HashSet<>();
 
@@ -99,8 +99,8 @@ public final class SessionActor
   private final SessionTitleGenerator sessionTitleGenerator;
   private final MemoryService memoryService;
   private final SessionEventsRepository sessionEventsRepository;
+  private final String sessionId;
   private Context ownerContext;
-  private SessionRunner runner;
 
   public SessionActor(
       final ActorContext<SessionCommand> actorContext,
@@ -122,6 +122,12 @@ public final class SessionActor
     this.sessionTitleGenerator = sessionTitleGenerator;
     this.memoryService = memoryService;
     this.sessionEventsRepository = sessionEventsRepository;
+    this.sessionId = entityId;
+  }
+
+  /** The session's runner, built (or fetched from cache) fresh on every call - see {@link RunnerFactory#getOrBuild}. */
+  private SessionRunner runner(final SessionTopology topology) {
+    return runnerFactory.getOrBuild(topology.agentId(), topology.sessionId(), self);
   }
 
   @Override
@@ -158,9 +164,7 @@ public final class SessionActor
 
   @Override
   protected void onPostStop(final SessionActorState state) {
-    if (runner != null) {
-      runner.close();
-    }
+    runnerFactory.evict(sessionId);
   }
 
   @Override
@@ -181,6 +185,10 @@ public final class SessionActor
         sessionService.deleteSession(sessionId);
       }
     }
+    // A cached runner from a prior incarnation of this actor (if this node still had one warm)
+    // would have seen resumes this fresh actor's resumedInterruptIds knows nothing about - evict it
+    // so recovery always gets a truly fresh runner, matching resumedInterruptIds starting empty.
+    runnerFactory.evict(sessionId);
     init(topology);
     // Redone unconditionally: a crash could have landed between RollbackFact persisting and this
     // Mongo write completing, and there's no record of whether it already succeeded. Safe to redo
@@ -205,14 +213,14 @@ public final class SessionActor
         // The crash-landed before the first turn committed, so restart from the original message.
         final UserMessage message =
             Objects.requireNonNull(state.currentRun()).message().getRecord();
-        RUN_EXECUTOR.execute(() -> runner.start(message, state.grants()));
+        RUN_EXECUTOR.execute(() -> runner(topology).start(message, state.grants()));
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case CONTINUING -> {
         final Collection<ResumeRequest> resumeRequests = state.getAllReceivedResumes();
         resumeRequests.forEach(
             resumeRequest -> resumedInterruptIds.add(resumeRequest.getInterruptId()));
-        RUN_EXECUTOR.execute(() -> runner.resume(resumeRequests, state.grants()));
+        RUN_EXECUTOR.execute(() -> runner(topology).resume(resumeRequests, state.grants()));
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case RUNNING -> reRunFromLastCommittedTurn(state);
@@ -266,7 +274,7 @@ public final class SessionActor
     for (final StartingChild child : state.startingChildren()) {
       self.tell(new StartChildCommand(child.agentId(), child.message(), null));
     }
-    RUN_EXECUTOR.execute(() -> runner.start(UserMessage.ofText("continue"), state.grants()));
+    RUN_EXECUTOR.execute(() -> runner(topology).start(UserMessage.ofText("continue"), state.grants()));
     updateSessionStatus(state, SessionStatus.RUNNING);
   }
 
@@ -340,9 +348,6 @@ public final class SessionActor
   }
 
   private void init(final SessionTopology topology) {
-    if (runner != null) {
-      return;
-    }
     final String sessionId = topology.sessionId();
     final AgentSession session = sessionService.getSession(sessionId);
     if (session == null) {
@@ -365,7 +370,6 @@ public final class SessionActor
       agentSession.setStatus(SessionStatus.INIT);
       sessionService.create(agentSession);
     }
-    runner = runnerFactory.buildRunner(topology.agentId(), sessionId, self);
   }
 
   private Effect<SessionFact, SessionActorState> start(
@@ -554,7 +558,7 @@ public final class SessionActor
         (newState -> {
           resumeRequests.forEach(
               resumeRequest -> resumedInterruptIds.add(resumeRequest.getInterruptId()));
-          RUN_EXECUTOR.execute(() -> runner.resume(resumeRequests, newState.grants()));
+          RUN_EXECUTOR.execute(() -> runner(newState.topology()).resume(resumeRequests, newState.grants()));
           LOG.debug(
               "Continued run with resumes : {} for topology : {}",
               JsonUtils.toJson(resumeRequests),
@@ -1113,7 +1117,8 @@ public final class SessionActor
               newState.topology().sessionId(),
               nextMessage.getRecord());
           updateSessionStatus(newState, SessionStatus.RUNNING);
-          RUN_EXECUTOR.execute(() -> runner.start(nextMessage.getRecord(), newState.grants()));
+          RUN_EXECUTOR.execute(
+              () -> runner(newState.topology()).start(nextMessage.getRecord(), newState.grants()));
         }));
   }
 

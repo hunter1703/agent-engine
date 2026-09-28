@@ -15,6 +15,7 @@ import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.AgentService;
+import com.agentengine.catalog.api.services.RunnerCacheTag;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
@@ -23,6 +24,8 @@ import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.distributed.DistributedCache;
+import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.apps.App;
 import com.google.adk.events.Event;
@@ -38,6 +41,8 @@ import org.apache.pekko.actor.typed.ActorRef;
 @Singleton
 public class RunnerFactory {
 
+  private static final String CACHE_NAME = "session-runner-cache";
+
   private final AgentService agentService;
   private final AgentProvider agentProvider;
   private final ContextManagerProvider contextManagerProvider;
@@ -49,6 +54,7 @@ public class RunnerFactory {
   private final MemoryService memoryService;
   private final NotesRepository notesRepository;
   private final ToolFactory toolFactory;
+  private final DistributedCache<SessionRunner> cache;
 
   public RunnerFactory(
       AgentService agentService,
@@ -60,7 +66,8 @@ public class RunnerFactory {
       final KnowledgeService knowledgeService,
       final MemoryService memoryService,
       final NotesRepository notesRepository,
-      final ToolFactory toolFactory) {
+      final ToolFactory toolFactory,
+      final DistributedCacheManager cacheManager) {
     this.agentService = agentService;
     this.agentProvider = agentProvider;
     this.contextManagerProvider = contextManagerProvider;
@@ -71,9 +78,33 @@ public class RunnerFactory {
     this.memoryService = memoryService;
     this.notesRepository = notesRepository;
     this.toolFactory = toolFactory;
+    this.cache =
+        new DistributedCache.Builder<SessionRunner>(CACHE_NAME, cacheManager)
+            .tags(Set.of(RunnerCacheTag.RUNNERS))
+            .removalListener(SessionRunner::close)
+            .build();
   }
 
-  public SessionRunner buildRunner(
+  /**
+   * Returns the session's {@link SessionRunner}, building and caching it on first use. Every
+   * session keeps the same runner instance - with its own in-memory ADK session and any in-flight
+   * run's not-yet-committed events - for as long as this cache entry survives, exactly like the
+   * {@code SessionActor} field it replaces. An agent config update (see {@link
+   * com.agentengine.catalog.core.services.AgentServiceImpl}) evicts every cached runner cluster-wide,
+   * since only a fresh build re-reads the agent's current config; the next call for an evicted
+   * session simply rebuilds it, same as a normal actor restart already does.
+   */
+  public SessionRunner getOrBuild(
+      final String agentId, final String sessionId, final ActorRef<SessionCommand> actor) {
+    return cache.get(sessionId, key -> build(agentId, sessionId, actor));
+  }
+
+  /** Evicts and closes {@code sessionId}'s cached runner, if any - e.g. when its actor stops. */
+  public void evict(final String sessionId) {
+    cache.invalidate(sessionId);
+  }
+
+  private SessionRunner build(
       final String agentId, final String sessionId, final ActorRef<SessionCommand> actor) {
     final BaseAgentConfig config = agentService.getAgent(agentId);
     final Agent agent = agentProvider.create(config);
