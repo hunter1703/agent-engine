@@ -9,7 +9,13 @@
   "topP": 0.92,
   "repeatPenalty": 1.05,
   "toolCallingEnabled": true,
-  "thoughtsEnabled": false,
+  "thoughtsEnabled": true,
+  "additionalParams": [
+    {
+      "key": "reasoning_format",
+      "value": "parsed"
+    }
+  ],
   "provider": "OPEN_AI_COMPATIBLE",
   "type": "CHAT"
 }

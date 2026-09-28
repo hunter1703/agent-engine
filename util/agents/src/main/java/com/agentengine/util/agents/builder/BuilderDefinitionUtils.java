@@ -380,7 +380,10 @@ public final class BuilderDefinitionUtils {
     final List<Object> options = widget == Widget.SELECT ? buildSelectOptions(selectAnn) : null;
     final LayoutLookup lookup =
         widget == Widget.LOOKUP && lookupAnn != null
-            ? new LayoutLookup(collection ? Boolean.TRUE : null, lookupAnn.assetType())
+            ? new LayoutLookup(
+                collection ? Boolean.TRUE : null,
+                lookupAnn.assetType(),
+                buildLookupOptions(lookupAnn))
             : null;
     final LayoutDynamicSchema dynamicSchema =
         widget == Widget.DYNAMIC_SCHEMA && dynamicSchemaAnn != null
@@ -561,6 +564,17 @@ public final class BuilderDefinitionUtils {
   }
 
   // ─── Dynamic schema ───────────────────────────────────────────────────────
+
+  private static Map<String, String> buildLookupOptions(final UiLookup lookupAnn) {
+    if (lookupAnn == null || lookupAnn.options() == null || lookupAnn.options().length == 0) {
+      return null;
+    }
+    final Map<String, String> map = new LinkedHashMap<>();
+    for (final UiLookupOption opt : lookupAnn.options()) {
+      map.put(opt.key(), opt.expr());
+    }
+    return map.isEmpty() ? null : map;
+  }
 
   private static LayoutDynamicSchema buildDynamicSchema(final UiDynamicSchema ann) {
     final Map<String, Object> body = new LinkedHashMap<>();

@@ -63,6 +63,14 @@ public final class ResponsesEventMapper {
       return outputItemDone("message");
     }
 
+    if (event instanceof ReasoningMessageChunkEvent thinking) {
+      String delta = thinking.delta();
+      if (delta.isEmpty()) {
+        return Flowable.empty();
+      }
+      return reasoningDelta(delta);
+    }
+
     if (event instanceof ReasoningMessageContentEvent thinking) {
       String delta = thinking.delta();
       if (delta.isEmpty()) {

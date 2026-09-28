@@ -36,6 +36,7 @@ public class DistributedCache<V> {
             builder.removalListener);
     cacheManager.register(this);
     if (builder.reapWhen != null) {
+      //noinspection resource
       final ScheduledExecutorService reaper =
           Executors.newSingleThreadScheduledExecutor(
               Thread.ofVirtual().name(cacheName + "-reaper-", 0).factory());

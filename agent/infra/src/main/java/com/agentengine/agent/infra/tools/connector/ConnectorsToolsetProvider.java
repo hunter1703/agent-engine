@@ -3,6 +3,7 @@ package com.agentengine.agent.infra.tools.connector;
 import com.agentengine.agent.infra.tools.ToolsetProvider;
 import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorCacheService;
+import com.agentengine.util.agents.beans.tools.ConnectorToolConfigsList;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.builder.BuilderDefinition;
 import com.agentengine.util.agents.builder.BuilderDefinitionUtils;
@@ -13,9 +14,7 @@ import com.google.adk.tools.BaseToolset;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 /**
@@ -24,8 +23,6 @@ import java.util.Map.Entry;
  */
 @Singleton
 public final class ConnectorsToolsetProvider implements ToolsetProvider {
-  private static final String CONNECTORS_CONFIG_KEY = "connectors";
-  private static final String APP_KEY = "app";
   private static final ToolDescriptor TOOLSET_DESCRIPTOR = buildDescriptor();
 
   private final ConnectionService connectionService;
@@ -49,14 +46,24 @@ public final class ConnectorsToolsetProvider implements ToolsetProvider {
 
   @Override
   public BaseToolset create(final Map<String, Object> toolConfig) {
-    final List<ConnectorToolConfig> configs =
-        CollectionUtils.getValueFromMap(toolConfig, CONNECTORS_CONFIG_KEY);
-    final Map<String, List<String>> connectorConfigs = new LinkedHashMap<>();
-    for (final ConnectorToolConfig config : CollectionUtils.nullSafeList(configs)) {
-      connectorConfigs.put(config.app(), CollectionUtils.nullSafeList(config.connectors()));
-    }
+    final Map<String, List<String>> connectorConfigs = buildConnectorConfigs(toolConfig);
     return new ConnectorsToolset(
         connectionService, connectorCacheService, connectorToolDeclarationCache, connectorConfigs);
+  }
+
+  private static Map<String, List<String>> buildConnectorConfigs(
+      final Map<String, Object> toolConfig) {
+    final List<Map<String, Object>> configMapsList =
+        CollectionUtils.getListFromMap(toolConfig, "connectors");
+    final Map<String, List<String>> result = new HashMap<>();
+    for (final Map<String, Object> config : CollectionUtils.nullSafeList(configMapsList)) {
+      final String app = CollectionUtils.getStringValueFromMap(config, "app");
+      final List<String> connectors = CollectionUtils.getListFromMap(config, "connectors");
+      if (CollectionUtils.isNotEmpty(connectors)) {
+        result.put(app, connectors);
+      }
+    }
+    return result;
   }
 
   private static ToolDescriptor buildDescriptor() {

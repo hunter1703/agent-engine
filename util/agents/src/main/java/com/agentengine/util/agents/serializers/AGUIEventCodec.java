@@ -5,6 +5,7 @@ import com.agui.community.core.event.CustomEvent;
 import com.agui.community.core.event.Event;
 import com.agui.community.core.event.ReasoningEndEvent;
 import com.agui.community.core.event.ReasoningMessageChunkEvent;
+import com.agui.community.core.event.ReasoningMessageContentEvent;
 import com.agui.community.core.event.ReasoningMessageEndEvent;
 import com.agui.community.core.event.ReasoningMessageStartEvent;
 import com.agui.community.core.event.ReasoningStartEvent;
@@ -143,6 +144,10 @@ public final class AGUIEventCodec extends JsonSerializer<Event> {
       }
       case ReasoningMessageStartEvent event -> {
         writeString(gen, FIELD_MESSAGE_ID, event.messageId());
+      }
+      case ReasoningMessageContentEvent event -> {
+        writeString(gen, FIELD_MESSAGE_ID, event.messageId());
+        writeString(gen, FIELD_DELTA, event.delta());
       }
       case ReasoningMessageChunkEvent event -> {
         writeString(gen, FIELD_MESSAGE_ID, event.messageId());

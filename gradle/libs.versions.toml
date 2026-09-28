@@ -5,8 +5,8 @@ protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
 [versions]
 # Core frameworks
 quarkus = "3.34.0"
-langchain4j = "1.10.0"
-langchain4j-plugin = "1.10.0"
+langchain4j = "1.20.2"
+langchain4j-plugin = "1.20.2"
 qdrant-client = "1.17.0"
 pdfbox = "2.0.32"
 google-adk = "1.4.0"

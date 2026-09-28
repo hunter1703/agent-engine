@@ -4,10 +4,11 @@ import com.agentengine.agent.api.services.ToolCatalog;
 import com.agentengine.interfaces.rest.dto.SchemaLookupRequest;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.builder.BuilderDefinition;
+import com.agentengine.util.agents.builder.BuilderMode;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.exception.AssetNotFoundException;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.Collections;
 
 @Singleton
 public class ToolConfigsSchemaRequestHandler implements SchemaRequestHandler {
@@ -28,10 +29,9 @@ public class ToolConfigsSchemaRequestHandler implements SchemaRequestHandler {
   public Object handle(SchemaLookupRequest request) {
     final ToolDescriptor tool = toolCatalog.getToolByName(request.assetId());
     if (tool == null) {
-      return Collections.emptyMap();
+      throw new AssetNotFoundException("Tool", request.assetId());
     }
-    return tool.configsLayout() == null
-        ? tool.configsSchema()
-        : new BuilderDefinition(tool.configsSchema(), tool.configsLayout());
+    return new BuilderDefinition(tool.configsSchema(), tool.configsLayout())
+        .resolve(BuilderMode.EDIT);
   }
 }

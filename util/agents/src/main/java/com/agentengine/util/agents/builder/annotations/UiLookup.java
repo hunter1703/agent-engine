@@ -19,4 +19,7 @@ public @interface UiLookup {
 
   /** Asset type to query through the resource catalog API. */
   String assetType();
+
+  /** Dynamic options/filter expressions passed in the catalog request. */
+  UiLookupOption[] options() default {};
 }

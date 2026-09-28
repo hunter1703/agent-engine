@@ -3,8 +3,8 @@ package com.agentengine.interfaces.rest.handlers.catalog;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.beans.NamedEntity;
 import com.agentengine.util.common.query.PaginatedResult;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -16,7 +16,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Singleton
-public class ConnectorAssetHandler extends NamedAssetHandler<String> {
+public class ConnectorAssetHandler extends NamedAssetHandler<NamedEntity> {
 
   public static final String OPTION_APP_NAME = "appName";
 
@@ -33,37 +33,40 @@ public class ConnectorAssetHandler extends NamedAssetHandler<String> {
   }
 
   @Override
-  public PaginatedResult<String> findAssets(final AssetRequest request) {
+  public PaginatedResult<NamedEntity> findAssets(final AssetRequest request) {
     final String appName = appName(request);
-    if (StringUtils.isBlank(appName)) {
-      return PaginatedResult.create(List.of());
-    }
-    return PaginatedResult.create(connectorService.findAllConnectorNames(appName));
+    final List<NamedEntity> entities =
+        connectorService.findAllConnectorNames(appName).stream()
+            .map(name -> new NamedEntity(name, name))
+            .toList();
+    return PaginatedResult.create(entities);
   }
 
   @Override
-  public Map<String, String> getAssetsByIds(final AssetRequest request) {
-    final String appName = appName(request);
-    if (StringUtils.isBlank(appName) || CollectionUtils.isEmpty(request.getKeys())) {
+  public Map<String, NamedEntity> getAssetsByIds(final AssetRequest request) {
+    if (CollectionUtils.isEmpty(request.getKeys())) {
       return Map.of();
     }
+    final String appName = appName(request);
     final Set<String> connectors = new HashSet<>(connectorService.findAllConnectorNames(appName));
     return request.getKeys().stream()
         .filter(connectors::contains)
-        .collect(Collectors.toMap(Function.identity(), Function.identity()));
+        .collect(Collectors.toMap(Function.identity(), name -> new NamedEntity(name, name)));
   }
 
   @Override
-  protected String getId(final String asset) {
-    return asset;
+  protected String getId(final NamedEntity asset) {
+    return asset != null ? asset.getId() : null;
   }
 
   @Override
-  protected String getName(final String asset) {
-    return asset;
+  protected String getName(final NamedEntity asset) {
+    return asset != null ? asset.getName() : null;
   }
 
   private static String appName(final AssetRequest request) {
-    return CollectionUtils.getStringValueFromMap(request.getOptions(), OPTION_APP_NAME);
+    return request != null
+        ? CollectionUtils.getStringValueFromMap(request.getOptions(), OPTION_APP_NAME)
+        : null;
   }
 }

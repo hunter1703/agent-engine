@@ -46,6 +46,9 @@ public final class ConnectorRegistry {
   }
 
   public List<String> listConnectors(final String appName) {
+    if (StringUtils.isBlank(appName)) {
+      return List.of();
+    }
     final String directory = CONNECTORS_DIRECTORY + "/" + appName;
     final String suffix = ".json";
     return ResourceUtils.listResourceNames(directory).stream()

@@ -6,6 +6,7 @@ import com.agentengine.util.agents.builder.annotations.UiNumber;
 import com.agentengine.util.agents.builder.annotations.UiPreset;
 import com.agentengine.util.agents.builder.annotations.UiText;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import java.util.ArrayList;
 import java.util.List;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
@@ -40,10 +41,6 @@ public class ChatModelConfig extends ModelConfig {
   @UiText(multiline = true, rows = 4)
   private String instructions;
 
-  @UiField(label = "Response Format", step = "integration", order = 70, advanced = true)
-  @UiText
-  private String responseFormat;
-
   @UiField(label = "Enable Tool Calling", step = "integration", order = 80)
   @UiBoolean
   private boolean toolCallingEnabled = false;
@@ -51,6 +48,9 @@ public class ChatModelConfig extends ModelConfig {
   @UiField(label = "Thoughts Enabled", step = "integration", order = 90, advanced = true)
   @UiBoolean
   private boolean thoughtsEnabled = true;
+
+  @UiField(label = "Additional Parameters", step = "integration", order = 100, advanced = true)
+  private List<KeyValuePair> additionalParams = new ArrayList<>();
 
   @UiField(label = "Temperature", step = "sampling", order = 10)
   @UiNumber
@@ -88,14 +88,6 @@ public class ChatModelConfig extends ModelConfig {
     this.instructions = instructions;
   }
 
-  public String getResponseFormat() {
-    return responseFormat;
-  }
-
-  public void setResponseFormat(final String responseFormat) {
-    this.responseFormat = responseFormat;
-  }
-
   public boolean isToolCallingEnabled() {
     return toolCallingEnabled;
   }
@@ -110,6 +102,15 @@ public class ChatModelConfig extends ModelConfig {
 
   public void setThoughtsEnabled(final boolean thoughtsEnabled) {
     this.thoughtsEnabled = thoughtsEnabled;
+  }
+
+  public List<KeyValuePair> getAdditionalParams() {
+    return additionalParams;
+  }
+
+  public void setAdditionalParams(final List<KeyValuePair> additionalParams) {
+    this.additionalParams =
+        additionalParams == null ? new ArrayList<>() : new ArrayList<>(additionalParams);
   }
 
   public Double getTemperature() {

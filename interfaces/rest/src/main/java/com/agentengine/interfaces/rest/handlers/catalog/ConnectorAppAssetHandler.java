@@ -4,10 +4,12 @@ import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.beans.NamedEntity;
 import com.agentengine.util.common.query.PaginatedResult;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -18,7 +20,7 @@ import java.util.stream.Collectors;
  * service.
  */
 @Singleton
-public class ConnectorAppAssetHandler extends NamedAssetHandler<String> {
+public class ConnectorAppAssetHandler extends NamedAssetHandler<NamedEntity> {
 
   private final ConnectorService connectorService;
 
@@ -33,28 +35,32 @@ public class ConnectorAppAssetHandler extends NamedAssetHandler<String> {
   }
 
   @Override
-  public PaginatedResult<String> findAssets(final AssetRequest request) {
-    return PaginatedResult.create(connectorService.findAllConnectorAppNames());
+  public PaginatedResult<NamedEntity> findAssets(final AssetRequest request) {
+    final List<NamedEntity> entities =
+        connectorService.findAllConnectorAppNames().stream()
+            .map(name -> new NamedEntity(name, name))
+            .toList();
+    return PaginatedResult.create(entities);
   }
 
   @Override
-  public Map<String, String> getAssetsByIds(final AssetRequest request) {
+  public Map<String, NamedEntity> getAssetsByIds(final AssetRequest request) {
     if (CollectionUtils.isEmpty(request.getKeys())) {
       return Map.of();
     }
     final Set<String> apps = new HashSet<>(connectorService.findAllConnectorAppNames());
     return request.getKeys().stream()
         .filter(apps::contains)
-        .collect(Collectors.toMap(Function.identity(), Function.identity()));
+        .collect(Collectors.toMap(Function.identity(), name -> new NamedEntity(name, name)));
   }
 
   @Override
-  protected String getId(final String asset) {
-    return asset;
+  protected String getId(final NamedEntity asset) {
+    return asset != null ? asset.getId() : null;
   }
 
   @Override
-  protected String getName(final String asset) {
-    return asset;
+  protected String getName(final NamedEntity asset) {
+    return asset != null ? asset.getName() : null;
   }
 }

@@ -1294,7 +1294,7 @@ public final class SessionActor
     final boolean isFailed = runResult != null && runResult.isFailure();
     updateSessionStatus(state, isFailed ? SessionStatus.FAILED : SessionStatus.COMPLETED);
     if (isFailed) {
-      final CommittedTurn lastCommittedTurn = state.lastCommittedTurn();
+      final CommittedTurn lastCommittedTurn = Objects.requireNonNull(state.lastCommittedTurn());
       eventChannel.publish(
           rootSessionId,
           SessionEvent.error(

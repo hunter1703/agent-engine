@@ -3,14 +3,12 @@ package com.agentengine.util.models.factories;
 import com.agentengine.util.agents.beans.config.ChatModelConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.EnvUtils;
-import com.agentengine.util.common.ResourceUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.models.llm.DelegatingLLMModel;
 import com.agentengine.util.models.llm.Parser;
 import com.agentengine.util.scripts.TemplateUtils;
 import com.agentengine.util.scripts.templated.Template;
 import com.google.adk.models.BaseLlm;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,47 +20,23 @@ public abstract class DelegatingModelFactory<T extends BaseLlm>
     resolveConfig(modelConfig);
     final ChatModelConfig chatConfig = (ChatModelConfig) modelConfig;
     final boolean toolCallingEnabled = chatConfig.isToolCallingEnabled();
-    final ResponseFormatType responseFormatType = resolveResponseFormatType(chatConfig);
-    final String protocol =
-        buildProtocolMessage(responseFormatType, toolCallingEnabled, chatConfig.getInstructions());
-    final Parser parser = new Parser(protocol, toolCallingEnabled);
+    final Parser parser =
+        new Parser(
+            buildProtocolMessage(toolCallingEnabled, chatConfig.getInstructions()),
+            toolCallingEnabled);
     final T delegate = buildDelegate(chatConfig);
     return new DelegatingLLMModel(delegate, parser);
   }
 
   protected abstract T buildDelegate(final ChatModelConfig chatConfig);
 
-  protected static ResponseFormatType resolveResponseFormatType(final ChatModelConfig config) {
-    return ResponseFormatType.TEXT;
-  }
-
   private static String buildProtocolMessage(
-      final ResponseFormatType responseFormatType,
-      final boolean toolCallingEnabled,
-      final String modelInstructions) {
-    final String templateName = resolveProtocolTemplate(responseFormatType);
+      final boolean toolCallingEnabled, final String modelInstructions) {
     final Map<String, Object> context = new HashMap<>();
     context.put("toolCallingAllowed", toolCallingEnabled);
-    if (responseFormatType == ResponseFormatType.JSON) {
-      context.put("response_schema", loadReasonerSchema(responseFormatType));
-    }
-    return TemplateUtils.renderTemplateForName(templateName, context)
+    return TemplateUtils.renderTemplateForName("shared/protocol/text.txt", context)
         + "\n\n\n"
         + (StringUtils.isBlank(modelInstructions) ? "" : modelInstructions);
-  }
-
-  private static String resolveProtocolTemplate(final ResponseFormatType responseFormatType) {
-    if (responseFormatType == ResponseFormatType.JSON) {
-      return "shared/protocol/json.txt";
-    }
-    return "shared/protocol/text.txt";
-  }
-
-  private static String loadReasonerSchema(final ResponseFormatType responseFormatType) {
-    if (responseFormatType != ResponseFormatType.JSON) {
-      return "";
-    }
-    return ResourceUtils.loadResourceAsString("/schemas/shared/response_schema.json");
   }
 
   private static void resolveConfig(final ModelConfig modelConfig) {

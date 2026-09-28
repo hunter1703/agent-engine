@@ -14,12 +14,13 @@ import java.util.Map;
 public record BuilderDefinition(Map<String, Object> schema, UILayout layout) {
 
   public BuilderDefinition resolve(final BuilderMode mode) {
-    if (mode == null) {
+    if (mode == null || layout == null) {
       return this;
     }
     final Map<String, LayoutField> resolvedFields = new LinkedHashMap<>();
     final List<String> hiddenPointers = new ArrayList<>();
-    for (final Map.Entry<String, LayoutField> entry : layout.fields().entrySet()) {
+    final Map<String, LayoutField> fields = layout.fields() == null ? Map.of() : layout.fields();
+    for (final Map.Entry<String, LayoutField> entry : fields.entrySet()) {
       final String pointer = entry.getKey();
       final LayoutAccessPolicy policy = entry.getValue().access();
       final UiAccessLevel access = policy == null ? UiAccessLevel.EDITABLE : policy.forMode(mode);

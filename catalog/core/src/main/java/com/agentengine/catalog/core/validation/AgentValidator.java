@@ -7,12 +7,16 @@ import com.agentengine.util.agents.beans.config.OrchestrationMode;
 import com.agentengine.util.agents.beans.config.OrchestratorAgentConfig;
 import com.agentengine.util.agents.beans.config.OrchestratorParallelConfig;
 import com.agentengine.util.agents.beans.config.ParallelStoppingPolicy;
+import com.agentengine.util.agents.beans.config.ToolsConfig;
+import com.agentengine.util.agents.beans.tools.ConnectorToolConfigsList;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.validation.ValidationCollector;
 import com.agentengine.util.common.validation.Validator;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Singleton;
+import jakarta.validation.ConstraintViolation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,10 +24,16 @@ import java.util.stream.Collectors;
 
 @Singleton
 public class AgentValidator implements Validator<BaseAgentConfig> {
-  private final Instance<AgentRepository> agentRepository;
+  private static final String CONNECTORS_TOOL_NAME = "connectors";
 
-  public AgentValidator(final Instance<AgentRepository> agentRepository) {
+  private final Instance<AgentRepository> agentRepository;
+  private final jakarta.validation.Validator beanValidator;
+
+  public AgentValidator(
+      final Instance<AgentRepository> agentRepository,
+      final jakarta.validation.Validator beanValidator) {
     this.agentRepository = agentRepository;
+    this.beanValidator = beanValidator;
   }
 
   @Override
@@ -55,6 +65,7 @@ public class AgentValidator implements Validator<BaseAgentConfig> {
     if (config instanceof OrchestratorAgentConfig orchestratorAgentConfig) {
       validateOrchestratorConfig(orchestratorAgentConfig, errors);
     }
+    validateToolConfigs(config, errors);
   }
 
   private void validateOrchestratorConfig(
@@ -99,6 +110,28 @@ public class AgentValidator implements Validator<BaseAgentConfig> {
         allSubAgentIds.stream().filter(id -> !subAgents.containsKey(id)).toList();
     if (!missing.isEmpty()) {
       errors.add("Sub-agent(s) not found: " + String.join(", ", missing));
+    }
+  }
+
+  private void validateToolConfigs(final BaseAgentConfig config, final ValidationCollector errors) {
+    for (final ToolsConfig toolConfig : CollectionUtils.nullSafeList(config.getTools())) {
+      if (!CONNECTORS_TOOL_NAME.equals(toolConfig.getToolName())) {
+        continue;
+      }
+      final ConnectorToolConfigsList connectorConfigs =
+          JsonUtils.fromMap(toolConfig.getConfigs(), ConnectorToolConfigsList.class);
+      if (connectorConfigs == null) {
+        continue;
+      }
+      for (final ConstraintViolation<ConnectorToolConfigsList> violation :
+          beanValidator.validate(connectorConfigs)) {
+        errors.add(
+            CONNECTORS_TOOL_NAME
+                + " tool config "
+                + violation.getPropertyPath()
+                + ": "
+                + violation.getMessage());
+      }
     }
   }
 }

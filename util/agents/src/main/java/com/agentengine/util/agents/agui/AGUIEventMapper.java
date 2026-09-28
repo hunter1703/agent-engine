@@ -295,6 +295,12 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
       case ReasoningMessageEndEvent reasoningMessageEndEvent ->
           new ReasoningMessageEndEvent(
               reasoningMessageEndEvent.messageId(), reasoningMessageEndEvent.timestamp(), rawEvent);
+      case ReasoningMessageContentEvent reasoningMessageContentEvent ->
+          new ReasoningMessageContentEvent(
+              reasoningMessageContentEvent.messageId(),
+              reasoningMessageContentEvent.delta(),
+              reasoningMessageContentEvent.timestamp(),
+              rawEvent);
       case ReasoningMessageChunkEvent reasoningMessageChunkEvent ->
           new ReasoningMessageChunkEvent(
               reasoningMessageChunkEvent.messageId(),
