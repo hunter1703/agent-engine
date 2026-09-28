@@ -67,7 +67,7 @@ class BuilderDefinitionUtilsTest {
     assertThat(definition.layout().fields().get("/configs").widget()).isEqualTo("DYNAMIC_SCHEMA");
     assertThat(definition.layout().fields().get("/configs").dynamicSchema())
         .extracting(LayoutDynamicSchema::url, LayoutDynamicSchema::method)
-        .containsExactly("/schemas", "POST");
+        .containsExactly("/v1/schemas", "POST");
     assertThat(definition.layout().fields().get("/configs").dynamicSchema().body())
         .containsEntry("assetType", "tool_configs")
         .containsEntry("assetId", "$item.toolName")

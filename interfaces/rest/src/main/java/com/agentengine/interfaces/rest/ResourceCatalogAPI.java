@@ -3,7 +3,6 @@ package com.agentengine.interfaces.rest;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.interfaces.rest.handlers.catalog.AssetHandler;
 import com.agentengine.interfaces.rest.handlers.catalog.NamedAssetHandler;
-import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.NamedEntity;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.context.ContextAware;
@@ -115,7 +114,7 @@ public class ResourceCatalogAPI {
               mediaType = MediaType.APPLICATION_JSON,
               schema = @Schema(implementation = Object.class)))
   @APIResponse(responseCode = "404", description = "Resource not found")
-  public <T extends BaseEntity> T getResource(
+  public Object getResource(
       @PathParam("resourceType") String resourceType,
       @PathParam("id") String id,
       @Context UriInfo uriInfo) {
@@ -123,8 +122,7 @@ public class ResourceCatalogAPI {
       throw new IllegalArgumentException("Resource type and ID are required");
     }
 
-    // noinspection unchecked
-    AssetHandler<T> handler = (AssetHandler<T>) assetHandlers.get(resourceType);
+    AssetHandler<?> handler = assetHandlers.get(resourceType);
     if (handler == null) {
       throw new IllegalArgumentException("Unsupported resource type: " + resourceType);
     }
@@ -146,8 +144,8 @@ public class ResourceCatalogAPI {
     }
     request.setOptions(options);
 
-    final Map<String, T> assetsByIds = handler.getAssetsByIds(request);
-    T resource = assetsByIds.get(id);
+    final Map<String, ?> assetsByIds = handler.getAssetsByIds(request);
+    Object resource = assetsByIds.get(id);
     if (resource == null) {
       throw new WebApplicationException("Resource not found: " + id, 404);
     }

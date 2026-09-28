@@ -1,5 +1,6 @@
 package com.agentengine.util.agents.beans.tools;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 
 public record ToolDescriptor(
@@ -16,5 +17,10 @@ public record ToolDescriptor(
 
   public ToolDescriptor(final String name, final String description) {
     this(name, description, null, ToolRiskLevel.UNKNOWN);
+  }
+
+  @JsonProperty("id")
+  public String id() {
+    return name;
   }
 }

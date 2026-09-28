@@ -567,7 +567,7 @@ public final class BuilderDefinitionUtils {
     body.put("assetType", ann.assetType());
     if (!ann.assetIdExpr().isBlank()) body.put("assetId", ann.assetIdExpr());
     if (!ann.contextIdExpr().isBlank()) body.put("contextId", ann.contextIdExpr());
-    return new LayoutDynamicSchema("/schemas", "POST", body);
+    return new LayoutDynamicSchema("/v1/schemas", "POST", body);
   }
 
   // ─── Presets ──────────────────────────────────────────────────────────────
