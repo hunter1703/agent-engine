@@ -821,13 +821,8 @@ public final class SessionActor
       }
     }
 
-    final Event sanitizedEvent =
-        StringUtils.isBlank(event.invocationId())
-                || !Objects.equals(event.invocationId(), currentRunId)
-            ? event.toBuilder().invocationId(currentRunId).build()
-            : event;
-    LOG.debug("Publishing event : {}", JsonUtils.toJson(sanitizedEvent));
-    turnEvents.add(sanitizedEvent);
+    LOG.debug("Publishing event : {}", JsonUtils.toJson(event));
+    turnEvents.add(event);
     LOG.debug(
         "[USER_MESSAGE_TRACE][{}] Added event to turnEvents queue. Queue size now: {}",
         state.topology().sessionId(),
@@ -842,7 +837,7 @@ public final class SessionActor
             topology.parentSessionId(),
             topology.sessionId(),
             String.valueOf(turnId),
-            sanitizedEvent,
+            event,
             eventSequence);
     EffectBuilder<SessionFact, SessionActorState> effectBuilder;
     if (!event.turnComplete().orElse(false)) {
@@ -1118,19 +1113,6 @@ public final class SessionActor
               newState.topology().sessionId(),
               nextMessage.getRecord());
           updateSessionStatus(newState, SessionStatus.RUNNING);
-          final SessionTopology topology = newState.topology();
-          final String rootSessionId = topology.rootSessionId();
-          final String currentRunId = Objects.requireNonNull(newState.currentRun()).runId();
-          // nothing persisted, just an event to publish to hot channel
-          eventChannel.publish(
-              rootSessionId,
-              SessionEvent.runStarted(
-                  rootSessionId,
-                  topology.parentSessionId(),
-                  topology.sessionId(),
-                  currentRunId,
-                  topology.agentId(),
-                  newState.nextSequence()));
           RUN_EXECUTOR.execute(() -> runner.start(nextMessage.getRecord(), newState.grants()));
         }));
   }
