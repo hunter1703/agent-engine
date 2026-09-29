@@ -52,6 +52,16 @@ public record SessionActorState(
     return current == null ? null : current.result();
   }
 
+  /**
+   * Whether the current run's completion side effects (status update, terminal/error publish,
+   * parent/queue notification) have already run to completion — {@code true} when there has never
+   * been a run at all, since there is then nothing to have missed.
+   */
+  public boolean isRunSettled() {
+    final RunState current = currentRun();
+    return current == null || current.settled();
+  }
+
   public static SessionActorState initial() {
     return new SessionActorState(
         SessionState.IDLE,
@@ -128,7 +138,8 @@ public record SessionActorState(
       runs.set(runs.size() - 1, runs.getLast().finished());
     }
     runs.add(
-        new RunState(runId, message, messagePickedTimestamp, nextSequence(), null, Set.of(), null));
+        new RunState(
+            runId, message, messagePickedTimestamp, nextSequence(), null, Set.of(), null, false));
     return new SessionActorState(
         sessionState,
         queue,
@@ -146,6 +157,32 @@ public record SessionActorState(
     runs.set(runs.size() - 1, runs.getLast().complete(result));
     return new SessionActorState(
         SessionState.IDLE,
+        queue,
+        childRegistry,
+        startingChildren,
+        topology,
+        ownerContext,
+        pauseState,
+        runs,
+        lastRollback,
+        grants);
+  }
+
+  /**
+   * Marks the specific run {@code runId} belongs to as settled, by id rather than by position —
+   * this can be applied well after that run stopped being {@link #currentRun()} (title/memory
+   * generation for a finished run can still be in flight after a queued next run has already
+   * started), so it must never assume {@code runId} still names the last entry in {@link #runs}.
+   */
+  public SessionActorState withRunSettled(final String runId) {
+    for (int i = 0; i < runs.size(); i++) {
+      if (Objects.equals(runs.get(i).runId(), runId)) {
+        runs.set(i, runs.get(i).withSettled());
+        break;
+      }
+    }
+    return new SessionActorState(
+        sessionState,
         queue,
         childRegistry,
         startingChildren,

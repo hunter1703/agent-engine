@@ -234,7 +234,15 @@ public final class SessionActor
           reRunFromLastCommittedTurn(state);
         }
       }
-      case IDLE -> afterComplete(state, true);
+      case IDLE -> {
+        // A prior crash may have landed between CompletedFact persisting and afterComplete's
+        // actions actually running; isRunSettled distinguishes that genuine gap from the common
+        // case where completion already ran to completion, so a healthy session sitting idle
+        // isn't re-notified of its own already-delivered outcome on every restart.
+        if (!state.isRunSettled()) {
+          afterComplete(state);
+        }
+      }
     }
   }
 
@@ -316,6 +324,7 @@ public final class SessionActor
         .onCommand(StartChildCompletedCommand.class, this::startChildCompleted)
         .onCommand(CompleteRunCommand.class, this::completeRun)
         .onCommand(StartNextQueuedMessageCommand.class, this::startNextQueuedMessage)
+        .onCommand(RunSettledCommand.class, this::runSettled)
         .onCommand(GetCurrentTurnEventsCommand.class, this::getCurrentTurnEvents)
         .onCommand(RollbackCommand.class, this::rollback)
         .onCommand(SelfPauseCommand.class, this::retryPropagateSelfPause)
@@ -1116,6 +1125,11 @@ public final class SessionActor
         }));
   }
 
+  private Effect<SessionFact, SessionActorState> runSettled(
+      final SessionActorState state, final RunSettledCommand command) {
+    return Effect().persist(new RunSettledFact(command.runId()));
+  }
+
   @Override
   protected Context defaultContext(final SessionActorState state) {
     if (state == null || state.ownerContext() == null || state.topology() == null) {
@@ -1190,6 +1204,7 @@ public final class SessionActor
                       : RunResult.success(fact.getFinalAnswer());
               return state.completeRun(result);
             })
+        .onEvent(RunSettledFact.class, (state, fact) -> state.withRunSettled(fact.getRunId()))
         .onEvent(MessageEnqueuedFact.class, (state, fact) -> state.enqueue(fact.getMessage()))
         .onEvent(ChildStartingFact.class, (state, fact) -> state.startingChild(fact.getChild()))
         .onEvent(
@@ -1282,17 +1297,18 @@ public final class SessionActor
     }
     facts.add(
         new CompletedFact(isFailed ? null : extractFinalAnswer(state), isFailed ? error : null));
-    return thenRun(Effect().persist(facts), (newState -> afterComplete(newState, false)));
+    return thenRun(Effect().persist(facts), this::afterComplete);
   }
 
   private SessionRunner runner(final SessionTopology topology) {
     return runnerFactory.getOrBuild(topology.agentId(), topology.sessionId(), self);
   }
 
-  private void afterComplete(final SessionActorState state, final boolean isRecovery) {
+  private void afterComplete(final SessionActorState state) {
     final SessionTopology topology = state.topology();
     final String sessionId = topology.sessionId();
     final String rootSessionId = topology.rootSessionId();
+    final String runId = state.currentRun().runId();
     final RunResult runResult = state.lastResult();
     final boolean isFailed = runResult != null && runResult.isFailure();
     updateSessionStatus(state, isFailed ? SessionStatus.FAILED : SessionStatus.COMPLETED);
@@ -1308,8 +1324,7 @@ public final class SessionActor
               String.valueOf(lastCommittedTurn.turnId())));
     }
     if (topology.isRoot()) {
-      generateSessionTitle(rootSessionId, isRecovery);
-      updateSessionMemory(rootSessionId, isRecovery);
+      ASYNC_TASK_EXECUTOR.execute(() -> runPostCompletionActions(rootSessionId, runId));
       eventChannel.publish(rootSessionId, SessionEvent.terminal(sessionId));
       if (!state.queue().isEmpty()) {
         self.tell(new StartNextQueuedMessageCommand());
@@ -1319,62 +1334,64 @@ public final class SessionActor
       refSupplier
           .apply(topology.parentSessionId())
           .tell(new CompleteChildCommand(topology.sessionId(), runResult));
+      self.tell(new RunSettledCommand(runId));
     }
   }
 
   /**
-   * Extracts and persists memories from the completed session asynchronously, so it does not block
-   * the actor's message-processing loop. Memory extraction involves an LLM call and multiple
-   * vector-store writes. Skipped on recovery — same reasoning as {@link
-   * #generateSessionTitle(String, boolean)}.
+   * Runs title generation and memory extraction concurrently on their own virtual threads and
+   * blocks until both finish before signaling {@code runId} settled — safe only because this whole
+   * method is itself dispatched onto {@code ASYNC_TASK_EXECUTOR} (see {@link #afterComplete}),
+   * never called on the actor's own thread, which {@link
+   * StructuredConcurrencyUtils#runConcurrently(String, List)} would otherwise block for as long as
+   * both take to complete.
    */
-  private void updateSessionMemory(final String rootSessionId, final boolean isRecovery) {
-    if (isRecovery) {
-      return;
-    }
-    ASYNC_TASK_EXECUTOR.execute(
-        () -> {
-          try {
-            final AgentSession session = sessionService.getSession(rootSessionId);
-            if (session == null) {
-              return;
-            }
-            final int ownerUserId = session.getOwnerUserId();
-            final Session adkSession =
-                Session.builder(rootSessionId)
-                    .appName(session.getAgentId())
-                    .userId(String.valueOf(ownerUserId))
-                    .build();
-            memoryService.addSessionToMemory(adkSession).blockingAwait();
-          } catch (final Exception e) {
-            LOG.warn("Failed to update session memory for session {}", rootSessionId, e);
-          }
-        });
+  private void runPostCompletionActions(final String rootSessionId, final String runId) {
+    final List<Runnable> actions =
+        List.of(
+            () -> generateSessionTitle(rootSessionId), () -> updateSessionMemory(rootSessionId));
+    StructuredConcurrencyUtils.runConcurrently("session-completion", actions);
+    self.tell(new RunSettledCommand(runId));
   }
 
   /**
-   * Generates and persists a session title asynchronously so it does not block the actor's
-   * message-processing loop. Title generation involves an LLM call followed by a MongoDB write,
-   * both of which are unsuitable for the actor thread. Skipped on recovery: an actor only recovers
-   * into a completed session via {@code IDLE} state, which is only reached after the session's one
-   * genuine completion already ran this.
+   * Extracts and persists memories from the completed session. Memory extraction involves an LLM
+   * call and multiple vector-store writes, both unsuitable for the actor thread — see {@link
+   * #runPostCompletionActions} for how this stays off it.
    */
-  private void generateSessionTitle(final String rootSessionId, final boolean isRecovery) {
-    if (isRecovery) {
-      return;
+  private void updateSessionMemory(final String rootSessionId) {
+    try {
+      final AgentSession session = sessionService.getSession(rootSessionId);
+      if (session == null) {
+        return;
+      }
+      final int ownerUserId = session.getOwnerUserId();
+      final Session adkSession =
+          Session.builder(rootSessionId)
+              .appName(session.getAgentId())
+              .userId(String.valueOf(ownerUserId))
+              .build();
+      memoryService.addSessionToMemory(adkSession).blockingAwait();
+    } catch (final Exception e) {
+      LOG.warn("Failed to update session memory for session {}", rootSessionId, e);
     }
-    ASYNC_TASK_EXECUTOR.execute(
-        () -> {
-          try {
-            final String title = sessionTitleGenerator.generateTitle(rootSessionId);
-            if (StringUtils.isNotBlank(title)) {
-              sessionService.updateSession(
-                  rootSessionId, Update.of(Operation.set(AgentSession.FIELD_NAME, title)));
-            }
-          } catch (final Exception e) {
-            LOG.warn("Failed to generate session title for session {}", rootSessionId, e);
-          }
-        });
+  }
+
+  /**
+   * Generates and persists a session title. Title generation involves an LLM call followed by a
+   * MongoDB write, both unsuitable for the actor thread — see {@link #runPostCompletionActions} for
+   * how this stays off it.
+   */
+  private void generateSessionTitle(final String rootSessionId) {
+    try {
+      final String title = sessionTitleGenerator.generateTitle(rootSessionId);
+      if (StringUtils.isNotBlank(title)) {
+        sessionService.updateSession(
+            rootSessionId, Update.of(Operation.set(AgentSession.FIELD_NAME, title)));
+      }
+    } catch (final Exception e) {
+      LOG.warn("Failed to generate session title for session {}", rootSessionId, e);
+    }
   }
 
   private String extractFinalAnswer(final SessionActorState state) {

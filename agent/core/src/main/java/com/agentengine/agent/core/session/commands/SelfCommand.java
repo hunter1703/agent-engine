@@ -118,6 +118,13 @@ public interface SelfCommand extends SessionCommand {
     }
   }
 
+  /** Sent once every action {@code afterComplete} owns for {@code runId} has run to completion. */
+  record RunSettledCommand(Context context, String runId) implements SelfCommand {
+    public RunSettledCommand(final String runId) {
+      this(Context.current().orElse(null), runId);
+    }
+  }
+
   record DiscardInterruptsCommand(Context context, Set<String> interruptIds)
       implements SelfCommand {
     public DiscardInterruptsCommand(final Set<String> interruptIds) {

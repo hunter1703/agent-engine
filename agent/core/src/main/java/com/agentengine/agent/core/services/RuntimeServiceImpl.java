@@ -201,7 +201,8 @@ public class RuntimeServiceImpl implements RuntimeService {
                 fileDetails -> () -> indexAsKnowledge(agentId, sessionId, fileDetails).getId())
             .toList();
     final List<StructuredConcurrencyUtils.TaskOutcome<String>> outcomes =
-        StructuredConcurrencyUtils.runConcurrentlyUntil("knowledge-indexing", indexing, _ -> false);
+        StructuredConcurrencyUtils.callConcurrentlyUntil(
+            "knowledge-indexing", indexing, _ -> false);
 
     for (final StructuredConcurrencyUtils.TaskOutcome<String> outcome : outcomes) {
       if (outcome.state() == Subtask.State.SUCCESS) {

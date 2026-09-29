@@ -130,7 +130,7 @@ public final class ParallelOrchestratorAgent extends Agent {
     }
 
     final List<TaskOutcome<BranchExecution>> outcomes =
-        StructuredConcurrencyUtils.runConcurrentlyUntil(
+        StructuredConcurrencyUtils.callConcurrentlyUntil(
             tasks, subtask -> shouldStopSubtasks(subtask, successes, requiredSuccesses));
 
     final List<BranchExecution> executions = collectExecutions(outcomes);

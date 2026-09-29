@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.tools.image;
 
+import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -11,7 +12,6 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
@@ -134,9 +134,9 @@ public final class ImageUtils {
     final int[] destPixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 
     final List<Rectangle> tiles = buildTiles(width, height);
-    final List<Callable<Void>> callables = new ArrayList<>();
+    final List<Runnable> runnables = new ArrayList<>();
     for (final Rectangle tile : tiles) {
-      callables.add(
+      runnables.add(
           () -> {
             // Tiles are disjoint — each reads/writes a unique index range; no lock needed.
             final int[] tilePixels = new int[tile.width * tile.height];
@@ -157,11 +157,10 @@ public final class ImageUtils {
                   (tile.y + row) * width + tile.x,
                   tile.width);
             }
-            return null;
           });
     }
     try {
-      StructuredConcurrencyUtils.runConcurrently(callables);
+      StructuredConcurrencyUtils.runConcurrently(runnables);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -185,9 +184,9 @@ public final class ImageUtils {
       final BufferedImage outputImage =
           new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
       final int[] destPixels = ((DataBufferInt) outputImage.getRaster().getDataBuffer()).getData();
-      final List<Callable<Void>> callables = new ArrayList<>();
+      final List<Runnable> runnables = new ArrayList<>();
       for (final Rectangle tile : tiles) {
-        callables.add(
+        runnables.add(
             () -> {
               final ImageReader reader = getImageReader(format);
               try (final ImageInputStream stream = ImageIO.createImageInputStream(inputFile)) {
@@ -207,13 +206,14 @@ public final class ImageUtils {
                       (tile.y + row) * width + tile.x,
                       tile.width);
                 }
-                return null;
+              } catch (IOException e) {
+                throw ExceptionUtils.wrapInRuntimeException(e);
               } finally {
                 reader.dispose();
               }
             });
       }
-      StructuredConcurrencyUtils.runConcurrently(callables);
+      StructuredConcurrencyUtils.runConcurrently(runnables);
 
       // Always write intermediates as PNG (lossless) to prevent generational JPEG quality loss
       // across multiple edit passes. The final output format is handled by the tool layer.
@@ -302,10 +302,10 @@ public final class ImageUtils {
   }
 
   /** Obtain an {@link ImageReader} for the given format suffix. */
-  public static ImageReader getImageReader(final String format) throws IOException {
+  public static ImageReader getImageReader(final String format) {
     final Iterator<ImageReader> readers = ImageIO.getImageReadersBySuffix(format);
     if (!readers.hasNext()) {
-      throw new IOException("No ImageReader found for format: " + format);
+      throw new RuntimeException("No ImageReader found for format: " + format);
     }
     return readers.next();
   }

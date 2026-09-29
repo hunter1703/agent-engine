@@ -16,14 +16,36 @@ public final class StructuredConcurrencyUtils {
 
   private StructuredConcurrencyUtils() {}
 
-  public static <T> List<T> runConcurrently(final List<? extends Callable<T>> tasks) {
-    return runConcurrently(DEFAULT_TASKS_NAME, tasks);
+  public static <T> List<T> callConcurrently(final List<? extends Callable<T>> tasks) {
+    return callConcurrently(DEFAULT_TASKS_NAME, tasks);
+  }
+
+  public static <T> void runConcurrently(final List<? extends Runnable> tasks) {
+    runConcurrently(DEFAULT_TASKS_NAME, tasks);
+  }
+
+  public static <T> void runConcurrently(
+      final String tasksName, final List<? extends Runnable> tasks) {
+    List<? extends Callable<Void>> callables =
+        CollectionUtils.nullSafeList(tasks).stream()
+            .map(
+                runnable -> {
+                  return new Callable<Void>() {
+                    @Override
+                    public Void call() throws Exception {
+                      runnable.run();
+                      return null;
+                    }
+                  };
+                })
+            .toList();
+    callConcurrently(tasksName, callables);
   }
 
   /** {@code tasksName} prefixes the names of the threads the tasks run on. */
-  public static <T> List<T> runConcurrently(
+  public static <T> List<T> callConcurrently(
       final String tasksName, final List<? extends Callable<T>> tasks) {
-    final List<TaskOutcome<T>> outcomes = runConcurrentlyUntil(tasksName, tasks, subtask -> false);
+    final List<TaskOutcome<T>> outcomes = callConcurrentlyUntil(tasksName, tasks, subtask -> false);
     final List<T> results = new ArrayList<>(outcomes.size());
     for (final TaskOutcome<T> outcome : outcomes) {
       failIfNeeded(outcome);
@@ -32,10 +54,10 @@ public final class StructuredConcurrencyUtils {
     return results;
   }
 
-  public static <T> List<TaskOutcome<T>> runConcurrentlyUntil(
+  public static <T> List<TaskOutcome<T>> callConcurrentlyUntil(
       final List<? extends Callable<T>> tasks,
       final Predicate<Subtask<? extends T>> stopCondition) {
-    return runConcurrentlyUntil(DEFAULT_TASKS_NAME, tasks, stopCondition);
+    return callConcurrentlyUntil(DEFAULT_TASKS_NAME, tasks, stopCondition);
   }
 
   /**
@@ -43,7 +65,7 @@ public final class StructuredConcurrencyUtils {
    * succeeded or failed — a failed task never throws here. {@code tasksName} prefixes the names of
    * the threads the tasks run on.
    */
-  public static <T> List<TaskOutcome<T>> runConcurrentlyUntil(
+  public static <T> List<TaskOutcome<T>> callConcurrentlyUntil(
       final String tasksName,
       final List<? extends Callable<T>> tasks,
       final Predicate<Subtask<? extends T>> stopCondition) {

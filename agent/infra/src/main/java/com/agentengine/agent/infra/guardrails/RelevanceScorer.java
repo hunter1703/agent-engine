@@ -51,7 +51,7 @@ public final class RelevanceScorer {
     }
     try {
       final List<Integer> scores =
-          StructuredConcurrencyUtils.runConcurrently(
+          StructuredConcurrencyUtils.callConcurrently(
               List.of(
                   () -> askScore(relevancePrompt(anchor, candidate)),
                   () -> askScore(irrelevancePrompt(anchor, candidate))));
