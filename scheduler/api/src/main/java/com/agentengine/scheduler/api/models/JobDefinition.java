@@ -2,16 +2,18 @@ package com.agentengine.scheduler.api.models;
 
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
-import com.agentengine.util.context.UserContext;
 import java.util.Map;
 
 @Index(name = "job_class_name_idx", def = "{'jobClassName': 1}")
+@Index(name = "job_customer_idx", def = "{'customerId': 1}")
 public class JobDefinition extends BaseEntity {
 
   public static final String FIELD_JOB_CLASS_NAME = "jobClassName";
-  public static final String FIELD_USER_CONTEXT = "userContext";
+  private String customerId;
 
-  private UserContext userContext;
+  /** Who the job runs as: the written form of the {@code Caller} that scheduled it. */
+  private String caller;
+
   private String jobClassName;
 
   /** Exactly one of this and {@link #runAt} must be set — see their own docs. */
@@ -25,12 +27,21 @@ public class JobDefinition extends BaseEntity {
 
   private Map<String, Object> payload;
 
-  public UserContext getUserContext() {
-    return userContext;
+  /** The customer the job was scheduled in, and runs in. */
+  public String getCustomerId() {
+    return customerId;
   }
 
-  public void setUserContext(final UserContext userContext) {
-    this.userContext = userContext;
+  public void setCustomerId(final String customerId) {
+    this.customerId = customerId;
+  }
+
+  public String getCaller() {
+    return caller;
+  }
+
+  public void setCaller(final String caller) {
+    this.caller = caller;
   }
 
   public String getJobClassName() {

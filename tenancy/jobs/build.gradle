@@ -1,0 +1,15 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+group = 'com.agentengine.tenancy'
+
+dependencies {
+    implementation project(':scheduler:api')
+    implementation project(':tenancy:api')
+    implementation project(':util:ms:client')
+
+    implementation platform(libs.quarkus.bom)
+    implementation libs.quarkus.arc
+    implementation libs.jakarta.inject.api
+}

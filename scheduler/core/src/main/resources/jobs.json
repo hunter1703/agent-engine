@@ -1,0 +1,12 @@
+[
+  {
+    "id": "{{ customerId }}:ResubmitStaleRoleMappings",
+    "jobClassName": "com.agentengine.tenancy.jobs.ResubmitStaleRoleMappingsJob",
+    "cronSchedule": "0/15 * * * * ?"
+  },
+  {
+    "id": "{{ customerId }}:ResubmitStaleRoles",
+    "jobClassName": "com.agentengine.tenancy.jobs.ResubmitStaleRolesJob",
+    "cronSchedule": "0/15 * * * * ?"
+  }
+]

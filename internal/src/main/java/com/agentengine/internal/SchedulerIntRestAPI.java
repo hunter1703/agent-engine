@@ -65,7 +65,8 @@ public class SchedulerIntRestAPI {
   @DELETE
   @Path("/jobs/{jobId}")
   public Response cancelJob(@PathParam("jobId") final String jobId) {
-    schedulerService.cancelJob(jobId);
-    return Response.noContent().build();
+    return schedulerService.cancelJob(jobId)
+        ? Response.noContent().build()
+        : Response.status(Response.Status.NOT_FOUND).build();
   }
 }

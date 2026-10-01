@@ -1,23 +1,23 @@
 package com.agentengine.agent.core.session.events;
 
-import com.agentengine.agent.api.model.UserMessage;
+import com.agentengine.agent.core.session.state.EnqueuedMessage;
 import com.agentengine.util.common.beans.UniqueRecord;
 
 public final class MessageEnqueuedFact extends SessionFact {
 
-  private UniqueRecord<UserMessage> message;
+  private UniqueRecord<EnqueuedMessage> message;
 
   public MessageEnqueuedFact() {}
 
-  public MessageEnqueuedFact(final UniqueRecord<UserMessage> message) {
+  public MessageEnqueuedFact(final UniqueRecord<EnqueuedMessage> message) {
     this.message = message;
   }
 
-  public UniqueRecord<UserMessage> getMessage() {
+  public UniqueRecord<EnqueuedMessage> getMessage() {
     return message;
   }
 
-  public void setMessage(final UniqueRecord<UserMessage> message) {
+  public void setMessage(final UniqueRecord<EnqueuedMessage> message) {
     this.message = message;
   }
 }

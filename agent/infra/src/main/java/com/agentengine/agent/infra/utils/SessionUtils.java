@@ -1,10 +1,8 @@
 package com.agentengine.agent.infra.utils;
 
 import static com.agentengine.agent.infra.utils.AgentUtils.getAgentIdFromContext;
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
 
-import com.agentengine.agent.api.model.ResourceGrants;
-import com.agentengine.knowledge.api.services.KnowledgeService;
-import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
@@ -32,56 +30,42 @@ public final class SessionUtils {
     return getSessionState(context, true);
   }
 
-  public static SessionState getOrInitSessionState(
-      final InvocationContext context,
-      final KnowledgeService knowledgeService,
-      ExtendedRunConfig runConfig) {
+  public static SessionState getOrInitSessionState(final InvocationContext context) {
     final SessionState existing = getSessionState(context, false);
-    final boolean firstTimeForThisAgent = existing == null;
-    final SessionState sessionState;
     if (existing != null) {
-      sessionState = existing;
-    } else {
-      sessionState = SessionState.buildFrom(context.session().events(), knowledgeService);
-      final String agentId = getAgentIdFromContext(context);
-      final Map<String, Object> state = state(context);
-      if (state != null) {
-        // a session can have multiple agent states because a session can be shared by multiple
-        // agents (like when AgentTransfer happens)
-        @SuppressWarnings("unchecked")
-        ConcurrentMap<String, SessionState> sessionStates =
-            (ConcurrentMap<String, SessionState>)
-                state.computeIfAbsent(
-                    "SESSION_STATES", _ -> new ConcurrentHashMap<String, SessionState>());
-        sessionStates.put(agentId, sessionState);
-      }
+      return existing;
     }
-
-    final ResourceGrants grants = runConfig == null ? null : runConfig.grants();
-    final boolean newRun = runConfig != null && runConfig.isNewRun();
-    if (grants != null && (firstTimeForThisAgent || newRun)) {
-      // Recomputed on every genuinely new run (not on a resume after a pause, and not more than
-      // once for the same run): a later send_message/spawn_agent trigger can grant additional
-      // knowledge/notebook access, and notebook contents can change between runs (notes
-      // added/removed by another session) even when the grant set itself is unchanged. A resume
-      // re-enters this same agent's runAsync without starting a new run, so it must reuse what
-      // was already computed rather than repeat the (Mongo-backed) notebook lookup.
-      sessionState.addKnowledgeIdReminders(grants.indexedKnowledgeIds());
-      sessionState.addKnowledgeSourceReminders(grants.nonIndexedKnowledgeSources());
-      sessionState.addNotebookReminders(grants.notebookGrants());
+    final SessionState sessionState = SessionState.buildFrom(context.session().events());
+    final Map<String, Object> state = state(context);
+    if (state != null) {
+      // a session can have multiple agent states because a session can be shared by multiple
+      // agents (like when AgentTransfer happens)
+      @SuppressWarnings("unchecked")
+      ConcurrentMap<String, SessionState> sessionStates =
+          (ConcurrentMap<String, SessionState>)
+              state.computeIfAbsent(
+                  "SESSION_STATES", _ -> new ConcurrentHashMap<String, SessionState>());
+      sessionStates.put(getAgentIdFromContext(context), sessionState);
     }
     return sessionState;
   }
 
+  public static boolean isNewRun(final InvocationContext context) {
+    return context
+        .userContent()
+        .map(content -> !ContentUtils.isResumeContent(content))
+        .orElse(true);
+  }
+
   public static String newSessionId(final String agentId) {
-    return agentId + Constants.ID_SEPARATOR + UUID.randomUUID().toString().replace("-", "");
+    return agentId + ID_SEPARATOR + UUID.randomUUID().toString().replace("-", "");
   }
 
   public static String agentIdFromSessionId(final String sessionId) {
     if (StringUtils.isBlank(sessionId)) {
       return null;
     }
-    final int separatorIndex = sessionId.indexOf(Constants.ID_SEPARATOR);
+    final int separatorIndex = sessionId.indexOf(ID_SEPARATOR);
     return separatorIndex < 0 ? null : sessionId.substring(0, separatorIndex);
   }
 
@@ -100,7 +84,7 @@ public final class SessionUtils {
         new ConcurrentHashMap<>(CollectionUtils.nullSafeMap(agentSession.getState()));
     return Session.builder(agentSession.getId())
         .appName(agentSession.getAgentId())
-        .userId(Integer.toString(agentSession.getOwnerUserId()))
+        .userId(agentSession.getCreatedBy())
         .state(sessionState)
         .events(events == null ? new ArrayList<>() : new ArrayList<>(events))
         .lastUpdateTime(Instant.ofEpochMilli(agentSession.getUpdatedTime()))

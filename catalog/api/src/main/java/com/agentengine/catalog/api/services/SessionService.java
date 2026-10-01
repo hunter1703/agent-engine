@@ -1,16 +1,18 @@
 package com.agentengine.catalog.api.services;
 
+import com.agentengine.tenancy.AssetPermissionService;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.ms.client.MicroService;
+import com.agentengine.util.tenancy.Permission;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 @MicroService("catalog")
-public interface SessionService {
+public interface SessionService extends AssetPermissionService {
   AgentSession getSession(String id);
 
   AgentSession getSession(String id, List<String> includeFields);
@@ -26,4 +28,6 @@ public interface SessionService {
   long updateSessions(Query query, Update update);
 
   AgentSession create(AgentSession session);
+
+  boolean hasPermission(String id, Permission permission);
 }

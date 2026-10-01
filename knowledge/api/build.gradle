@@ -6,9 +6,11 @@ group = 'com.agentengine.knowledge'
 
 dependencies {
     implementation project(':util:common')
+    implementation project(':util:tenancy')
     implementation project(':util:vectordb')
     implementation project(':util:agents')
+    api project(':tenancy:api')
     implementation project(':util:ms:client')
-    api project(':tenancy')
+    api project(':util:infra')
     compileOnly libs.jakarta.inject.api
 }

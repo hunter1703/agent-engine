@@ -2,10 +2,8 @@ package com.agentengine.util.pekko;
 
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Contextual;
-import com.agentengine.util.context.UserContext;
 import com.agentengine.util.pekko.actor.ShardedEntity;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import org.apache.pekko.actor.typed.PostStop;
 import org.apache.pekko.actor.typed.javadsl.ActorContext;
@@ -34,9 +32,13 @@ public abstract class ContextualShardedEntity<
   protected Context defaultContext(final State state) {
     final Context context = state == null ? null : state.context();
     if (context == null) {
-      return new Context(UUID.randomUUID().toString(), UserContext.SYSTEM);
+      return Context.asSystemCustomer();
     }
     return context;
+  }
+
+  protected Context commandContext(final State state, final Command command) {
+    return command.context() == null ? defaultContext(state) : command.context();
   }
 
   protected void onPostStop(final State state) {}
@@ -57,8 +59,7 @@ public abstract class ContextualShardedEntity<
   public final CommandHandler<Command, Event, State> commandHandler() {
     final CommandHandler<Command, Event, State> handler = contextualCommandHandler();
     return (state, command) -> {
-      final Context context = command.context() == null ? defaultContext(state) : command.context();
-      return context.get(() -> handler.apply(state, command));
+      return commandContext(state, command).get(() -> handler.apply(state, command));
     };
   }
 

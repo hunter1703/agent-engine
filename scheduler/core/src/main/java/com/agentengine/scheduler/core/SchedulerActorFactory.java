@@ -1,10 +1,10 @@
 package com.agentengine.scheduler.core;
 
-import com.agentengine.scheduler.api.store.JobDefinitionRepository;
-import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.actor.SchedulerActor;
 import com.agentengine.scheduler.core.actor.TriggerReconcilerActor;
 import com.agentengine.scheduler.core.actor.WorkerActorFactory;
+import com.agentengine.scheduler.core.store.JobDefinitionRepository;
+import com.agentengine.scheduler.core.store.TriggerDefinitionRepository;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.pekko.ActorSystemProvider;
@@ -52,35 +52,38 @@ public class SchedulerActorFactory {
   public void onStart(
       @Observes @Priority(ActorSystemProvider.ACTOR_SYSTEM_STARTUP_PRIORITY + 1)
           final StartupEvent event) {
-    Context.runAsSystem(
-        () -> {
-          if (!actorSystemProvider.isEnabled()) {
-            LOG.info("Pekko is disabled; scheduler singleton will not start");
-            return;
-          }
-          final SchedulerConfigs schedulerConfigs = new SchedulerConfigs(applicationConfig);
-          final SingletonActor<SchedulerActor.Command> singleton =
-              SingletonActor.of(
-                      SchedulerActor.create(
-                          triggerDefinitionRepository, jobDefinitionRepository, schedulerConfigs),
-                      SINGLETON_NAME)
-                  .withSettings(ClusterSingletonSettings.create(actorSystemProvider.system()));
+    Context.asSystemCustomer()
+        .run(
+            () -> {
+              if (!actorSystemProvider.isEnabled()) {
+                LOG.info("Pekko is disabled; scheduler singleton will not start");
+                return;
+              }
+              final SchedulerConfigs schedulerConfigs = new SchedulerConfigs(applicationConfig);
+              final SingletonActor<SchedulerActor.Command> singleton =
+                  SingletonActor.of(
+                          SchedulerActor.create(
+                              triggerDefinitionRepository,
+                              jobDefinitionRepository,
+                              schedulerConfigs),
+                          SINGLETON_NAME)
+                      .withSettings(ClusterSingletonSettings.create(actorSystemProvider.system()));
 
-          final long heartbeatTimeoutMs =
-              schedulerConfigs.heartbeatInterval().toMillis()
-                  * schedulerConfigs.allowedHeartbeatMisses();
-          final SingletonActor<TriggerReconcilerActor.Command> reconcilerSingleton =
-              SingletonActor.of(
-                      TriggerReconcilerActor.create(
-                          triggerDefinitionRepository, heartbeatTimeoutMs),
-                      RECONCILER_SINGLETON_NAME)
-                  .withSettings(ClusterSingletonSettings.create(actorSystemProvider.system()));
+              final long heartbeatTimeoutMs =
+                  schedulerConfigs.heartbeatInterval().toMillis()
+                      * schedulerConfigs.allowedHeartbeatMisses();
+              final SingletonActor<TriggerReconcilerActor.Command> reconcilerSingleton =
+                  SingletonActor.of(
+                          TriggerReconcilerActor.create(
+                              triggerDefinitionRepository, heartbeatTimeoutMs),
+                          RECONCILER_SINGLETON_NAME)
+                      .withSettings(ClusterSingletonSettings.create(actorSystemProvider.system()));
 
-          schedulerRef = actorSystemProvider.singleton().init(singleton);
-          workerActorFactory.start(schedulerRef);
-          actorSystemProvider.singleton().init(reconcilerSingleton);
-          LOG.info("Scheduler singleton {} initialized", SINGLETON_NAME);
-        });
+              schedulerRef = actorSystemProvider.singleton().init(singleton);
+              workerActorFactory.start(schedulerRef);
+              actorSystemProvider.singleton().init(reconcilerSingleton);
+              LOG.info("Scheduler singleton {} initialized", SINGLETON_NAME);
+            });
   }
 
   public ActorRef<SchedulerActor.Command> getSchedulerRef() {

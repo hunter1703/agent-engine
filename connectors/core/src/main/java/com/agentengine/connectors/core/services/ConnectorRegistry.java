@@ -1,5 +1,7 @@
 package com.agentengine.connectors.core.services;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.connectors.api.beans.ConnectionSpec;
 import com.agentengine.connectors.infra.beans.Application;
 import com.agentengine.connectors.infra.beans.Connector;
@@ -32,7 +34,7 @@ public final class ConnectorRegistry {
 
   public Connector get(final String appName, final String connectorName) {
     return connectorCache.computeIfAbsent(
-        appName + ":" + connectorName, _ -> load(appName, connectorName));
+        appName + ID_SEPARATOR + connectorName, _ -> load(appName, connectorName));
   }
 
   public List<String> listApps() {

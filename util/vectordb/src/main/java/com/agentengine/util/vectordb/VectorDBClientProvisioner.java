@@ -4,31 +4,40 @@ import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.infra.InfraClientProvisioner;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.ServerType;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 /**
- * Sets up a customer's vector store: saves its client config and creates its collection. Runs in
+ * Sets up a customer's vector store: saves its client config and creates its collections. Runs in
  * the customer's context.
  */
 @Singleton
 public class VectorDBClientProvisioner extends InfraClientProvisioner {
 
-  private static final int DEFAULT_VECTOR_SIZE = 768;
-
   private final InfraConfigService infraConfigService;
+  private final Instance<VectorBackend> vectorBackends;
 
   @Inject
   public VectorDBClientProvisioner(
-      final InfraConfigService infraConfigService, final ApplicationConfig applicationConfig) {
+      final InfraConfigService infraConfigService,
+      final ApplicationConfig applicationConfig,
+      @Any final Instance<VectorBackend> vectorBackends) {
     super(applicationConfig);
     this.infraConfigService = infraConfigService;
+    this.vectorBackends = vectorBackends;
   }
 
-  public void provision(final VectorStore<?> store, final int customerId, final String serverId) {
+  /**
+   * Saves the client config of the {@code clientType} store of {@code customerId} and creates its
+   * collections.
+   */
+  public void provision(
+      final VectorStoreClientType clientType, final String customerId, final String serverId) {
     infraConfigService.save(
         VectorDbUtils.clientConfig(
-            store.clientType(), customerId, resolvedServerId(ServerType.VECTOR_SERVER, serverId)));
-    store.setup(DEFAULT_VECTOR_SIZE);
+            clientType, customerId, resolvedServerId(ServerType.VECTOR_SERVER, serverId)));
+    vectorBackends.forEach(vectorBackend -> vectorBackend.setup(clientType, customerId));
   }
 }

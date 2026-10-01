@@ -1,5 +1,7 @@
 package com.agentengine.util.sql;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.infra.ClientType;
 import java.util.regex.Pattern;
@@ -17,12 +19,12 @@ public final class SQLUtils {
     return StringUtils.wrapInQuotes(name);
   }
 
-  public static String clientId(final String store, final Integer customerId) {
-    return ClientType.SQL_CLIENT + ":" + store + ":" + customerId;
+  public static String clientId(final String store, final String customerId) {
+    return ClientType.SQL_CLIENT + ID_SEPARATOR + store + ID_SEPARATOR + customerId;
   }
 
   public static SQLClientInfraConfig clientConfig(
-      final String store, final Integer customerId, final String serverId) {
+      final String store, final String customerId, final String serverId) {
     final SQLClientInfraConfig clientConfig = new SQLClientInfraConfig();
     clientConfig.setStore(store);
     clientConfig.setCustomerId(customerId);

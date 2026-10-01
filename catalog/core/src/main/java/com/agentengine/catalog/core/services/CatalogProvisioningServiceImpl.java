@@ -1,13 +1,12 @@
 package com.agentengine.catalog.core.services;
 
 import com.agentengine.catalog.api.services.CatalogProvisioningService;
-import com.agentengine.catalog.core.repository.CatalogMongoStoreClientType;
-import com.agentengine.tenancy.ProvisioningRequest;
-import com.agentengine.tenancy.ProvisioningResult;
-import com.agentengine.tenancy.ProvisioningRun;
+import com.agentengine.catalog.core.repository.CatalogDocumentStoreClientType;
 import com.agentengine.util.context.Context;
-import com.agentengine.util.context.UserContext;
 import com.agentengine.util.infra.ServerType;
+import com.agentengine.util.infra.provisioning.ProvisioningRequest;
+import com.agentengine.util.infra.provisioning.ProvisioningResult;
+import com.agentengine.util.infra.provisioning.ProvisioningRun;
 import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
 import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import io.quarkus.arc.Unremovable;
@@ -36,7 +35,7 @@ public class CatalogProvisioningServiceImpl implements CatalogProvisioningServic
         "microservice",
         () ->
             microServiceProvisioner.provision(
-                UserContext.SYSTEM.customerId(),
+                Context.SYSTEM_CUSTOMER_ID,
                 "catalog",
                 request.getServer(ServerType.MICROSERVICE_SERVER, "catalog")));
     return run.result();
@@ -44,16 +43,16 @@ public class CatalogProvisioningServiceImpl implements CatalogProvisioningServic
 
   @Override
   public ProvisioningResult provision(final ProvisioningRequest request) {
-    final int customerId = Context.requireCustomerId();
+    final String customerId = Context.requireCustomerId();
     final ProvisioningRun run = new ProvisioningRun();
     run.step(
         "mongo",
         () ->
             mongoClientProvisioner.provision(
-                CatalogMongoStoreClientType.CATALOG,
+                CatalogDocumentStoreClientType.CATALOG,
                 customerId,
                 request.getServer(
-                    ServerType.MONGO_SERVER, CatalogMongoStoreClientType.CATALOG.name())));
+                    ServerType.MONGO_SERVER, CatalogDocumentStoreClientType.CATALOG.name())));
     run.step(
         "microservice",
         () ->

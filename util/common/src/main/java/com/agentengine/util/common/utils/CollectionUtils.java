@@ -15,6 +15,12 @@ public final class CollectionUtils {
     return setOne;
   }
 
+  public static <T> Set<T> subtract(final Collection<T> one, final Collection<T> toRemove) {
+    final Set<T> result = CollectionUtils.nullSafeMutableSet(one);
+    result.removeAll(CollectionUtils.nullSafeSet(toRemove));
+    return result;
+  }
+
   public static <T> List<T> append(final List<T> one, final List<T> toAppend) {
     final List<T> newList = new ArrayList<>();
     newList.addAll(CollectionUtils.nullSafeList(one));
@@ -145,6 +151,12 @@ public final class CollectionUtils {
     return list.getLast();
   }
 
+  public static int getIntValueFromMap(
+      final Map<String, Object> map, final String key, final int defaultValue) {
+    final Long value = getLongValueFromMap(map, key);
+    return value == null ? defaultValue : value.intValue();
+  }
+
   public static Long getLongValueFromMap(final Map<String, Object> map, final String key) {
     if (CollectionUtils.isEmpty(map)) {
       return null;
@@ -236,6 +248,11 @@ public final class CollectionUtils {
       }
     }
     return transformedMap;
+  }
+
+  public static <T, K> Map<K, T> transformToMap(
+      final Collection<T> collection, final Function<T, K> keyFunction) {
+    return transformToMap(collection, keyFunction, item -> item);
   }
 
   public static <T, K, V> Map<K, V> transformToMap(

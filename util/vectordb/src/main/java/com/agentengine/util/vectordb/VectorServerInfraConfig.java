@@ -1,5 +1,7 @@
 package com.agentengine.util.vectordb;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.common.annotations.Secure;
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.infra.ServerType;
@@ -24,7 +26,7 @@ public class VectorServerInfraConfig extends InfraConfig {
 
   @Override
   public String getId() {
-    return ServerType.VECTOR_SERVER + ":" + getServerId();
+    return ServerType.VECTOR_SERVER + ID_SEPARATOR + getServerId();
   }
 
   public String getHost() {

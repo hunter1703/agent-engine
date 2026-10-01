@@ -35,7 +35,16 @@ from deployae.stages import (
     run_graph,
 )
 
-APP_COMPONENTS = ("agent", "catalog", "rest", "knowledge", "connectors", "scheduler", "internal")
+APP_COMPONENTS = (
+    "agent",
+    "catalog",
+    "rest",
+    "knowledge",
+    "connectors",
+    "scheduler",
+    "tenancy",
+    "internal",
+)
 INFRA_COMPONENTS = ("mongodb", "postgres", "localstack", "qdrant")
 
 
@@ -453,6 +462,7 @@ def build_stages(
         image_stage_by_component["knowledge"],
     )
     deploy_app_chart("connectors", global_properties_stage, image_stage_by_component["connectors"])
+    deploy_app_chart("tenancy", global_properties_stage, image_stage_by_component["tenancy"])
     # The environment and every customer are provisioned through internal: client configs, and the
     # databases, event store tables, indexes, vector collections and buckets behind them. The
     # services that host Pekko actors read and write the event store from startup, so they wait

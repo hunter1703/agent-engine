@@ -1,13 +1,11 @@
 package com.agentengine.agent.core.session;
 
-import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.commands.SelfCommand.CompleteRunCommand;
 import com.agentengine.agent.core.session.commands.SelfCommand.PublishEventCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.utils.ContentUtils;
-import com.agentengine.agent.infra.utils.ExtendedRunConfig;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.utils.ExceptionUtils;
 import com.google.adk.agents.RunConfig;
@@ -20,13 +18,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class SessionRunner {
+
+  private static final RunConfig RUN_CONFIG =
+      RunConfig.builder()
+          .toolExecutionMode(RunConfig.ToolExecutionMode.PARALLEL)
+          .streamingMode(RunConfig.StreamingMode.SSE)
+          .build();
   private static final Logger LOG = LoggerFactory.getLogger(SessionRunner.class);
 
   private final String sessionId;
   private final ActorRef<SessionCommand> sessionActor;
   private final Agent agent;
   private final Runner runner;
-  private final String ownerUserId;
+  private final String createdBy;
   private Disposable disposable;
 
   public SessionRunner(
@@ -34,15 +38,15 @@ public final class SessionRunner {
       final ActorRef<SessionCommand> sessionActor,
       final Agent agent,
       final Runner runner,
-      final String ownerUserId) {
+      final String createdBy) {
     this.sessionId = sessionId;
     this.sessionActor = sessionActor;
     this.agent = agent;
     this.runner = runner;
-    this.ownerUserId = ownerUserId;
+    this.createdBy = createdBy;
   }
 
-  public synchronized void start(final UserMessage userMessage, final ResourceGrants grants) {
+  public synchronized void start(final UserMessage userMessage) {
     LOG.debug("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called", sessionId);
 
     final Content userContent =
@@ -51,7 +55,7 @@ public final class SessionRunner {
 
     disposable =
         runner
-            .runAsync(ownerUserId, sessionId, userContent, runConfig(grants, true))
+            .runAsync(createdBy, sessionId, userContent, RUN_CONFIG)
             .doOnNext(
                 event -> {
                   LOG.debug(
@@ -82,15 +86,11 @@ public final class SessionRunner {
                 });
   }
 
-  public synchronized void resume(
-      final Collection<ResumeRequest> resumeRequests, final ResourceGrants grants) {
+  public synchronized void resume(final Collection<ResumeRequest> resumeRequests) {
     disposable =
         runner
             .runAsync(
-                ownerUserId,
-                sessionId,
-                ContentUtils.buildResumeContent(resumeRequests),
-                runConfig(grants, false))
+                createdBy, sessionId, ContentUtils.buildResumeContent(resumeRequests), RUN_CONFIG)
             .doOnNext(
                 event ->
                     LOG.debug(
@@ -121,14 +121,5 @@ public final class SessionRunner {
   public synchronized void close() {
     cancel();
     agent.close().blockingAwait();
-  }
-
-  private static RunConfig runConfig(final ResourceGrants grants, final boolean newRun) {
-    final RunConfig base =
-        RunConfig.builder()
-            .toolExecutionMode(RunConfig.ToolExecutionMode.PARALLEL)
-            .streamingMode(RunConfig.StreamingMode.SSE)
-            .build();
-    return grants.isEmpty() ? base : new ExtendedRunConfig(base, grants, newRun);
   }
 }

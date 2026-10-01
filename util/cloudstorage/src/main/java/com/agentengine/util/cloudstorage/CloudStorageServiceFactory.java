@@ -26,7 +26,7 @@ public class CloudStorageServiceFactory
     this.applicationConfig = applicationConfig;
   }
 
-  public CloudStorageService get(final int customerId) {
+  public CloudStorageService get(final String customerId) {
     return get(
         getOrCreate(
             CloudStorageUtils.clientId(customerId),

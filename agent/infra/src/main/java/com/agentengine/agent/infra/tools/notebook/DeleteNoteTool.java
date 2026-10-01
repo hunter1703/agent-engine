@@ -1,8 +1,7 @@
 package com.agentengine.agent.infra.tools.notebook;
 
-import com.agentengine.agent.api.model.NotebookGrants;
-import com.agentengine.agent.api.utils.NotebookUtils;
-import com.agentengine.agent.infra.notebook.NotesRepository;
+import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -15,16 +14,16 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.DELETE_NOTE,
           """
-          Permanently deletes a note you were granted edit access to, or one in a notebook you created.
+          Permanently deletes a note in a notebook you created or were granted.
 
           Returns: { status: "success" } or { error }.""",
           Map.of());
 
-  private final NotesRepository notesRepository;
+  private final NotebookService notebookService;
 
-  public DeleteNoteTool(final NotesRepository notesRepository) {
+  public DeleteNoteTool(final NotebookService notebookService) {
     super(DESCRIPTOR);
-    this.notesRepository = notesRepository;
+    this.notebookService = notebookService;
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -36,15 +35,15 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
               name = Constants.ToolArgs.NOTE_TITLE,
               description = "The title of the note to delete.")
           final String noteTitle) {
-    final boolean owner = NotebookUtils.isOwner(notebookId, toolContext.sessionId());
-    final NotebookGrants grants = grantsOf(toolContext);
-    if (!owner && !NotebookUtils.canWrite(grants, notebookId, noteTitle)) {
+    if (!notebookService.deleteNote(notebookId, noteTitle)) {
       return ToolOutput.direct(
           accessDeniedError(
-              toolContext,
-              "You don't have edit access to note '%s' in this notebook.".formatted(noteTitle)));
+              notebookService,
+              "No such note '%s' in this notebook, or you aren't allowed to delete it."
+                  .formatted(noteTitle)));
     }
-    notesRepository.deleteById(NotebookUtils.noteId(notebookId, noteTitle));
+    SessionUtils.getSessionState(toolContext.invocationContext())
+        .syncNotebookReminder(notebookService);
     return ToolOutput.direct(Map.of(Constants.ToolStatus.STATUS, Constants.ToolStatus.SUCCESS));
   }
 }

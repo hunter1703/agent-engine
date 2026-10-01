@@ -1,11 +1,11 @@
 package com.agentengine.agent.infra.tools.connector;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
-import com.agentengine.connectors.api.services.ConnectionCacheTag;
 import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
-import com.agentengine.util.distributed.CacheScope;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.common.cache.CacheBuilder;
@@ -18,26 +18,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Caches each connector's tool {@link FunctionDeclaration} - the "input"/"connectionId" wrapper
- * schema a {@link ConnectorTool} exposes to the model. Scoped per user, not just per customer, via
- * {@link CacheScope#USER} - a connector's connection-id enum can eventually differ per user once
- * connections carry RBAC, so one user's cached declaration must never leak into another's.
- *
- * <p>Tagged {@link ConnectionCacheTag#CONNECTIONS} alongside {@code ConnectorCacheService}'s own
- * connection-id and connector-metadata caches, but since a {@code CacheCategory.CONNECTIONS}
- * invalidation broadcast only clears the customer-scoped entry for a key (see {@link
- * DistributedCache}'s class doc), a user-scoped entry here doesn't get evicted the moment a
- * connection changes - it falls back to expiring on its own one-hour TTL.
+ * Builds each connector's tool {@link FunctionDeclaration} — the "input"/"connectionId" wrapper
+ * schema a {@link ConnectorTool} exposes to the model. A connector's description and parsed input
+ * schema are cached for the whole customer; the connection ids the current context may use are
+ * added on each call.
  */
 @Singleton
 public class ConnectorToolDeclarationCache {
 
   private final ConnectorCacheService connectorCacheService;
-  private final DistributedCache<FunctionDeclaration> cache;
+  private final DistributedCache<ConnectorSchema> cache;
 
   @Inject
   public ConnectorToolDeclarationCache(
@@ -45,39 +38,23 @@ public class ConnectorToolDeclarationCache {
       final DistributedCacheManager cacheManager) {
     this.connectorCacheService = connectorCacheService;
     this.cache =
-        new DistributedCache.Builder<FunctionDeclaration>("TOOL_DECLARATION_CACHE", cacheManager)
-            .scope(CacheScope.USER)
-            .tags(Set.of(ConnectionCacheTag.CONNECTIONS))
+        new DistributedCache.Builder<ConnectorSchema>("CONNECTOR_SCHEMA_CACHE", cacheManager)
             .localCache(CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS))
-            .loader(this::build)
+            .loader(this::load)
             .build();
   }
 
   public Optional<FunctionDeclaration> get(final String appName, final String connectorName) {
-    return Optional.ofNullable(cache.get(appName + ":" + connectorName));
-  }
-
-  private FunctionDeclaration build(final String key) {
-    final String[] parts = key.split(":", 2);
-    if (parts.length != 2) {
-      return null;
+    final ConnectorSchema connectorSchema = cache.get(appName + ID_SEPARATOR + connectorName);
+    if (connectorSchema == null) {
+      return Optional.empty();
     }
-    final String appName = parts[0];
-    final String connectorName = parts[1];
-
-    final ConnectorMetadata connectorMetadata =
-        connectorCacheService.getConnectorMetadata(appName, connectorName);
-    if (connectorMetadata == null) {
-      return null;
-    }
-    final List<String> connectionIds = connectorCacheService.getConnectionsForApp(appName);
-
     final Map<String, Schema> properties = new HashMap<>();
-    properties.put("input", Schema.fromJson(JsonUtils.toJson(connectorMetadata.inputSchema())));
-
+    properties.put("input", connectorSchema.input());
     final List<String> requiredFields = new ArrayList<>();
     requiredFields.add("input");
 
+    final List<String> connectionIds = connectorCacheService.getConnectionsForApp(appName);
     if (CollectionUtils.isNotEmpty(connectionIds)) {
       properties.put(
           "connectionId",
@@ -89,13 +66,33 @@ public class ConnectorToolDeclarationCache {
       requiredFields.add("connectionId");
     }
 
-    final Schema schema =
-        Schema.builder().type("OBJECT").properties(properties).required(requiredFields).build();
-
-    return FunctionDeclaration.builder()
-        .name(connectorName)
-        .description(connectorMetadata.description())
-        .parameters(schema)
-        .build();
+    return Optional.of(
+        FunctionDeclaration.builder()
+            .name(connectorName)
+            .description(connectorSchema.description())
+            .parameters(
+                Schema.builder()
+                    .type("OBJECT")
+                    .properties(properties)
+                    .required(requiredFields)
+                    .build())
+            .build());
   }
+
+  private ConnectorSchema load(final String key) {
+    final String[] parts = key.split(ID_SEPARATOR, 2);
+    if (parts.length != 2) {
+      return null;
+    }
+    final ConnectorMetadata connectorMetadata =
+        connectorCacheService.getConnectorMetadata(parts[0], parts[1]);
+    return connectorMetadata == null
+        ? null
+        : new ConnectorSchema(
+            connectorMetadata.description(),
+            Schema.fromJson(JsonUtils.toJson(connectorMetadata.inputSchema())));
+  }
+
+  /** A connector's description and the schema of its input. */
+  private record ConnectorSchema(String description, Schema input) {}
 }

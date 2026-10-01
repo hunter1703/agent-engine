@@ -1,0 +1,5 @@
+app-base:
+  service:
+    name: tenancy
+  pekko:
+    cluster: tenancy

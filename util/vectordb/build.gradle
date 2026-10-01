@@ -22,7 +22,6 @@ dependencies {
     runtimeOnly libs.grpc.netty.shaded
 
     implementation project(':util:common')
-
     implementation project(':util:context')
     api project(':util:infra')
     implementation project(':util:distributed')
@@ -30,8 +29,9 @@ dependencies {
     implementation libs.guava
     implementation libs.slf4j.api
 
-    // Annotation-only API: compile-time marker, runtime provided by Quarkus
+    // Annotation-only APIs: compile-time markers, runtime provided by Quarkus
     compileOnly libs.jakarta.inject.api
+    compileOnly libs.jakarta.enterprise.cdi.api
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

@@ -13,7 +13,7 @@ public abstract class AbstractCloudStorageService implements CloudStorageService
   }
 
   protected String bucket() {
-    return Context.customerId()
+    return Context.currentCustomerId()
         .map(
             customerId -> {
               final CloudStorageClientInfraConfig clientConfig =

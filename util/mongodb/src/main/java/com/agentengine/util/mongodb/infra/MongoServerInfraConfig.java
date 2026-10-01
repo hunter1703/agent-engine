@@ -1,5 +1,7 @@
 package com.agentengine.util.mongodb.infra;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.common.annotations.Secure;
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.infra.ServerType;
@@ -15,7 +17,7 @@ public class MongoServerInfraConfig extends InfraConfig {
   }
 
   public static String id(final String serverId) {
-    return ServerType.MONGO_SERVER + ":" + serverId;
+    return ServerType.MONGO_SERVER + ID_SEPARATOR + serverId;
   }
 
   @Override

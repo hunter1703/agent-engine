@@ -9,13 +9,9 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.agents.tools.ToolConstructor;
-import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.FileDetails;
-import com.agentengine.util.common.beans.Permission;
-import com.agentengine.util.common.utils.PermissionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.tools.ToolContext;
-import java.util.List;
 import java.util.Map;
 
 @DiscoverableTool
@@ -63,13 +59,10 @@ public final class GetWebpageTool extends Tool {
 
   private ToolOutput<?> indexUrl(final String url, final ToolContext toolContext) {
     final String agentName = toolContext.invocationContext().agent().name();
-    final String sessionId = toolContext.invocationContext().session().id();
     final IndexRequest request = new IndexRequest();
     request.setAgentId(agentName);
     request.setFileDetails(FileDetails.fromUrl(url));
     request.setTitle(url);
-    request.setGrants(
-        List.of(PermissionUtils.build(Permission.READ, AssetClass.AGENT_SESSION, sessionId)));
     request.setWaitForCompletion(true);
     final Knowledge knowledge = knowledgeService.create(request);
     return ToolOutput.knowledge(knowledge.getId(), "Webpage '%s' indexed.".formatted(url));

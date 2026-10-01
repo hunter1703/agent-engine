@@ -20,6 +20,9 @@ import org.bson.codecs.pojo.annotations.BsonIgnore;
  */
 @Index(name = "session_events_turn_idx", def = "{'sessionId': 1, 'turnId': 1, 'sequence': 1}")
 @Index(
+    name = "session_events_session_created_idx",
+    def = "{'sessionId': 1, 'createdTime': 1, 'sequence': 1}")
+@Index(
     name = "session_events_root_created_idx",
     def = "{'rootSessionId': 1, 'createdTime': 1, 'sequence': 1}")
 public final class SessionEvent extends BaseEntity implements Copyable<SessionEvent> {
@@ -105,6 +108,14 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
   @Override
   public SessionEvent copy() {
     return new SessionEvent(this);
+  }
+
+  /** An event's created time is when it happened, not when it was stored, so it is kept. */
+  @Override
+  public void cleanContextualFields() {
+    final long eventTime = getCreatedTime();
+    super.cleanContextualFields();
+    setCreatedTime(eventTime);
   }
 
   public String getRootSessionId() {

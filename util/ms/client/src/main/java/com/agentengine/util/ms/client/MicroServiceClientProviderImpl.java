@@ -46,10 +46,7 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
   }
 
   private <T> T resolve(final Class<T> serviceClass, final boolean raw) {
-    if (!serviceClass.isAnnotationPresent(MicroService.class)) {
-      throw new IllegalArgumentException(
-          serviceClass.getName() + " is not annotated with @MicroService");
-    }
+    final String service = requireMicroService(serviceClass).value();
 
     // Prefer a local implementation when co-located in the same process -- "raw" is purely a
     // wire-format optimization for the gRPC proxy path below (skip binding each JSON element to a
@@ -60,13 +57,26 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
       return localInstance;
     }
 
+    return proxy(serviceClass, service, raw);
+  }
+
+  private static MicroService requireMicroService(final Class<?> serviceClass) {
+    final MicroService microService = serviceClass.getAnnotation(MicroService.class);
+    if (microService == null) {
+      throw new IllegalArgumentException(
+          serviceClass.getName() + " is not annotated with @MicroService");
+    }
+    return microService;
+  }
+
+  private <T> T proxy(final Class<T> serviceClass, final String service, final boolean raw) {
     // noinspection unchecked
     return (T)
         Proxy.newProxyInstance(
             serviceClass.getClassLoader(),
             new Class<?>[] {serviceClass},
             new MicroServiceInvocationHandler(
-                serviceClass, channelSupplier(serviceClass), jsonCodec, raw));
+                serviceClass, channelSupplier(service), jsonCodec, raw));
   }
 
   private static <T> T findLocalInstance(final Class<T> serviceClass) {
@@ -87,9 +97,8 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
 
   // Resolved on each invocation, not at startup, so that bean initialization does not trigger
   // config lookups or gRPC connections, and each call goes to the current customer's server.
-  private Supplier<ManagedChannel> channelSupplier(final Class<?> serviceClass) {
-    final String service = serviceClass.getAnnotation(MicroService.class).value();
+  private Supplier<ManagedChannel> channelSupplier(final String service) {
     return () ->
-        channelProvider.getForService(Context.customerId().orElseThrow(), service).channel();
+        channelProvider.getForService(Context.currentCustomerId().orElseThrow(), service).channel();
   }
 }

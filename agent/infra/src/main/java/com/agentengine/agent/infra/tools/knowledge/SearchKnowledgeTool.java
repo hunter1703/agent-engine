@@ -2,9 +2,9 @@ package com.agentengine.agent.infra.tools.knowledge;
 
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.tools.Tool;
+import com.agentengine.knowledge.api.beans.IndexingStatus;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
-import com.agentengine.knowledge.api.services.KnowledgeCache;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
@@ -13,12 +13,14 @@ import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.agents.tools.ToolConstructor;
+import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
@@ -27,22 +29,24 @@ import com.google.adk.models.LlmResponse;
 import com.google.adk.tools.ToolContext;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Searches indexed knowledge chunks for content semantically similar to a natural-language query.
- *
- * <p>The search can be scoped to a specific knowledge item (via {@code knowledgeId}) or to all
- * knowledge indexed for the current agent. Results are ranked by vector similarity.
+ * Searches indexed knowledge chunks for content semantically similar to a natural-language query,
+ * or, when {@code knowledgeId} names a non-indexed item, returns that item's full content instead.
  */
 public final class SearchKnowledgeTool extends Tool {
 
   private static final Logger LOG = LoggerFactory.getLogger(SearchKnowledgeTool.class);
 
-  /** Embedding-model additional key expected by {@code VectorStore.rewriteSemanticFilter}. */
+  /** Embedding-model additional key expected by {@code VectorEntityStore}. */
   private static final String EMBEDDING_MODEL_ID_KEY = "embeddingModelId";
 
   private static final long HYPOTHETICAL_PASSAGE_TIMEOUT_SECONDS = 8L;
@@ -51,8 +55,10 @@ public final class SearchKnowledgeTool extends Tool {
       new ToolDescriptor(
           Constants.ToolNames.SEARCH_KNOWLEDGE,
           """
-                  Semantic search over the agent's indexed knowledge. See the query parameter's own
-                  description for exactly how to phrase it.
+                  Semantic search over the indexed knowledge you have access to — or, when knowledgeId names a
+                  non-indexed item (one with no searchable chunks), returns that item's full content
+                  instead and ignores query. See the query parameter's own description for exactly
+                  how to phrase it.
 
                   ONE IDEA PER CALL
                   Each call retrieves chunks for one direction. For broad, comparative, or multi-part
@@ -62,45 +68,36 @@ public final class SearchKnowledgeTool extends Tool {
                                                  call 2: "Y strengths weaknesses trade-offs"
 
                   SCOPING
-                  Pass knowledgeId when the user names a specific source; omit it to search all
-                  knowledge indexed for this agent.
+                  Pass knowledgeId when the user names a specific item; omit it to search all
+                  indexed knowledge you have access to.
 
                   PAGINATION
-                  Returns { chunks, offset, limit, hasMore }. When hasMore is true, call again with
-                  a larger offset to page through further matches.
+                  Returns { chunks, offset, limit, hasMore } when searching. When hasMore is true,
+                  call again with a larger offset to page through further matches.
 
-                  NOT FOR
-                  Raw knowledge sources that have no indexed chunks. Read those whole with
-                  READ_KNOWLEDGE_SOURCE instead.
+                  NON-INDEXED ITEMS
+                  When knowledgeId names a non-indexed item, query is ignored and the full content
+                  is returned instead: { status: "success", content, encoding, mime_type }.
                   """);
 
   private final KnowledgeService knowledgeService;
-  private final KnowledgeCache knowledgeCache;
+  private final CloudStorageService cloudStorageService;
   private final DefaultModelsRepository defaultModelsRepository;
   private final ModelProvider modelProvider;
 
   @ToolConstructor
   public SearchKnowledgeTool(
       final KnowledgeService knowledgeService,
-      final KnowledgeCache knowledgeCache,
+      final CloudStorageService cloudStorageService,
       final DefaultModelsRepository defaultModelsRepository,
       final ModelProvider modelProvider) {
     super(DESCRIPTOR);
     this.knowledgeService = knowledgeService;
-    this.knowledgeCache = knowledgeCache;
+    this.cloudStorageService = cloudStorageService;
     this.defaultModelsRepository = defaultModelsRepository;
     this.modelProvider = modelProvider;
   }
 
-  /**
-   * Executes a semantic search over indexed knowledge.
-   *
-   * @param query natural-language search query
-   * @param knowledgeId optional — limit search to a specific knowledge item
-   * @param offset pagination offset (default: 0)
-   * @param limit maximum results to return (default: 10)
-   * @param toolContext provides agent identity for scope filtering
-   */
   public ToolOutput<Map<String, Object>> execute(
       @ToolArg(
               name = "query",
@@ -130,21 +127,21 @@ public final class SearchKnowledgeTool extends Tool {
                   real phrasing; reuse that vocabulary and register in follow-up queries \
                   rather than repeating a query shape that didn't match well.
 
-                  ~5-15 words, one topic per call.
-                  """)
+                  ~5-15 words, one topic per call. Required unless knowledgeId names a \
+                  non-indexed item, in which case it's ignored.
+                  """,
+              optional = true)
           String query,
       @ToolArg(
               name = Constants.ToolArgs.KNOWLEDGE_ID,
               description =
-                  "Restrict the search to a single indexed knowledge source. "
-                      + "Provide this ONLY when the user names a specific source and a "
-                      + "valid id for it is available in the conversation (for example from "
-                      + "a prior tool call that lists the agent's knowledge). "
+                  "Restrict the search to a single knowledge item, or, if that item is "
+                      + "non-indexed, read it in full. Provide this ONLY when the user names a "
+                      + "specific item and a valid id for it is available in the conversation "
+                      + "(for example from a prior tool call that lists your knowledge). "
                       + "Do NOT invent or guess an id - an unknown id returns no results and "
                       + "looks like 'nothing found'. "
-                      + "Omit to search across all knowledge indexed for this agent. "
-                      + "Scoping narrows recall; it does not replace the query, which is still "
-                      + "required.",
+                      + "Omit to search across all indexed knowledge you have access to.",
               optional = true)
           String knowledgeId,
       @ToolArg(
@@ -163,29 +160,35 @@ public final class SearchKnowledgeTool extends Tool {
           Integer limit,
       ToolContext toolContext) {
 
+    final Knowledge knowledge =
+        StringUtils.isNotBlank(knowledgeId) ? knowledgeService.findById(knowledgeId) : null;
+    if (StringUtils.isNotBlank(knowledgeId)) {
+      if (knowledge == null) {
+        return ToolOutput.direct(Map.of("error", "Not granted access to this knowledge item."));
+      }
+      if (IndexingStatus.NON_INDEXED.name().equals(knowledge.getIndexingStatus())) {
+        return readFullContent(knowledge);
+      }
+    }
+    if (StringUtils.isBlank(query)) {
+      return ToolOutput.direct(Map.of("error", "A query is required to search knowledge."));
+    }
+
     final int resolvedOffset = offset != null ? offset : 0;
     final int resolvedLimit = limit != null ? limit : 5;
 
-    final List<Filter> filters = new ArrayList<>();
-    if (StringUtils.isNotBlank(knowledgeId)) {
-      filters.add(Filters.eq(KnowledgeChunk.FIELD_KNOWLEDGE_ID, knowledgeId));
-    }
-
-    final String embeddingText = hypotheticalPassage(query, knowledgeId);
+    final String embeddingText = hypotheticalPassage(query, knowledge);
     LOG.info("Hypothetical passage : {}", embeddingText);
     final Filter semanticFilter =
         Filters.semanticSearch("text", embeddingText)
             .withAdditional(Map.of(EMBEDDING_MODEL_ID_KEY, resolveModelId(toolContext)));
-    filters.add(semanticFilter);
-    final Filter combined = Filters.and(filters.toArray(Filter[]::new));
 
     final Query searchQuery =
-        new Query()
-            .withFilter(combined)
-            .withPage(new Page(resolvedOffset, resolvedLimit))
-            .withAdditional(permissionContext(toolContext));
+        new Query().withFilter(semanticFilter).withPage(new Page(resolvedOffset, resolvedLimit));
 
-    final PaginatedResult<KnowledgeChunk> result = knowledgeService.searchInKnowledge(searchQuery);
+    final PaginatedResult<KnowledgeChunk> result =
+        knowledgeService.searchInKnowledge(
+            knowledge != null ? List.of(knowledgeId) : List.of(), searchQuery);
     final List<KnowledgeChunk> chunks = result.getItems();
     final Map<String, Object> output = new LinkedHashMap<>();
     output.put("chunks", chunks);
@@ -193,6 +196,31 @@ public final class SearchKnowledgeTool extends Tool {
     output.put("limit", resolvedLimit);
     output.put("hasMore", chunks.size() >= resolvedLimit);
     return ToolOutput.direct(output);
+  }
+
+  private ToolOutput<Map<String, Object>> readFullContent(final Knowledge knowledge) {
+    final String location = knowledge.getFileDetails().source();
+    final CloudStorageService.Content content = cloudStorageService.download(location);
+    final boolean isText = FileUtils.isTextFile(content.mimeType(), location);
+    try (InputStream stream = content.stream()) {
+      final byte[] bytes = stream.readAllBytes();
+      final String value =
+          isText
+              ? new String(bytes, StandardCharsets.UTF_8)
+              : Base64.getEncoder().encodeToString(bytes);
+      return ToolOutput.direct(
+          Map.of(
+              Constants.ToolStatus.STATUS,
+              Constants.ToolStatus.SUCCESS,
+              "content",
+              value,
+              "encoding",
+              isText ? "utf-8" : "base64",
+              "mime_type",
+              content.mimeType() == null ? "" : content.mimeType()));
+    } catch (final IOException exception) {
+      throw new UncheckedIOException(exception);
+    }
   }
 
   /**
@@ -205,10 +233,11 @@ public final class SearchKnowledgeTool extends Tool {
    * fails for any reason — this is a retrieval quality improvement, never a hard dependency for
    * search to work.
    */
-  private String hypotheticalPassage(final String query, final String knowledgeId) {
+  private String hypotheticalPassage(final String query, final Knowledge knowledge) {
     final String fastModelId = defaultModelsRepository.getFastModelId();
     try (RefCounted<Model.LLMModel> refCounted = modelProvider.get(fastModelId)) {
-      final String prompt = hypotheticalPassagePrompt(query, contentPreview(knowledgeId));
+      final String contentPreview = knowledge == null ? null : knowledge.getContentPreview();
+      final String prompt = hypotheticalPassagePrompt(query, contentPreview);
       final LlmRequest request =
           LlmRequest.builder()
               .contents(
@@ -231,11 +260,6 @@ public final class SearchKnowledgeTool extends Tool {
       LOG.debug("Hypothetical passage generation failed; falling back to the raw query.", e);
       return query;
     }
-  }
-
-  private String contentPreview(final String knowledgeId) {
-    final Knowledge knowledge = knowledgeCache.get(knowledgeId);
-    return knowledge == null ? null : knowledge.getContentPreview();
   }
 
   private static String hypotheticalPassagePrompt(final String query, final String contentPreview) {
@@ -266,12 +290,5 @@ public final class SearchKnowledgeTool extends Tool {
       }
     }
     return defaultModelsRepository.getEmbeddingModelId();
-  }
-
-  private static Map<String, Object> permissionContext(final ToolContext toolContext) {
-    final Map<String, Object> additional = new HashMap<>();
-    additional.put(KnowledgeChunk.ADDITIONAL_AGENT_ID, toolContext.agentName());
-    additional.put(KnowledgeChunk.ADDITIONAL_SESSION_ID, toolContext.sessionId());
-    return additional;
   }
 }

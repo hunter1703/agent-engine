@@ -1,5 +1,7 @@
 package com.agentengine.util.ms.client;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.infra.ClientType;
 
 public final class MicroServiceUtils {
@@ -10,12 +12,12 @@ public final class MicroServiceUtils {
     return service + "-default";
   }
 
-  public static String clientId(final Integer customerId, final String service) {
-    return ClientType.MICROSERVICE_CLIENT + ":" + service + ":" + customerId;
+  public static String clientId(final String customerId, final String service) {
+    return ClientType.MICROSERVICE_CLIENT + ID_SEPARATOR + service + ID_SEPARATOR + customerId;
   }
 
   public static MicroServiceClientInfraConfig clientConfig(
-      final Integer customerId, final String service, final String serverId) {
+      final String customerId, final String service, final String serverId) {
     final MicroServiceClientInfraConfig clientConfig = new MicroServiceClientInfraConfig();
     clientConfig.setCustomerId(customerId);
     clientConfig.setService(service);

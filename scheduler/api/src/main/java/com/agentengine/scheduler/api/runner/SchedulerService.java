@@ -13,5 +13,6 @@ public interface SchedulerService {
 
   PaginatedResult<JobDefinition> findJobs(Query query);
 
-  void cancelJob(String jobId);
+  /** Deletes the job and cancels its pending triggers. False if there was no such job. */
+  boolean cancelJob(String jobId);
 }

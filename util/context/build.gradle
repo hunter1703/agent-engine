@@ -6,6 +6,9 @@ dependencies {
     // Exposed in public API (ForwardingExecutorService in ContextualExecutor)
     api libs.guava
 
+    // Annotations naming the written form of a caller; Jackson itself is provided at runtime
+    compileOnly libs.jackson.databind
+
     // Annotation-only APIs: compile-time markers, runtime provided by Quarkus
     compileOnly libs.jakarta.inject.api
     compileOnly libs.jakarta.enterprise.cdi.api

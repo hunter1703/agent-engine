@@ -1,11 +1,18 @@
 package com.agentengine.agent.infra.agents;
 
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.context.Context;
+import com.agentengine.util.context.Principal;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.Callbacks;
+import com.google.adk.agents.InvocationContext;
+import com.google.adk.events.Event;
+import io.reactivex.rxjava3.core.Flowable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /** Engine base agent — carries {@link BaseAgentConfig} and delegates runtime to subclasses. */
 public abstract class Agent extends BaseAgent {
@@ -34,6 +41,27 @@ public abstract class Agent extends BaseAgent {
 
   public BaseAgentConfig getAgentConfig() {
     return agentConfig;
+  }
+
+  /**
+   * Runs this agent with its own context added to the turn's, so whatever runs as part of it — its
+   * tools, and the plugin callbacks around it — also reaches what was shared with this agent. For
+   * the session's own agent that context is already the turn's; an agent transferred to inside the
+   * session keeps everything the session reaches and adds its own.
+   */
+  @Override
+  public Flowable<Event> runAsync(final InvocationContext invocationContext) {
+    return Flowable.fromPublisher(
+        subscriber -> {
+          final Optional<Context> turn = Context.current();
+          if (turn.isEmpty()) {
+            super.runAsync(invocationContext).subscribe(subscriber);
+            return;
+          }
+          turn.get()
+              .alsoActingAs(Principal.ofAnyUser().within(AssetClass.AGENT, agentConfig.getId()))
+              .run(() -> super.runAsync(invocationContext).subscribe(subscriber));
+        });
   }
 
   public abstract static class Builder<B extends Builder<?, ?>, A extends Agent> {

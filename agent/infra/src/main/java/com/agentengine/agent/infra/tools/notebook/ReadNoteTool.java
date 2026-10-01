@@ -1,9 +1,7 @@
 package com.agentengine.agent.infra.tools.notebook;
 
-import com.agentengine.agent.api.model.NotebookGrants;
-import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.Note;
-import com.agentengine.agent.infra.notebook.NotesRepository;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -16,16 +14,16 @@ public final class ReadNoteTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.READ_NOTE,
           """
-          Reads the current content of a note you were granted read or edit access to, or one in a notebook you created.
+          Reads the current content of a note in a notebook you created or were granted.
 
           Returns: { status: "success", content } or { error }.""",
           Map.of());
 
-  private final NotesRepository notesRepository;
+  private final NotebookService notebookService;
 
-  public ReadNoteTool(final NotesRepository notesRepository) {
+  public ReadNoteTool(final NotebookService notebookService) {
     super(DESCRIPTOR);
-    this.notesRepository = notesRepository;
+    this.notebookService = notebookService;
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -40,17 +38,13 @@ public final class ReadNoteTool extends AbstractNotebookTool {
           final String notebookId,
       @ToolArg(name = Constants.ToolArgs.NOTE_TITLE, description = "The title of the note to read.")
           final String noteTitle) {
-    final boolean owner = NotebookUtils.isOwner(notebookId, toolContext.sessionId());
-    final NotebookGrants grants = grantsOf(toolContext);
-    if (!owner && !NotebookUtils.canRead(grants, notebookId, noteTitle)) {
+    final Note note = notebookService.getNote(notebookId, noteTitle);
+    if (note == null) {
       return ToolOutput.direct(
           accessDeniedError(
-              toolContext,
-              "You don't have read access to note '%s' in this notebook".formatted(noteTitle)));
-    }
-    final Note note = notesRepository.findById(NotebookUtils.noteId(notebookId, noteTitle));
-    if (note == null) {
-      return ToolOutput.direct(Map.of("error", "No such note: '" + noteTitle + "'."));
+              notebookService,
+              "No such note: '%s', or you don't have access to its notebook."
+                  .formatted(noteTitle)));
     }
     return ToolOutput.direct(
         Map.of(

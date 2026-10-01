@@ -1,6 +1,7 @@
 package com.agentengine.agent.infra.context;
 
 import static com.agentengine.agent.infra.utils.ContentUtils.estimateTokens;
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
 
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.Constants;
@@ -68,7 +69,8 @@ public final class CompactionContextManager implements ContextManager {
     this.sessionService = sessionService;
     this.summaryCache =
         new Cache<>(
-            CacheBuilder.newBuilder().maximumSize(1000), key -> loadSummary(key.split(":")[0]));
+            CacheBuilder.newBuilder().maximumSize(1000),
+            key -> loadSummary(key.split(ID_SEPARATOR)[0]));
   }
 
   @Override
@@ -77,7 +79,7 @@ public final class CompactionContextManager implements ContextManager {
     if (CollectionUtils.isEmpty(contents)) {
       return List.of();
     }
-    final String existingSummary = summaryCache.get(sessionId + ":" + agentId);
+    final String existingSummary = summaryCache.get(sessionId + ID_SEPARATOR + agentId);
     final int totalTokens =
         estimateTotalTokens(contents) + StringUtils.estimateTokens(existingSummary);
 

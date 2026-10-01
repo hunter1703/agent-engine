@@ -1,8 +1,11 @@
 package com.agentengine.agent.infra.notebook;
 
 import com.agentengine.agent.api.utils.NotebookUtils;
+import com.agentengine.util.common.annotations.Permissioned;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 
+@Permissioned(assetClass = AssetClass.NOTEBOOK)
 public class Notebook extends BaseEntity {
 
   private String author;

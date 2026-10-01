@@ -1,8 +1,6 @@
 package com.agentengine.agent.infra.tools;
 
-import com.agentengine.agent.infra.tools.knowledge.ReadKnowledgeSourceTool;
 import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
-import com.agentengine.knowledge.api.services.KnowledgeCache;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.beans.config.ToolsConfig;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
@@ -23,7 +21,6 @@ public final class ToolFactory {
   private final ToolService toolService;
   private final CloudStorageService cloudStorageService;
   private final KnowledgeService knowledgeService;
-  private final KnowledgeCache knowledgeCache;
   private final DefaultModelsRepository defaultModelsRepository;
   private final ModelProvider modelProvider;
 
@@ -32,13 +29,11 @@ public final class ToolFactory {
       final ToolService toolService,
       final CloudStorageService cloudStorageService,
       final KnowledgeService knowledgeService,
-      final KnowledgeCache knowledgeCache,
       final DefaultModelsRepository defaultModelsRepository,
       final ModelProvider modelProvider) {
     this.toolService = toolService;
     this.cloudStorageService = cloudStorageService;
     this.knowledgeService = knowledgeService;
-    this.knowledgeCache = knowledgeCache;
     this.defaultModelsRepository = defaultModelsRepository;
     this.modelProvider = modelProvider;
   }
@@ -47,13 +42,9 @@ public final class ToolFactory {
     return new HumanInTheLoopTool();
   }
 
-  public BaseTool getReadKnowledgeSourceTool() {
-    return new ReadKnowledgeSourceTool(cloudStorageService);
-  }
-
   public BaseTool getSearchKnowledgeTool() {
     return new SearchKnowledgeTool(
-        knowledgeService, knowledgeCache, defaultModelsRepository, modelProvider);
+        knowledgeService, cloudStorageService, defaultModelsRepository, modelProvider);
   }
 
   public List<BaseTool> buildTools(final List<ToolsConfig> toolConfigs) {

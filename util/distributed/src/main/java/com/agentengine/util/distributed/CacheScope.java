@@ -1,5 +1,7 @@
 package com.agentengine.util.distributed;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.context.Context;
 import java.util.Locale;
 
@@ -9,11 +11,7 @@ public enum CacheScope {
   GLOBAL(0),
   /** One entry per key for each customer. */
   CUSTOMER(1),
-  /** One entry per key for each user of each customer. */
-  USER(2),
   UNKNOWN(0);
-
-  private static final String SEPARATOR = ":";
 
   private final int namespaceSegments;
 
@@ -21,12 +19,11 @@ public enum CacheScope {
     this.namespaceSegments = namespaceSegments;
   }
 
-  /** The key as this scope stores it, prefixed with whichever of customer/user it isolates by. */
+  /** The key as this scope stores it, prefixed with whichever identity it isolates by. */
   public String namespace(final String cacheName, final String key) {
     return switch (this) {
       case GLOBAL -> key;
-      case CUSTOMER -> customerId(cacheName) + SEPARATOR + key;
-      case USER -> customerId(cacheName) + SEPARATOR + userId(cacheName) + SEPARATOR + key;
+      case CUSTOMER -> customerId(cacheName) + ID_SEPARATOR + key;
       case UNKNOWN -> throw new IllegalStateException("Cache " + cacheName + " has no scope");
     };
   }
@@ -35,17 +32,11 @@ public enum CacheScope {
   public String unwrap(final String namespacedKey) {
     return namespaceSegments == 0
         ? namespacedKey
-        : namespacedKey.split(SEPARATOR, namespaceSegments + 1)[namespaceSegments];
+        : namespacedKey.split(ID_SEPARATOR, namespaceSegments + 1)[namespaceSegments];
   }
 
   private String customerId(final String cacheName) {
-    return Context.customerId()
-        .map(String::valueOf)
-        .orElseThrow(() -> noIdentity(cacheName, "customer"));
-  }
-
-  private String userId(final String cacheName) {
-    return Context.userId().map(String::valueOf).orElseThrow(() -> noIdentity(cacheName, "user"));
+    return Context.currentCustomerId().orElseThrow(() -> noIdentity(cacheName, "customer"));
   }
 
   private IllegalStateException noIdentity(final String cacheName, final String identity) {

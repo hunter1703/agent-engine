@@ -1,13 +1,11 @@
 package com.agentengine.scheduler.core.actor;
 
-import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
+import com.agentengine.scheduler.core.store.TriggerDefinitionRepository;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Contextual;
-import com.agentengine.util.context.UserContext;
 import com.agentengine.util.pekko.PekkoSerializable;
 import com.agentengine.util.pekko.actor.ContextualInterceptor;
 import java.time.Duration;
-import java.util.UUID;
 import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.javadsl.AbstractBehavior;
 import org.apache.pekko.actor.typed.javadsl.ActorContext;
@@ -39,9 +37,7 @@ public class TriggerReconcilerActor extends AbstractBehavior<TriggerReconcilerAc
       final TriggerDefinitionRepository triggerDefinitionRepository,
       final long heartbeatTimeoutMs) {
     return Behaviors.intercept(
-        () ->
-            new ContextualInterceptor<>(
-                Command.class, new Context(UUID.randomUUID().toString(), UserContext.SYSTEM)),
+        () -> new ContextualInterceptor<>(Command.class, Context.asSystemCustomer()),
         Behaviors.setup(
             context ->
                 Behaviors.withTimers(

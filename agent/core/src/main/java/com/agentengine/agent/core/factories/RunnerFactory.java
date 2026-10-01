@@ -1,6 +1,8 @@
 package com.agentengine.agent.core.factories;
 
-import com.agentengine.agent.api.services.AgentCacheTag;
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
+import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.SessionRunner;
 import com.agentengine.agent.core.session.commands.SessionCommand;
@@ -9,9 +11,9 @@ import com.agentengine.agent.infra.context.ContextManager;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.agent.infra.factories.context.ContextManagerProvider;
 import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
-import com.agentengine.agent.infra.notebook.NotesRepository;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.plugins.*;
-import com.agentengine.agent.infra.tools.ToolFactory;
+import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
@@ -22,8 +24,8 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
-import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.adk.agents.BaseAgent;
@@ -41,8 +43,6 @@ import org.apache.pekko.actor.typed.ActorRef;
 @Singleton
 public class RunnerFactory {
 
-  private static final String CACHE_NAME = "session-runner-cache";
-
   private final AgentService agentService;
   private final AgentProvider agentProvider;
   private final ContextManagerProvider contextManagerProvider;
@@ -52,8 +52,7 @@ public class RunnerFactory {
 
   private final KnowledgeService knowledgeService;
   private final MemoryService memoryService;
-  private final NotesRepository notesRepository;
-  private final ToolFactory toolFactory;
+  private final NotebookService notebookService;
   private final DistributedCache<SessionRunner> cache;
 
   public RunnerFactory(
@@ -65,8 +64,7 @@ public class RunnerFactory {
       final SessionEventsRepository sessionEventsRepository,
       final KnowledgeService knowledgeService,
       final MemoryService memoryService,
-      final NotesRepository notesRepository,
-      final ToolFactory toolFactory,
+      final NotebookService notebookService,
       final DistributedCacheManager cacheManager) {
     this.agentService = agentService;
     this.agentProvider = agentProvider;
@@ -76,18 +74,23 @@ public class RunnerFactory {
     this.sessionEventsRepository = sessionEventsRepository;
     this.knowledgeService = knowledgeService;
     this.memoryService = memoryService;
-    this.notesRepository = notesRepository;
-    this.toolFactory = toolFactory;
+    this.notebookService = notebookService;
     this.cache =
-        new DistributedCache.Builder<SessionRunner>(CACHE_NAME, cacheManager)
-            .tags(Set.of(AgentCacheTag.RUNNERS))
+        new DistributedCache.Builder<SessionRunner>(RuntimeService.RUNNER_CACHE, cacheManager)
             .removalListener(SessionRunner::close)
             .build();
   }
 
+  /**
+   * The session's runner, built as the customer's system: building only loads what the session's
+   * agent is configured with, and whether it may be used is checked where it is used — starting the
+   * session, and transferring to or spawning an agent.
+   */
   public SessionRunner getOrBuild(
       final String agentId, final String sessionId, final ActorRef<SessionCommand> actor) {
-    return cache.get(cacheKey(agentId, sessionId), key -> build(agentId, sessionId, actor));
+    return cache.get(
+        cacheKey(agentId, sessionId),
+        key -> Context.require().asSystemCaller().get(() -> build(agentId, sessionId, actor)));
   }
 
   public void stop(final String agentId, final String sessionId) {
@@ -95,7 +98,7 @@ public class RunnerFactory {
   }
 
   private static String cacheKey(final String agentId, final String sessionId) {
-    return agentId + ":" + sessionId;
+    return agentId + ID_SEPARATOR + sessionId;
   }
 
   private SessionRunner build(
@@ -109,7 +112,6 @@ public class RunnerFactory {
             .name(AgentUtils.appName(agentId))
             .build();
     final AgentSession agentSession = sessionService.getSession(sessionId);
-    final String ownerUserId = Integer.toString(agentSession.getOwnerUserId());
     final InMemorySessionService inMemorySessionService =
         buildInMemorySessionService(app.name(), sessionId, agentSession);
     final Runner runner =
@@ -118,7 +120,7 @@ public class RunnerFactory {
             .sessionService(inMemorySessionService)
             .memoryService(memoryService)
             .build();
-    return new SessionRunner(sessionId, actor, agent, runner, ownerUserId);
+    return new SessionRunner(sessionId, actor, agent, runner, agentSession.getCreatedBy());
   }
 
   private InMemorySessionService buildInMemorySessionService(
@@ -133,8 +135,7 @@ public class RunnerFactory {
                 persistedSession.state() == null ? Map.of() : persistedSession.state());
     final Session session =
         inMemorySessionService
-            .createSession(
-                appId, Integer.toString(agentSession.getOwnerUserId()), initialState, sessionId)
+            .createSession(appId, agentSession.getCreatedBy(), initialState, sessionId)
             .blockingGet();
 
     if (persistedSession != null) {
@@ -149,7 +150,7 @@ public class RunnerFactory {
   }
 
   private List<Event> getEvents(final String sessionId) {
-    return sessionEventsRepository.getCommittedSessionEvents(sessionId, false).stream()
+    return sessionEventsRepository.getCommittedEvents(sessionId, false).stream()
         .filter(sessionEvent -> sessionEvent.getType() == SessionEvent.Type.NORMAL)
         .map(SessionEvent::getRawEvent)
         .toList();
@@ -187,11 +188,11 @@ public class RunnerFactory {
 
     final List<BasePlugin> plugins =
         List.of(
-            new InitPlugin(knowledgeService),
+            new InitPlugin(),
+            new KnowledgePlugin(knowledgeService),
             new GuardrailPlugin(policies),
             new ContextManagementPlugin(contextManagers),
-            new NotebookPlugin(notesRepository, agentsWithNotebook),
-            new KnowledgeAccessPlugin(toolFactory),
+            new NotebookPlugin(notebookService, agentsWithNotebook),
             new ReminderPlugin(),
             new PlanningPlugin(),
             new ResponseValidationPlugin());

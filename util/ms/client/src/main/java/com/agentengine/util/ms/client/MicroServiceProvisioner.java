@@ -15,7 +15,7 @@ public class MicroServiceProvisioner {
     this.infraConfigService = infraConfigService;
   }
 
-  public void provision(final int customerId, final String service, final String serverId) {
+  public void provision(final String customerId, final String service, final String serverId) {
     infraConfigService.save(
         MicroServiceUtils.clientConfig(
             customerId,

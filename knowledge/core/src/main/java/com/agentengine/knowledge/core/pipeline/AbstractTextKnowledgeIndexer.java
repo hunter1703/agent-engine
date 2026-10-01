@@ -7,13 +7,14 @@ import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.core.chunking.ChunkingPipeline;
 import com.agentengine.knowledge.core.chunking.ChunkingPipelineFactory;
 import com.agentengine.knowledge.core.chunking.ChunkingStage;
-import com.agentengine.knowledge.core.store.KnowledgeChunkStore;
+import com.agentengine.knowledge.core.repository.KnowledgeRepository;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
+import com.agentengine.util.tenancy.Permission;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
@@ -46,17 +47,17 @@ public abstract class AbstractTextKnowledgeIndexer implements KnowledgeIndexer {
   private static final int INSERT_BATCH_SIZE = 100;
 
   private final ChunkingPipelineFactory chunkingPipelineFactory;
-  private final KnowledgeChunkStore vectorStore;
+  private final KnowledgeRepository knowledgeRepository;
   protected final DefaultModelsRepository defaultModelsRepository;
   protected final ModelProvider modelProvider;
 
   protected AbstractTextKnowledgeIndexer(
       final ChunkingPipelineFactory chunkingPipelineFactory,
-      final KnowledgeChunkStore vectorStore,
+      final KnowledgeRepository knowledgeRepository,
       final DefaultModelsRepository defaultModelsRepository,
       final ModelProvider modelProvider) {
     this.chunkingPipelineFactory = chunkingPipelineFactory;
-    this.vectorStore = vectorStore;
+    this.knowledgeRepository = knowledgeRepository;
     this.defaultModelsRepository = defaultModelsRepository;
     this.modelProvider = modelProvider;
   }
@@ -76,6 +77,7 @@ public abstract class AbstractTextKnowledgeIndexer implements KnowledgeIndexer {
 
   @Override
   public IndexResult index(final Knowledge knowledge) {
+    knowledgeRepository.requirePermission(knowledge.getId(), Permission.EDIT);
     final ChunkingPipeline pipeline = chunkingPipelineFactory.create(knowledge, stages(knowledge));
 
     // Chunks are assigned their final id/index/grants, persisted in batches, and sampled for the
@@ -94,11 +96,10 @@ public abstract class AbstractTextKnowledgeIndexer implements KnowledgeIndexer {
               final int i = nextIndex.getAndIncrement();
               chunk.setId(generateChunkId(knowledge.getId(), i));
               chunk.setChunkIndex(i);
-              chunk.setGrants(knowledge.getGrants());
               reservoirSample(sample, chunk, i);
             })
         .buffer(INSERT_BATCH_SIZE)
-        .doOnNext(vectorStore::insertMany)
+        .doOnNext(knowledgeRepository::insertChunks)
         .ignoreElements()
         .blockingAwait();
 

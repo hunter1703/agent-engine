@@ -1,7 +1,8 @@
 [
   {
-    "id": 1,
+    "id": "1",
     "name": "local",
+    "domain": "localhost",
     "defaultModels": {
       "fastModelId": "gemma4",
       "compactionModelId": "gemma4",

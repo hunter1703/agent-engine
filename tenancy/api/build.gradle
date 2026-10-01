@@ -1,0 +1,21 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+group = 'com.agentengine.tenancy'
+
+dependencies {
+    implementation platform(libs.quarkus.bom)
+
+    implementation project(':util:common')
+
+    api project(':util:tenancy')
+    implementation project(':util:context')
+    implementation project(':util:distributed')
+    implementation project(':util:ms:client')
+    api project(':util:infra')
+    implementation libs.slf4j.api
+
+    compileOnly libs.quarkus.arc
+    compileOnly libs.jakarta.validation.api
+}

@@ -1,7 +1,6 @@
 package com.agentengine.knowledge.core.pipeline;
 
 import com.agentengine.agent.api.model.MessagePart;
-import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.CommunityExpertsService;
 import com.agentengine.agent.api.services.RuntimeService;
@@ -71,8 +70,7 @@ public class MediaServiceImpl implements MediaService {
         new UserMessage(
             List.of(
                 new MessagePart.TextPart(ANALYZE_PROMPT),
-                new MessagePart.BinaryPart(normalized, NORMALIZED_MIME_TYPE)),
-            ResourceGrants.EMPTY);
+                new MessagePart.BinaryPart(normalized, NORMALIZED_MIME_TYPE)));
     final String responseText =
         runtimeService.invokeExpert(
             CommunityExpertsService.VISION_AGENT, visionModelId, userMessage);

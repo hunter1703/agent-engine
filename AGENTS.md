@@ -38,7 +38,7 @@ uv run deployae deploy
 # Tear down the standard Kubernetes stack (run from deploy/scripts/)
 uv run deployae cleanup
 
-# Build a service image (module: agent/core, catalog/core, interfaces/rest, knowledge/core,
+# Build a service image (module: agent/core, catalog/core, tenancy/core, interfaces/rest, knowledge/core,
 # connectors/core, scheduler/core, or internal)
 docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
 ```
@@ -47,27 +47,30 @@ docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
 
 | Module                                                     | Purpose                                                                                                     |
 |--------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| `agent:api`, `agent:core`, `agent:infra`, `agent:jobs`      | **Agent service** — agent construction, model providers, tools, guardrails, orchestration, sessions, memory. `agent:jobs` holds scheduled-job definitions fired by the scheduler service |
+| `agent:api`, `agent:core`, `agent:infra`, `agent:jobs`      | **Agent service** — agent construction, model providers, tools, guardrails, orchestration, sessions, memory. agent schedules. `agent:jobs` holds scheduled-job definitions fired by the scheduler service |
 | `catalog:api`, `catalog:core`                                | **Catalog service** — config CRUD/validation, asset catalog, schema contracts, AG-UI event mapping        |
 | `knowledge:api`, `knowledge:core`                             | **Knowledge service** — document indexing and semantic search over Qdrant                                  |
+| `identity`                                                    | Login and sessions, used by the REST service                                                              |
 | `interfaces:rest`                                             | **REST service** — user-facing HTTP/SSE gateway (port 8080)                                                |
-| `tenancy`                                                     | Customers and the provisioning contract: `Customer` and its repository, `ProvisioningService`/`Request`/`Result` |
+| `tenancy:api`, `tenancy:core`, `tenancy:jobs`                 | **Tenancy service** — customers, roles and role mappings, sharing. `api` also holds what every permissioned service uses: the `PermissionChecker` implementation, and `AccessControlService`, the tenancy client for access lists and for submitting stale role and role mapping tasks again. `tenancy:jobs` holds the per-customer jobs, fired by the scheduler service, that have stale role and role mapping tasks submitted again |
 | `connectors:api`, `connectors:core`, `connectors:http`, `connectors:infra` | **Connectors service** — config-driven HTTP connector framework (templating, auth, pagination, retry) backing tools such as `web_research` |
 | `scheduler:api`, `scheduler:core`                             | **Scheduler service** — cron-style job scheduling; fires jobs such as `agent:jobs`' `InvokeAgentJob`       |
 | `internal`                                                    | **Internal service** — internal/ops REST endpoints (Mongo, scheduler introspection)                        |
 | `chaos:api`, `chaos:core`                                     | Fault-injection / chaos-experiment framework. Not a deployed service — run standalone against the stack   |
-| `util:common`                                                 | Cross-module utility classes (queries, updates, exceptions, collections)                                    |
-| `util:context`                                                | Request context: `Context`, `UserContext`, context-propagating executors, `@ContextAware` binding       |
-| `util:infra`                                                  | Infra config model and lookup — `InfraConfig`, client/server configs, `InfraConfigService`                  |
-| `util:mongodb`                                                | MongoDB client factory, codec registry, infra config store                                                  |
+| `util:common`                                                 | Cross-module utility classes (queries, updates, exceptions, collections), entity annotations (`@Index`, `@Indexed`, `@Permissioned`), and the repository contracts (`Repository`, `EntityStore`, `DocumentBackend`)                                    |
+| `util:context`                                                | Request context: `Context`, `Caller`, `Principal`, context-propagating executors, `@ContextAware` binding |
+| `util:tenancy`                                                | Access-control model: `Permission`, the `PermissionChecker`, `PermissionedRepository` and `AclService` contracts, `SharingChange`, `AbstractPermissionedRepository`, and `PermissionedCache` |
+| `util:tasks`                                                  | Task processing contract, independent of how it is run: `Task`/`TaskStatus`, and a `TaskService` per task type that takes its tasks in, handles them and marks them done |
+| `util:infra`                                                  | Infra config model and lookup — `InfraConfig`, client/server configs, `InfraConfigService` — and the provisioning contract (`ProvisioningService`/`Request`/`Result`) |
+| `util:mongodb`                                                | MongoDB client factory, codec registry, infra config store, `DocumentBackend` — the document collections repositories register and read and write through — and `MongoBackend`, its MongoDB implementation |
 | `util:crypto`                                                 | `EncryptionService`, versioned key configs, KMS key loading                                                 |
 | `util:sql`                                                    | SQL server/client infra configs                                                                             |
 | `util:models`                                                | Chat and embedding model factories, model provider cache, LLM wrappers and the text tool-call parser      |
-| `util:vectordb`                                               | Qdrant-backed vector store abstraction                                                                      |
+| `util:vectordb`                                               | `VectorBackend` — the vector collections repositories register and read and write through — and `QdrantBackend`, its Qdrant implementation |
 | `util:cloudstorage`                                           | Cloud object storage client                                                                                 |
 | `util:ms:client`, `util:ms:server`                            | gRPC microservice transport (client dispatch, server wiring)                                                |
 | `util:agents`                                                 | Agent/session domain beans and repositories shared across services                                          |
-| `util:pekko`                                                  | Pekko actor-system, cluster-sharding, and persistence support                                               |
+| `util:pekko`                                                  | Pekko actor-system, cluster-sharding, and persistence support, and `AbstractActorTaskService`, the base `TaskService` that submits to one coalescing actor per customer, task type and partition |
 | `util:scripts`                                                | Templating utilities used by connectors and scripted config                                                 |
 | `configs/`                                                    | Agent and model registry JSON/YAML definitions                                                              |
 | `deploy/docker/`                                              | Shared container image build artifacts                                                                      |
@@ -98,6 +101,78 @@ docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
   boundary in between) until it fills the context window — symptom: a single response that never
   terminates. Always set `numPredict` (and `maxContextLength` matching the model's `num_ctx`) for
   local Ollama-backed models in `deploy/configs/local/models/`.
+- **Access control model**: a request's `Context` carries its customer and its `Caller` — the
+  system, nobody (before logging in), or a user (`UserCaller`). A principal (`Principal`) is a user
+  acting in the context of a chain of assets, each acting in the context of the one before it —
+  not a chain of ownership. It is written as `:`-joined `Class/id` segments, the user first:
+  `User/5` is user 5 acting directly, `User/5:Agent/A:AgentSession/S` user 5 acting in session S of
+  agent A. Any id may be `*`, so a principal named in a grant can stand for many: `User/*:Agent/A`
+  is agent A for any user. A grant to a principal reaches every principal it covers — one it
+  is a prefix of, with any ids widened to `*` — so what is granted to user 5 reaches everything
+  acting for user 5 (what an agent can actually do is bounded by its tools), and what is granted to
+  agent A everything acting within it. A `UserCaller` acts in one or more principals of one user:
+  its primary principal is where the work runs and what it is attributed to; the runtime adds
+  others, e.g. an agent transferred to inside a session also acts in its own `User/5:Agent/B`,
+  keeping what the session reaches and adding what was shared with it. A session's turn always
+  runs as the session for the user who sent the turn's message, so users sharing a session each
+  reach only what was granted for them. `READ` on an agent means being allowed to use it:
+  starting or resuming a session with it, or listing it as a sub-agent of another agent, which
+  lets whoever runs that one use it through it. Runners are built as the system; a sub-agent is not checked again when it is
+  spawned or transferred to, since listing it was. A new entity is owned by the principal
+  creating it — what a user creates directly is theirs. What is created within a session for
+  everyone in it (notebooks, knowledge from attachments) is owned by the session for any
+  user (`Principal.forAnyUser()`), so users sharing a session share it; a memory is owned by its
+  agent for its user (`User/5:Agent/A`), so the agent recalls it in that user's later sessions. A
+  session hands notebooks and knowledge to another for every user of the other session. Access to an entity
+  is the grants (`<principal>#<permission>`) on it plus roles on every asset of its class; a
+  repository may widen it for its own entities.
+  Parts of an entity with no access of their own (session events, knowledge chunks, notes) are not
+  permissioned: they sit in plain repositories reached only through their owner, which checks the
+  owner's access and deletes them along with it. Grants are calculated by tenancy
+  from role mappings and are never written by entity saves, except that a new entity is shared
+  before it is stored and stored with the access list tenancy calculated for that sharing, so it is
+  reachable as soon as it exists. A sharing change marks the changed
+  role mappings pending (a `util:tasks` task per asset) and tenancy's actor for that asset recalculates
+  its whole access list, storing it only while the asset still holds the version it read;
+  editing a role marks every mapping that uses it pending. A `tenancy:jobs` job per customer, scheduled
+  when it is provisioned, has tenancy submit again whatever stays pending too long. Repositories of permissioned
+  entities are `PermissionedRepository`s, built on `AbstractPermissionedRepository`, every other one extends `AbstractRepository`; both store
+  through a collection registered with a `DocumentBackend` or a `VectorBackend`. Permissioned entities live
+  in their customer's own database (`DocumentRepositorySpec.perCustomer`), never in a global
+  collection: roles on every asset skip per-entity filtering, so only the database keeps customers
+  apart. A customer-facing view of global data is its own per-customer entity that the owning
+  service mirrors into the global one (e.g. `AgentSchedule` and the scheduler's `JobDefinition`).
+- **Store registration happens when a repository is created**: `DocumentBackend`/`VectorBackend` set up
+  (indexes, vector collections) only the collections registered with them, so every repository
+  bean is `@Startup` and registers at boot. A repository built with `new` (e.g.
+  `SequenceRepository`) is set up only if a repository bean's constructor creates it.
+
+## Access-Control Glossary
+
+Use these terms, and only these, for these ideas — in code, comments and docs:
+
+- **Principal** (`Principal`): a user acting in the context of a chain of assets, written
+  `User/5:Agent/A:AgentSession/S`; the first segment is always the user. Any id may be `*`, making
+  it stand for many, e.g. `User/*:Agent/A` — agent A, for any user.
+- **Covering principal**: a principal that is a prefix of another, with any ids widened to `*`; it
+  covers that other one. A grant to a principal reaches every principal it covers.
+- **Caller** (`Caller`): who a request acts as — the system, nobody, or a user (`UserCaller`).
+- **Primary principal**: the principal a `UserCaller` runs in and attributes work to; its other
+  principals, added by the runtime (e.g. a transferred agent), add access, never attribution.
+- **Context principals**: every covering principal of every principal a request's caller acts in —
+  what access is checked against.
+- **Permission** (`Permission`): an action on an asset — `READ`, `EDIT`, `DELETE`, `CREATE`. On
+  an agent, `READ` means being allowed to use it.
+- **Grant**: one principal holding one permission, written `<principal>#<permission>`, e.g.
+  `User/*:Agent/A#READ`. Never "grant key" or "token".
+- **Access list** (`Acl`): an entity's grants and the version they were calculated at, stored on it
+  as `acl`; calculated by tenancy, never written by an entity save other than its creation. "ACL" only in type and method names.
+- **Role** (`Role`): a named set of permissions per asset class, e.g. `reader`, `owner`.
+- **Role mapping** (`RoleMapping`): a principal holding roles on one asset, or on every asset of
+  a class. Grants are calculated from role mappings.
+- **Sharing** (`SharingChange`, `AclService.updateSharing`): adding or removing role mappings.
+- **Role on every asset**: a role mapping on no single asset, applying to every asset of a class
+  within the customer.
 
 ## Code Quality Philosophy
 
@@ -158,7 +233,11 @@ the reader and the runtime equally.
    not `idleTimeoutSentinel` — it's the command scheduled for the idle timeout, not a "sentinel").
    Applies to booleans too: `sameClass`, not `homogeneous` — it's a plain description of the check
    ("do all these items share one class"), not a term of art the reader has to already know.
-3. Name a method that gets one thing by its id `get`, not `find`, `fetch` or `lookup` — e.g.
+3. Don't squeeze a name into one short word. A name must say precisely what the thing does in
+   its context — `hasNotePermission(note, notebook, permission)`, not `can(...)`;
+   `isSharedWithSession(entity)`, not `isShared(...)`; `loadCustomerNotebooks()`, not `loadAll()` —
+   without turning formal or long-winded. Private helpers are no exception.
+4. Name a method that gets one thing by its id `get`, not `find`, `fetch` or `lookup` — e.g.
    `InfraConfigService.get(id)`. Reserve `find` for searches that match by a query or condition
    and may return several results.
 
@@ -181,6 +260,30 @@ the reader and the runtime equally.
    `TurnCommittedFact`, `runId` before `turnId`, since a turn belongs to a run). When adding a new
    field to an existing class, insert it at its rightful position in that hierarchy rather than
    appending it at the end.
+
+### Request Context
+
+1. Never override the request `Context` — `as(...)`, `actingAs(...)`, `alsoActingAs(...)`,
+   `asSystem(...)`, or binding a different context — unless the code genuinely has to act
+   as someone other than its caller. Work runs in the context it was called in, so checks and
+   attribution follow whoever triggered it; an override that isn't needed silently widens or hides
+   who acted. Legitimate overrides are few: work no caller has a context for (e.g. a job firing, a
+   cache load shared by every caller), a read of data the caller is not meant to reach directly
+   but the work needs (e.g. a session's parent record), and re-entering a context that was stored
+   because the chain carrying it broke (e.g. starting a queued run). A shortcut to skip a
+   permission check is not one: make the check cheap instead.
+2. A service runs in its caller's context. When a call has to be made as the system, the caller
+   switches before calling; the service never switches on its own behalf.
+
+### Writes
+
+1. Version every update. A write of an entity that was read first goes through only while the
+   stored entity is still at the version that was read, and fails otherwise
+   (`StaleStateException`), so a concurrent write is never silently overwritten. Skip the version
+   only for a non-negotiable reason, and say why at the call site.
+2. A versioned write takes the plain name (`save`, `update`, `delete`); a write that skips the
+   version says so in its name (`saveIgnoringVersion`, `updateManyIgnoringVersion`,
+   `deleteByIdIgnoringVersion`).
 
 ### Java Style & Idioms
 

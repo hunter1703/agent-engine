@@ -6,12 +6,12 @@ import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.models.TriggerDefinition;
 import com.agentengine.scheduler.api.models.TriggerStatus;
 import com.agentengine.scheduler.api.runner.SchedulerService;
-import com.agentengine.scheduler.api.store.JobDefinitionRepository;
-import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.CronUtils;
 import com.agentengine.scheduler.core.SchedulerActorFactory;
 import com.agentengine.scheduler.core.SchedulerUtils;
 import com.agentengine.scheduler.core.actor.SchedulerActor;
+import com.agentengine.scheduler.core.store.JobDefinitionRepository;
+import com.agentengine.scheduler.core.store.TriggerDefinitionRepository;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.context.Context;
@@ -41,9 +41,9 @@ public class SchedulerServiceImpl implements SchedulerService {
 
   @Override
   public String schedule(final JobDefinition jobDefinition) {
-    jobDefinition.setUserContext(
-        Context.getUserContext()
-            .orElseThrow(() -> new IllegalStateException("Jobs are scheduled within a context")));
+    final Context context = Context.require();
+    jobDefinition.setCustomerId(context.customerId());
+    jobDefinition.setCaller(context.caller().toString());
     saveTrigger(jobDefinitionRepository.save(jobDefinition));
     return jobDefinition.getId();
   }
@@ -59,9 +59,12 @@ public class SchedulerServiceImpl implements SchedulerService {
   }
 
   @Override
-  public void cancelJob(final String jobId) {
-    jobDefinitionRepository.deleteById(jobId);
+  public boolean cancelJob(final String jobId) {
+    if (!jobDefinitionRepository.deleteByIdIgnoringVersion(jobId)) {
+      return false;
+    }
     triggerDefinitionRepository.cancelAllJobTriggers(jobId);
+    return true;
   }
 
   /**

@@ -1,0 +1,20 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+// Apart from the parent ':tenancy' project, which would otherwise share its coordinates.
+group = 'com.agentengine.util'
+
+dependencies {
+    // Annotation-only APIs: compile-time markers, runtime provided by Quarkus
+    compileOnly libs.jakarta.inject.api
+    compileOnly libs.jakarta.enterprise.cdi.api
+
+    // Exposed in public API (BaseEntity, Query/Filter, Repository in repository signatures; Principal
+    // in PermissionUtils; DistributedCacheManager and Guava's CacheBuilder in PermissionedCache)
+    api project(':util:common')
+    api project(':util:context')
+    api project(':util:distributed')
+
+    implementation libs.slf4j.api
+}

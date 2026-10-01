@@ -1,5 +1,7 @@
 package com.agentengine.util.vectordb;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.common.annotations.Indexed;
 import com.agentengine.util.common.utils.Utils;
 import com.agentengine.util.infra.ClientType;
@@ -19,7 +21,7 @@ public final class VectorDbUtils {
   private VectorDbUtils() {}
 
   public static VectorClientInfraConfig clientConfig(
-      final VectorStoreClientType clientType, final Integer customerId, final String serverId) {
+      final VectorStoreClientType clientType, final String customerId, final String serverId) {
     final VectorClientInfraConfig clientConfig = new VectorClientInfraConfig();
     clientConfig.setStore(clientType.name());
     clientConfig.setCustomerId(customerId);
@@ -27,8 +29,8 @@ public final class VectorDbUtils {
     return clientConfig;
   }
 
-  public static String clientId(final String store, final Integer customerId) {
-    return ClientType.VECTOR_CLIENT + ":" + store + ":" + customerId;
+  public static String clientId(final String store, final String customerId) {
+    return ClientType.VECTOR_CLIENT + ID_SEPARATOR + store + ID_SEPARATOR + customerId;
   }
 
   /** The vector name of each {@link Indexed} vector field of the entity class, keyed by field. */

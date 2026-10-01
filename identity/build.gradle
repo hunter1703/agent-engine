@@ -1,0 +1,20 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+group = 'com.agentengine.identity'
+
+dependencies {
+    implementation platform(libs.quarkus.bom)
+
+    implementation project(':util:common')
+    implementation project(':util:mongodb')
+    implementation project(':util:context')
+    implementation project(':util:distributed')
+    implementation project(':tenancy:api')
+    implementation project(':util:ms:client')
+    implementation libs.quarkus.elytron.security.common
+    implementation libs.slf4j.api
+
+    compileOnly libs.quarkus.arc
+}

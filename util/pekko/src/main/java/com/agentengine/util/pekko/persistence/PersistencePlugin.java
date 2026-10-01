@@ -10,10 +10,10 @@ import java.util.Optional;
 
 public class PersistencePlugin implements EventSourcePlugin {
 
-  private final int customerId;
+  private final String customerId;
   private final InfraConfigService infraConfigService;
 
-  public PersistencePlugin(final int customerId, final InfraConfigService infraConfigService) {
+  public PersistencePlugin(final String customerId, final InfraConfigService infraConfigService) {
     this.customerId = customerId;
     this.infraConfigService = infraConfigService;
   }

@@ -13,6 +13,7 @@ import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.connectors.core.ConnectionRepository;
 import com.agentengine.connectors.infra.beans.Connector;
+import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
@@ -27,9 +28,12 @@ import com.agentengine.util.scripts.TemplateUtils;
 import com.agentengine.util.scripts.templated.Template;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import org.slf4j.Logger;
@@ -60,6 +64,16 @@ public class ConnectionServiceImpl implements ConnectionService {
     this.distributedLockManager = distributedLockManager;
     this.distributedCacheManager = distributedCacheManager;
     this.encryptionService = encryptionService;
+  }
+
+  @Override
+  public Map<String, Acl> getAcls(final String assetClass, final Collection<String> assetIds) {
+    return connectionRepository.readAcls(assetIds);
+  }
+
+  @Override
+  public Set<String> applyAcls(final String assetClass, final Map<String, Acl> assetIdVsAcl) {
+    return connectionRepository.applyAcls(assetIdVsAcl);
   }
 
   @Override
@@ -114,9 +128,17 @@ public class ConnectionServiceImpl implements ConnectionService {
   }
 
   @Override
-  public PaginatedResult<Connection> getConnections(String appName, Page page) {
+  public PaginatedResult<Connection> getConnections(
+      final String appName,
+      final Page page,
+      final List<String> includeFields,
+      final List<String> excludeFields) {
     final Query query =
-        new Query().withFilter(Filters.eq(Connection.FIELD_APP_NAME, appName)).withPage(page);
+        new Query()
+            .withFilter(Filters.eq(Connection.FIELD_APP_NAME, appName))
+            .withPage(page)
+            .withIncludeFields(includeFields)
+            .withExcludeFields(excludeFields);
     return connectionRepository.findByQuery(query);
   }
 

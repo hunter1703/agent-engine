@@ -136,6 +136,7 @@ quarkus-smallrye-health = { group = "io.quarkus", name = "quarkus-smallrye-healt
 quarkus-micrometer-registry-prometheus = { group = "io.quarkus", name = "quarkus-micrometer-registry-prometheus" }
 quarkus-hibernate-validator = { group = "io.quarkus", name = "quarkus-hibernate-validator" }
 quarkus-arc = { group = "io.quarkus", name = "quarkus-arc" }
+quarkus-elytron-security-common = { group = "io.quarkus", name = "quarkus-elytron-security-common" }
 quarkus-config-smallrye = { group = "io.quarkus", name = "quarkus-smallrye-context-propagation" }
 quarkus-agroal = { group = "io.quarkus", name = "quarkus-agroal" }
 quarkus-jdbc-postgresql = { group = "io.quarkus", name = "quarkus-jdbc-postgresql" }

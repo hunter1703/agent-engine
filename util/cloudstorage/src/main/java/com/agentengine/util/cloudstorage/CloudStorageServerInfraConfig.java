@@ -1,5 +1,7 @@
 package com.agentengine.util.cloudstorage;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.common.annotations.Secure;
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.infra.ServerType;
@@ -33,7 +35,7 @@ public class CloudStorageServerInfraConfig extends InfraConfig {
 
   @Override
   public String getId() {
-    return ServerType.CLOUDSTORAGE_SERVER + ":" + getServerId();
+    return ServerType.CLOUDSTORAGE_SERVER + ID_SEPARATOR + getServerId();
   }
 
   public String getProvider() {

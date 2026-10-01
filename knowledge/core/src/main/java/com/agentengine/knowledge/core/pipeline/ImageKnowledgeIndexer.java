@@ -4,7 +4,7 @@ import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.core.chunking.ChunkingPipelineFactory;
 import com.agentengine.knowledge.core.chunking.ChunkingStage;
 import com.agentengine.knowledge.core.chunking.ImageChunkingStage;
-import com.agentengine.knowledge.core.store.KnowledgeChunkStore;
+import com.agentengine.knowledge.core.repository.KnowledgeRepository;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.models.factories.ModelProvider;
@@ -27,11 +27,11 @@ public class ImageKnowledgeIndexer extends AbstractTextKnowledgeIndexer {
   @Inject
   public ImageKnowledgeIndexer(
       final ChunkingPipelineFactory chunkingPipelineFactory,
-      final KnowledgeChunkStore vectorStore,
+      final KnowledgeRepository knowledgeRepository,
       final DefaultModelsRepository defaultModelsRepository,
       final ModelProvider modelProvider,
       final MediaService mediaService) {
-    super(chunkingPipelineFactory, vectorStore, defaultModelsRepository, modelProvider);
+    super(chunkingPipelineFactory, knowledgeRepository, defaultModelsRepository, modelProvider);
     this.mediaService = mediaService;
   }
 

@@ -7,12 +7,14 @@ group = 'com.agentengine.interfaces'
 dependencies {
     implementation project(':catalog:api')
     implementation project(':agent:api')
-    implementation project(':scheduler:api')
+    implementation project(':tenancy:api')
+    implementation project(':identity')
     implementation project(':util:agents')
     implementation project(':util:common')
     implementation project(':util:context')
     implementation project(':util:cloudstorage')
     implementation project(':util:ms:client')
+    implementation project(':util:distributed')
     implementation project(':connectors:api')
 
     implementation platform(libs.quarkus.bom)

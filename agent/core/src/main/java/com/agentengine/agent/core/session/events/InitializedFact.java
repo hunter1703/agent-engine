@@ -1,18 +1,18 @@
 package com.agentengine.agent.core.session.events;
 
 import com.agentengine.agent.core.session.state.SessionTopology;
-import com.agentengine.util.context.UserContext;
+import com.agentengine.util.context.Principal;
 
 public final class InitializedFact extends SessionFact {
 
   private SessionTopology topology;
-  private UserContext ownerContext;
+  private Principal owner;
 
   public InitializedFact() {}
 
-  public InitializedFact(final SessionTopology topology, final UserContext ownerContext) {
+  public InitializedFact(final SessionTopology topology, final Principal owner) {
     this.topology = topology;
-    this.ownerContext = ownerContext;
+    this.owner = owner;
   }
 
   public SessionTopology getTopology() {
@@ -23,11 +23,11 @@ public final class InitializedFact extends SessionFact {
     this.topology = topology;
   }
 
-  public UserContext getOwnerContext() {
-    return ownerContext;
+  public Principal getOwner() {
+    return owner;
   }
 
-  public void setOwnerContext(final UserContext ownerContext) {
-    this.ownerContext = ownerContext;
+  public void setOwner(final Principal owner) {
+    this.owner = owner;
   }
 }

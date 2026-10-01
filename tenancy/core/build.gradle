@@ -1,0 +1,31 @@
+plugins {
+    id 'com.agentengine.java-application-conventions'
+}
+
+group = 'com.agentengine.tenancy'
+
+dependencies {
+    implementation project(':tenancy:api')
+    implementation project(':catalog:api')
+    implementation project(':agent:api')
+    implementation project(':knowledge:api')
+    implementation project(':connectors:api')
+    implementation project(':util:ms:client')
+    implementation project(':util:common')
+    implementation project(':util:tenancy')
+    implementation project(':util:context')
+    implementation project(':util:mongodb')
+    implementation project(':util:infra')
+    implementation project(':util:distributed')
+    implementation project(':util:pekko')
+    runtimeOnly project(':util:ms:server')
+
+    implementation platform(libs.quarkus.bom)
+    implementation libs.quarkus.arc
+    implementation libs.quarkus.elytron.security.common
+    implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.logging.json
+    implementation libs.quarkus.opentelemetry
+    implementation libs.quarkus.smallrye.health
+    implementation libs.slf4j.api
+}

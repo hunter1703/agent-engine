@@ -6,6 +6,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.config.ApplicationConfig;
+import com.agentengine.util.common.repository.DocumentStoreClientType;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.EnvUtils;
 import com.agentengine.util.crypto.EncryptionService;
@@ -20,9 +21,9 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
 import org.bson.codecs.Codec;
@@ -34,9 +35,7 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// ApplicationScoped, not Singleton: the infra config service is built on this factory, and this
-// factory reads the client configs through the infra config service.
-@ApplicationScoped
+@Singleton
 public class MongoClientFactory
     extends InfraClientFactory<MongoClientInfraConfig, MongoServerInfraConfig, MongoClient> {
   private static final Logger LOG = LoggerFactory.getLogger(MongoClientFactory.class);
@@ -45,15 +44,6 @@ public class MongoClientFactory
   private final String defaultServerId;
   private final Instance<Codec<?>> customCodecs;
   private final LazyLoader<MongoClient> infraClient;
-
-  // needed for quarkus to build proxy because the bean is ApplicationScoped
-  protected MongoClientFactory() {
-    this.mongoClientSupport = null;
-    this.encryptionService = null;
-    this.defaultServerId = null;
-    this.customCodecs = null;
-    this.infraClient = null;
-  }
 
   @Inject
   public MongoClientFactory(
@@ -75,7 +65,7 @@ public class MongoClientFactory
     return infraClient.get();
   }
 
-  public MongoClient getClient(final MongoStoreClientType clientType, final Integer customerId) {
+  public MongoClient getClient(final DocumentStoreClientType clientType, final String customerId) {
     return get(
         getOrCreate(
             MongoUtils.clientId(clientType.name(), customerId),

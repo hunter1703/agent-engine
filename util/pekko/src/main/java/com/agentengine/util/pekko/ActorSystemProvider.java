@@ -3,7 +3,6 @@ package com.agentengine.util.pekko;
 import com.agentengine.util.common.utils.EnvUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Context;
-import com.agentengine.util.context.UserContext;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.pekko.actor.ShardedEntityDefinition;
@@ -74,38 +73,41 @@ public class ActorSystemProvider {
    *
    * <p>Disabled unless the {@code PEKKO_CLUSTER} environment variable is set, so that a service
    * which merely links a module containing sharded entities does not join a cluster. Only services
-   * that actually host actors — agent and scheduler — set it.
+   * that actually host actors — agent, scheduler and tenancy — set it.
    */
   public void onStart(@Observes @Priority(ACTOR_SYSTEM_STARTUP_PRIORITY) final StartupEvent event) {
-    Context.runAsSystem(
-        () -> {
-          final String pekkoCluster = EnvUtils.getPekkoCluster();
-          this.enabled = StringUtils.isNotBlank(pekkoCluster);
-          if (!enabled) {
-            LOG.info(
-                "Pekko is disabled (PEKKO_CLUSTER is not set); no ActorSystem will be created");
-            return;
-          }
-          LOG.info("Creating ActorSystem '{}'", pekkoCluster);
-          final Config config = buildConfig(pekkoCluster);
-          final ActorSystemSetup setup =
-              ActorSystemSetup.create(
-                  BootstrapSetup.create(config),
-                  JacksonObjectMapperProviderSetup.create(jsonCodecFactory),
-                  infraSetup);
-          this.system = ActorSystem.create(SpawnProtocol.create(), pekkoCluster, setup);
-          PekkoManagement.get(system).start();
-          ClusterBootstrap.get(system).start();
-          // Publish system before initialising sharding: remember-entities triggers entity recovery
-          // on actor dispatcher threads immediately upon init(), and those actors call back into
-          // actorSystemProvider.system(). If system is still null at that point we get a NPE.
-          final ClusterSharding clusterSharding = ClusterSharding.get(this.system);
-          for (final ShardedEntityDefinition definition : entityDefinitions) {
-            clusterSharding.init(definition.entity(this.system));
-            LOG.info("Registered sharded entity: {}", definition.getClass().getSimpleName());
-          }
-          this.sharding = clusterSharding;
-        });
+    Context.asSystemCustomer()
+        .run(
+            () -> {
+              final String pekkoCluster = EnvUtils.getPekkoCluster();
+              this.enabled = StringUtils.isNotBlank(pekkoCluster);
+              if (!enabled) {
+                LOG.info(
+                    "Pekko is disabled (PEKKO_CLUSTER is not set); no ActorSystem will be created");
+                return;
+              }
+              LOG.info("Creating ActorSystem '{}'", pekkoCluster);
+              final Config config = buildConfig(pekkoCluster);
+              final ActorSystemSetup setup =
+                  ActorSystemSetup.create(
+                      BootstrapSetup.create(config),
+                      JacksonObjectMapperProviderSetup.create(jsonCodecFactory),
+                      infraSetup);
+              this.system = ActorSystem.create(SpawnProtocol.create(), pekkoCluster, setup);
+              PekkoManagement.get(system).start();
+              ClusterBootstrap.get(system).start();
+              // Publish system before initialising sharding: remember-entities triggers entity
+              // recovery
+              // on actor dispatcher threads immediately upon init(), and those actors call back
+              // into
+              // actorSystemProvider.system(). If system is still null at that point we get a NPE.
+              final ClusterSharding clusterSharding = ClusterSharding.get(this.system);
+              for (final ShardedEntityDefinition definition : entityDefinitions) {
+                clusterSharding.init(definition.entity(this.system));
+                LOG.info("Registered sharded entity: {}", definition.getClass().getSimpleName());
+              }
+              this.sharding = clusterSharding;
+            });
   }
 
   /** Whether this service hosts actors. Callers that start actors must check this first. */
@@ -157,7 +159,7 @@ public class ActorSystemProvider {
                 // scopes bootstrap discovery to peers of that same cluster.
                 ConfigValueFactory.fromAnyRef(PEKKO_CLUSTER_LABEL_KEY + "=" + pekkoCluster));
     final SQLClientInfraConfig systemClient =
-        PekkoUtils.sqlClient(infraSetup.infraConfigService(), UserContext.SYSTEM.customerId());
+        PekkoUtils.sqlClient(infraSetup.infraConfigService(), Context.SYSTEM_CUSTOMER_ID);
     if (systemClient == null) {
       throw new IllegalStateException("System SQL client config not found for Pekko persistence");
     }

@@ -5,6 +5,7 @@ import com.agentengine.util.common.codec.JsonCodec;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
+import com.agentengine.util.common.exception.UnauthorizedException;
 import com.agentengine.util.common.utils.FlowableUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.ms.client.MicroService;
@@ -245,6 +246,8 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
           Status.NOT_FOUND.withDescription(cause.getMessage()).withCause(cause);
       case DuplicateAssetException _ ->
           Status.ALREADY_EXISTS.withDescription(cause.getMessage()).withCause(cause);
+      case UnauthorizedException _ ->
+          Status.PERMISSION_DENIED.withDescription(cause.getMessage()).withCause(cause);
       case IllegalArgumentException _, ConfigurationException _ ->
           Status.INVALID_ARGUMENT.withDescription(cause.getMessage()).withCause(cause);
       default -> Status.INTERNAL.withDescription(cause.getMessage()).withCause(cause);

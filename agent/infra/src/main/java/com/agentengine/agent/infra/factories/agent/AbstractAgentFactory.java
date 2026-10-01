@@ -11,6 +11,7 @@ import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.models.llm.AbstractLLM;
 import com.google.adk.agents.LlmAgent;
+import com.google.adk.models.BaseLlm;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.GenerateContentConfig;
 import java.util.ArrayList;
@@ -30,7 +31,8 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
   protected BaseLlmAgentBuilder createLlmAgentBuilder(final BaseAgentConfig config) {
     final String modelId = config.getModelId();
     final RefCounted<Model.LLMModel> refCounted = modelProvider.get(modelId);
-    if (!(refCounted.value().model() instanceof AbstractLLM)) {
+    final BaseLlm model = refCounted.value().model();
+    if (!(model instanceof AbstractLLM)) {
       refCounted.close();
       throw new IllegalStateException("Model factory did not return an AbstractLLM instance.");
     }
@@ -40,7 +42,7 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
         .disallowTransferToParent(false)
         .disallowTransferToPeers(false)
         .maxSteps(config.getRuntime().getMaxSteps())
-        .model(refCounted.value().model());
+        .model(model);
     final Map<String, Object> responseFormat = config.getResponseFormat();
     if (CollectionUtils.isNotEmpty(responseFormat)) {
       builder.generateContentConfig(
@@ -53,6 +55,7 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
     if (config.getRuntime().isResumable()) {
       tools.add(toolFactory.getHITLTool());
     }
+    tools.add(toolFactory.getSearchKnowledgeTool());
     final BaseLlmAgentBuilder baseLlmAgentBuilder = new BaseLlmAgentBuilder(builder);
     return baseLlmAgentBuilder
         .systemInstructions(

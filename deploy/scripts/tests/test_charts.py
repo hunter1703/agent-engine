@@ -162,6 +162,7 @@ def test_resolve_charts_defaults_to_default_charts() -> None:
         "knowledge",
         "connectors",
         "scheduler",
+        "tenancy",
         "internal",
     ]
 

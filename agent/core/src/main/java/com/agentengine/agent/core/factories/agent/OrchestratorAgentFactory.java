@@ -10,10 +10,11 @@ import com.agentengine.agent.infra.factories.agent.AbstractAgentFactory;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.agent.infra.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.agent.infra.factories.agent.builders.ParallelOrchestratorAgentBuilder;
-import com.agentengine.agent.infra.notebook.NotebookRepository;
-import com.agentengine.agent.infra.notebook.NotesRepository;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.catalog.api.services.AgentService;
+import com.agentengine.knowledge.api.services.KnowledgeService;
+import com.agentengine.tenancy.AccessControlService;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.OrchestrationMode;
 import com.agentengine.util.agents.beans.config.OrchestratorAgentConfig;
@@ -34,8 +35,9 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
   private final AgentService agentService;
   protected final Instance<AgentProvider> agentProviderInstance;
   private final ActorSystemProvider actorSystemProvider;
-  private final NotebookRepository notebookRepository;
-  private final NotesRepository notesRepository;
+  private final NotebookService notebookService;
+  private final KnowledgeService knowledgeService;
+  private final AccessControlService accessControlService;
 
   @Inject
   public OrchestratorAgentFactory(
@@ -44,14 +46,16 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
       @WithCaching final Instance<AgentProvider> agentProviderInstance,
       final AgentService agentService,
       final ActorSystemProvider actorSystemProvider,
-      final NotebookRepository notebookRepository,
-      final NotesRepository notesRepository) {
+      final NotebookService notebookService,
+      final KnowledgeService knowledgeService,
+      final AccessControlService accessControlService) {
     super(modelProvider, toolFactory);
     this.agentService = agentService;
     this.agentProviderInstance = agentProviderInstance;
     this.actorSystemProvider = actorSystemProvider;
-    this.notebookRepository = notebookRepository;
-    this.notesRepository = notesRepository;
+    this.notebookService = notebookService;
+    this.knowledgeService = knowledgeService;
+    this.accessControlService = accessControlService;
   }
 
   @Override
@@ -112,8 +116,13 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
     builder.appendTools(
         List.of(
             new SpawnAgentTool(
-                actorSystemProvider, subAgentIds, notebookRepository, notesRepository),
-            new SendMessageTool(actorSystemProvider, notebookRepository, notesRepository),
+                actorSystemProvider,
+                subAgentIds,
+                notebookService,
+                knowledgeService,
+                accessControlService),
+            new SendMessageTool(
+                actorSystemProvider, notebookService, knowledgeService, accessControlService),
             new AwaitAgentTool(actorSystemProvider)));
 
     final List<? extends Agent> transferableSubAgents =

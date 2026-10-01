@@ -2,16 +2,15 @@ package com.agentengine.scheduler.core.actor;
 
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.models.TriggerDefinition;
-import com.agentengine.scheduler.api.store.JobDefinitionRepository;
-import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.SchedulerConfigs;
 import com.agentengine.scheduler.core.SchedulerUtils;
+import com.agentengine.scheduler.core.store.JobDefinitionRepository;
+import com.agentengine.scheduler.core.store.TriggerDefinitionRepository;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.collections.FairQueue;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Contextual;
-import com.agentengine.util.context.UserContext;
 import com.agentengine.util.pekko.PekkoSerializable;
 import com.agentengine.util.pekko.actor.ContextualInterceptor;
 import java.time.Duration;
@@ -23,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.UUID;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.javadsl.AbstractBehavior;
@@ -60,7 +58,7 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
   private final JobDefinitionRepository jobDefinitionRepository;
   private final SchedulerConfigs schedulerConfigs;
   private final TimerScheduler<Command> timers;
-  private FairQueue<Integer, TaggedTrigger> dueTriggers;
+  private FairQueue<String, TaggedTrigger> dueTriggers;
   private boolean initialized;
 
   private SchedulerActor(
@@ -87,9 +85,7 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
       final JobDefinitionRepository jobDefinitionRepository,
       final SchedulerConfigs schedulerConfigs) {
     return Behaviors.intercept(
-        () ->
-            new ContextualInterceptor<>(
-                Command.class, new Context(UUID.randomUUID().toString(), UserContext.SYSTEM)),
+        () -> new ContextualInterceptor<>(Command.class, Context.asSystemCustomer()),
         Behaviors.setup(
             context ->
                 Behaviors.withTimers(
@@ -220,9 +216,9 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
     }
   }
 
-  private FairQueue<Integer, TaggedTrigger> buildQueue(final List<TriggerDefinition> current) {
-    final Map<Integer, Map<String, Integer>> tenantVsTagCounts = tagCountsByTenant(current);
-    final FairQueue<Integer, TaggedTrigger> queue = emptyQueue();
+  private FairQueue<String, TaggedTrigger> buildQueue(final List<TriggerDefinition> current) {
+    final Map<String, Map<String, Integer>> tenantVsTagCounts = tagCountsByTenant(current);
+    final FairQueue<String, TaggedTrigger> queue = emptyQueue();
     for (final TriggerDefinition trigger : current) {
       final Map<String, Integer> tagCounts = tenantVsTagCounts.get(trigger.getCustomerId());
       queue.enqueue(
@@ -236,7 +232,7 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
    * of the tenant's own tags at {@code maxTriggersPerTagPerScan} — otherwise one job class
    * rescheduling itself repeatedly for one tenant could consume that tenant's entire budget.
    */
-  private FairQueue<Integer, TaggedTrigger> emptyQueue() {
+  private FairQueue<String, TaggedTrigger> emptyQueue() {
     return new FairQueue<>(
         null, _ -> 1, _ -> 1, _ -> tagFairQueue(), _ -> schedulerConfigs.maxTriggersPerScan());
   }
@@ -250,9 +246,9 @@ public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Comman
         _ -> schedulerConfigs.maxTriggersPerTagPerScan());
   }
 
-  private static Map<Integer, Map<String, Integer>> tagCountsByTenant(
+  private static Map<String, Map<String, Integer>> tagCountsByTenant(
       final List<TriggerDefinition> current) {
-    final Map<Integer, Map<String, Integer>> tenantVsTagCounts = new HashMap<>();
+    final Map<String, Map<String, Integer>> tenantVsTagCounts = new HashMap<>();
     for (final TriggerDefinition trigger : current) {
       final Map<String, Integer> tagCounts =
           tenantVsTagCounts.computeIfAbsent(trigger.getCustomerId(), _ -> new HashMap<>());

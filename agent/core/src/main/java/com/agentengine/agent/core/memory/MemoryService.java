@@ -2,12 +2,12 @@ package com.agentengine.agent.core.memory;
 
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.CommunityExpertsService;
-import com.agentengine.agent.infra.factories.agent.AgentProvider;
+import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.DefaultModels;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
-import com.agentengine.util.agents.repository.SessionEventsRepository;
+import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
@@ -15,6 +15,10 @@ import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.models.factories.EmbeddingUtils;
+import com.agentengine.util.models.factories.Model;
+import com.agentengine.util.models.factories.ModelProvider;
+import com.agentengine.util.vectordb.VectorDbUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.memory.BaseMemoryService;
 import com.google.adk.memory.MemoryEntry;
@@ -33,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,54 +56,59 @@ public class MemoryService implements BaseMemoryService {
 
   private static final int MAX_EXISTING_MEMORIES = 15;
   private static final int MAX_CONVERSATION_CHARS = 8000;
+  private static final int EVENTS_PAGE_SIZE = 50;
   private static final String EMBEDDING_MODEL_ID_KEY = "embeddingModelId";
+  private static final String TEXT_VECTOR =
+      VectorDbUtils.vectorNames(Memory.class).get(Memory.FIELD_TEXT);
 
   private final CommunityExpertsService communityExpertsService;
   private final SessionEventsRepository sessionEventsRepository;
-  private final AgentProvider agentProvider;
-  private final MemoryStore memoryStore;
+  private final MemoryRepository memoryRepository;
   private final DefaultModelsRepository defaultModelsRepository;
+  private final ModelProvider modelProvider;
 
   public MemoryService(
       final CommunityExpertsService communityExpertsService,
       final SessionEventsRepository sessionEventsRepository,
-      final AgentProvider agentProvider,
-      final MemoryStore memoryStore,
-      final DefaultModelsRepository defaultModelsRepository) {
+      final MemoryRepository memoryRepository,
+      final DefaultModelsRepository defaultModelsRepository,
+      final ModelProvider modelProvider) {
     this.communityExpertsService = communityExpertsService;
     this.sessionEventsRepository = sessionEventsRepository;
-    this.agentProvider = agentProvider;
-    this.memoryStore = memoryStore;
+    this.memoryRepository = memoryRepository;
     this.defaultModelsRepository = defaultModelsRepository;
+    this.modelProvider = modelProvider;
   }
 
+  /**
+   * Extracts memories from the session's conversation. Runs as the session, for the user whose turn
+   * it was — new memories belong to the session's agent, for that user.
+   */
   @Override
   public Completable addSessionToMemory(final Session session) {
     return Completable.fromAction(
         () -> {
-          final List<SessionEvent> events =
-              sessionEventsRepository.getCommittedSessionEvents(session.id(), false);
-          final String conversation = buildConversationText(events);
+          final String conversation = buildConversationText(session.id());
           if (StringUtils.isBlank(conversation)) {
             return;
           }
-          final String agentId = session.appName();
-          final String userId = session.userId();
-          final List<Memory> existing = findExistingMemories(agentId, userId, conversation);
+          final List<Memory> existing = findExistingMemories(conversation);
           final MemoryDecisions decisions = invokeMemoryAgent(conversation, existing);
-          applyDecisions(agentId, userId, existing, decisions);
+          applyDecisions(session.appName(), existing, decisions);
         });
   }
 
+  /**
+   * Recalls what the current session can reach — its agent's general memories, those about its
+   * user, and its own — by the grants on them, whatever app and user ids the runner names.
+   */
   @Override
   public Single<SearchMemoryResponse> searchMemory(
-      final String agentId, final String userId, final String query) {
+      final String appName, final String userId, final String query) {
     return Single.fromCallable(
         () -> {
-          final List<Memory> results =
-              semanticMemorySearch(agentId, userId, query, MAX_EXISTING_MEMORIES);
           final List<MemoryEntry> entries =
-              results.stream()
+              semanticMemorySearch(query, MAX_EXISTING_MEMORIES).stream()
                   .map(
                       memory ->
                           MemoryEntry.builder()
@@ -109,30 +119,25 @@ public class MemoryService implements BaseMemoryService {
         });
   }
 
-  private List<Memory> findExistingMemories(
-      final String agentId, final String userId, final String conversationText) {
+  private List<Memory> findExistingMemories(final String conversationText) {
     try {
-      return semanticMemorySearch(agentId, userId, conversationText, MAX_EXISTING_MEMORIES);
+      return semanticMemorySearch(conversationText, MAX_EXISTING_MEMORIES);
     } catch (final Exception e) {
-      LOG.warn("Failed to retrieve existing memories for agent={} user={}", agentId, userId, e);
+      LOG.warn("Failed to retrieve existing memories", e);
       return List.of();
     }
   }
 
-  private List<Memory> semanticMemorySearch(
-      final String agentId, final String userId, final String queryText, final int limit) {
+  private List<Memory> semanticMemorySearch(final String queryText, final int limit) {
     final String embeddingModelId = defaultModelsRepository.getEmbeddingModelId();
     if (StringUtils.isBlank(embeddingModelId)) {
       return List.of();
     }
     final Filter filter =
-        Filters.and(
-            Filters.semanticSearch(Memory.FIELD_TEXT, queryText)
-                .withAdditional(Map.of(EMBEDDING_MODEL_ID_KEY, embeddingModelId)),
-            Filters.eq(Memory.FIELD_AGENT_ID, agentId),
-            Filters.eq(Memory.FIELD_USER_ID, userId));
+        Filters.semanticSearch(Memory.FIELD_TEXT, queryText)
+            .withAdditional(Map.of(EMBEDDING_MODEL_ID_KEY, embeddingModelId));
     final Query query = new Query().withFilter(filter).withPage(new Page(0, limit));
-    return CollectionUtils.nullSafeList(memoryStore.findByQuery(query).getItems());
+    return CollectionUtils.nullSafeList(memoryRepository.findByQuery(query).getItems());
   }
 
   /**
@@ -151,12 +156,11 @@ public class MemoryService implements BaseMemoryService {
   }
 
   private void applyDecisions(
-      final String agentId,
-      final String userId,
-      final List<Memory> existing,
-      final MemoryDecisions decisions) {
+      final String agentId, final List<Memory> existing, final MemoryDecisions decisions) {
     final Map<String, Memory> existingById =
         CollectionUtils.transformToMap(existing, Memory::getId, Function.identity());
+    final List<Memory> toAdd = new ArrayList<>();
+    final List<Memory> toUpdate = new ArrayList<>();
     for (final MemoryDecision decision : decisions.decisions()) {
       try {
         switch (decision.operation()) {
@@ -167,26 +171,28 @@ public class MemoryService implements BaseMemoryService {
             final Memory memory = new Memory();
             memory.setId(UUID.randomUUID().toString());
             memory.setAgentId(agentId);
-            memory.setUserId(userId);
             memory.setText(decision.text());
-            memoryStore.save(memory);
+            toAdd.add(memory);
           }
           case "UPDATE" -> {
             if (StringUtils.isBlank(decision.id()) || StringUtils.isBlank(decision.text())) {
               continue;
             }
-            final Memory toUpdate = existingById.get(decision.id());
-            if (toUpdate == null) {
+            final Memory memory = existingById.get(decision.id());
+            if (memory == null) {
               continue;
             }
-            toUpdate.setText(decision.text());
-            memoryStore.save(toUpdate);
+            memory.setText(decision.text());
+            toUpdate.add(memory);
           }
           case "DELETE" -> {
             if (StringUtils.isBlank(decision.id())) {
               continue;
             }
-            memoryStore.deleteById(decision.id());
+            final Memory memory = existingById.get(decision.id());
+            if (memory != null && !memoryRepository.delete(memory)) {
+              LOG.info("Memory {} changed or went since it was read; not deleted", memory.getId());
+            }
           }
           case "NOOP" -> {}
           default -> LOG.warn("Unrecognised memory operation: {}", decision.operation());
@@ -195,27 +201,76 @@ public class MemoryService implements BaseMemoryService {
         LOG.warn("Failed to apply memory decision: {}", decision, e);
       }
     }
+    try {
+      embedTexts(Stream.concat(toAdd.stream(), toUpdate.stream()).toList());
+    } catch (final Exception e) {
+      LOG.warn("Failed to embed {} memories", toAdd.size() + toUpdate.size(), e);
+      return;
+    }
+    for (final Memory memory : toUpdate) {
+      try {
+        memoryRepository.save(memory);
+      } catch (final Exception e) {
+        LOG.warn("Failed to update memory {}", memory.getId(), e);
+      }
+    }
+    if (!toAdd.isEmpty()) {
+      try {
+        memoryRepository.insertMany(toAdd);
+      } catch (final Exception e) {
+        LOG.warn("Failed to add {} memories", toAdd.size(), e);
+      }
+    }
   }
 
-  private static String buildConversationText(final List<SessionEvent> events) {
-    // Collect from the tail so recent turns are always included within the char budget.
+  /** Sets each memory's text vector, embedded with the customer's default embedding model. */
+  private void embedTexts(final List<Memory> memories) {
+    if (memories.isEmpty()) {
+      return;
+    }
+    final String modelId = defaultModelsRepository.getEmbeddingModelId();
+    if (StringUtils.isBlank(modelId)) {
+      throw new IllegalStateException("No default embedding model configured");
+    }
+    try (RefCounted<Model.EmbeddingModel> refCounted = modelProvider.getEmbeddingModel(modelId)) {
+      final List<float[]> vectors =
+          EmbeddingUtils.embedAll(
+              refCounted.value(), memories.stream().map(Memory::getText).toList());
+      for (int i = 0; i < memories.size(); i++) {
+        memories.get(i).setVector(TEXT_VECTOR, vectors.get(i));
+      }
+    }
+  }
+
+  private String buildConversationText(final String sessionId) {
+    // Collect from the tail so recent turns are always included within the char budget, reading
+    // the newest events a page at a time and stopping once the budget is reached.
     final List<String> lines = new ArrayList<>();
     int totalChars = 0;
     boolean trimmed = false;
-    for (int i = events.size() - 1; i >= 0; i--) {
-      final Content content = events.get(i).getContent();
-      final String text = content == null ? null : content.text();
-      if (StringUtils.isBlank(text)) {
-        continue;
-      }
-      final String role =
-          Objects.equals(Constants.AUTHOR_USER, events.get(i).getAuthor()) ? "USER" : "ASSISTANT";
-      final String line = role + ": " + text + "\n";
-      totalChars += line.length();
-      lines.add(line);
-      if (totalChars >= MAX_CONVERSATION_CHARS) {
-        trimmed = i > 0;
-        break;
+    boolean lastPage = false;
+    for (int offset = 0;
+        totalChars < MAX_CONVERSATION_CHARS && !lastPage;
+        offset += EVENTS_PAGE_SIZE) {
+      final Page eventsPage = new Page(offset, EVENTS_PAGE_SIZE);
+      final List<SessionEvent> page =
+          sessionEventsRepository.getLatestCommittedEvents(sessionId, eventsPage).getItems();
+      lastPage = page.size() < EVENTS_PAGE_SIZE;
+      for (int i = 0; i < page.size(); i++) {
+        final Content content = page.get(i).getContent();
+        final String text = content == null ? null : content.text();
+        if (StringUtils.isBlank(text)) {
+          continue;
+        }
+        final String role =
+            Objects.equals(Constants.AUTHOR_USER, page.get(i).getAuthor()) ? "USER" : "ASSISTANT";
+        final String line = role + ": " + text + "\n";
+        totalChars += line.length();
+        lines.add(line);
+        if (totalChars >= MAX_CONVERSATION_CHARS) {
+          trimmed = i < page.size() - 1 || !lastPage;
+          break;
+        }
       }
     }
     // Reverse to restore chronological order before joining.

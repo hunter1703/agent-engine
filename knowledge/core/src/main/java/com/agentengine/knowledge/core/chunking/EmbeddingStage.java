@@ -3,13 +3,11 @@ package com.agentengine.knowledge.core.chunking;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.RefCounted;
+import com.agentengine.util.models.factories.EmbeddingUtils;
 import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.vectordb.VectorDbUtils;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
 import io.reactivex.rxjava3.core.Flowable;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -61,14 +59,11 @@ public final class EmbeddingStage extends ChunkingStage {
     return Flowable.fromCallable(
             () -> {
               final String textVector = fieldVsVectorName.get().get(KnowledgeChunk.FIELD_TEXT);
-              final List<TextSegment> segments =
-                  batch.stream().map(chunk -> TextSegment.from(chunk.getText())).toList();
-              final List<Embedding> embeddings = model.model().embedAll(segments).content();
-
-              final Iterator<KnowledgeChunk> chunkIterator = batch.iterator();
-              final Iterator<Embedding> embeddingIterator = embeddings.iterator();
-              while (chunkIterator.hasNext() && embeddingIterator.hasNext()) {
-                chunkIterator.next().setVector(textVector, embeddingIterator.next().vector());
+              final List<float[]> vectors =
+                  EmbeddingUtils.embedAll(
+                      model, batch.stream().map(KnowledgeChunk::getText).toList());
+              for (int i = 0; i < batch.size(); i++) {
+                batch.get(i).setVector(textVector, vectors.get(i));
               }
               return batch;
             })

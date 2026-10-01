@@ -4,6 +4,7 @@ import com.agentengine.util.cloudstorage.CloudStorageException;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
+import com.agentengine.util.common.exception.UnauthorizedException;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import jakarta.validation.ValidationException;
@@ -38,6 +39,12 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
     if (exception instanceof DuplicateAssetException) {
       return Response.status(Response.Status.CONFLICT)
           .entity(new ErrorResponse("409", exception.getMessage()))
+          .build();
+    }
+
+    if (exception instanceof UnauthorizedException) {
+      return Response.status(Response.Status.FORBIDDEN)
+          .entity(new ErrorResponse("403", exception.getMessage()))
           .build();
     }
 

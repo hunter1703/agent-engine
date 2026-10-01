@@ -23,7 +23,7 @@ public class CloudStorageClientProvisioner extends InfraClientProvisioner {
     this.storageFactory = storageFactory;
   }
 
-  public void provision(final int customerId, final String serverId) {
+  public void provision(final String customerId, final String serverId) {
     final String bucket = CloudStorageUtils.defaultBucket(customerId);
     infraConfigService.save(
         CloudStorageUtils.clientConfig(

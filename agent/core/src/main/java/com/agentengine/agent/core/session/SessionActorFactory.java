@@ -1,11 +1,14 @@
 package com.agentengine.agent.core.session;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.agent.core.factories.RunnerFactory;
 import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.commands.IdleTimeoutCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
+import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.catalog.api.services.SessionService;
-import com.agentengine.util.agents.repository.SessionEventsRepository;
+import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.infra.InfraConfigService;
@@ -14,6 +17,7 @@ import com.agentengine.util.pekko.actor.ChaosMailboxRegistry;
 import com.agentengine.util.pekko.actor.MessageFaultInterceptor;
 import com.agentengine.util.pekko.actor.RememberedPassivableShardedEntityFactory;
 import com.agentengine.util.pekko.persistence.PersistencePlugin;
+import com.agentengine.util.tenancy.PermissionedCache;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -38,6 +42,7 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
   private final SessionEventChannel sessionEventChannel;
   private final RunnerFactory runnerFactory;
   private final SessionService sessionService;
+  private final PermissionedCache<AgentSession> sessionCache;
   private final SessionTitleGenerator sessionTitleGenerator;
   private final MemoryService memoryService;
   private final ChaosMailboxRegistry chaosMailboxRegistry;
@@ -50,6 +55,7 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
       final SessionEventChannel sessionEventChannel,
       final RunnerFactory runnerFactory,
       final SessionService sessionService,
+      final PermissionedCache<AgentSession> sessionCache,
       final SessionTitleGenerator sessionTitleGenerator,
       final MemoryService memoryService,
       final ChaosMailboxRegistry chaosMailboxRegistry,
@@ -67,6 +73,7 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
     this.sessionEventChannel = sessionEventChannel;
     this.runnerFactory = runnerFactory;
     this.sessionService = sessionService;
+    this.sessionCache = sessionCache;
     this.sessionTitleGenerator = sessionTitleGenerator;
     this.memoryService = memoryService;
     this.chaosMailboxRegistry = chaosMailboxRegistry;
@@ -89,13 +96,14 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
                     this::entityRef,
                     runnerFactory,
                     sessionService,
+                    sessionCache,
                     sessionTitleGenerator,
                     memoryService,
                     sessionEventsRepository)));
   }
 
   public static String entityId(final String sessionId) {
-    return Context.customerId().orElseThrow() + ":" + sessionId;
+    return Context.currentCustomerId().orElseThrow() + ID_SEPARATOR + sessionId;
   }
 
   @Override
@@ -108,7 +116,8 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
     return new IdleTimeoutCommand();
   }
 
-  private static int customerId(final String entityId) {
-    return Integer.parseInt(entityId.substring(0, entityId.indexOf(':')));
+  /** The customer a session actor belongs to, which its entity id starts with. */
+  public static String customerId(final String entityId) {
+    return entityId.substring(0, entityId.indexOf(ID_SEPARATOR));
   }
 }

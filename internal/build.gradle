@@ -9,7 +9,7 @@ dependencies {
     // Pekko stays dormant here: agent and scheduler host actors only where
     // `agent-engine.pekko.enabled` is set, which this service does not set.
     runtimeOnly project(':agent:core')
-    implementation project(':tenancy')
+    implementation project(':tenancy:api')
     implementation project(':util:mongodb')
     implementation project(':util:agents')
     implementation project(':util:crypto')
@@ -28,6 +28,8 @@ dependencies {
     runtimeOnly project(':knowledge:core')
     implementation project(':scheduler:api')
     runtimeOnly project(':scheduler:core')
+    runtimeOnly project(':tenancy:core')
+    implementation project(':identity')
     implementation project(':util:ms:client')
 
     implementation platform(libs.quarkus.bom)

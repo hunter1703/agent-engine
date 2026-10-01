@@ -1,14 +1,14 @@
 package com.agentengine.agent.core.tools.agent;
 
-import com.agentengine.agent.api.model.*;
+import com.agentengine.agent.api.model.MessagePart;
+import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.SendMessageCommand;
-import com.agentengine.agent.infra.notebook.NotebookRepository;
-import com.agentengine.agent.infra.notebook.NotesRepository;
-import com.agentengine.agent.infra.utils.AgentUtils;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.utils.SessionUtils;
-import com.agentengine.util.agents.AgentFileDetails;
+import com.agentengine.knowledge.api.services.KnowledgeService;
+import com.agentengine.tenancy.AccessControlService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -41,16 +41,12 @@ public final class SendMessageTool extends AbstractAgentTool {
           Returns: { child_session_id } on success, or { error } on failure.""",
           Map.of());
 
-  private final NotebookRepository notebookRepository;
-  private final NotesRepository notesRepository;
-
   public SendMessageTool(
       final ActorSystemProvider actorSystemProvider,
-      final NotebookRepository notebookRepository,
-      final NotesRepository notesRepository) {
-    super(DESCRIPTOR, actorSystemProvider);
-    this.notebookRepository = notebookRepository;
-    this.notesRepository = notesRepository;
+      final NotebookService notebookService,
+      final KnowledgeService knowledgeService,
+      final AccessControlService accessControlService) {
+    super(DESCRIPTOR, actorSystemProvider, notebookService, knowledgeService, accessControlService);
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -75,26 +71,19 @@ public final class SendMessageTool extends AbstractAgentTool {
               optional = true)
           Boolean awaitCompletion,
       @ToolArg(
-              name = Constants.ToolArgs.KNOWLEDGES,
+              name = Constants.ToolArgs.KNOWLEDGE_IDS,
               description =
-                  "Knowledge to grant the child, on top of whatever it already has from earlier calls — grants accumulate, so omit files it can already access and list only new ones. "
+                  "Knowledge ids to grant the child, on top of whatever it already has from earlier calls — grants accumulate, so omit ids it can already access and list only new ones. "
                       + KNOWLEDGES_ACCESS_DESCRIPTION,
               optional = true)
-          final List<AgentFileDetails> knowledges,
+          final List<String> knowledgeIds,
       @ToolArg(
-              name = Constants.ToolArgs.NOTEBOOK_GRANTS,
+              name = Constants.ToolArgs.NOTEBOOK_IDS,
               description =
-                  """
-                  Grant the child permission to create and add notes in the given notebook. Previously given permissions are carried forward so they are not lost. Omit anything already granted.""",
+                  "Ids of existing notebooks to grant the child, on top of whatever it already has from earlier calls — grants accumulate, so omit ids it can already access and list only new ones. "
+                      + NOTEBOOKS_ACCESS_DESCRIPTION,
               optional = true)
-          final List<NotebookGrants.NotebookGrant> notebookGrants,
-      @ToolArg(
-              name = Constants.ToolArgs.NOTE_GRANTS,
-              description =
-                  """
-                  Grant the child to read or edit permission for a specific existing note. Previously given permissions are carried forward so they are not lost. Omit anything already granted.""",
-              optional = true)
-          final List<NotebookGrants.NoteGrant> noteGrants) {
+          final List<String> notebookIds) {
 
     final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
     if (completedResult != null) {
@@ -103,14 +92,17 @@ public final class SendMessageTool extends AbstractAgentTool {
 
     message = buildFullMessage(goal, message);
     final List<MessagePart> parts = List.of(new MessagePart.TextPart(message));
-    final ResourceGrants resourceGrants =
-        AgentUtils.buildResourceGrants(knowledges, notebookGrants, noteGrants);
     final ToolOutput<Map<String, Object>> violationOutput =
-        validateGrants(notebookGrants, noteGrants, notebookRepository, notesRepository);
+        validateGrants(notebookIds, knowledgeIds);
     if (violationOutput != null) {
       return violationOutput;
     }
-    final UserMessage userMessage = new UserMessage(parts, resourceGrants);
+    final UserMessage userMessage = new UserMessage(parts);
+    final ToolOutput<Map<String, Object>> grantError =
+        issueGrants(childSessionId, notebookIds, knowledgeIds);
+    if (grantError != null) {
+      return grantError;
+    }
 
     final StartSessionResult result =
         actorRef(toolContext)

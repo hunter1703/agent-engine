@@ -1,5 +1,6 @@
 package com.agentengine.connectors.api.beans;
 
+import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.annotations.Permissioned;
 import com.agentengine.util.common.annotations.Secure;
 import com.agentengine.util.common.beans.AssetClass;
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.Map;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
 
+@Index(name = "connection_app_name_idx", def = "{'appName': 1}")
 @Permissioned(assetClass = AssetClass.CONNECTION)
 public class Connection extends BaseEntity {
   public static final String FIELD_APP_NAME = "appName";

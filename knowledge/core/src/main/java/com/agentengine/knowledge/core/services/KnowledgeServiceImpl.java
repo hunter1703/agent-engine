@@ -4,19 +4,24 @@ import com.agentengine.knowledge.api.beans.*;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.knowledge.core.pipeline.KnowledgeIndexer;
 import com.agentengine.knowledge.core.repository.KnowledgeRepository;
-import com.agentengine.knowledge.core.store.KnowledgeChunkStore;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.util.common.LazyLoader;
+import com.agentengine.util.common.beans.Acl;
+import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.common.query.*;
-import com.agentengine.util.common.repository.Repository;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.tenancy.Permission;
 import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,8 +33,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
   /**
    * Not a compile dependency on {@code knowledge:jobs} — the scheduler loads the job class
-   * reflectively at fire time (see {@code JobRunnerActor}), so only its name is needed here, the
-   * same way {@code InvokeAgentJobAssetHandler} names {@code InvokeAgentJob}.
+   * reflectively at fire time (see {@code JobRunnerActor}), so only its name is needed here.
    */
   private static final String KNOWLEDGE_INDEXING_JOB_CLASS_NAME =
       "com.agentengine.knowledge.jobs.KnowledgeIndexingJob";
@@ -38,14 +42,12 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
   private final KnowledgeRepository knowledgeRepo;
   private final LazyLoader<List<KnowledgeIndexer>> indexers;
-  private final Repository<KnowledgeChunk> vectorStore;
   private final SchedulerService schedulerService;
 
   @Inject
   public KnowledgeServiceImpl(
       final KnowledgeRepository knowledgeRepo,
       final Instance<KnowledgeIndexer> indexers,
-      final KnowledgeChunkStore vectorStore,
       final SchedulerService schedulerService) {
     this.knowledgeRepo = knowledgeRepo;
     this.indexers =
@@ -61,14 +63,28 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                   sorted.stream().map(i -> i.getClass().getSimpleName()).toList());
               return sorted;
             });
-    this.vectorStore = vectorStore;
     this.schedulerService = schedulerService;
+  }
+
+  @Override
+  public Map<String, Acl> getAcls(final String assetClass, final Collection<String> assetIds) {
+    return knowledgeRepo.readAcls(assetIds);
+  }
+
+  @Override
+  public Set<String> applyAcls(final String assetClass, final Map<String, Acl> assetIdVsAcl) {
+    return knowledgeRepo.applyAcls(assetIdVsAcl);
   }
 
   @Override
   public Knowledge create(final IndexRequest request) {
     final Knowledge knowledge = new Knowledge();
     init(knowledge, request);
+    if (request.isSkipIndexing()) {
+      knowledge.setIndexingStatus(IndexingStatus.NON_INDEXED.name());
+      knowledgeRepo.insert(knowledge);
+      return knowledge;
+    }
     knowledgeRepo.insert(knowledge);
     if (request.isWaitForCompletion()) {
       runIndexing(knowledge);
@@ -120,16 +136,18 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
   @Override
   public boolean deleteById(final String id) {
-    final boolean deleted = knowledgeRepo.deleteById(id);
-    if (deleted) {
-      deleteChunks(id);
-    }
-    return deleted;
+    return knowledgeRepo.deleteByIdIgnoringVersion(id);
   }
 
   @Override
-  public PaginatedResult<KnowledgeChunk> searchInKnowledge(Query query) {
-    return vectorStore.findByQuery(query);
+  public Set<String> findPermittedIds(final Collection<String> ids, final Permission permission) {
+    return knowledgeRepo.findPermittedIds(ids, permission);
+  }
+
+  @Override
+  public PaginatedResult<KnowledgeChunk> searchInKnowledge(
+      final Collection<String> knowledgeIds, final Query query) {
+    return knowledgeRepo.findChunks(knowledgeIds, query);
   }
 
   /**
@@ -144,11 +162,22 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     schedulerService.schedule(jobDefinition);
   }
 
+  /**
+   * Indexes the knowledge as read when indexing was requested. Each status write is versioned on
+   * the one before it, so a run overtaken by a change to the knowledge — a re-upload, a deletion —
+   * stops instead of overwriting what the change wrote.
+   */
   private void runIndexing(final Knowledge knowledge) {
     final String id = knowledge.getId();
+    final Knowledge inProgress;
     try {
-      deleteChunks(id);
-      markStatus(id, IndexingStatus.IN_PROGRESS, null);
+      inProgress = knowledgeRepo.update(knowledge, statusUpdate(IndexingStatus.IN_PROGRESS, null));
+    } catch (final StaleStateException exception) {
+      LOG.info("Knowledge {} changed since indexing was requested; skipping this run", id);
+      return;
+    }
+    try {
+      knowledgeRepo.deleteChunks(id);
 
       final List<KnowledgeIndexer> availableIndexers = indexers.get();
       LOG.debug(
@@ -181,33 +210,28 @@ public class KnowledgeServiceImpl implements KnowledgeService {
       if (result.generatedDescription() != null) {
         operations.add(Operation.set(Knowledge.FIELD_DESCRIPTION, result.generatedDescription()));
       }
-      knowledgeRepo.update(id, new Update(operations));
+      knowledgeRepo.update(inProgress, new Update(operations));
       LOG.info("Indexed knowledge {} — {} chunks", id, result.chunkCount());
-    } catch (Exception e) {
+    } catch (final StaleStateException exception) {
+      LOG.info("Knowledge {} changed while indexing; result dropped", id);
+    } catch (final Exception e) {
       LOG.error("Indexing failed for knowledge {}", id, e);
-      markStatus(id, IndexingStatus.FAILED, e.getMessage());
+      try {
+        knowledgeRepo.update(inProgress, statusUpdate(IndexingStatus.FAILED, e.getMessage()));
+      } catch (final StaleStateException exception) {
+        LOG.info("Knowledge {} changed while indexing; failure not recorded", id);
+      }
     }
   }
 
-  private void markStatus(final String id, final IndexingStatus status, final String error) {
-    final Knowledge knowledge = knowledgeRepo.findById(id);
-    if (knowledge == null) {
-      return;
-    }
-    knowledgeRepo.update(
-        id,
-        Update.of(
-            Operation.set(Knowledge.FIELD_INDEXING_STATUS, status.name()),
-            Operation.set(Knowledge.FIELD_ERROR, error)));
-  }
-
-  private void deleteChunks(final String id) {
-    vectorStore.deleteByQuery(new Query().withFilter(Filters.eq("knowledgeId", id)));
+  private static Update statusUpdate(final IndexingStatus status, final String error) {
+    return Update.of(
+        Operation.set(Knowledge.FIELD_INDEXING_STATUS, status.name()),
+        Operation.set(Knowledge.FIELD_ERROR, error));
   }
 
   private static void init(final Knowledge knowledge, final IndexRequest request) {
     knowledge.setAgentId(request.getAgentId());
-    knowledge.setGrants(request.getGrants());
     knowledge.setFileDetails(request.getFileDetails());
     knowledge.setTitle(request.getTitle());
     knowledge.setDescription(request.getDescription());

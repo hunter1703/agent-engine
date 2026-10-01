@@ -1,6 +1,6 @@
 package com.agentengine.connectors.api.services;
 
-import com.agentengine.tenancy.ProvisioningService;
+import com.agentengine.util.infra.provisioning.ProvisioningService;
 import com.agentengine.util.ms.client.MicroService;
 
 @MicroService("connectors")

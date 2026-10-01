@@ -5,15 +5,11 @@ import static com.agentengine.util.crypto.CryptoClient.SEPARATOR;
 
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Context;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// ApplicationScoped, not Singleton: the Mongo client needs this service for its secure-field codec,
-// and this service reads its keys through InfraConfigService, which reads Mongo. CDI injects a
-// client proxy for a normal scope and builds the real instance on the first call, which breaks
-// that construction cycle.
-@ApplicationScoped
+@Singleton
 public class EncryptionServiceImpl implements EncryptionService {
   private static final Logger LOG = LoggerFactory.getLogger(EncryptionServiceImpl.class);
   private final EncryptionClientProvider clientProvider;
@@ -54,6 +50,6 @@ public class EncryptionServiceImpl implements EncryptionService {
   }
 
   private CryptoClient getClient() {
-    return Context.customerId().map(clientProvider::get).orElse(null);
+    return Context.currentCustomerId().map(clientProvider::get).orElse(null);
   }
 }

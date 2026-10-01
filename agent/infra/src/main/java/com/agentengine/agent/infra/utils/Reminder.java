@@ -1,6 +1,5 @@
 package com.agentengine.agent.infra.utils;
 
-import com.agentengine.agent.infra.tools.knowledge.ReadKnowledgeSourceTool;
 import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
 import com.agentengine.util.common.utils.CollectionUtils;
 import java.util.List;
@@ -15,19 +14,16 @@ import java.util.Objects;
  * resolved (e.g. a child session is awaited, a knowledge item is no longer relevant).
  *
  * <p>{@code details} is a free-form bag a reminder's own accumulation logic can use to carry
- * whatever state it needs to derive {@code message} from — e.g. a reminder that represents the
- * union of many individually-added facts (see {@code SessionState#addNotebookReminders}) can stash
- * the merged data here so a later add can read it back and merge into it, rather than each add
- * overwriting the last. Not rendered directly; {@code message} is what the brief shows.
+ * whatever state it needs to derive {@code message} from, so a later add can read it back and merge
+ * into it, rather than each add overwriting the last. Not rendered directly; {@code message} is
+ * what the brief shows.
  *
  * <p>Well-known groups:
  *
  * <ul>
  *   <li>{@code spawned_agents} — child sessions spawned but not yet awaited; id = child session ID
- *   <li>{@code knowledge_ids} — ids of searchable {@code Knowledge} items, each read with {@code
+ *   <li>{@code knowledge_ids} — ids of {@code Knowledge} items granted, each accessed with {@code
  *       search_knowledge}; id = the knowledge id itself
- *   <li>{@code knowledge_sources} — raw file sources with no search capability, each read whole
- *       with {@code read_knowledge_source}; id = the source string itself
  *   <li>{@code active_plan} — current plan state; id = {@link #ID_ACTIVE_PLAN}
  * </ul>
  *
@@ -48,11 +44,11 @@ public record Reminder(String group, String id, String message, Map<String, Obje
 
   public static final String GROUP_SPAWNED_AGENTS = "spawned_agents";
   public static final String GROUP_ACTIVE_PLAN = "active_plan";
+  public static final String GROUP_NOTEBOOK_ACCESS = "notebook_access";
   public static final String GROUP_KNOWLEDGE_IDS = "knowledge_ids";
-  public static final String GROUP_KNOWLEDGE_SOURCES = "knowledge_sources";
-  public static final String GROUP_NOTEBOOK_GRANTS = "notebook_grants";
 
   public static final String ID_ACTIVE_PLAN = "plan";
+  public static final String ID_NOTEBOOK_ACCESS = "notebook_access";
 
   /**
    * Display order for known groups in the brief, most action-critical first: unfinished plan work
@@ -60,26 +56,20 @@ public record Reminder(String group, String id, String message, Map<String, Obje
    * (future addition) sorts after all of these.
    */
   public static final List<String> GROUP_ORDER =
-      List.of(
-          GROUP_ACTIVE_PLAN,
-          GROUP_SPAWNED_AGENTS,
-          GROUP_NOTEBOOK_GRANTS,
-          GROUP_KNOWLEDGE_IDS,
-          GROUP_KNOWLEDGE_SOURCES);
+      List.of(GROUP_ACTIVE_PLAN, GROUP_SPAWNED_AGENTS, GROUP_NOTEBOOK_ACCESS, GROUP_KNOWLEDGE_IDS);
 
   private static final Map<String, GroupInfo> GROUPS =
       Map.of(
           GROUP_ACTIVE_PLAN, new GroupInfo("Active Plan"),
           GROUP_SPAWNED_AGENTS, new GroupInfo("Pending Child Sessions"),
-          GROUP_NOTEBOOK_GRANTS, new GroupInfo("Notebook and note permissions"),
+          GROUP_NOTEBOOK_ACCESS, new GroupInfo("Notebook Access"),
           GROUP_KNOWLEDGE_IDS,
               new GroupInfo(
-                  "Available to Search",
-                  "Search these with " + SearchKnowledgeTool.DESCRIPTOR.name() + "."),
-          GROUP_KNOWLEDGE_SOURCES,
-              new GroupInfo(
-                  "Available to Read",
-                  "Read these with " + ReadKnowledgeSourceTool.DESCRIPTOR.name() + "."));
+                  "Available Knowledge",
+                  "Access these with "
+                      + SearchKnowledgeTool.DESCRIPTOR.name()
+                      + " — pass a query to search an indexed item, omit it to read a"
+                      + " non-indexed one in full."));
 
   /** The section title a group renders as in the brief (see {@code ReminderPlugin}). */
   public static String title(final String group) {

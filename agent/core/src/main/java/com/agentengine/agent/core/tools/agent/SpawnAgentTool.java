@@ -1,16 +1,16 @@
 package com.agentengine.agent.core.tools.agent;
 
-import com.agentengine.agent.api.model.*;
+import com.agentengine.agent.api.model.MessagePart;
+import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartChildResult;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.StartChildCommand;
-import com.agentengine.agent.infra.notebook.NotebookRepository;
-import com.agentengine.agent.infra.notebook.NotesRepository;
-import com.agentengine.agent.infra.utils.AgentUtils;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
-import com.agentengine.util.agents.AgentFileDetails;
+import com.agentengine.knowledge.api.services.KnowledgeService;
+import com.agentengine.tenancy.AccessControlService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -45,42 +45,30 @@ public final class SpawnAgentTool extends AbstractAgentTool {
           Returns: { child_session_id } on success, or { error } on failure.""",
           Map.of());
 
-  private static final Schema KNOWLEDGES_SCHEMA =
-      ToolUtils.buildSchemaFromType(new TypeReference<List<AgentFileDetails>>() {}.getType())
-          .toBuilder()
-          .description("Knowledge to grant the spawned agent. " + KNOWLEDGES_ACCESS_DESCRIPTION)
+  private static final Schema KNOWLEDGE_IDS_SCHEMA =
+      ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
+          .description("Knowledge ids to grant the spawned agent. " + KNOWLEDGES_ACCESS_DESCRIPTION)
           .build();
 
-  private static final Schema NOTEBOOK_GRANTS_SCHEMA =
-      ToolUtils.buildSchemaFromType(
-              new TypeReference<List<NotebookGrants.NotebookGrant>>() {}.getType())
-          .toBuilder()
+  private static final Schema NOTEBOOK_IDS_SCHEMA =
+      ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
           .description(
-              "Notebook-wide access to grant the spawned agent — lets it add new notes anywhere in the given notebooks. Optional.")
-          .build();
-
-  private static final Schema NOTE_GRANTS_SCHEMA =
-      ToolUtils.buildSchemaFromType(
-              new TypeReference<List<NotebookGrants.NoteGrant>>() {}.getType())
-          .toBuilder()
-          .description(
-              "Read or edit permission to grant the spawned agent for specific, already-existing notes. Optional.")
+              "Ids of existing notebooks to grant the spawned agent. "
+                  + NOTEBOOKS_ACCESS_DESCRIPTION
+                  + " Optional.")
           .build();
 
   private final List<String> subAgentIds;
-  private final NotebookRepository notebookRepository;
-  private final NotesRepository notesRepository;
   private final FunctionDeclaration declaration;
 
   public SpawnAgentTool(
       final ActorSystemProvider actorSystemProvider,
       final List<String> subAgentIds,
-      final NotebookRepository notebookRepository,
-      final NotesRepository notesRepository) {
-    super(DESCRIPTOR, actorSystemProvider);
+      final NotebookService notebookService,
+      final KnowledgeService knowledgeService,
+      final AccessControlService accessControlService) {
+    super(DESCRIPTOR, actorSystemProvider, notebookService, knowledgeService, accessControlService);
     this.subAgentIds = List.copyOf(subAgentIds);
-    this.notebookRepository = notebookRepository;
-    this.notesRepository = notesRepository;
     this.declaration = buildDeclaration(this.subAgentIds);
   }
 
@@ -96,12 +84,10 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       @ToolArg(name = "message") String message,
       @ToolArg(name = "goal") final String goal,
       @ToolArg(name = "await_completion", optional = true) Boolean awaitCompletion,
-      @ToolArg(name = Constants.ToolArgs.KNOWLEDGES, optional = true)
-          final List<AgentFileDetails> knowledges,
-      @ToolArg(name = Constants.ToolArgs.NOTEBOOK_GRANTS, optional = true)
-          final List<NotebookGrants.NotebookGrant> notebookGrants,
-      @ToolArg(name = Constants.ToolArgs.NOTE_GRANTS, optional = true)
-          final List<NotebookGrants.NoteGrant> noteGrants) {
+      @ToolArg(name = Constants.ToolArgs.KNOWLEDGE_IDS, optional = true)
+          final List<String> knowledgeIds,
+      @ToolArg(name = Constants.ToolArgs.NOTEBOOK_IDS, optional = true)
+          final List<String> notebookIds) {
 
     final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
     if (completedResult != null) {
@@ -120,28 +106,30 @@ public final class SpawnAgentTool extends AbstractAgentTool {
     message = buildFullMessage(goal, message);
 
     final List<MessagePart> parts = List.of(new MessagePart.TextPart(message));
-    final ResourceGrants resourceGrants =
-        AgentUtils.buildResourceGrants(knowledges, notebookGrants, noteGrants);
     final ToolOutput<Map<String, Object>> violationOutput =
-        validateGrants(notebookGrants, noteGrants, notebookRepository, notesRepository);
+        validateGrants(notebookIds, knowledgeIds);
     if (violationOutput != null) {
       return violationOutput;
     }
-    final UserMessage userMessage = new UserMessage(parts, resourceGrants);
+    final UserMessage userMessage = new UserMessage(parts);
+    final String childSessionId = SessionUtils.newSessionId(childAgentId);
+    // Granted before the child starts, so its first run can already reach them.
+    final ToolOutput<Map<String, Object>> grantError =
+        issueGrants(childSessionId, notebookIds, knowledgeIds);
+    if (grantError != null) {
+      return grantError;
+    }
 
     final StartChildResult startChildResult =
         actorRef(toolContext)
             .<StartChildResult>ask(
                 replyTo ->
                     new StartChildCommand(
-                        childAgentId,
-                        new UniqueRecord<>(SessionUtils.newSessionId(childAgentId), userMessage),
-                        replyTo),
+                        childAgentId, new UniqueRecord<>(childSessionId, userMessage), replyTo),
                 SessionActorFactory.ASK_TIMEOUT)
             .toCompletableFuture()
             .join();
 
-    final String childSessionId = startChildResult.sessionId();
     final StartSessionResult result = startChildResult.result();
     return switch (result) {
       case StartSessionResult.Accepted ignored -> {
@@ -197,9 +185,8 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .description(
                 "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been spawned.")
             .build());
-    properties.put(Constants.ToolArgs.KNOWLEDGES, KNOWLEDGES_SCHEMA);
-    properties.put(Constants.ToolArgs.NOTEBOOK_GRANTS, NOTEBOOK_GRANTS_SCHEMA);
-    properties.put(Constants.ToolArgs.NOTE_GRANTS, NOTE_GRANTS_SCHEMA);
+    properties.put(Constants.ToolArgs.KNOWLEDGE_IDS, KNOWLEDGE_IDS_SCHEMA);
+    properties.put(Constants.ToolArgs.NOTEBOOK_IDS, NOTEBOOK_IDS_SCHEMA);
     final Schema params =
         Schema.builder()
             .type(Known.OBJECT)

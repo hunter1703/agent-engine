@@ -1,5 +1,7 @@
 package com.agentengine.util.ms.client;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.infra.ServerType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
@@ -17,7 +19,7 @@ public class MicroServiceServerInfraConfig extends InfraConfig {
 
   @Override
   public String getId() {
-    return ServerType.MICROSERVICE_SERVER + ":" + getServerId();
+    return ServerType.MICROSERVICE_SERVER + ID_SEPARATOR + getServerId();
   }
 
   public String getHost() {

@@ -1,7 +1,6 @@
 package com.agentengine.agent.infra.tools.notebook;
 
-import com.agentengine.agent.infra.notebook.NotebookRepository;
-import com.agentengine.agent.infra.notebook.NotesRepository;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.tools.AbstractToolsetProvider;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -20,21 +19,19 @@ public final class NotebookToolsetProvider extends AbstractToolsetProvider {
           Map.of());
 
   @Inject
-  public NotebookToolsetProvider(
-      final NotebookRepository notebookRepository, final NotesRepository notesRepository) {
+  public NotebookToolsetProvider(final NotebookService notebookService) {
     super(
         TOOLSET_DESCRIPTOR,
         List.of(
             new ToolDefinition(
-                CreateNotebookTool.DESCRIPTOR, () -> new CreateNotebookTool(notebookRepository)),
+                CreateNotebookTool.DESCRIPTOR, () -> new CreateNotebookTool(notebookService)),
             new ToolDefinition(
                 CreateOrUpdateNoteTool.DESCRIPTOR,
-                () -> new CreateOrUpdateNoteTool(notesRepository)),
-            new ToolDefinition(ReadNoteTool.DESCRIPTOR, () -> new ReadNoteTool(notesRepository)),
+                () -> new CreateOrUpdateNoteTool(notebookService)),
+            new ToolDefinition(ReadNoteTool.DESCRIPTOR, () -> new ReadNoteTool(notebookService)),
             new ToolDefinition(
-                DeleteNoteTool.DESCRIPTOR, () -> new DeleteNoteTool(notesRepository)),
+                DeleteNoteTool.DESCRIPTOR, () -> new DeleteNoteTool(notebookService)),
             new ToolDefinition(
-                DeleteNotebookTool.DESCRIPTOR,
-                () -> new DeleteNotebookTool(notebookRepository, notesRepository))));
+                DeleteNotebookTool.DESCRIPTOR, () -> new DeleteNotebookTool(notebookService))));
   }
 }

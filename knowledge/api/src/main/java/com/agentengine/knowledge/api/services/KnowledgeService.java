@@ -1,15 +1,17 @@
 package com.agentengine.knowledge.api.services;
 
 import com.agentengine.knowledge.api.beans.*;
+import com.agentengine.tenancy.AssetPermissionService;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.ms.client.MicroService;
+import com.agentengine.util.tenancy.Permission;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 @MicroService("knowledge")
-public interface KnowledgeService {
-
+public interface KnowledgeService extends AssetPermissionService {
   Knowledge create(IndexRequest request);
 
   Knowledge findById(String id);
@@ -29,5 +31,12 @@ public interface KnowledgeService {
 
   boolean deleteById(String id);
 
-  PaginatedResult<KnowledgeChunk> searchInKnowledge(Query query);
+  Set<String> findPermittedIds(Collection<String> ids, Permission permission);
+
+  /**
+   * The chunks {@code query} matches within the knowledge {@code knowledgeIds} names, or within all
+   * the knowledge the caller may read when it names none; knowledge the caller may not read is left
+   * out.
+   */
+  PaginatedResult<KnowledgeChunk> searchInKnowledge(Collection<String> knowledgeIds, Query query);
 }

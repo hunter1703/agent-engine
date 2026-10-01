@@ -1,5 +1,7 @@
 package com.agentengine.util.crypto;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.infra.ServerType;
 import java.util.Locale;
@@ -19,7 +21,7 @@ public class EncryptionKeyInfraConfig extends InfraConfig {
 
   @Override
   public String getId() {
-    return ServerType.ENCRYPTION_KEY + ":" + keyId;
+    return ServerType.ENCRYPTION_KEY + ID_SEPARATOR + keyId;
   }
 
   public String getKeyId() {

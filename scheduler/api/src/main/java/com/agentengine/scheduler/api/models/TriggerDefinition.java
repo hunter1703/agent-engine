@@ -2,7 +2,9 @@ package com.agentengine.scheduler.api.models;
 
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Map;
+import org.bson.codecs.pojo.annotations.BsonIgnore;
 
 @Index(name = "trigger_due_idx", def = "{'status': 1, 'dueAt': 1}")
 @Index(name = "trigger_job_idx", def = "{'jobDefinition._id': 1, 'jobDefinition.version': 1}")
@@ -31,8 +33,11 @@ public class TriggerDefinition extends BaseEntity {
     return jobDefinition;
   }
 
-  public int getCustomerId() {
-    return getJobDefinition().getUserContext().customerId();
+  /** The customer of the job this trigger fires, stored with the job rather than on its own. */
+  @BsonIgnore
+  @JsonIgnore
+  public String getCustomerId() {
+    return jobDefinition == null ? null : jobDefinition.getCustomerId();
   }
 
   public void setJobDefinition(final JobDefinition jobDefinition) {

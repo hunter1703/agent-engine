@@ -8,12 +8,13 @@ import com.agentengine.scheduler.api.models.TriggerStatus;
 import com.agentengine.scheduler.api.runner.Job;
 import com.agentengine.scheduler.api.runner.JobContext;
 import com.agentengine.scheduler.api.runner.JobResult;
-import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.CronUtils;
 import com.agentengine.scheduler.core.SchedulerUtils;
+import com.agentengine.scheduler.core.store.TriggerDefinitionRepository;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Contextual;
 import com.agentengine.util.pekko.PekkoSerializable;
@@ -79,7 +80,10 @@ public final class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Comman
         () ->
             new ContextualInterceptor<>(
                 Command.class,
-                new Context(trigger.getId(), trigger.getJobDefinition().getUserContext())),
+                new Context(
+                    trigger.getId(),
+                    trigger.getCustomerId(),
+                    Caller.parse(trigger.getJobDefinition().getCaller()))),
         Behaviors.setup(
             context ->
                 Behaviors.withTimers(
@@ -180,7 +184,7 @@ public final class JobRunnerActor extends AbstractBehavior<JobRunnerActor.Comman
       update = succeededUpdate(trigger);
     }
     try {
-      triggerDefinitionRepository.update(trigger.getId(), update);
+      triggerDefinitionRepository.updateIgnoringVersion(trigger.getId(), update);
       if (reschedule) {
         worker.tell(new WorkerActor.Command.TriggerRescheduled(trigger));
       }

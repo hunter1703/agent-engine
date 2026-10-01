@@ -1,12 +1,14 @@
 package com.agentengine.agent.infra.utils;
 
-import com.agentengine.agent.api.model.NotebookGrants;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.planning.PlanningUtils;
+import com.agentengine.knowledge.api.beans.IndexingStatus;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.common.beans.Permission;
+import com.agentengine.util.common.query.Page;
+import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.events.Event;
@@ -14,7 +16,6 @@ import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -24,51 +25,52 @@ import java.util.Set;
 
 public final class SessionState {
 
-  private final KnowledgeService knowledgeService;
   private RunState runState;
   private final Set<Reminder> reminders = new LinkedHashSet<>();
   private Plan plan;
 
-  public SessionState(KnowledgeService knowledgeService) {
-    this.knowledgeService = knowledgeService;
-  }
-
-  public static SessionState buildFrom(
-      final List<Event> events, final KnowledgeService knowledgeService) {
-    final SessionState state = new SessionState(knowledgeService);
+  public static SessionState buildFrom(final List<Event> events) {
+    final SessionState state = new SessionState();
     state.setRunState(RunState.buildFrom(events));
     state.updatePlan(PlanningUtils.buildFrom(events));
     state.addRemindersFrom(events);
     return state;
   }
 
-  public void addKnowledgeSourceReminders(final Collection<String> sources) {
-    for (final String source : CollectionUtils.nullSafeList(sources)) {
-      addReminder(new Reminder(Reminder.GROUP_KNOWLEDGE_SOURCES, source, source));
+  public void syncKnowledgeReminders(final KnowledgeService knowledgeService) {
+    final List<Knowledge> knowledges =
+        knowledgeService.findByQuery(new Query().withPage(Page.UNBOUNDED)).getItems();
+    for (final Knowledge knowledge : knowledges) {
+      if (IndexingStatus.NON_INDEXED.name().equals(knowledge.getIndexingStatus())) {
+        addKnowledgeIdReminder(
+            knowledge.getId(), "[%s] (non-indexed — omit query)".formatted(knowledge.getTitle()));
+      } else {
+        final String description = knowledge.getDescription();
+        final String contentPreview = knowledge.getContentPreview();
+        addKnowledgeIdReminder(
+            knowledge.getId(),
+            "["
+                + knowledge.getTitle()
+                + "]"
+                + (StringUtils.isNotBlank(description) ? " " + description : "")
+                + (StringUtils.isNotBlank(contentPreview)
+                    ? " (sample excerpt: \"" + contentPreview + "\")"
+                    : ""));
+      }
     }
   }
 
-  public void addNotebookReminders(final NotebookGrants notebookGrants) {
-    if (notebookGrants == null || CollectionUtils.isEmpty(notebookGrants.grants())) {
+  public void syncNotebookReminder(final NotebookService notebookService) {
+    final String summary = notebookService.summary();
+    if (StringUtils.isBlank(summary)) {
       return;
     }
-    final Reminder existing =
-        findReminder(Reminder.GROUP_NOTEBOOK_GRANTS, Reminder.GROUP_NOTEBOOK_GRANTS);
-    final Map<String, Permission> merged = new HashMap<>();
-    if (existing != null) {
-      for (final Map.Entry<String, Object> entry : existing.details().entrySet()) {
-        merged.put(entry.getKey(), (Permission) entry.getValue());
-      }
-    }
-    merged.putAll(notebookGrants.grants());
-    final NotebookGrants mergedGrants = new NotebookGrants(merged);
     addReminder(
         new Reminder(
-            Reminder.GROUP_NOTEBOOK_GRANTS,
-            Reminder.GROUP_NOTEBOOK_GRANTS,
-            "Editing a note implies reading it.\n**When a tool asks for a notebook id or a note id, use the id shown here VERBATIM — any changes to it will NOT resolve and tool call will FAIL.**\n"
-                + mergedGrants.describe(),
-            new HashMap<>(merged)));
+            Reminder.GROUP_NOTEBOOK_ACCESS,
+            Reminder.ID_NOTEBOOK_ACCESS,
+            "**When a tool asks for a notebook id or a note title, use the one shown here VERBATIM — any changes to it will NOT resolve and the tool call will FAIL.**\n"
+                + summary));
   }
 
   public void addSpawnedAgentReminder(
@@ -90,27 +92,6 @@ public final class SessionState {
             Reminder.GROUP_SPAWNED_AGENTS,
             childSessionId,
             spawnedAgentReminderMessage(childSessionId, null, true)));
-  }
-
-  public void addKnowledgeIdReminders(final Collection<String> knowledgeIds) {
-    if (CollectionUtils.isEmpty(knowledgeIds)) {
-      return;
-    }
-    final Map<String, Knowledge> knowledges =
-        knowledgeService == null ? Map.of() : knowledgeService.findByIds(knowledgeIds);
-    for (final Knowledge knowledge : knowledges.values()) {
-      final String description = knowledge.getDescription();
-      final String contentPreview = knowledge.getContentPreview();
-      addKnowledgeIdReminder(
-          knowledge.getId(),
-          "["
-              + knowledge.getTitle()
-              + "]"
-              + (StringUtils.isNotBlank(description) ? " " + description : "")
-              + (StringUtils.isNotBlank(contentPreview)
-                  ? " (sample excerpt: \"" + contentPreview + "\")"
-                  : ""));
-    }
   }
 
   /**
@@ -194,9 +175,7 @@ public final class SessionState {
    * Reconstructs reminders whose source of truth is the session's own event history, for every tool
    * call/response pair this session made that a fresh {@link SessionState} — rebuilt on actor
    * rehydration, with no memory of what was added to it live — needs to remember: spawned/messaged
-   * child sessions, and notebooks/notes this session created and therefore owns (ownership is
-   * checked separately from the {@link NotebookGrants} map, so it's otherwise invisible here; see
-   * {@link #addNotebookReminder}).
+   * child sessions.
    */
   private void addToolCallReminders(
       final Content content, final Map<String, FunctionCall> idVsFunctionCall) {
@@ -207,9 +186,7 @@ public final class SessionState {
       final FunctionCall functionCall = part.functionCall().orElse(null);
       if (functionCall != null) {
         final String functionName = functionCall.name().orElse("");
-        if (Constants.ToolNames.isAgentRoutingTool(functionName)
-            || Constants.ToolNames.CREATE_NOTEBOOK.equals(functionName)
-            || Constants.ToolNames.CREATE_OR_UPDATE_NOTE.equals(functionName)) {
+        if (Constants.ToolNames.isAgentRoutingTool(functionName)) {
           functionCall.id().ifPresent(id -> idVsFunctionCall.put(id, functionCall));
         }
       }
@@ -237,22 +214,6 @@ public final class SessionState {
         final String awaitedSession =
             CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.CHILD_SESSION_ID);
         sessionIdVsAwaited.put(awaitedSession, true);
-      }
-      if (response.name().orElse("").equals(Constants.ToolNames.CREATE_NOTEBOOK)
-          && Constants.ToolStatus.SUCCESS.equals(
-              CollectionUtils.getStringValueFromMap(result, Constants.ToolStatus.STATUS))) {
-        addNotebookReminders(
-            NotebookGrants.ofNotebook(
-                CollectionUtils.getStringValueFromMap(result, Constants.ToolArgs.NOTEBOOK_ID)));
-      }
-      if (response.name().orElse("").equals(Constants.ToolNames.CREATE_OR_UPDATE_NOTE)
-          && Constants.ToolStatus.PENDING.equals(
-              CollectionUtils.getStringValueFromMap(result, Constants.ToolStatus.STATUS))) {
-        final String notebookId =
-            CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.NOTEBOOK_ID);
-        final String noteTitle =
-            CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.NOTE_TITLE);
-        addNotebookReminders(NotebookGrants.ofNote(notebookId, noteTitle, Permission.WRITE));
       }
     }
 

@@ -35,7 +35,7 @@ public class PekkoEventStoreProvisioner extends InfraClientProvisioner {
     this.infraConfigService = infraConfigService;
   }
 
-  public void provision(final int customerId, final String serverId) {
+  public void provision(final String customerId, final String serverId) {
     final SQLClientInfraConfig clientConfig =
         SQLUtils.clientConfig(
             PekkoUtils.PEKKO_STORE, customerId, resolvedServerId(ServerType.SQL_SERVER, serverId));

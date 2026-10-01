@@ -13,6 +13,7 @@ import com.agentengine.util.common.*;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.ExceptionUtils;
 import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
 import com.google.adk.apps.App;
 import com.google.adk.runner.Runner;
@@ -82,7 +83,7 @@ public final class CommunityExpertsServiceImpl implements CommunityExpertsServic
       final InMemorySessionService sessionService = new InMemorySessionService();
       final String sessionId = UUID.randomUUID().toString();
       final String appName = AgentUtils.appName(config.getId());
-      final String userId = String.valueOf(Context.userId().orElse(-1));
+      final String userId = Context.currentUserId().orElse(Caller.SYSTEM_NAME);
       sessionService
           .createSession(appName, userId, new ConcurrentHashMap<>(), sessionId)
           .blockingGet();
@@ -90,7 +91,7 @@ public final class CommunityExpertsServiceImpl implements CommunityExpertsServic
           Runner.builder()
               .app(
                   App.builder()
-                      .plugins(List.of(new InitPlugin(null), new ResponseValidationPlugin()))
+                      .plugins(List.of(new InitPlugin(), new ResponseValidationPlugin()))
                       .rootAgent(agent)
                       .name(appName)
                       .build())

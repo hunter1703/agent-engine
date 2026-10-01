@@ -32,7 +32,7 @@ public class VectorDbClientFactory
     this.applicationConfig = applicationConfig;
   }
 
-  public QdrantClient getClient(final VectorStoreClientType clientType, final Integer customerId) {
+  public QdrantClient getClient(final VectorStoreClientType clientType, final String customerId) {
     return get(
         getOrCreate(
             VectorDbUtils.clientId(clientType.name(), customerId),

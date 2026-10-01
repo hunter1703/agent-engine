@@ -23,7 +23,7 @@ public final class PekkoUtils {
   private PekkoUtils() {}
 
   public static SQLClientInfraConfig sqlClient(
-      final InfraConfigService infraConfigService, final int customerId) {
+      final InfraConfigService infraConfigService, final String customerId) {
     return infraConfigService.get(SQLUtils.clientId(PEKKO_STORE, customerId));
   }
 

@@ -1,5 +1,7 @@
 package com.agentengine.util.mongodb.mongo;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.query.Filter;
@@ -16,6 +18,7 @@ import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.Updates;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -38,7 +41,7 @@ public final class MongoUtils {
   private MongoUtils() {}
 
   public static MongoClientInfraConfig clientConfig(
-      final String store, final Integer customerId, final String serverId) {
+      final String store, final String customerId, final String serverId) {
     final MongoClientInfraConfig clientConfig = new MongoClientInfraConfig();
     clientConfig.setStore(store);
     clientConfig.setCustomerId(customerId);
@@ -46,8 +49,11 @@ public final class MongoUtils {
     return clientConfig;
   }
 
-  public static String clientId(final String store, final Integer customerId) {
-    return ClientType.MONGO_CLIENT + ":" + store + (customerId == null ? "" : ":" + customerId);
+  public static String clientId(final String store, final String customerId) {
+    return ClientType.MONGO_CLIENT
+        + ID_SEPARATOR
+        + store
+        + (customerId == null ? "" : ID_SEPARATOR + customerId);
   }
 
   public static Bson toBsonUpdate(final Update update) {
@@ -62,7 +68,12 @@ public final class MongoUtils {
     return switch (operation.type()) {
       case SET -> Updates.set(operation.field(), operation.value());
       case UNSET -> Updates.unset(operation.field());
+      case ADD_TO_SET ->
+          Updates.addEachToSet(operation.field(), List.copyOf((Collection<?>) operation.value()));
       case INC -> Updates.inc(operation.field(), (Number) operation.value());
+      case REMOVE_FROM_SET ->
+          Updates.pullAll(operation.field(), List.copyOf((Collection<?>) operation.value()));
+      case SET_ON_INSERT -> Updates.setOnInsert(operation.field(), operation.value());
       default -> throw new IllegalStateException("Unexpected value: " + operation.type());
     };
   }
@@ -153,18 +164,16 @@ public final class MongoUtils {
     return getProjection(query.getIncludeFields(), query.getExcludeFields());
   }
 
+  /**
+   * Reads only {@code includes} when any are named, less {@code excludes}; otherwise every field
+   * but {@code excludes}.
+   */
   public static Bson getProjection(List<String> includes, List<String> excludes) {
     includes = CollectionUtils.nullSafeList(includes);
     excludes = CollectionUtils.nullSafeList(excludes);
-    if (!includes.isEmpty() && !excludes.isEmpty()) {
-      throw new IllegalArgumentException(
-          "MongoDB projections cannot mix inclusion and exclusion fields: includes="
-              + includes
-              + ", excludes="
-              + excludes);
-    }
     if (!includes.isEmpty()) {
       final List<String> projected = new ArrayList<>(includes);
+      projected.removeAll(excludes);
       if (!projected.contains(FIELD_MONGO_DISCRIMINATOR)) {
         projected.add(FIELD_MONGO_DISCRIMINATOR);
       }

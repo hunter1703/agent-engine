@@ -4,18 +4,20 @@ import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.annotations.Permissioned;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.NamedEntity;
+import com.agentengine.util.context.Principal;
 import java.util.HashMap;
 import java.util.Map;
 
 @Index(name = "agent_session_updated_idx", def = "{'updatedTime': -1}")
 @Permissioned(assetClass = AssetClass.AGENT_SESSION)
 public class AgentSession extends NamedEntity {
-  public static final String DEFAULT_USER_ID = "default";
   public static final String FIELD_STATE = "state";
   public static final String FIELD_SUMMARY = "summary";
   public static final String FIELD_STATUS = "status";
   public static final String FIELD_PARENT_SESSION_ID = "parentSessionId";
   public static final String FIELD_ROOT_SESSION_ID = "rootSessionId";
+  public static final String FIELD_ROOT_AGENT_ID = "rootAgentId";
+  public static final String FIELD_DEPTH = "depth";
   public static final String FIELD_AGENT_ID = "agentId";
 
   private String agentId;
@@ -29,6 +31,13 @@ public class AgentSession extends NamedEntity {
   private SessionStatus status;
 
   public AgentSession() {}
+
+  /** Session {@code sessionId} of agent {@code agentId}, for any user acting in it. */
+  public static Principal principal(final String agentId, final String sessionId) {
+    return Principal.ofAnyUser()
+        .within(AssetClass.AGENT, agentId)
+        .within(AssetClass.AGENT_SESSION, sessionId);
+  }
 
   public AgentSession(final String id, final String agentId, final Map<String, Object> state) {
     setId(id);

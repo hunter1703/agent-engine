@@ -1,7 +1,7 @@
 package com.agentengine.agent.api.utils;
 
-import com.agentengine.agent.api.model.NotebookGrants;
-import com.agentengine.util.agents.Constants;
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import java.util.Locale;
 
 public final class NotebookUtils {
@@ -12,20 +12,20 @@ public final class NotebookUtils {
     if (input == null) {
       return null;
     }
-    return input.replace(Constants.ID_SEPARATOR, "-").toLowerCase(Locale.ROOT);
+    return input.replace(ID_SEPARATOR, "-").toLowerCase(Locale.ROOT);
   }
 
   public static String notebookId(final String authorSession, final String name) {
     // authorSession (2 segments: agentId:uuid)
-    return authorSession + Constants.ID_SEPARATOR + sanitize(name);
+    return authorSession + ID_SEPARATOR + sanitize(name);
   }
 
   public static String noteId(final String notebookId, final String noteTitle) {
-    return notebookId + Constants.ID_SEPARATOR + sanitize(noteTitle);
+    return notebookId + ID_SEPARATOR + sanitize(noteTitle);
   }
 
   public static String notebookIdOf(final String noteId) {
-    final int lastSeparator = noteId.lastIndexOf(Constants.ID_SEPARATOR);
+    final int lastSeparator = noteId.lastIndexOf(ID_SEPARATOR);
     return lastSeparator < 0 ? null : noteId.substring(0, lastSeparator);
   }
 
@@ -35,7 +35,7 @@ public final class NotebookUtils {
   }
 
   public static String noteTitleOf(final String noteId) {
-    final int lastSeparator = noteId.lastIndexOf(Constants.ID_SEPARATOR);
+    final int lastSeparator = noteId.lastIndexOf(ID_SEPARATOR);
     return lastSeparator < 0 ? null : noteId.substring(lastSeparator + 1);
   }
 
@@ -44,24 +44,6 @@ public final class NotebookUtils {
       return false;
     }
     // notebookId (3 segments) + noteTitle (1 segment) = 4
-    return id.split(Constants.ID_SEPARATOR).length == 4;
-  }
-
-  public static boolean isOwner(final String notebookId, final String sessionId) {
-    return notebookId.startsWith(sessionId + Constants.ID_SEPARATOR);
-  }
-
-  public static boolean canRead(
-      final NotebookGrants grants, final String notebookId, final String noteTitle) {
-    return grants != null && grants.canRead(notebookId, noteTitle);
-  }
-
-  public static boolean canWrite(
-      final NotebookGrants grants, final String notebookId, final String noteTitle) {
-    return grants != null && grants.canWrite(notebookId, noteTitle);
-  }
-
-  public static boolean canCreate(final NotebookGrants grants, final String notebookId) {
-    return grants != null && grants.canCreate(notebookId);
+    return id.split(ID_SEPARATOR).length == 4;
   }
 }

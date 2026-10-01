@@ -7,6 +7,7 @@ import com.agentengine.util.common.beans.BaseEntity;
 @Index(name = "note_notebook_idx", def = "{'notebookId': 1}")
 public class Note extends BaseEntity {
   public static final String FIELD_NOTEBOOK_ID = "notebookId";
+  public static final String FIELD_CONTENT = "content";
 
   private String notebookId;
   private String noteTitle;

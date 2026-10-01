@@ -33,5 +33,12 @@
     "serverId": "scheduler-default",
     "host": "scheduler-socialmedia.agent-engine.svc.cluster.local",
     "port": 8080
+  },
+  {
+    "_t": "com.agentengine.util.ms.client.MicroServiceServerInfraConfig",
+    "type": "MICROSERVICE_SERVER",
+    "serverId": "tenancy-default",
+    "host": "tenancy-socialmedia.agent-engine.svc.cluster.local",
+    "port": 8080
   }
 ]

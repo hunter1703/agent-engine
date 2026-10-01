@@ -1,25 +1,21 @@
 package com.agentengine.agent.core.session.state;
 
-import com.agentengine.agent.api.model.ResourceGrants;
-import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.util.agents.beans.ResumeRequest;
+import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Contextual;
-import com.agentengine.util.context.UserContext;
+import com.agentengine.util.context.Principal;
+import com.agentengine.util.context.UserCaller;
 import com.agentengine.util.pekko.PekkoSerializable;
 import com.google.adk.events.Event;
 import java.util.*;
 
 /**
  * Durable actor state reconstructed from journal facts.
- *
- * <p>{@code grants} accumulates additively across every run of the session: {@link
- * #withNewRun(UniqueRecord, long)} merges each new message's {@link ResourceGrants} on top of
- * whatever was already granted (see {@link ResourceGrants#merge}), so knowledge/notebook access
- * granted in an earlier run is never lost in a later one.
  *
  * <p>{@code runs} keeps every run the session has ever started, for its whole lifetime — {@link
  * #findRunStartSequence(String)} needs the full history to locate any historical run's start, since
@@ -28,24 +24,15 @@ import java.util.*;
  */
 public record SessionActorState(
     SessionState sessionState,
-    Queue<UniqueRecord<UserMessage>> queue,
+    Queue<UniqueRecord<EnqueuedMessage>> queue,
     Map<String, ChildSession> childRegistry,
     Set<StartingChild> startingChildren,
     SessionTopology topology,
-    UserContext ownerContext,
+    Context context,
     PauseState pauseState,
     List<RunState> runs,
-    RolledBackRun lastRollback,
-    ResourceGrants grants)
+    RolledBackRun lastRollback)
     implements PekkoSerializable, Contextual {
-
-  @Override
-  public Context context() {
-    if (topology == null || ownerContext == null) {
-      return null;
-    }
-    return new Context(topology.sessionId(), ownerContext);
-  }
 
   public RunResult lastResult() {
     final RunState current = currentRun();
@@ -72,8 +59,7 @@ public record SessionActorState(
         null,
         new PauseState(),
         new ArrayList<>(),
-        null,
-        ResourceGrants.EMPTY);
+        null);
   }
 
   /** The session's currently active run, or null before its first run has ever started. */
@@ -81,7 +67,7 @@ public record SessionActorState(
     return runs.isEmpty() ? null : runs.getLast();
   }
 
-  public UniqueRecord<UserMessage> currentMessage() {
+  public UniqueRecord<EnqueuedMessage> currentMessage() {
     final RunState current = currentRun();
     return current == null ? null : current.message();
   }
@@ -108,32 +94,36 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         pauseState,
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
   public SessionActorState withInitialized(
-      final SessionTopology updatedTopology, final UserContext ownerContext) {
+      final SessionTopology updatedTopology, final String customerId, final Principal owner) {
     return new SessionActorState(
         sessionState,
         queue,
         childRegistry,
         startingChildren,
         updatedTopology,
-        ownerContext,
+        new Context(
+            updatedTopology.sessionId(),
+            customerId,
+            owner == null
+                ? Caller.SYSTEM
+                : UserCaller.of(
+                    AgentSession.principal(updatedTopology.agentId(), updatedTopology.sessionId())
+                        .forUser(owner.userId()))),
         pauseState,
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
   public SessionActorState withNewRun(
-      final UniqueRecord<UserMessage> message, final long messagePickedTimestamp) {
+      final UniqueRecord<EnqueuedMessage> message, final long messagePickedTimestamp) {
     final String runId = message != null ? message.getId() : null;
-    final ResourceGrants incomingGrants = message != null ? message.getRecord().grants() : null;
     if (!runs.isEmpty()) {
       runs.set(runs.size() - 1, runs.getLast().finished());
     }
@@ -146,11 +136,10 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         pauseState,
         runs,
-        lastRollback,
-        grants.merge(incomingGrants));
+        lastRollback);
   }
 
   public SessionActorState completeRun(final RunResult result) {
@@ -161,11 +150,10 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         pauseState,
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
   /**
@@ -187,14 +175,13 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         pauseState,
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
-  public SessionActorState enqueue(final UniqueRecord<UserMessage> message) {
+  public SessionActorState enqueue(final UniqueRecord<EnqueuedMessage> message) {
     queue.add(message);
     return this;
   }
@@ -219,11 +206,10 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         pauseState,
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
   /**
@@ -258,11 +244,10 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         pauseState,
         runs,
-        new RolledBackRun(runId, rollbackSequence),
-        grants);
+        new RolledBackRun(runId, rollbackSequence));
   }
 
   public Optional<ChildSession> child(final String childSessionId) {
@@ -292,11 +277,10 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         pauseState.withChildPaused(childSessionId, interruptId),
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
   public SessionActorState selfPaused(
@@ -307,11 +291,10 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         pauseState.withSelfPaused(interruptId, runId, turnId),
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
   public String getPausedChild(final ResumeRequest resumeRequest) {
@@ -374,11 +357,10 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         updated,
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
   public Collection<ResumeRequest> getAllReceivedResumes() {
@@ -393,11 +375,10 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         pauseState.withInternalSelfPause(childSessionId, interruptId, runId, turnId),
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
   public boolean isPausedOnExternalInterrupts() {
@@ -419,11 +400,10 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         pauseState.withSelfResumed(resumeRequest),
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
   public SessionActorState childResume(final ResumeRequest resumeRequest) {
@@ -433,11 +413,10 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         pauseState.withChildResumed(resumeRequest.getInterruptId()),
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
   public boolean isDuplicateTurn(final Event lastTurnEvent) {
@@ -466,15 +445,14 @@ public record SessionActorState(
         childRegistry,
         startingChildren,
         topology,
-        ownerContext,
+        context,
         new PauseState(
             new HashMap<>(),
             new HashMap<>(),
             pauseState.pendingInterruptIdVsChildSessionId(),
             new HashMap<>()),
         runs,
-        lastRollback,
-        grants);
+        lastRollback);
   }
 
   /**
@@ -498,10 +476,9 @@ public record SessionActorState(
         new HashMap<>(childRegistry),
         new HashSet<>(startingChildren),
         topology,
-        ownerContext,
+        context,
         pauseState,
         new ArrayList<>(runs),
-        lastRollback,
-        grants);
+        lastRollback);
   }
 }

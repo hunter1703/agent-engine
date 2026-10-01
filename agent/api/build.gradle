@@ -5,8 +5,9 @@ plugins {
 group = 'com.agentengine.agent'
 
 dependencies {
+    api project(':tenancy:api')
     implementation project(':util:ms:client')
-    api project(':tenancy')
+    api project(':util:infra')
     implementation project(':util:agents')
     implementation project(':util:common')
 

@@ -1,8 +1,6 @@
 package com.agentengine.knowledge.api.beans;
 
 import com.agentengine.util.common.annotations.Indexed;
-import com.agentengine.util.common.annotations.Permissioned;
-import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.vectordb.VectorEntity;
 
 /**
@@ -16,17 +14,12 @@ import com.agentengine.util.vectordb.VectorEntity;
  * chunk's text. Additional fields (e.g. title, summary) can be added later by calling {@link
  * #setVector(String, float[])} with the appropriate physical field name.
  */
-@Permissioned(assetClass = AssetClass.KNOWLEDGE_CHUNK)
 public class KnowledgeChunk extends VectorEntity {
 
   public static final String FIELD_KNOWLEDGE_ID = "knowledgeId";
   public static final String FIELD_AGENT_ID = "agentId";
 
   public static final String FIELD_TEXT = "text";
-
-  public static final String ADDITIONAL_AGENT_ID = "agentId";
-
-  public static final String ADDITIONAL_SESSION_ID = "sessionId";
 
   /** Default {@link #mimeType} for a chunk whose content is text, as almost every chunk's is. */
   public static final String MIME_TYPE_TEXT = "text/plain";

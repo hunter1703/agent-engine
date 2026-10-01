@@ -16,6 +16,7 @@ GRADLE_TASKS = {
     "knowledge": ":knowledge:core:quarkusBuild",
     "connectors": ":connectors:core:quarkusBuild",
     "scheduler": ":scheduler:core:quarkusBuild",
+    "tenancy": ":tenancy:core:quarkusBuild",
     "internal": ":internal:quarkusBuild",
 }
 
@@ -26,6 +27,7 @@ DOCKER_MODULES = {
     "knowledge": "knowledge/core",
     "connectors": "connectors/core",
     "scheduler": "scheduler/core",
+    "tenancy": "tenancy/core",
     "internal": "internal",
 }
 

@@ -6,6 +6,7 @@ import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.beans.ResumeRequest;
+import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.codec.JsonCodec;
 import com.agentengine.util.common.codec.SimpleJsonCodec;
@@ -27,6 +28,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.microprofile.openapi.annotations.Operation;
@@ -130,7 +132,7 @@ public class SessionRestAPI {
   public void rollbackSession(
       @NotBlank @PathParam("sessionId") final String sessionId,
       @NotBlank @QueryParam("runId") final String runId) {
-    if (sessionService.getSession(sessionId) == null) {
+    if (sessionService.getSession(sessionId, List.of(AgentSession.FIELD_STATUS)) == null) {
       throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
     }
     runtimeService.rollbackSession(sessionId, runId);

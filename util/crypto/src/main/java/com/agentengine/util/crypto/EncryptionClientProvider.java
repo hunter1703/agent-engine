@@ -1,5 +1,7 @@
 package com.agentengine.util.crypto;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.distributed.DistributedCacheManager;
@@ -31,7 +33,7 @@ public class EncryptionClientProvider
     this.applicationConfig = applicationConfig;
   }
 
-  public CryptoClient get(final int customerId) {
+  public CryptoClient get(final String customerId) {
     return get(
         getOrCreate(
             EncryptionUtils.clientId(customerId),
@@ -41,7 +43,8 @@ public class EncryptionClientProvider
   }
 
   public CryptoClient getForKeyId(final String keyId) {
-    return getClientForServer(infraConfigService.get(ServerType.ENCRYPTION_KEY + ":" + keyId));
+    return getClientForServer(
+        infraConfigService.get(ServerType.ENCRYPTION_KEY + ID_SEPARATOR + keyId));
   }
 
   @Override

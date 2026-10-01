@@ -1,8 +1,7 @@
 package com.agentengine.agent.infra.tools.notebook;
 
-import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.infra.notebook.Notebook;
-import com.agentengine.agent.infra.notebook.NotebookRepository;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -18,15 +17,15 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.CREATE_NOTEBOOK,
           """
-                      Creates a new, empty notebook — a shared space where titled notes can be read across sessions. You have full access to everything in a notebook you create; other sessions see only what you explicitly grant them when you communicate with them. Use the returned notebook_id with create_note to add notes.
+                      Creates a new, empty notebook — a shared space where titled notes can be read across sessions. You have full access to a notebook you create; other sessions reach it only once you grant it to them when you communicate with them. Use the returned notebook_id with create_note to add notes.
                       Returns: { status: "success", notebook_id }, or { error } if the name is already in use.""",
           Map.of());
 
-  private final NotebookRepository notebookRepository;
+  private final NotebookService notebookService;
 
-  public CreateNotebookTool(final NotebookRepository notebookRepository) {
+  public CreateNotebookTool(final NotebookService notebookService) {
     super(DESCRIPTOR);
-    this.notebookRepository = notebookRepository;
+    this.notebookService = notebookService;
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -52,12 +51,12 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
     Notebook notebook =
         new Notebook(sessionId, name, StringUtils.isBlank(description) ? "" : description);
     try {
-      notebookRepository.insert(notebook);
+      notebookService.createNotebook(notebook);
     } catch (final DuplicateAssetException exception) {
       return ToolOutput.direct(Map.of("error", "Notebook '" + name + "' already exists."));
     }
     SessionUtils.getSessionState(toolContext.invocationContext())
-        .addNotebookReminders(NotebookGrants.ofNotebook(notebook.getId()));
+        .syncNotebookReminder(notebookService);
     return ToolOutput.direct(
         Map.of(
             Constants.ToolStatus.STATUS,

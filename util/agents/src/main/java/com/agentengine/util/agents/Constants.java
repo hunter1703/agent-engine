@@ -20,7 +20,6 @@ public interface Constants {
     String READ_NOTE = "read_note";
     String DELETE_NOTE = "delete_note";
     String DELETE_NOTEBOOK = "delete_notebook";
-    String READ_KNOWLEDGE_SOURCE = "read_knowledge_source";
     String SEARCH_KNOWLEDGE = "search_knowledge";
 
     static boolean isAgentRoutingTool(String toolName) {
@@ -42,11 +41,7 @@ public interface Constants {
     String NOTE_TITLE = "note_title";
     String CONTINUATION = "continuation";
     String KNOWLEDGE_IDS = "knowledge_ids";
-    String KNOWLEDGES = "knowledges";
-    String KNOWLEDGE_SOURCES = "knowledge_sources";
-    String NOTEBOOK_GRANTS = "notebook_grants";
-    String NOTE_GRANTS = "note_grants";
-    String SOURCE = "source";
+    String NOTEBOOK_IDS = "notebook_ids";
   }
 
   /** The {@code status} field/value a tool's response map commonly carries. */
@@ -63,5 +58,4 @@ public interface Constants {
   }
 
   String AUTHOR_USER = "user";
-  String ID_SEPARATOR = ":";
 }

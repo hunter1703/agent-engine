@@ -1,12 +1,12 @@
 package com.agentengine.agent.infra.plugins;
 
 import com.agentengine.agent.api.utils.NotebookUtils;
-import com.agentengine.agent.infra.notebook.Note;
-import com.agentengine.agent.infra.notebook.NotesRepository;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.tools.notebook.CreateOrUpdateNoteTool;
 import com.agentengine.agent.infra.utils.*;
 import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.common.utils.StringUtils;
+import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmRequest;
@@ -32,14 +32,25 @@ public final class NotebookPlugin extends BasePlugin {
   private static final Logger LOG = LoggerFactory.getLogger(NotebookPlugin.class);
   private static final String NAME = "notebook_plugin";
 
-  private final NotesRepository notesRepository;
+  private final NotebookService notebookService;
   private final Set<String> agentsWithNotebook;
 
   public NotebookPlugin(
-      final NotesRepository notesRepository, final Set<String> agentsWithNotebook) {
+      final NotebookService notebookService, final Set<String> agentsWithNotebook) {
     super(NAME);
-    this.notesRepository = notesRepository;
+    this.notebookService = notebookService;
     this.agentsWithNotebook = agentsWithNotebook;
+  }
+
+  /** Tells an agent with notebook tools, once per run, which notebooks and notes it can reach. */
+  @Override
+  public Maybe<Content> beforeAgentCallback(
+      final BaseAgent agent, final CallbackContext callbackContext) {
+    final InvocationContext invocationContext = callbackContext.invocationContext();
+    if (agentsWithNotebook.contains(agent.name()) && SessionUtils.isNewRun(invocationContext)) {
+      SessionUtils.getSessionState(invocationContext).syncNotebookReminder(notebookService);
+    }
+    return Maybe.empty();
   }
 
   @Override
@@ -79,7 +90,8 @@ public final class NotebookPlugin extends BasePlugin {
       return Maybe.empty();
     }
     final InvocationContext invocationContext = callbackContext.invocationContext();
-    final RunState runState = SessionUtils.getSessionState(invocationContext).runState();
+    final SessionState sessionState = SessionUtils.getSessionState(invocationContext);
+    final RunState runState = sessionState.runState();
     if (!runState.isNoteStarted() || !ResponseUtils.isFinalAnswer(response)) {
       return Maybe.empty();
     }
@@ -93,10 +105,8 @@ public final class NotebookPlugin extends BasePlugin {
     }
 
     final String notebookId = pending.notebookId();
-    final Note note = new Note(notebookId, noteTitle, text);
-    final Note existing = notesRepository.findById(note.getId());
-    note.setVersion(existing == null ? 0 : existing.getVersion());
-    notesRepository.save(note);
+    notebookService.saveNote(notebookId, noteTitle, text);
+    sessionState.syncNotebookReminder(notebookService);
     LOG.info("Created or updated note notebook={} title={}", notebookId, noteTitle);
     final String message =
         """

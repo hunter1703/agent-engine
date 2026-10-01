@@ -9,6 +9,9 @@ dependencies {
     api libs.pekko.persistence.typed
     api libs.pekko.cluster.sharding.typed
 
+    // TaskHandler appears in the public signature of the actor-backed task service
+    api project(':util:tasks')
+
     implementation project(':util:common')
 
     implementation project(':util:context')

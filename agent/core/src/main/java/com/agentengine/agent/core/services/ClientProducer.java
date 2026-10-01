@@ -5,6 +5,9 @@ import com.agentengine.catalog.api.services.ModelService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.knowledge.api.services.KnowledgeService;
+import com.agentengine.scheduler.api.runner.SchedulerService;
+import com.agentengine.tenancy.AccessControlService;
+import com.agentengine.tenancy.UserService;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.inject.Produces;
@@ -47,5 +50,26 @@ public class ClientProducer {
   @DefaultBean
   public ConnectionService connectionService(MicroServiceClientProvider provider) {
     return provider.get(ConnectionService.class);
+  }
+
+  @Produces
+  @Singleton
+  @DefaultBean
+  public SchedulerService schedulerService(final MicroServiceClientProvider provider) {
+    return provider.get(SchedulerService.class);
+  }
+
+  @Produces
+  @Singleton
+  @DefaultBean
+  public AccessControlService accessControlService(final MicroServiceClientProvider provider) {
+    return provider.get(AccessControlService.class);
+  }
+
+  @Produces
+  @Singleton
+  @DefaultBean
+  public UserService userService(final MicroServiceClientProvider provider) {
+    return provider.get(UserService.class);
   }
 }

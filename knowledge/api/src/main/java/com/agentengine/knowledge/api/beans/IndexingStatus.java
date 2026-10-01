@@ -4,6 +4,7 @@ import java.util.Locale;
 
 public enum IndexingStatus {
   UNKNOWN,
+  NON_INDEXED,
   PENDING,
   IN_PROGRESS,
   COMPLETED,

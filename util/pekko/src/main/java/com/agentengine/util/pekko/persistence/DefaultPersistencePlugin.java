@@ -1,6 +1,6 @@
 package com.agentengine.util.pekko.persistence;
 
-import com.agentengine.util.context.UserContext;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.pekko.EventSourcePlugin;
 import com.typesafe.config.Config;
@@ -15,7 +15,7 @@ public class DefaultPersistencePlugin implements EventSourcePlugin {
 
   @Inject
   public DefaultPersistencePlugin(final InfraConfigService infraConfigService) {
-    this.delegate = new PersistencePlugin(UserContext.SYSTEM.customerId(), infraConfigService);
+    this.delegate = new PersistencePlugin(Context.SYSTEM_CUSTOMER_ID, infraConfigService);
   }
 
   @Override

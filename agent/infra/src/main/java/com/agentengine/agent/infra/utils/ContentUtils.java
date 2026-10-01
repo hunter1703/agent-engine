@@ -6,7 +6,9 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
+import com.google.adk.flows.llmflows.Functions;
 import com.google.genai.types.Content;
+import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import java.util.*;
 
@@ -120,9 +122,10 @@ public final class ContentUtils {
         .build();
   }
 
-  /** {@link MessagePart} has only one variant, {@link MessagePart.TextPart}. */
+  /** Drops any non-text part (e.g. {@link MessagePart.BinaryPart}) rather than failing on it. */
   public static List<MessagePart.TextPart> textParts(final List<MessagePart> parts) {
     return CollectionUtils.nullSafeList(parts).stream()
+        .filter(MessagePart.TextPart.class::isInstance)
         .map(MessagePart.TextPart.class::cast)
         .toList();
   }
@@ -159,6 +162,19 @@ public final class ContentUtils {
             .flatMap(List::stream)
             .toList();
     return Content.builder().role(Constants.AUTHOR_USER).parts(parts).build();
+  }
+
+  /** Whether {@code content} is a resume: only answers to confirmation requests, as built above. */
+  public static boolean isResumeContent(final Content content) {
+    final List<Part> parts = content.parts().orElse(List.of());
+    return !parts.isEmpty()
+        && parts.stream()
+            .allMatch(
+                part ->
+                    part.functionResponse()
+                        .flatMap(FunctionResponse::name)
+                        .filter(Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME::equals)
+                        .isPresent());
   }
 
   public static Content addAttachmentsToContent(

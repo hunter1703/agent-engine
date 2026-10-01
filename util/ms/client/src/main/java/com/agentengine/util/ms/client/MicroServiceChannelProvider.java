@@ -24,7 +24,7 @@ public class MicroServiceChannelProvider
     super(infraConfigService, cacheManager, ServerType.MICROSERVICE_SERVER);
   }
 
-  public Channel getForService(final int customerId, final String service) {
+  public Channel getForService(final String customerId, final String service) {
     return get(
         getOrCreate(
             MicroServiceUtils.clientId(customerId, service),

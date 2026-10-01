@@ -39,3 +39,6 @@ app-base:
       quarkus.http.cors.exposed-headers: "Content-Disposition"
       quarkus.http.cors.access-control-max-age: "24H"
       quarkus.http.cors.access-control-allow-credentials: "true"
+      # The console (vercel.app) and this API are different sites, so the session cookie must be
+      # sent cross-site.
+      agent-engine.auth.session-cookie-same-site: "NONE"

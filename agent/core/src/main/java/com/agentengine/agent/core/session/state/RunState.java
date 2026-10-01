@@ -1,6 +1,5 @@
 package com.agentengine.agent.core.session.state;
 
-import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.util.common.beans.UniqueRecord;
 import java.util.HashSet;
@@ -8,7 +7,7 @@ import java.util.Set;
 
 public record RunState(
     String runId,
-    UniqueRecord<UserMessage> message,
+    UniqueRecord<EnqueuedMessage> message,
     long messagePickedTimestamp,
     int startSequence,
     CommittedTurn lastCommittedTurn,

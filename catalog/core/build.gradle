@@ -6,10 +6,11 @@ group = 'com.agentengine.catalog'
 
 dependencies {
     implementation project(':catalog:api')
-    implementation project(':tenancy')
+    implementation project(':tenancy:api')
     implementation project(':util:ms:client')
     implementation project(':agent:api')
     implementation project(':util:common')
+    implementation project(':util:tenancy')
     implementation project(':util:context')
     implementation project(':util:mongodb')
     implementation project(':util:agents')

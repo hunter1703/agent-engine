@@ -2,10 +2,11 @@ package com.agentengine.agent.core.services;
 
 import static com.agentengine.util.common.Defaults.STREAMING_BATCH_SIZE;
 
-import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.CommunityExpertsService;
 import com.agentengine.agent.api.services.RuntimeService;
+import com.agentengine.agent.core.memory.MemoryRepository;
+import com.agentengine.agent.core.schedule.AgentScheduleRepository;
 import com.agentengine.agent.core.session.CurrentTurnEvents;
 import com.agentengine.agent.core.session.ResumeResult;
 import com.agentengine.agent.core.session.RollbackResult;
@@ -19,33 +20,46 @@ import com.agentengine.agent.core.session.commands.ExternalCommand.StartCommand;
 import com.agentengine.agent.core.session.commands.ParentCommand.InitializeCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.state.SessionTopology;
+import com.agentengine.agent.infra.notebook.NotebookRepository;
+import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.knowledge.api.beans.IndexRequest;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.services.KnowledgeService;
+import com.agentengine.scheduler.api.models.JobDefinition;
+import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
+import com.agentengine.util.agents.beans.AgentSchedule;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
-import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.cloudstorage.CloudStorageService;
+import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.FileDetails;
-import com.agentengine.util.common.beans.Permission;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agentengine.util.common.exception.ConfigurationException;
+import com.agentengine.util.common.exception.UnauthorizedException;
+import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.FileUtils;
-import com.agentengine.util.common.utils.PermissionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.common.utils.StructuredConcurrencyUtils;
+import com.agentengine.util.context.Caller;
+import com.agentengine.util.context.Context;
+import com.agentengine.util.tenancy.Permission;
+import com.agentengine.util.tenancy.PermissionedCache;
 import com.agui.community.core.event.Event;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
@@ -57,6 +71,10 @@ import io.reactivex.rxjava3.flowables.ConnectableFlowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.StructuredTaskScope.Subtask;
@@ -81,30 +99,71 @@ public class RuntimeServiceImpl implements RuntimeService {
    */
   private static final long INDEXING_THRESHOLD_BYTES = 5 * 1024;
 
+  private static final String INVOKE_AGENT_JOB_CLASS_NAME =
+      "com.agentengine.agent.jobs.InvokeAgentJob";
+
   private final SessionActorFactory sessionActorFactory;
   private final SessionEventChannel eventChannel;
   private final SessionService sessionService;
+  private final PermissionedCache<AgentSession> sessionCache;
+  private final PermissionedCache<BaseAgentConfig> agentCache;
   private final SessionEventsRepository sessionEventsRepository;
   private final KnowledgeService knowledgeService;
   private final CloudStorageService cloudStorageService;
   private final CommunityExpertsService communityExpertsService;
+  private final AgentScheduleRepository agentScheduleRepository;
+  private final MemoryRepository memoryRepository;
+  private final NotebookRepository notebookRepository;
+  private final SchedulerService schedulerService;
 
   @Inject
   public RuntimeServiceImpl(
       final SessionActorFactory sessionActorFactory,
       final SessionEventChannel eventChannel,
       final SessionService sessionService,
+      final PermissionedCache<AgentSession> sessionCache,
+      final PermissionedCache<BaseAgentConfig> agentCache,
       final SessionEventsRepository sessionEventsRepository,
       final KnowledgeService knowledgeService,
       final CloudStorageService cloudStorageService,
-      final CommunityExpertsService communityExpertsService) {
+      final CommunityExpertsService communityExpertsService,
+      final AgentScheduleRepository agentScheduleRepository,
+      final MemoryRepository memoryRepository,
+      final NotebookRepository notebookRepository,
+      final SchedulerService schedulerService) {
     this.sessionActorFactory = sessionActorFactory;
     this.eventChannel = eventChannel;
     this.sessionService = sessionService;
+    this.sessionCache = sessionCache;
+    this.agentCache = agentCache;
     this.sessionEventsRepository = sessionEventsRepository;
     this.knowledgeService = knowledgeService;
     this.cloudStorageService = cloudStorageService;
     this.communityExpertsService = communityExpertsService;
+    this.agentScheduleRepository = agentScheduleRepository;
+    this.memoryRepository = memoryRepository;
+    this.notebookRepository = notebookRepository;
+    this.schedulerService = schedulerService;
+  }
+
+  @Override
+  public Map<String, Acl> getAcls(final String assetClass, final Collection<String> assetIds) {
+    return switch (assetClass) {
+      case AssetClass.AGENT_SCHEDULE -> agentScheduleRepository.readAcls(assetIds);
+      case AssetClass.MEMORY -> memoryRepository.readAcls(assetIds);
+      case AssetClass.NOTEBOOK -> notebookRepository.readAcls(assetIds);
+      default -> throw new ConfigurationException("No repository serves asset class " + assetClass);
+    };
+  }
+
+  @Override
+  public Set<String> applyAcls(final String assetClass, final Map<String, Acl> assetIdVsAcl) {
+    return switch (assetClass) {
+      case AssetClass.AGENT_SCHEDULE -> agentScheduleRepository.applyAcls(assetIdVsAcl);
+      case AssetClass.MEMORY -> memoryRepository.applyAcls(assetIdVsAcl);
+      case AssetClass.NOTEBOOK -> notebookRepository.applyAcls(assetIdVsAcl);
+      default -> throw new ConfigurationException("No repository serves asset class " + assetClass);
+    };
   }
 
   @Override
@@ -124,7 +183,10 @@ public class RuntimeServiceImpl implements RuntimeService {
   private StartedSession startSessionInternal(
       final String agentId, final String sessionId, final UserMessage message) {
     final String resolvedSessionId = initializeSession(agentId, sessionId);
-    final AgentSession session = sessionService.getSession(resolvedSessionId);
+    final AgentSession session = sessionCache.get(resolvedSessionId);
+    if (session == null) {
+      throw new AssetNotFoundException(AssetClass.AGENT_SESSION, resolvedSessionId);
+    }
     final String rootSessionId =
         StringUtils.isNotBlank(session.getRootSessionId())
             ? session.getRootSessionId()
@@ -147,6 +209,10 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   private String initializeSession(final String agentId, final String sessionId) {
+    requireAgentAccess(agentId);
+    if (StringUtils.isNotBlank(sessionId) && !canEditSessionOrMissing(sessionId)) {
+      throw new UnauthorizedException(AssetClass.AGENT_SESSION, sessionId);
+    }
     final String resolvedSessionId =
         StringUtils.isBlank(sessionId) ? SessionUtils.newSessionId(agentId) : sessionId;
     sessionActorFactory
@@ -158,6 +224,27 @@ public class RuntimeServiceImpl implements RuntimeService {
         .toCompletableFuture()
         .join(); // block until the session is persisted
     return resolvedSessionId;
+  }
+
+  private void requireAgentAccess(final String agentId) {
+    if (agentCache.get(agentId) == null) {
+      throw new UnauthorizedException(AssetClass.AGENT, agentId);
+    }
+  }
+
+  private void requireCanEditSession(final String sessionId) {
+    if (!sessionService.hasPermission(sessionId, Permission.EDIT)) {
+      throw new UnauthorizedException(AssetClass.AGENT_SESSION, sessionId);
+    }
+  }
+
+  /** Whether the caller may edit the session, or no session has the id yet. */
+  private boolean canEditSessionOrMissing(final String sessionId) {
+    return sessionService.hasPermission(sessionId, Permission.EDIT)
+        || Context.require()
+                .as(Caller.SYSTEM)
+                .get(() -> sessionService.getSession(sessionId, List.of(AgentSession.FIELD_STATUS)))
+            == null;
   }
 
   private void startTurn(final String agentId, final String sessionId, final UserMessage message) {
@@ -180,46 +267,55 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private UserMessage resolveMessage(
       final String agentId, final String sessionId, final UserMessage message) {
-    final ResourceGrants grants = message.grants();
-    if (grants == null || CollectionUtils.isEmpty(grants.knowledges())) {
-      return message;
-    }
+    return Context.require()
+        .actingAs(AgentSession.principal(agentId, sessionId))
+        .get(
+            () -> {
+              final List<AgentFileDetails> attachments = message.attachments();
+              if (CollectionUtils.isEmpty(attachments)) {
+                return message;
+              }
 
-    final List<AgentFileDetails> toIndex = new ArrayList<>();
-    final List<AgentFileDetails> knowledges = new ArrayList<>();
-    for (final AgentFileDetails fileDetails : grants.knowledges()) {
-      if (needsIndexing(fileDetails)) {
-        toIndex.add(fileDetails);
-      } else {
-        knowledges.add(fileDetails);
-      }
-    }
+              final List<AgentFileDetails> toIndex = new ArrayList<>();
+              final List<AgentFileDetails> resolved = new ArrayList<>();
+              for (final AgentFileDetails fileDetails : attachments) {
+                if (needsIndexing(fileDetails)) {
+                  toIndex.add(fileDetails);
+                } else {
+                  resolved.add(createUnindexedKnowledge(agentId, fileDetails));
+                }
+              }
 
-    final List<Callable<String>> indexing =
-        toIndex.stream()
-            .<Callable<String>>map(
-                fileDetails -> () -> indexAsKnowledge(agentId, sessionId, fileDetails).getId())
-            .toList();
-    final List<StructuredConcurrencyUtils.TaskOutcome<String>> outcomes =
-        StructuredConcurrencyUtils.callConcurrentlyUntil(
-            "knowledge-indexing", indexing, _ -> false);
+              final List<Callable<String>> indexing =
+                  toIndex.stream()
+                      .<Callable<String>>map(
+                          fileDetails -> () -> indexAsKnowledge(agentId, fileDetails).getId())
+                      .toList();
+              final List<StructuredConcurrencyUtils.TaskOutcome<String>> outcomes =
+                  StructuredConcurrencyUtils.callConcurrentlyUntil(
+                      "knowledge-indexing", indexing, _ -> false);
 
-    for (final StructuredConcurrencyUtils.TaskOutcome<String> outcome : outcomes) {
-      if (outcome.state() == Subtask.State.SUCCESS) {
-        knowledges.add(toIndex.get(outcome.index()).withKnowledgeId(outcome.value()));
-      } else {
-        LOG.warn(
-            "Indexing failed for {}; dropping it from the message's grants",
-            toIndex.get(outcome.index()).source(),
-            outcome.error());
-      }
-    }
+              for (final StructuredConcurrencyUtils.TaskOutcome<String> outcome : outcomes) {
+                if (outcome.state() == Subtask.State.SUCCESS) {
+                  resolved.add(toIndex.get(outcome.index()).withKnowledgeId(outcome.value()));
+                } else {
+                  LOG.warn(
+                      "Indexing failed for {}; dropping it from the message's attachments",
+                      toIndex.get(outcome.index()).source(),
+                      outcome.error());
+                }
+              }
 
-    return new UserMessage(
-        message.parts(), new ResourceGrants(knowledges, grants.notebookGrants()));
+              return new UserMessage(message.parts(), resolved);
+            });
   }
 
-  /** Whether a text attachment is over {@link #INDEXING_THRESHOLD_BYTES} once its size is known. */
+  private AgentFileDetails createUnindexedKnowledge(
+      final String agentId, final AgentFileDetails fileDetails) {
+    final Knowledge knowledge = createKnowledge(agentId, fileDetails, true);
+    return fileDetails.withKnowledgeId(knowledge.getId());
+  }
+
   private boolean needsIndexing(final AgentFileDetails agentFileDetails) {
     final FileDetails fileDetails = agentFileDetails.toFileDetails();
     if (!FileUtils.isTextFile(fileDetails)
@@ -235,14 +331,17 @@ public class RuntimeServiceImpl implements RuntimeService {
     return size > INDEXING_THRESHOLD_BYTES;
   }
 
-  private Knowledge indexAsKnowledge(
-      final String agentId, final String sessionId, final AgentFileDetails fileDetails) {
+  private Knowledge indexAsKnowledge(final String agentId, final AgentFileDetails fileDetails) {
+    return createKnowledge(agentId, fileDetails, false);
+  }
+
+  private Knowledge createKnowledge(
+      final String agentId, final AgentFileDetails fileDetails, final boolean skipIndexing) {
     final IndexRequest request = new IndexRequest();
     request.setAgentId(agentId);
     request.setFileDetails(fileDetails.toFileDetails());
     request.setTitle(fileDetails.name());
-    request.setGrants(
-        List.of(PermissionUtils.build(Permission.READ, AssetClass.AGENT_SESSION, sessionId)));
+    request.setSkipIndexing(skipIndexing);
     request.setWaitForCompletion(true);
     return knowledgeService.create(request);
   }
@@ -251,6 +350,8 @@ public class RuntimeServiceImpl implements RuntimeService {
   public void resumeSession(final String sessionId, final ResumeRequest resumeRequest) {
     LOG.debug(
         "Resuming session {} with interrupt id '{}'", sessionId, resumeRequest.getInterruptId());
+    requireCanEditSession(sessionId);
+    requireAgentAccess(sessionCache.get(sessionId).getAgentId());
     final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
     ref.<ResumeResult>ask(
             replyTo -> new ResumeCommand(resumeRequest, replyTo), SessionActorFactory.ASK_TIMEOUT)
@@ -267,6 +368,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   @Override
   public void rollbackSession(final String sessionId, final String runId) {
     LOG.debug("Rolling back run {} for session {}", runId, sessionId);
+    requireCanEditSession(sessionId);
     final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
     final RollbackResult result =
         ref.<RollbackResult>ask(
@@ -285,9 +387,60 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   @Override
+  public AgentSchedule saveSchedule(final AgentSchedule schedule) {
+    requireAgentAccess(schedule.getAgentId());
+    final AgentSchedule saved = agentScheduleRepository.save(schedule);
+    final JobDefinition existingJob = schedulerService.getJob(saved.getId());
+    schedulerService.schedule(
+        invokeAgentJob(existingJob == null ? new JobDefinition() : existingJob, saved));
+    return saved;
+  }
+
+  @Override
+  public AgentSchedule getSchedule(final String id) {
+    return agentScheduleRepository.findById(id);
+  }
+
+  @Override
+  public Map<String, AgentSchedule> getSchedules(final Collection<String> ids) {
+    return agentScheduleRepository.findByIds(ids);
+  }
+
+  @Override
+  public PaginatedResult<AgentSchedule> findSchedules(final Query query) {
+    return agentScheduleRepository.findByQuery(query);
+  }
+
+  @Override
+  public boolean deleteSchedule(final String id) {
+    if (!agentScheduleRepository.deleteByIdIgnoringVersion(id)) {
+      return false;
+    }
+    schedulerService.cancelJob(id);
+    return true;
+  }
+
+  @Override
+  public void deleteAgentSchedules(final Collection<String> agentIds) {
+    final List<AgentSchedule> schedules =
+        agentScheduleRepository
+            .findByQuery(
+                new Query()
+                    .withFilter(Filters.in(AgentSchedule.FIELD_AGENT_ID, List.copyOf(agentIds)))
+                    .withIncludeFields(List.of(BaseEntity.FIELD_ID))
+                    .withPage(Page.UNBOUNDED))
+            .getItems();
+    for (final AgentSchedule schedule : schedules) {
+      deleteSchedule(schedule.getId());
+    }
+  }
+
+  @Override
   public Publisher<SessionEvent> subscribeToSession(
       final String sessionId, final boolean liveOnly) {
-    final AgentSession session = sessionService.getSession(sessionId);
+    final AgentSession session =
+        sessionService.getSession(
+            sessionId, List.of(AgentSession.FIELD_ROOT_SESSION_ID, AgentSession.FIELD_STATUS));
     if (session == null) {
       throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
     }
@@ -320,7 +473,9 @@ public class RuntimeServiceImpl implements RuntimeService {
     // terminal event before our SubscriberActor registered. Because SessionActor writes
     // COMPLETED status to MongoDB *before* publishing the terminal event, a fresh read of
     // COMPLETED here guarantees we missed the terminal; fall back to the history fast-path.
-    final AgentSession reChecked = sessionService.getSession(sessionId);
+    final AgentSession reChecked =
+        sessionService.getSession(
+            sessionId, List.of(AgentSession.FIELD_ROOT_SESSION_ID, AgentSession.FIELD_STATUS));
     if (reChecked != null && isTerminalStatus(reChecked.getStatus())) {
       liveConnection.dispose();
       return liveOnly ? Flowable.empty() : pagedCommittedEvents(reChecked.getRootSessionId());
@@ -367,7 +522,10 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   @Override
   public Publisher<Event> subscribeToSessionAgui(final String sessionId, final boolean liveOnly) {
-    final AgentSession session = sessionService.getSession(sessionId);
+    final AgentSession session =
+        sessionService.getSession(
+            sessionId,
+            List.of(AgentSession.FIELD_ROOT_SESSION_ID, AgentSession.FIELD_ROOT_AGENT_ID));
     if (session == null) {
       throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
     }
@@ -411,7 +569,7 @@ public class RuntimeServiceImpl implements RuntimeService {
       final String rootSessionId, final int offset) {
     return Flowable.fromSupplier(
             () ->
-                sessionEventsRepository.getCommittedSessionEvents(
+                sessionEventsRepository.getCommittedEvents(
                     rootSessionId, true, new Page(offset, STREAMING_BATCH_SIZE)))
         .flatMap(
             (PaginatedResult<SessionEvent> page) -> {
@@ -446,10 +604,27 @@ public class RuntimeServiceImpl implements RuntimeService {
   private List<SessionEvent> getCurrentTurnEvents(final String sessionId) {
     final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
     return ref.<CurrentTurnEvents>ask(
-            replyTo -> new GetCurrentTurnEventsCommand(replyTo), SessionActorFactory.ASK_TIMEOUT)
+            GetCurrentTurnEventsCommand::new, SessionActorFactory.ASK_TIMEOUT)
         .toCompletableFuture()
         .join()
         .events();
+  }
+
+  /**
+   * Sets {@code job}, the stored job of {@code schedule} or a new one, to invoke the schedule's
+   * agent on its cron; everything else the job carries is kept.
+   */
+  private static JobDefinition invokeAgentJob(
+      final JobDefinition job, final AgentSchedule schedule) {
+    job.setId(schedule.getId());
+    job.setJobClassName(INVOKE_AGENT_JOB_CLASS_NAME);
+    job.setCronSchedule(schedule.getCronSchedule());
+    job.setPayload(
+        Map.of(
+            "agentId", schedule.getAgentId(),
+            "message", schedule.getMessage(),
+            "singletonSession", schedule.isSingletonSession()));
+    return job;
   }
 
   private record StartedSession(String resolvedSessionId, Publisher<SessionEvent> liveEvents) {}

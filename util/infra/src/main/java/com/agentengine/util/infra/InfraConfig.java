@@ -8,7 +8,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "_t")
 public abstract class InfraConfig extends BaseEntity {
   private String type;
-  private Integer customerId;
+  private String customerId;
   private String serverId;
 
   public String getType() {
@@ -19,11 +19,11 @@ public abstract class InfraConfig extends BaseEntity {
     this.type = type;
   }
 
-  public Integer getCustomerId() {
+  public String getCustomerId() {
     return customerId;
   }
 
-  public void setCustomerId(final Integer customerId) {
+  public void setCustomerId(final String customerId) {
     this.customerId = customerId;
   }
 

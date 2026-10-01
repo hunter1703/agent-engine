@@ -1,13 +1,12 @@
 package com.agentengine.connectors.core.services;
 
 import com.agentengine.connectors.api.services.ConnectorsProvisioningService;
-import com.agentengine.connectors.core.ConnectorsMongoStoreClientType;
-import com.agentengine.tenancy.ProvisioningRequest;
-import com.agentengine.tenancy.ProvisioningResult;
-import com.agentengine.tenancy.ProvisioningRun;
+import com.agentengine.connectors.core.ConnectorsDocumentStoreClientType;
 import com.agentengine.util.context.Context;
-import com.agentengine.util.context.UserContext;
 import com.agentengine.util.infra.ServerType;
+import com.agentengine.util.infra.provisioning.ProvisioningRequest;
+import com.agentengine.util.infra.provisioning.ProvisioningResult;
+import com.agentengine.util.infra.provisioning.ProvisioningRun;
 import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
 import com.agentengine.util.ms.client.MicroServiceProvisioner;
 import io.quarkus.arc.Unremovable;
@@ -36,7 +35,7 @@ public class ConnectorsProvisioningServiceImpl implements ConnectorsProvisioning
         "microservice",
         () ->
             microServiceProvisioner.provision(
-                UserContext.SYSTEM.customerId(),
+                Context.SYSTEM_CUSTOMER_ID,
                 "connectors",
                 request.getServer(ServerType.MICROSERVICE_SERVER, "connectors")));
     return run.result();
@@ -44,16 +43,16 @@ public class ConnectorsProvisioningServiceImpl implements ConnectorsProvisioning
 
   @Override
   public ProvisioningResult provision(final ProvisioningRequest request) {
-    final int customerId = Context.requireCustomerId();
+    final String customerId = Context.requireCustomerId();
     final ProvisioningRun run = new ProvisioningRun();
     run.step(
         "mongo",
         () ->
             mongoClientProvisioner.provision(
-                ConnectorsMongoStoreClientType.CONNECTORS,
+                ConnectorsDocumentStoreClientType.CONNECTORS,
                 customerId,
                 request.getServer(
-                    ServerType.MONGO_SERVER, ConnectorsMongoStoreClientType.CONNECTORS.name())));
+                    ServerType.MONGO_SERVER, ConnectorsDocumentStoreClientType.CONNECTORS.name())));
     run.step(
         "microservice",
         () ->

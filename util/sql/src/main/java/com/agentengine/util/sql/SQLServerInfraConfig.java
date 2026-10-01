@@ -1,5 +1,7 @@
 package com.agentengine.util.sql;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.util.common.annotations.Secure;
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.infra.ServerType;
@@ -29,7 +31,7 @@ public class SQLServerInfraConfig extends InfraConfig {
 
   @Override
   public String getId() {
-    return ServerType.SQL_SERVER + ":" + getServerId();
+    return ServerType.SQL_SERVER + ID_SEPARATOR + getServerId();
   }
 
   public String jdbcUrl(final String databaseName) {

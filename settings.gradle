@@ -9,7 +9,11 @@ include 'catalog:core'
 
 include 'interfaces:rest'
 
-include 'tenancy'
+include 'tenancy:api'
+include 'tenancy:core'
+include 'tenancy:jobs'
+
+include 'identity'
 
 include 'agent:api'
 include 'agent:infra'
@@ -36,6 +40,8 @@ include 'util:scripts'
 include 'util:common'
 include 'util:context'
 include 'util:distributed'
+include 'util:tenancy'
+include 'util:tasks'
 
 include 'knowledge:api'
 include 'knowledge:core'

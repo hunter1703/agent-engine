@@ -1,12 +1,12 @@
 package com.agentengine.agent.core.session;
 
+import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
-import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.RefCounted;
-import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
@@ -27,6 +27,7 @@ public class SessionTitleGenerator {
           Part.fromText(
               "INSTRUCTIONS : Generate a concise (maximum 10 words) title for the following conversation"));
   private static final int MAX_RUNS_TO_GENERATE_TITLE_ON = 10;
+  private static final int EVENTS_PAGE_SIZE = 50;
   private final SessionEventsRepository sessionEventsRepository;
   private final Cache<String, String> titleGeneratorModelCache;
   private final ModelProvider modelProvider;
@@ -51,29 +52,32 @@ public class SessionTitleGenerator {
   }
 
   public String generateTitle(final String sessionId) {
-    final List<SessionEvent> sessionEvents =
-        sessionEventsRepository.getCommittedSessionEvents(sessionId, false);
-    if (CollectionUtils.isEmpty(sessionEvents)) {
-      return null;
-    }
     final List<SessionEvent> eventsToGenerateTitleOn = new ArrayList<>();
 
     int numRunsFound = 0;
-    // skips partial runs; collects text events across the latest complete runs
-    for (final SessionEvent event : sessionEvents.reversed()) {
-      if (event.getFinishReason() != null) {
-        if (numRunsFound >= MAX_RUNS_TO_GENERATE_TITLE_ON) {
-          break;
-        } else {
+    boolean enoughRuns = false;
+    boolean lastPage = false;
+    // newest first, a page at a time: skips partial runs and collects text events across the latest
+    // complete runs, without reading the older history once those are found
+    for (int offset = 0; !enoughRuns && !lastPage; offset += EVENTS_PAGE_SIZE) {
+      final Page eventsPage = new Page(offset, EVENTS_PAGE_SIZE);
+      final List<SessionEvent> page =
+          sessionEventsRepository.getLatestCommittedEvents(sessionId, eventsPage).getItems();
+      lastPage = page.size() < EVENTS_PAGE_SIZE;
+      for (final SessionEvent event : page) {
+        if (event.getFinishReason() != null) {
+          if (numRunsFound >= MAX_RUNS_TO_GENERATE_TITLE_ON) {
+            enoughRuns = true;
+            break;
+          }
           numRunsFound++;
         }
+        final Content content = event.getContent();
+        final String text = content == null ? null : content.text();
+        if (StringUtils.isNotBlank(text)) {
+          eventsToGenerateTitleOn.add(event);
+        }
       }
-      final Content content = event.getContent();
-      final String text = content == null ? null : content.text();
-      if (StringUtils.isBlank(text)) {
-        continue;
-      }
-      eventsToGenerateTitleOn.add(event);
     }
 
     if (eventsToGenerateTitleOn.isEmpty()) {

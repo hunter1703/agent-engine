@@ -1,5 +1,7 @@
 package com.agentengine.util.common.update;
 
+import java.util.Collection;
+
 public record Operation(String field, OperationType type, Object value) {
 
   public Operation {
@@ -19,7 +21,19 @@ public record Operation(String field, OperationType type, Object value) {
     return new Operation(field, OperationType.UNSET, null);
   }
 
+  public static Operation addToSet(final String field, final Collection<?> values) {
+    return new Operation(field, OperationType.ADD_TO_SET, values);
+  }
+
   public static Operation inc(final String field, final Number value) {
     return new Operation(field, OperationType.INC, value);
+  }
+
+  public static Operation removeFromSet(final String field, final Collection<?> values) {
+    return new Operation(field, OperationType.REMOVE_FROM_SET, values);
+  }
+
+  public static Operation setOnInsert(final String field, final Object value) {
+    return new Operation(field, OperationType.SET_ON_INSERT, value);
   }
 }

@@ -1,8 +1,8 @@
 package com.agentengine.internal;
 
-import com.agentengine.tenancy.ProvisioningRequest;
-import com.agentengine.tenancy.ProvisioningResult;
 import com.agentengine.util.context.ContextAware;
+import com.agentengine.util.infra.provisioning.ProvisioningRequest;
+import com.agentengine.util.infra.provisioning.ProvisioningResult;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;

@@ -1,15 +1,11 @@
 package com.agentengine.agent.infra.tools.notebook;
 
-import com.agentengine.agent.api.model.NotebookGrants;
-import com.agentengine.agent.api.utils.NotebookUtils;
-import com.agentengine.agent.infra.notebook.NotesRepository;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.utils.RunUtils;
-import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.tools.ToolArg;
-import com.agentengine.util.common.beans.Permission;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -22,15 +18,15 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
 
           The note body arrives in two steps: this call begins the note, and your very next reply supplies the content in full — no preamble, no sign-off, nothing else. Once the reply lands, the note is saved and you'll resume your task automatically.
 
-          Returns: { status: "awaiting_body", message } — the note is not yet saved; your next reply supplies its body. Or { error } if you lack access (notebook-wide for a new title, edit access to an existing one).
+          Returns: { status: "awaiting_body", message } — the note is not yet saved; your next reply supplies its body. Or { error } if you can't write notes in the notebook.
           """,
           Map.of());
 
-  private final NotesRepository notesRepository;
+  private final NotebookService notebookService;
 
-  public CreateOrUpdateNoteTool(final NotesRepository notesRepository) {
+  public CreateOrUpdateNoteTool(final NotebookService notebookService) {
     super(DESCRIPTOR);
-    this.notesRepository = notesRepository;
+    this.notebookService = notebookService;
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -47,28 +43,14 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
               name = Constants.ToolArgs.NOTE_TITLE,
               description = "Short title identifying this note within the notebook.")
           final String noteTitle) {
-    final boolean owner = NotebookUtils.isOwner(notebookId, toolContext.sessionId());
-    final NotebookGrants grants = grantsOf(toolContext);
-    final boolean noteExists =
-        notesRepository.findById(NotebookUtils.noteId(notebookId, noteTitle)) != null;
-    if (!owner) {
-      if (noteExists && !NotebookUtils.canWrite(grants, notebookId, noteTitle)) {
-        return ToolOutput.direct(
-            accessDeniedError(
-                toolContext,
-                "Note '%s' already exists and you don't have edit access to overwrite it."
-                    .formatted(noteTitle)));
-      }
-      if (!noteExists && !NotebookUtils.canCreate(grants, notebookId)) {
-        return ToolOutput.direct(
-            accessDeniedError(
-                toolContext,
-                "You don't have notebook-wide access to add a note to this notebook."));
-      }
+    if (!notebookService.canWriteNotes(notebookId)) {
+      return ToolOutput.direct(
+          accessDeniedError(
+              notebookService,
+              "You don't have access to write note '%s' in notebook '%s'."
+                  .formatted(noteTitle, notebookId)));
     }
     RunUtils.getRunState(toolContext.invocationContext()).startNote(notebookId, noteTitle);
-    SessionUtils.getSessionState(toolContext.invocationContext())
-        .addNotebookReminders(NotebookGrants.ofNote(notebookId, noteTitle, Permission.WRITE));
     return ToolOutput.direct(
         Map.of(
             Constants.ToolStatus.STATUS,

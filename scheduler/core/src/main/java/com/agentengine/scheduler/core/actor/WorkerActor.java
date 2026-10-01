@@ -1,13 +1,14 @@
 package com.agentengine.scheduler.core.actor;
 
+import static com.agentengine.util.common.Constants.ID_SEPARATOR;
+
 import com.agentengine.scheduler.api.models.TriggerDefinition;
-import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.SchedulerConfigs;
+import com.agentengine.scheduler.core.store.TriggerDefinitionRepository;
 import com.agentengine.util.common.utils.EnvUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Contextual;
-import com.agentengine.util.context.UserContext;
 import com.agentengine.util.pekko.PekkoSerializable;
 import com.agentengine.util.pekko.actor.ContextualInterceptor;
 import java.util.List;
@@ -60,9 +61,7 @@ public final class WorkerActor extends AbstractBehavior<WorkerActor.Command> {
       final Executor jobExecutor,
       final SchedulerConfigs schedulerConfigs) {
     return Behaviors.intercept(
-        () ->
-            new ContextualInterceptor<>(
-                Command.class, new Context(UUID.randomUUID().toString(), UserContext.SYSTEM)),
+        () -> new ContextualInterceptor<>(Command.class, Context.asSystemCustomer()),
         Behaviors.setup(
             context ->
                 Behaviors.withTimers(
@@ -157,7 +156,7 @@ public final class WorkerActor extends AbstractBehavior<WorkerActor.Command> {
 
   private static String newWorkerId() {
     final String host = EnvUtils.getHostname();
-    return (StringUtils.isBlank(host) ? "worker" : host) + ":" + UUID.randomUUID();
+    return (StringUtils.isBlank(host) ? "worker" : host) + ID_SEPARATOR + UUID.randomUUID();
   }
 
   public interface Command extends Contextual, PekkoSerializable {

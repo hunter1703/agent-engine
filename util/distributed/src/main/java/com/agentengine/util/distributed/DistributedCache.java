@@ -5,7 +5,9 @@ import com.agentengine.util.common.beans.CacheTag;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
+import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -82,10 +84,38 @@ public class DistributedCache<V> {
     return results;
   }
 
+  /**
+   * The values of {@code keys}: those cached on this node, and the rest loaded together by {@code
+   * loader} and cached on this node. A key {@code loader} returns no value for is left out, and not
+   * cached.
+   */
+  public Map<String, V> getAll(
+      final Collection<String> keys,
+      final Function<Collection<String>, ? extends Map<String, ? extends V>> loader) {
+    final Map<String, V> keyVsValue = getAllPresent(keys);
+    final List<String> missing =
+        keys.stream().filter(key -> !keyVsValue.containsKey(key)).distinct().toList();
+    if (!missing.isEmpty()) {
+      loader
+          .apply(missing)
+          .forEach(
+              (key, value) -> {
+                putLocally(key, value);
+                keyVsValue.put(key, value);
+              });
+    }
+    return keyVsValue;
+  }
+
   public void put(String key, V value) {
     final String namespacedKey = namespacedKey(key);
     localCache.put(namespacedKey, value);
     cacheManager.broadcastInvalidation(cacheName, namespacedKey);
+  }
+
+  /** Stores {@code value} on this node only, without telling other nodes to drop their entry. */
+  public void putLocally(final String key, final V value) {
+    localCache.put(namespacedKey(key), value);
   }
 
   public void invalidate(final String key) {

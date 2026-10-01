@@ -20,7 +20,7 @@ public class EncryptionClientProvisioner extends InfraClientProvisioner {
     this.infraConfigService = infraConfigService;
   }
 
-  public void provision(final int customerId, final String serverId) {
+  public void provision(final String customerId, final String serverId) {
     infraConfigService.save(
         EncryptionUtils.clientConfig(
             customerId, resolvedServerId(ServerType.ENCRYPTION_KEY, serverId)));

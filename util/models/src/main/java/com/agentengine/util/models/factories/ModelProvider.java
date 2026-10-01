@@ -1,6 +1,5 @@
 package com.agentengine.util.models.factories;
 
-import com.agentengine.catalog.api.services.ModelCacheTag;
 import com.agentengine.catalog.api.services.ModelService;
 import com.agentengine.util.agents.beans.config.DefaultModels;
 import com.agentengine.util.agents.beans.config.EmbeddingModelConfig;
@@ -9,6 +8,7 @@ import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.distributed.RefCountedDistributedCache;
 import com.agentengine.util.models.factories.Model.LLMModel;
@@ -21,7 +21,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.Duration;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -53,11 +52,10 @@ public class ModelProvider {
     this.modelService = modelService;
     this.defaultModelsRepository = defaultModelsRepository;
     final RefCountedDistributedCache.Builder<Model<?>> cacheBuilder =
-        new RefCountedDistributedCache.Builder<Model<?>>("model-cache", cacheManager)
+        new RefCountedDistributedCache.Builder<Model<?>>(ModelService.MODEL_CACHE, cacheManager)
             .idleTimeout(15, TimeUnit.MINUTES)
             .cleanupInterval(60, TimeUnit.SECONDS)
-            .onEvict(ModelProvider::tryClose)
-            .tags(Set.of(ModelCacheTag.MODELS));
+            .onEvict(ModelProvider::tryClose);
     this.cache = cacheBuilder.build();
   }
 
@@ -73,12 +71,19 @@ public class ModelProvider {
             ? defaultModelsRepository::getVisionModelId
             : defaultModelsRepository::getChatModelId;
     final String resolvedId = resolveModelId(modelId, defaultModelId);
-    return cache.getOrLoad(resolvedId, id -> new LLMModel(buildChatModel(id))).acquire();
+    return cache
+        .getOrLoad(
+            resolvedId,
+            id -> Context.require().asSystemCaller().get(() -> new LLMModel(buildChatModel(id))))
+        .acquire();
   }
 
   public RefCounted<Model.EmbeddingModel> getEmbeddingModel(final String modelId) {
     final String resolvedId = resolveModelId(modelId, defaultModelsRepository::getEmbeddingModelId);
-    return cache.getOrLoad(resolvedId, this::loadEmbeddingModel).acquire();
+    return cache
+        .getOrLoad(
+            resolvedId, id -> Context.require().asSystemCaller().get(() -> loadEmbeddingModel(id)))
+        .acquire();
   }
 
   private static String resolveModelId(

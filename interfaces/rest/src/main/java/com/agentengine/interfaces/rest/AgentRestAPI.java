@@ -1,17 +1,14 @@
 package com.agentengine.interfaces.rest;
 
-import static com.agentengine.interfaces.rest.handlers.catalog.InvokeAgentJobAssetHandler.INVOKE_AGENT_JOB_CLASS_NAME;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
 import com.agentengine.agent.api.model.MessagePart;
-import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.AgentService;
-import com.agentengine.scheduler.api.models.JobDefinition;
-import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.util.agents.AgentFileDetails;
+import com.agentengine.util.agents.beans.AgentSchedule;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.FileDetails;
@@ -24,6 +21,7 @@ import com.agentengine.util.common.utils.FlowableUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.ContextAware;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
+import com.agentengine.util.tenancy.PermissionedCache;
 import com.agui.community.core.agent.Context;
 import com.agui.community.core.agent.RunAgentInput;
 import com.agui.community.core.event.CustomEvent;
@@ -58,17 +56,17 @@ import org.jboss.resteasy.reactive.RestStreamElementType;
 public class AgentRestAPI {
 
   private final AgentService agentService;
+  private final PermissionedCache<BaseAgentConfig> agentCache;
   private final RuntimeService runtimeService;
-  private final SchedulerService schedulerService;
   private final JsonCodec jsonCodec;
 
   @Inject
   public AgentRestAPI(
-      final SchedulerService schedulerService,
       final MicroServiceClientProvider microServiceClientProvider,
+      final PermissionedCache<BaseAgentConfig> agentCache,
       final SimpleJsonCodec jsonCodec) {
     this.agentService = microServiceClientProvider.getRaw(AgentService.class);
-    this.schedulerService = schedulerService;
+    this.agentCache = agentCache;
     this.runtimeService = microServiceClientProvider.getRaw(RuntimeService.class);
     this.jsonCodec = jsonCodec;
   }
@@ -163,7 +161,7 @@ public class AgentRestAPI {
       @NotBlank @PathParam("agentId") final String agentId,
       @Valid final RunAgentInput request,
       @jakarta.ws.rs.core.Context final HttpServerResponse response) {
-    if (agentService.getAgent(agentId) == null) {
+    if (agentCache.get(agentId) == null) {
       throw new AssetNotFoundException(AssetClass.AGENT, agentId);
     }
 
@@ -182,44 +180,48 @@ public class AgentRestAPI {
   @Operation(summary = "Schedule a recurring invocation of an agent")
   @APIResponse(
       responseCode = "201",
-      description = "Job created",
-      content = @Content(schema = @Schema(implementation = JobDefinition.class)))
+      description = "Schedule created",
+      content = @Content(schema = @Schema(implementation = AgentSchedule.class)))
   @APIResponse(responseCode = "400", description = "Invalid request parameters")
   @APIResponse(responseCode = "404", description = "Agent not found")
   @RunOnVirtualThread
   public Response schedule(
       @NotBlank @PathParam("agentId") final String agentId,
       @Valid final ScheduleAgentRequest request) {
-    if (agentService.getAgent(agentId) == null) {
-      throw new AssetNotFoundException(AssetClass.AGENT, agentId);
-    }
+    final AgentSchedule schedule = runtimeService.saveSchedule(request.toSchedule(agentId, null));
+    return Response.status(Response.Status.CREATED).entity(schedule).build();
+  }
 
-    final JobDefinition jobDefinition = new JobDefinition();
-    jobDefinition.setJobClassName(INVOKE_AGENT_JOB_CLASS_NAME);
-    jobDefinition.setCronSchedule(request.cron());
-    jobDefinition.setPayload(
-        Map.of(
-            "agentId", agentId,
-            "message", request.message(),
-            "singletonSession", request.singletonSession()));
-    String jobId = schedulerService.schedule(jobDefinition);
-    jobDefinition.setId(jobId);
-    return Response.status(Response.Status.CREATED).entity(jobDefinition).build();
+  @PUT
+  @Path("/{agentId}/schedule/{scheduleId}")
+  @Operation(summary = "Replace a scheduled invocation of an agent")
+  @APIResponse(
+      responseCode = "200",
+      description = "Schedule replaced",
+      content = @Content(schema = @Schema(implementation = AgentSchedule.class)))
+  @APIResponse(responseCode = "400", description = "Invalid request parameters")
+  @APIResponse(responseCode = "404", description = "Agent or schedule not found")
+  @RunOnVirtualThread
+  public AgentSchedule updateSchedule(
+      @NotBlank @PathParam("agentId") final String agentId,
+      @NotBlank @PathParam("scheduleId") final String scheduleId,
+      @Valid final ScheduleAgentRequest request) {
+    if (runtimeService.getSchedule(scheduleId) == null) {
+      throw new AssetNotFoundException(AssetClass.AGENT_SCHEDULE, scheduleId);
+    }
+    return runtimeService.saveSchedule(request.toSchedule(agentId, scheduleId));
   }
 
   @DELETE
-  @Path("/schedule/{jobId}")
-  @Operation(summary = "Cancel a scheduled job")
-  @APIResponse(responseCode = "204", description = "Job cancelled")
-  @APIResponse(responseCode = "404", description = "Job not found")
+  @Path("/schedule/{scheduleId}")
+  @Operation(summary = "Cancel a scheduled invocation of an agent")
+  @APIResponse(responseCode = "204", description = "Schedule cancelled")
+  @APIResponse(responseCode = "404", description = "Schedule not found")
   @RunOnVirtualThread
-  public void cancelSchedule(@NotBlank @PathParam("jobId") final String jobId) {
-    final JobDefinition jobDefinition = schedulerService.getJob(jobId);
-    if (jobDefinition == null
-        || !INVOKE_AGENT_JOB_CLASS_NAME.equals(jobDefinition.getJobClassName())) {
-      throw new AssetNotFoundException(AssetClass.JOB_DEFINITION, jobId);
+  public void cancelSchedule(@NotBlank @PathParam("scheduleId") final String scheduleId) {
+    if (!runtimeService.deleteSchedule(scheduleId)) {
+      throw new AssetNotFoundException(AssetClass.AGENT_SCHEDULE, scheduleId);
     }
-    schedulerService.cancelJob(jobId);
   }
 
   private static UserMessage extractUserMessage(final RunAgentInput request) {
@@ -236,7 +238,7 @@ public class AgentRestAPI {
       }
     }
     if (CollectionUtils.isNotEmpty(parts)) {
-      return new UserMessage(parts, new ResourceGrants(knowledgeFiles, null));
+      return new UserMessage(parts, knowledgeFiles);
     }
     throw new WebApplicationException("No user message found in messages array", 400);
   }
@@ -246,5 +248,16 @@ public class AgentRestAPI {
    * first firing started, instead of each firing getting its own fresh one.
    */
   public record ScheduleAgentRequest(
-      @NotBlank String cron, @NotBlank String message, boolean singletonSession) {}
+      @NotBlank String cron, @NotBlank String message, boolean singletonSession) {
+
+    private AgentSchedule toSchedule(final String agentId, final String scheduleId) {
+      final AgentSchedule schedule = new AgentSchedule();
+      schedule.setId(scheduleId);
+      schedule.setAgentId(agentId);
+      schedule.setCronSchedule(cron);
+      schedule.setMessage(message);
+      schedule.setSingletonSession(singletonSession);
+      return schedule;
+    }
+  }
 }

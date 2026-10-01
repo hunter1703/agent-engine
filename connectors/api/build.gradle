@@ -5,9 +5,12 @@ plugins {
 group = 'com.agentengine.connectors'
 
 dependencies {
+    api project(':tenancy:api')
     implementation project(':util:ms:client')
-    api project(':tenancy')
+    api project(':util:infra')
     implementation project(':util:common')
+    implementation project(':util:context')
+    implementation project(':util:tenancy')
     implementation project(':util:distributed')
     compileOnly libs.jakarta.inject.api
     compileOnly libs.jakarta.enterprise.cdi.api

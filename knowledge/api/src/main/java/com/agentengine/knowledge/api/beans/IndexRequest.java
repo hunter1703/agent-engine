@@ -2,17 +2,16 @@ package com.agentengine.knowledge.api.beans;
 
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.common.beans.FileDetails;
-import java.util.List;
 
 public class IndexRequest {
 
   private String agentId;
-  private List<String> grants;
   private FileDetails fileDetails;
   private String title;
   private String description;
   private KnowledgeSettings settings;
   private boolean waitForCompletion;
+  private boolean skipIndexing;
 
   public String getAgentId() {
     return agentId;
@@ -20,14 +19,6 @@ public class IndexRequest {
 
   public void setAgentId(final String agentId) {
     this.agentId = agentId;
-  }
-
-  public List<String> getGrants() {
-    return grants;
-  }
-
-  public void setGrants(final List<String> grants) {
-    this.grants = grants;
   }
 
   public FileDetails getFileDetails() {
@@ -68,5 +59,13 @@ public class IndexRequest {
 
   public void setWaitForCompletion(final boolean waitForCompletion) {
     this.waitForCompletion = waitForCompletion;
+  }
+
+  public boolean isSkipIndexing() {
+    return skipIndexing;
+  }
+
+  public void setSkipIndexing(final boolean skipIndexing) {
+    this.skipIndexing = skipIndexing;
   }
 }
