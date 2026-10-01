@@ -2,9 +2,9 @@ package com.agentengine.scheduler.core.runner;
 
 import com.agentengine.scheduler.api.runner.SchedulerProvisioningService;
 import com.agentengine.scheduler.core.store.SchedulerMongoStoreClientType;
-import com.agentengine.tenancy.ProvisioningRequest;
-import com.agentengine.tenancy.ProvisioningResult;
-import com.agentengine.tenancy.ProvisioningRun;
+import com.agentengine.tenancy.provisioning.ProvisioningRequest;
+import com.agentengine.tenancy.provisioning.ProvisioningResult;
+import com.agentengine.tenancy.provisioning.ProvisioningRun;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.UserContext;
 import com.agentengine.util.infra.ServerType;

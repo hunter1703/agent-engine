@@ -6,7 +6,7 @@ import com.agentengine.connectors.http.auth.HeaderAuthDecoratorSpec;
 import com.agentengine.connectors.http.beans.HttpExecutorSpec;
 import com.agentengine.connectors.infra.beans.AuthDecoratorSpec;
 import com.agentengine.connectors.infra.beans.ExecutorSpec;
-import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.codec.JsonUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 

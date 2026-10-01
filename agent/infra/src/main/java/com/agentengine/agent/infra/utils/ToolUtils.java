@@ -1,12 +1,12 @@
 package com.agentengine.agent.infra.utils;
 
-import static com.agentengine.util.common.Utils.*;
+import static com.agentengine.util.common.utils.Utils.*;
 
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.tools.ToolArg;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.Utils;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.common.utils.Utils;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;

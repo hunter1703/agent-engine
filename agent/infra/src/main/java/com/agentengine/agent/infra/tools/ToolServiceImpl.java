@@ -2,8 +2,8 @@ package com.agentengine.agent.infra.tools;
 
 import com.agentengine.agent.infra.ServiceUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;

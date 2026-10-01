@@ -5,7 +5,7 @@ import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.scheduler.api.runner.Job;
 import com.agentengine.scheduler.api.runner.JobContext;
 import com.agentengine.scheduler.api.runner.JobResult;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import java.util.Map;
 
 /**

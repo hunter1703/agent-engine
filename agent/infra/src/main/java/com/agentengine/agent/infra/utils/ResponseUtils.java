@@ -3,7 +3,7 @@ package com.agentengine.agent.infra.utils;
 import com.agentengine.agent.infra.tools.HumanInTheLoopTool;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.InterruptKind;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.flows.llmflows.ResponseProcessor.ResponseProcessingResult;

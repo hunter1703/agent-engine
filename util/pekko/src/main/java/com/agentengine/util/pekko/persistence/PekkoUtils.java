@@ -1,6 +1,6 @@
 package com.agentengine.util.pekko.persistence;
 
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.sql.SQLClientInfraConfig;
 import com.agentengine.util.sql.SQLServerInfraConfig;

@@ -2,7 +2,7 @@ package com.agentengine.agent.core.serializers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.util.common.DefaultJsonCodec;
+import com.agentengine.util.common.codec.DefaultJsonCodec;
 import com.google.common.collect.ImmutableMap;
 import com.google.genai.types.FunctionCall;
 import java.util.List;

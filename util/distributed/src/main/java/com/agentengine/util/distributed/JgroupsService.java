@@ -1,6 +1,6 @@
 package com.agentengine.util.distributed;
 
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;

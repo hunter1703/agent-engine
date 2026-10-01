@@ -2,7 +2,7 @@ package com.agentengine.agent.infra.utils;
 
 import com.agentengine.agent.infra.tools.knowledge.ReadKnowledgeSourceTool;
 import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;

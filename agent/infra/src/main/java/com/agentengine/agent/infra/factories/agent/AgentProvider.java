@@ -2,7 +2,7 @@ package com.agentengine.agent.infra.factories.agent;
 
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;

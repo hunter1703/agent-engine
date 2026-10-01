@@ -1,5 +1,7 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.utils;
 
+import com.agentengine.util.common.TriFunction;
+import com.agentengine.util.common.codec.JsonUtils;
 import io.vertx.json.schema.common.dsl.SchemaBuilder;
 import java.util.*;
 import java.util.Map.Entry;

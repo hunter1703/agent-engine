@@ -6,7 +6,7 @@ import com.agentengine.util.agents.beans.config.GuardrailRule;
 import com.agentengine.util.agents.beans.config.GuardrailRuleType;
 import com.agentengine.util.agents.beans.config.GuardrailStage;
 import com.agentengine.util.agents.beans.config.GuardrailsConfig;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;

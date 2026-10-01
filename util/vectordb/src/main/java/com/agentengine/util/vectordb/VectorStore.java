@@ -1,22 +1,22 @@
 package com.agentengine.util.vectordb;
 
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.GrantUtils;
-import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.LazyLoader;
-import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.annotations.Indexed;
 import com.agentengine.util.common.annotations.Permissioned;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.Permission;
+import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Operator;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.Repository;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.PermissionUtils;
+import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.common.utils.Utils;
 import com.agentengine.util.context.Context;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -95,7 +95,8 @@ public abstract class VectorStore<T extends BaseEntity> implements Repository<T>
     final Filter permissionFilter =
         Filters.in(
             BaseEntity.FIELD_GRANTS,
-            List.of(GrantUtils.build(Permission.READ, AssetClass.USER, String.valueOf(userId))));
+            List.of(
+                PermissionUtils.build(Permission.READ, AssetClass.USER, String.valueOf(userId))));
     final Filter existing = query == null ? null : query.getFilter();
     final Filter combined =
         existing == null ? permissionFilter : Filters.and(existing, permissionFilter);

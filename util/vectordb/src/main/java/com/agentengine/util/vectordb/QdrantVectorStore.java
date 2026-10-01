@@ -1,12 +1,12 @@
 package com.agentengine.util.vectordb;
 
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.GrantUtils;
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.PermissionUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Context;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.qdrant.client.ConditionFactory;
@@ -171,7 +171,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     }
     entity.setUpdatedTime(now);
     if (permissioned) {
-      entity.setGrants(GrantUtils.getGrants(entity));
+      entity.setGrants(PermissionUtils.getGrants(entity));
     }
   }
 

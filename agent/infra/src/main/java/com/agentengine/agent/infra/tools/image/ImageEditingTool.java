@@ -3,7 +3,7 @@ package com.agentengine.agent.infra.tools.image;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.ExceptionUtils;
+import com.agentengine.util.common.utils.ExceptionUtils;
 import com.google.adk.tools.ToolContext;
 import com.google.genai.types.Part;
 import java.io.File;

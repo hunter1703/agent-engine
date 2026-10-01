@@ -1,6 +1,6 @@
 package com.agentengine.util.crypto;
 
-import com.agentengine.util.common.ExceptionUtils;
+import com.agentengine.util.common.utils.ExceptionUtils;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;

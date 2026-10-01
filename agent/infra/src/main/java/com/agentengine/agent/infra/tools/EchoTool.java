@@ -6,7 +6,7 @@ import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.agents.tools.ToolConstructor;
 import com.agentengine.util.agents.tools.ToolParam;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import java.util.Map;
 
 @DiscoverableTool

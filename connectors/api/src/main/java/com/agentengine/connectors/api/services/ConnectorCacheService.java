@@ -2,8 +2,8 @@ package com.agentengine.connectors.api.services;
 
 import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.query.Page;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.common.cache.CacheBuilder;

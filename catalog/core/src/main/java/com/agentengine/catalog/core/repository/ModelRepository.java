@@ -1,8 +1,9 @@
 package com.agentengine.catalog.core.repository;
 
 import com.agentengine.util.agents.beans.config.ModelConfig;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.PermissionChecker;
 import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.common.validation.ValidationService;
 import com.agentengine.util.mongodb.mongo.AbstractMongoRepository;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
@@ -13,12 +14,15 @@ import jakarta.inject.Singleton;
 public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
   @Inject
   public ModelRepository(
-      final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
+      final MongoClientFactory mongoClientFactory,
+      final ValidationService validationService,
+      final PermissionChecker permissionChecker) {
     super(
         mongoClientFactory,
         CatalogMongoStoreClientType.CATALOG,
         ModelConfig.class,
-        validationService);
+        validationService,
+        permissionChecker);
   }
 
   @Override

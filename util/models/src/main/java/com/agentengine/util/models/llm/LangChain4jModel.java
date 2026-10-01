@@ -1,9 +1,9 @@
 package com.agentengine.util.models.llm;
 
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Context;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.models.BaseLlm;
@@ -46,7 +46,6 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.ollama.*;
 import io.reactivex.rxjava3.core.BackpressureStrategy;
 import io.reactivex.rxjava3.core.Flowable;
 import java.nio.charset.StandardCharsets;

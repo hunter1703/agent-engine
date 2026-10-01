@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra;
 
-import com.agentengine.util.common.Utils;
+import com.agentengine.util.common.utils.Utils;
 import jakarta.enterprise.inject.Instance;
 import java.lang.reflect.Type;
 import java.util.ArrayList;

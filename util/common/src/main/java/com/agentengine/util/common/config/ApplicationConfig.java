@@ -1,6 +1,6 @@
 package com.agentengine.util.common.config;
 
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import jakarta.inject.Singleton;
 import java.io.FileInputStream;
 import java.io.IOException;

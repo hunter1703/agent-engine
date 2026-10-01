@@ -8,7 +8,7 @@ import com.agentengine.util.agents.beans.config.CompactionContextStrategyConfig;
 import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
 import com.agentengine.util.agents.beans.config.DefaultAgentConfig;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

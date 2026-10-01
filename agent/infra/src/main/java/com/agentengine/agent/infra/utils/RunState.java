@@ -1,9 +1,9 @@
 package com.agentengine.agent.infra.utils;
 
 import com.agentengine.util.agents.beans.Signal;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Violation;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;

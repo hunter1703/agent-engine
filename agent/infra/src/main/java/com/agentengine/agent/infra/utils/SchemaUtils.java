@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra.utils;
 
-import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.codec.JsonUtils;
 import com.google.genai.types.Schema;
 import com.google.genai.types.Type;
 import com.networknt.schema.SchemaRegistry;
@@ -24,7 +24,7 @@ public final class SchemaUtils {
   private SchemaUtils() {}
 
   public static Map<String, Object> toMap(final Schema schema) {
-    return com.agentengine.util.common.SchemaUtils.toMap(toVertxSchema(schema));
+    return com.agentengine.util.common.utils.SchemaUtils.toMap(toVertxSchema(schema));
   }
 
   public static String toJsonSchema(final Schema schema) {

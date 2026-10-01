@@ -2,9 +2,9 @@ package com.agentengine.agent.api.model;
 
 import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.util.agents.tools.ToolArg;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.Permission;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashMap;

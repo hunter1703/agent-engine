@@ -4,7 +4,7 @@ import com.agentengine.agent.infra.context.ContextManager;
 import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

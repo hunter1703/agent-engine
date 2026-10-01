@@ -1,10 +1,10 @@
 package com.agentengine.util.pekko.events;
 
-import com.agentengine.util.common.CompletionUtils;
 import com.agentengine.util.common.events.Copyable;
 import com.agentengine.util.common.events.EventChannel;
 import com.agentengine.util.common.events.EventSubscription;
 import com.agentengine.util.common.events.SequencedEvent;
+import com.agentengine.util.common.utils.CompletionUtils;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.EventSourcePlugin;
 import com.agentengine.util.pekko.actor.RequesterFirstAllocationStrategy;

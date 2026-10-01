@@ -1,4 +1,4 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.utils;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.agentengine.util.common.beans.UniqueRecord;
+import com.agentengine.util.common.codec.DefaultJsonCodec;
+import com.agentengine.util.common.codec.ObjectTypingModule;
 import com.agentengine.util.common.testfixtures.Child1;
 import com.agentengine.util.common.testfixtures.Child2;
 import com.agentengine.util.common.testfixtures.Child3;

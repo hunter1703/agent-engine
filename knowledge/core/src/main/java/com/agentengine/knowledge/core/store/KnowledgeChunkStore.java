@@ -2,13 +2,13 @@ package com.agentengine.knowledge.core.store;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.core.KnowledgeUtils;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.vectordb.QdrantVectorStore;

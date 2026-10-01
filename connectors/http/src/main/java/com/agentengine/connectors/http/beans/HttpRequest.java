@@ -1,7 +1,7 @@
 package com.agentengine.connectors.http.beans;
 
 import com.agentengine.connectors.infra.beans.Request;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import java.util.Map;
 import java.util.Objects;
 import okhttp3.HttpUrl;

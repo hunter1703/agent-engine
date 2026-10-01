@@ -1,8 +1,8 @@
 package com.agentengine.util.agents.builder;
 
 import com.agentengine.util.agents.builder.annotations.UiAccessLevel;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;

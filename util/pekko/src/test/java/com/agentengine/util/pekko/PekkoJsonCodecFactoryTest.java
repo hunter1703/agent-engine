@@ -2,6 +2,7 @@ package com.agentengine.util.pekko;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.util.common.codec.ObjectTypingModule;
 import com.agentengine.util.common.events.Copyable;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.testfixtures.Child1;
@@ -23,8 +24,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Pekko-layer codec coverage: both ends of this wire format are always our own services (see {@link
- * com.agentengine.util.common.AllowAllPolymorphicTypeValidator}), and it's used for cluster
- * messages and event-sourced persistence via {@code jackson-cbor}.
+ * ObjectTypingModule.AllowAllPolymorphicTypeValidator}), and it's used for cluster messages and
+ * event-sourced persistence via {@code jackson-cbor}.
  */
 class PekkoJsonCodecFactoryTest {
 
@@ -33,9 +34,9 @@ class PekkoJsonCodecFactoryTest {
   }
 
   /**
-   * {@code Map<String, Object>} values need {@link com.agentengine.util.common.ObjectTypingModule}
-   * to survive — the exact mechanism that fixes ADK's {@code FunctionCall}-in-a-confirmation-map
-   * shape, exercised here generically instead of pulling in agent/core's ADK-specific types.
+   * {@code Map<String, Object>} values need {@link ObjectTypingModule} to survive — the exact
+   * mechanism that fixes ADK's {@code FunctionCall}-in-a-confirmation-map shape, exercised here
+   * generically instead of pulling in agent/core's ADK-specific types.
    */
   @Test
   void objectDeclaredMapValuesSurviveViaObjectTypingModule() throws Exception {
@@ -65,10 +66,9 @@ class PekkoJsonCodecFactoryTest {
    * {@code SequencedEvent} carries no type discriminator of its own (see its javadoc) -- Pekko's
    * actual wire path ({@code JacksonSerializer.toBinary/fromBinary}) always calls the mapper with
    * the raw runtime class, never a resolved {@code SequencedEvent<Child4>}, so {@code payload}'s
-   * declared type erases like {@code Object} and {@link
-   * com.agentengine.util.common.ObjectTypingModule} alone recovers it; the nested {@code
-   * InnerParent<String>} value survives via its own class-level {@code @JsonTypeInfo}, matching the
-   * "class-level always wins" convention.
+   * declared type erases like {@code Object} and {@link ObjectTypingModule} alone recovers it; the
+   * nested {@code InnerParent<String>} value survives via its own class-level
+   * {@code @JsonTypeInfo}, matching the "class-level always wins" convention.
    */
   @Test
   void sequencedEventPayloadSurvivesViaErasureAndNestedSelfDescribingType() throws Exception {

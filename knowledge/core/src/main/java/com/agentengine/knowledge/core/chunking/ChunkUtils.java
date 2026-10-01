@@ -2,8 +2,8 @@ package com.agentengine.knowledge.core.chunking;
 
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
-import com.agentengine.util.common.FileUtils;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.FileUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.ArrayList;
 import java.util.List;

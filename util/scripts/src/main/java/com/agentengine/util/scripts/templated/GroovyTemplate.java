@@ -1,8 +1,8 @@
 package com.agentengine.util.scripts.templated;
 
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.EnvUtils;
-import com.agentengine.util.common.ThreadUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.EnvUtils;
+import com.agentengine.util.common.utils.ThreadUtils;
 import com.agentengine.util.scripts.exception.TemplateException;
 import groovy.lang.Binding;
 import groovy.lang.Script;

@@ -1,7 +1,7 @@
 package com.agentengine.util.vectordb;
 
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.config.ApplicationConfig;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
 import com.agentengine.util.infra.InfraConfigService;

@@ -1,7 +1,7 @@
 package com.agentengine.util.distributed;
 
-import com.agentengine.util.common.CacheTag;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.beans.CacheTag;
+import com.agentengine.util.common.utils.CollectionUtils;
 import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;

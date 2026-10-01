@@ -2,8 +2,8 @@ package com.agentengine.scheduler.core.actor;
 
 import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.SchedulerConfigs;
-import com.agentengine.util.common.ThreadUtils;
 import com.agentengine.util.common.config.ApplicationConfig;
+import com.agentengine.util.common.utils.ThreadUtils;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;

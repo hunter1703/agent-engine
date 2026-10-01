@@ -2,7 +2,7 @@ package com.agentengine.agent.core.session;
 
 import static com.agentengine.agent.core.session.SessionActorFactory.ASK_TIMEOUT;
 import static com.agentengine.util.agents.Constants.ToolArgs.ORIGINAL_FUNCTION_CALL;
-import static com.agentengine.util.common.CollectionUtils.getValueFromMap;
+import static com.agentengine.util.common.utils.CollectionUtils.getValueFromMap;
 
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.factories.RunnerFactory;
@@ -26,14 +26,15 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
-import com.agentengine.util.common.*;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.UniqueRecord;
+import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.common.utils.*;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.pekko.ContextualShardedEntity;
 import com.agentengine.util.pekko.EventSourcePlugin;

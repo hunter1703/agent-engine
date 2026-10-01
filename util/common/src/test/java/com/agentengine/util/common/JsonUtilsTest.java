@@ -2,6 +2,7 @@ package com.agentengine.util.common;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.util.common.codec.JsonUtils;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 

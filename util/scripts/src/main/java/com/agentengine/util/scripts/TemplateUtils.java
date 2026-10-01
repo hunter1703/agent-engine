@@ -1,7 +1,7 @@
 package com.agentengine.util.scripts;
 
-import com.agentengine.util.common.ResourceUtils;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.ResourceUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.scripts.templated.GroovyTemplateProcessor;
 import com.agentengine.util.scripts.templated.StringTemplate;
 import com.agentengine.util.scripts.templated.Template;

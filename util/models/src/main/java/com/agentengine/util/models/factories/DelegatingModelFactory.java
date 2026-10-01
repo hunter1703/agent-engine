@@ -2,8 +2,8 @@ package com.agentengine.util.models.factories;
 
 import com.agentengine.util.agents.beans.config.ChatModelConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
-import com.agentengine.util.common.EnvUtils;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.EnvUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.llm.DelegatingLLMModel;
 import com.agentengine.util.models.llm.Parser;
 import com.agentengine.util.scripts.TemplateUtils;

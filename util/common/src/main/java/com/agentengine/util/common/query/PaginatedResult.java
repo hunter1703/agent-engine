@@ -1,7 +1,7 @@
 package com.agentengine.util.common.query;
 
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import java.util.Base64;
 import java.util.List;
 import java.util.function.Function;

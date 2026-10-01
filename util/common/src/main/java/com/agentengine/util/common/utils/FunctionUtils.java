@@ -1,5 +1,8 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.utils;
 
+import com.agentengine.util.common.LazyLoader;
+import com.agentengine.util.common.RawBytes;
+import com.agentengine.util.common.codec.JsonCodec;
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;

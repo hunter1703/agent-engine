@@ -3,7 +3,7 @@ package com.agentengine.agent.infra.factories.agent.builders;
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.agents.DelegatedAgent;
 import com.agentengine.agent.infra.agents.LLMAgent;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;

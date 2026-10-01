@@ -1,8 +1,8 @@
 package com.agentengine.util.distributed;
 
 import com.agentengine.util.common.Cache;
-import com.agentengine.util.common.CacheTag;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.beans.CacheTag;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
 import java.util.LinkedHashMap;

@@ -1,13 +1,16 @@
 package com.agentengine.connectors.api.beans;
 
-import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.Secure;
+import com.agentengine.util.common.annotations.Permissioned;
+import com.agentengine.util.common.annotations.Secure;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.codec.JsonUtils;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.Map;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
 
+@Permissioned(assetClass = AssetClass.CONNECTION)
 public class Connection extends BaseEntity {
   public static final String FIELD_APP_NAME = "appName";
 

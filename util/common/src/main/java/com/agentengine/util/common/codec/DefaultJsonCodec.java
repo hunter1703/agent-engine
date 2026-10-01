@@ -1,4 +1,4 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.codec;
 
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;

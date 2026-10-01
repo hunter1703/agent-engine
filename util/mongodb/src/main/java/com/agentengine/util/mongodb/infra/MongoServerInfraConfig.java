@@ -1,6 +1,6 @@
 package com.agentengine.util.mongodb.infra;
 
-import com.agentengine.util.common.Secure;
+import com.agentengine.util.common.annotations.Secure;
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.infra.ServerType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;

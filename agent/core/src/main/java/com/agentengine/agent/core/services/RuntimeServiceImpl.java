@@ -33,11 +33,6 @@ import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.cloudstorage.CloudStorageService;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.FileUtils;
-import com.agentengine.util.common.GrantUtils;
-import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.beans.Permission;
@@ -46,6 +41,11 @@ import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.FileUtils;
+import com.agentengine.util.common.utils.PermissionUtils;
+import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.common.utils.StructuredConcurrencyUtils;
 import com.agui.community.core.event.Event;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
@@ -242,7 +242,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     request.setFileDetails(fileDetails.toFileDetails());
     request.setTitle(fileDetails.name());
     request.setGrants(
-        List.of(GrantUtils.build(Permission.READ, AssetClass.AGENT_SESSION, sessionId)));
+        List.of(PermissionUtils.build(Permission.READ, AssetClass.AGENT_SESSION, sessionId)));
     request.setWaitForCompletion(true);
     return knowledgeService.create(request);
   }

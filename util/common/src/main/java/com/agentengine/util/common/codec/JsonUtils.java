@@ -1,5 +1,6 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.codec;
 
+import com.agentengine.util.common.utils.StringUtils;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;

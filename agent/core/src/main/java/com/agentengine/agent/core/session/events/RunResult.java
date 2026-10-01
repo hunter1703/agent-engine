@@ -1,6 +1,6 @@
 package com.agentengine.agent.core.session.events;
 
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.pekko.PekkoSerializable;
 
 public record RunResult(String output, String failureMessage, boolean completedRun)

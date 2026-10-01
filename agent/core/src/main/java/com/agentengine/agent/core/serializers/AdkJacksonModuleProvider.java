@@ -1,6 +1,6 @@
 package com.agentengine.agent.core.serializers;
 
-import com.agentengine.util.common.CodecModuleProvider;
+import com.agentengine.util.common.codec.CodecModuleProvider;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -2,10 +2,10 @@ package com.agentengine.interfaces.rest.handlers.catalog;
 
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.NamedEntity;
 import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.utils.CollectionUtils;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.HashSet;

@@ -1,7 +1,7 @@
 package com.agentengine.util.distributed;
 
-import com.agentengine.util.common.CacheTag;
 import com.agentengine.util.common.RefCounted;
+import com.agentengine.util.common.beans.CacheTag;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;

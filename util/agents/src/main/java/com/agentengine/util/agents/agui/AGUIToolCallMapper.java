@@ -5,8 +5,8 @@ import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCT
 
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.InterruptKind;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.agui.community.core.event.*;
 import com.agui.community.core.event.CustomEvent;
 import com.agui.community.core.event.Event;

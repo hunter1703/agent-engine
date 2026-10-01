@@ -1,7 +1,7 @@
 package com.agentengine.util.infra;
 
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.config.ApplicationConfig;
+import com.agentengine.util.common.utils.StringUtils;
 import java.util.Locale;
 
 public enum ServerType {

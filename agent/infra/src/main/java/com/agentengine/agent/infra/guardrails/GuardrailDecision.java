@@ -1,7 +1,7 @@
 package com.agentengine.agent.infra.guardrails;
 
 import com.agentengine.util.agents.beans.config.GuardrailAction;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import java.util.Map;
 
 /**

@@ -1,9 +1,9 @@
 package com.agentengine.agent.api.model;
 
 import com.agentengine.util.agents.AgentFileDetails;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.Permission;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;

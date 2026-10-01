@@ -7,7 +7,7 @@ import com.agentengine.knowledge.core.chunking.ImageChunkingStage;
 import com.agentengine.knowledge.core.chunking.PdfSplitterStage;
 import com.agentengine.knowledge.core.store.KnowledgeChunkStore;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
-import com.agentengine.util.common.FileUtils;
+import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

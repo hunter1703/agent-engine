@@ -1,6 +1,6 @@
 package com.agentengine.util.ms.client;
 
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.infra.InfraConfigService;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

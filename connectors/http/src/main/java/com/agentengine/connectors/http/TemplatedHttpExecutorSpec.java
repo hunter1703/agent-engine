@@ -3,7 +3,7 @@ package com.agentengine.connectors.http;
 import com.agentengine.connectors.api.constants.ConnectorConstants;
 import com.agentengine.connectors.http.beans.HttpExecutorSpec;
 import com.agentengine.connectors.infra.TemplatedExecutorSpec;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.scripts.TemplateUtils;
 import com.agentengine.util.scripts.templated.Template;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.utils;
 
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Scheduler;

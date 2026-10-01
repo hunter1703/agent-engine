@@ -1,7 +1,7 @@
 package com.agentengine.knowledge.core.chunking;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.splitter.DocumentBySentenceSplitter;
 import io.reactivex.rxjava3.core.Flowable;

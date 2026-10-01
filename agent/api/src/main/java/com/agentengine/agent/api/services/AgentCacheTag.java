@@ -1,6 +1,6 @@
 package com.agentengine.agent.api.services;
 
-import com.agentengine.util.common.CacheTag;
+import com.agentengine.util.common.beans.CacheTag;
 import java.util.Locale;
 
 public enum AgentCacheTag implements CacheTag {

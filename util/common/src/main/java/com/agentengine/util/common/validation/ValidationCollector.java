@@ -1,6 +1,6 @@
 package com.agentengine.util.common.validation;
 
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 

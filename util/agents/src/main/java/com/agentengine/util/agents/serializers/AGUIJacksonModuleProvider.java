@@ -1,6 +1,6 @@
 package com.agentengine.util.agents.serializers;
 
-import com.agentengine.util.common.CodecModuleProvider;
+import com.agentengine.util.common.codec.CodecModuleProvider;
 import com.agui.community.core.agent.RunAgentInput;
 import com.agui.community.core.event.ActivityDeltaEvent;
 import com.agui.community.core.event.ActivitySnapshotEvent;

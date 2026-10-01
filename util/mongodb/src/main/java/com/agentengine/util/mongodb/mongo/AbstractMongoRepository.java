@@ -1,9 +1,6 @@
 package com.agentengine.util.mongodb.mongo;
 
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.ExceptionUtils;
-import com.agentengine.util.common.GrantUtils;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.PermissionChecker;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
@@ -13,6 +10,10 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.Repository;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.ExceptionUtils;
+import com.agentengine.util.common.utils.PermissionUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.common.validation.ValidationService;
 import com.agentengine.util.context.Context;
 import com.mongodb.MongoBulkWriteException;
@@ -43,8 +44,9 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
       final MongoClientFactory mongoClientFactory,
       final MongoStoreClientType clientType,
       final Class<T> entityClass,
-      final ValidationService validationService) {
-    super(mongoClientFactory, clientType, entityClass);
+      final ValidationService validationService,
+      final PermissionChecker permissionChecker) {
+    super(mongoClientFactory, clientType, entityClass, permissionChecker);
     this.validationService = validationService;
   }
 
@@ -171,6 +173,10 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
 
   @Override
   public boolean deleteById(final String id) {
+    final T existing = findByIdInternal(id, List.of(BaseEntity.FIELD_GRANTS), null);
+    if (existing != null && !isAuthorized(existing, Permission.DELETE)) {
+      throw new UnauthorizedException(entityClass.getSimpleName(), id);
+    }
     try {
       final DeleteResult result =
           getCollection().deleteOne(Filters.eq(MongoUtils.FIELD_MONGO_ID, id));
@@ -183,16 +189,30 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
 
   @Override
   public long deleteByQuery(final Query query) {
-    return getCollection().deleteMany(MongoUtils.toBson(query.getFilter())).getDeletedCount();
+    final Query decorated = decorateWithPermissionFilter(query, Permission.DELETE);
+    return getCollection().deleteMany(MongoUtils.toBson(decorated.getFilter())).getDeletedCount();
   }
 
   private T replaceEntity(
       final String id, final Long expectedVersion, final T entity, final boolean upsert) {
     validateEntity(entity);
+    final T existing =
+        id == null
+            ? null
+            : findByIdInternal(
+                id,
+                List.of(
+                    BaseEntity.FIELD_CREATED_TIME,
+                    BaseEntity.FIELD_OWNER_USER_ID,
+                    BaseEntity.FIELD_GRANTS),
+                null);
+    if (existing != null && !isAuthorized(existing, Permission.WRITE)) {
+      throw new UnauthorizedException(entityClass.getSimpleName(), id);
+    }
     final long currentVersion = entity.getVersion();
     entity.setId(id);
     entity.setVersion(currentVersion + 1);
-    entity.copyContextualFieldsFrom((entityId, fields) -> findById(entityId, fields, null));
+    entity.copyContextualFieldsFrom((_, _) -> existing);
     sanitizeForWrite(entity);
     try {
       final Bson filter =
@@ -254,8 +274,8 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
       entity.setCreatedTime(now);
     }
     entity.setUpdatedTime(now);
-    if (permissioned) {
-      entity.setGrants(GrantUtils.getGrants(entity));
+    if (isPermissioned) {
+      entity.setGrants(PermissionUtils.getGrants(entity));
     }
   }
 

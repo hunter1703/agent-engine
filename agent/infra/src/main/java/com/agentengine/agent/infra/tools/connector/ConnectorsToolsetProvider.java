@@ -7,7 +7,7 @@ import com.agentengine.util.agents.beans.tools.ConnectorToolConfigsList;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.builder.BuilderDefinition;
 import com.agentengine.util.agents.builder.BuilderDefinitionUtils;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.adk.agents.ReadonlyContext;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;

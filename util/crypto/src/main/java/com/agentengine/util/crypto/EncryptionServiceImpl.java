@@ -3,7 +3,7 @@ package com.agentengine.util.crypto;
 import static com.agentengine.util.crypto.CryptoClient.PREFIX;
 import static com.agentengine.util.crypto.CryptoClient.SEPARATOR;
 
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Context;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.slf4j.Logger;

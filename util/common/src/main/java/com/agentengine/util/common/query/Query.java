@@ -1,6 +1,6 @@
 package com.agentengine.util.common.query;
 
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

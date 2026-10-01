@@ -5,7 +5,7 @@ import com.agentengine.connectors.api.services.ConnectionRefresher;
 import com.agentengine.connectors.http.beans.HttpRequest;
 import com.agentengine.connectors.infra.auth.AuthDecorator;
 import com.agentengine.connectors.infra.utils.ConnectorUtils;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.scripts.templated.Template;
 import java.util.Map;
 import org.slf4j.Logger;

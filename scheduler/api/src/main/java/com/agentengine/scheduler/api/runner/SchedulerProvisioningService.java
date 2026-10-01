@@ -1,6 +1,6 @@
 package com.agentengine.scheduler.api.runner;
 
-import com.agentengine.tenancy.ProvisioningService;
+import com.agentengine.tenancy.provisioning.ProvisioningService;
 import com.agentengine.util.ms.client.MicroService;
 
 @MicroService("scheduler")

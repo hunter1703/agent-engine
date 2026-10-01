@@ -1,8 +1,8 @@
 package com.agentengine.interfaces.rest;
 
 import com.agentengine.util.common.Defaults;
-import com.agentengine.util.common.FlowableUtils;
-import com.agentengine.util.common.JsonCodec;
+import com.agentengine.util.common.codec.JsonCodec;
+import com.agentengine.util.common.utils.FlowableUtils;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.mutiny.Uni;

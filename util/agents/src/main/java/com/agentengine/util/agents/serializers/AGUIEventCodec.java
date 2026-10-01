@@ -1,6 +1,6 @@
 package com.agentengine.util.agents.serializers;
 
-import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.codec.JsonUtils;
 import com.agui.community.core.event.CustomEvent;
 import com.agui.community.core.event.Event;
 import com.agui.community.core.event.ReasoningEndEvent;

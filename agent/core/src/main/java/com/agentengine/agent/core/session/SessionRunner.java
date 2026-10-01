@@ -9,7 +9,7 @@ import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.utils.ContentUtils;
 import com.agentengine.agent.infra.utils.ExtendedRunConfig;
 import com.agentengine.util.agents.beans.ResumeRequest;
-import com.agentengine.util.common.ExceptionUtils;
+import com.agentengine.util.common.utils.ExceptionUtils;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.runner.Runner;
 import com.google.genai.types.Content;

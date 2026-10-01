@@ -1,7 +1,7 @@
 package com.agentengine.util.agents.agui;
 
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import java.util.HashMap;

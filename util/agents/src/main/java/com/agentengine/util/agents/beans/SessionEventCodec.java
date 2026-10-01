@@ -1,7 +1,7 @@
 package com.agentengine.util.agents.beans;
 
-import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.codec.JsonCodec;
 import com.agentengine.util.mongodb.mongo.MongoUtils;
 import com.google.adk.events.Event;
 import jakarta.inject.Inject;

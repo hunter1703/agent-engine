@@ -2,7 +2,7 @@ package com.agentengine.scheduler.core;
 
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.models.TriggerDefinition;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;

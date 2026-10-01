@@ -1,7 +1,7 @@
 package com.agentengine.knowledge.core.chunking;
 
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import io.reactivex.rxjava3.core.Flowable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

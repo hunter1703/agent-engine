@@ -5,7 +5,7 @@ import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.genai.types.FunctionDeclaration;
 import java.util.HashMap;
 import java.util.Map;

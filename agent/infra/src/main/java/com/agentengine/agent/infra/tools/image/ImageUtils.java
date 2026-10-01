@@ -1,7 +1,7 @@
 package com.agentengine.agent.infra.tools.image;
 
-import com.agentengine.util.common.ExceptionUtils;
-import com.agentengine.util.common.StructuredConcurrencyUtils;
+import com.agentengine.util.common.utils.ExceptionUtils;
+import com.agentengine.util.common.utils.StructuredConcurrencyUtils;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;

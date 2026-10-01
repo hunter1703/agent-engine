@@ -1,4 +1,4 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.beans;
 
 public interface CacheTag {
 

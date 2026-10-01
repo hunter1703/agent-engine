@@ -1,8 +1,8 @@
 package com.agentengine.util.agents;
 
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.FlowableUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.FlowableUtils;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;

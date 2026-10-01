@@ -1,6 +1,6 @@
 package com.agentengine.util.scripts.templated;
 
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.scripts.TemplateUtils;
 import java.util.ArrayList;
 import java.util.List;

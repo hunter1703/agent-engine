@@ -3,7 +3,7 @@ package com.agentengine.agent.infra.guardrails;
 import com.agentengine.util.agents.beans.config.GuardrailRuleType;
 import com.agentengine.util.agents.beans.config.OutputRelevanceGuardrailRule;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

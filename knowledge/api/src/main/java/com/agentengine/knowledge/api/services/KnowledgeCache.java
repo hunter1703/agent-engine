@@ -2,7 +2,7 @@ package com.agentengine.knowledge.api.services;
 
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.util.common.Cache;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.google.common.cache.CacheBuilder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

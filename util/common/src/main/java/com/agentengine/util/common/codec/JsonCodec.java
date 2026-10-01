@@ -1,5 +1,8 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.codec;
 
+import com.agentengine.util.common.StringBuilderWriter;
+import com.agentengine.util.common.utils.ExceptionUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonParser;

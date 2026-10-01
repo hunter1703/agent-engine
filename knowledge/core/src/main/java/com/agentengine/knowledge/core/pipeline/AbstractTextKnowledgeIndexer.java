@@ -11,7 +11,7 @@ import com.agentengine.knowledge.core.store.KnowledgeChunkStore;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.RefCounted;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.models.LlmRequest;

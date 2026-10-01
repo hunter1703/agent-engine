@@ -1,4 +1,4 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.utils;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;

@@ -1,7 +1,7 @@
 package com.agentengine.connectors.core.serializers;
 
 import com.agentengine.connectors.infra.utils.ConnectorCodecJacksonTypeProvider;
-import com.agentengine.util.common.CodecModuleProvider;
+import com.agentengine.util.common.codec.CodecModuleProvider;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.module.SimpleModule;

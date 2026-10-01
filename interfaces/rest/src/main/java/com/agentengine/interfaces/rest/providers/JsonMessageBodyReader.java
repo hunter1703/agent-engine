@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.providers;
 
-import com.agentengine.util.common.JsonCodec;
-import com.agentengine.util.common.SimpleJsonCodec;
+import com.agentengine.util.common.codec.JsonCodec;
+import com.agentengine.util.common.codec.SimpleJsonCodec;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.WebApplicationException;

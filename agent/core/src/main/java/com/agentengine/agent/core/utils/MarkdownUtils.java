@@ -1,7 +1,7 @@
 package com.agentengine.agent.core.utils;
 
-import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import com.vladsch.flexmark.util.data.MutableDataSet;

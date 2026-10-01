@@ -1,9 +1,9 @@
 package com.agentengine.util.pekko;
 
-import com.agentengine.util.common.CodecModuleProvider;
-import com.agentengine.util.common.JsonCodec;
-import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.ObjectTypingModule;
+import com.agentengine.util.common.codec.CodecModuleProvider;
+import com.agentengine.util.common.codec.JsonCodec;
+import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.codec.ObjectTypingModule;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;

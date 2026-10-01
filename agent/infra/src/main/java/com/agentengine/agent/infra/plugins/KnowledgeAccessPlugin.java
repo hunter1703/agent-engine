@@ -4,7 +4,7 @@ import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.agent.infra.utils.ExtendedRunConfig;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;

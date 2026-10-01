@@ -1,5 +1,6 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.utils;
 
+import com.agentengine.util.common.codec.JsonUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;

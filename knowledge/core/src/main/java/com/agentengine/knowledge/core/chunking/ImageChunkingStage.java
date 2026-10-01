@@ -4,7 +4,7 @@ import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.core.pipeline.MediaService;
 import com.agentengine.knowledge.core.pipeline.MediaService.ImageDescription;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import io.reactivex.rxjava3.core.Flowable;
 import java.io.IOException;
 import java.io.InputStream;

@@ -3,6 +3,9 @@ package com.agentengine.util.common;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.agentengine.util.common.codec.DefaultJsonCodec;
+import com.agentengine.util.common.codec.JsonCodec;
+import com.agentengine.util.common.codec.ObjectTypingModule;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;

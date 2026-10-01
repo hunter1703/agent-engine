@@ -1,7 +1,7 @@
 package com.agentengine.connectors.api.beans;
 
 import com.agentengine.connectors.api.constants.ConnectorConstants;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import java.util.concurrent.TimeUnit;
 
 public record CredentialsConfig(

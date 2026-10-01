@@ -1,7 +1,7 @@
 package com.agentengine.util.mongodb.mongo;
 
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.Secure;
+import com.agentengine.util.common.annotations.Secure;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.crypto.EncryptionService;
 import java.lang.annotation.Annotation;
 import org.bson.BsonReader;

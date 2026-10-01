@@ -10,9 +10,11 @@ import com.agentengine.util.agents.builder.annotations.UiSelect;
 import com.agentengine.util.agents.builder.annotations.UiStep;
 import com.agentengine.util.agents.builder.annotations.UiSteps;
 import com.agentengine.util.agents.builder.annotations.UiText;
-import com.agentengine.util.common.Secure;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.annotations.Permissioned;
+import com.agentengine.util.common.annotations.Secure;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.NamedEntity;
+import com.agentengine.util.common.utils.StringUtils;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.NotBlank;
@@ -44,6 +46,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
       @UiStep(id = "integration", label = "Integration", order = 1),
       @UiStep(id = "sampling", label = "Sampling Parameters", order = 2)
     })
+@Permissioned(assetClass = AssetClass.MODEL)
 public abstract class ModelConfig extends NamedEntity implements Config {
 
   public enum Provider {

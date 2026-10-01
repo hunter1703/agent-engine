@@ -5,7 +5,7 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.agents.tools.ToolArg;
-import com.agentengine.util.common.ExceptionUtils;
+import com.agentengine.util.common.utils.ExceptionUtils;
 import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Patch;

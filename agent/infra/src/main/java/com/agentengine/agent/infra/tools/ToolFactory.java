@@ -7,7 +7,7 @@ import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.beans.config.ToolsConfig;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.cloudstorage.CloudStorageService;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;

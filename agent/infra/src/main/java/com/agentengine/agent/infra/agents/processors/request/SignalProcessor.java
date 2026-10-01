@@ -2,7 +2,7 @@ package com.agentengine.agent.infra.agents.processors.request;
 
 import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.RequestProcessor;

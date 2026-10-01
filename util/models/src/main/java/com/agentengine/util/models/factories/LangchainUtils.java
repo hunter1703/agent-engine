@@ -1,6 +1,6 @@
 package com.agentengine.util.models.factories;
 
-import com.agentengine.util.common.ThreadUtils;
+import com.agentengine.util.common.utils.ThreadUtils;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import java.net.http.HttpClient;

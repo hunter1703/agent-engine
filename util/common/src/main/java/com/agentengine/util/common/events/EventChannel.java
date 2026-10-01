@@ -1,6 +1,6 @@
 package com.agentengine.util.common.events;
 
-import com.agentengine.util.common.CompletionUtils;
+import com.agentengine.util.common.utils.CompletionUtils;
 import io.reactivex.rxjava3.core.Flowable;
 import java.time.Duration;
 import java.util.concurrent.CompletionStage;

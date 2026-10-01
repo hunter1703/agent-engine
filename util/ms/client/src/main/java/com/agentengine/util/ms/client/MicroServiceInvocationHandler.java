@@ -1,9 +1,9 @@
 package com.agentengine.util.ms.client;
 
-import com.agentengine.util.common.FunctionUtils;
-import com.agentengine.util.common.JsonCodec;
-import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.Utils;
+import com.agentengine.util.common.codec.JsonCodec;
+import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.utils.FunctionUtils;
+import com.agentengine.util.common.utils.Utils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.ms.grpc.Request;
 import com.agentengine.util.ms.grpc.Response;

@@ -1,4 +1,4 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.utils;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;

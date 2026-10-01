@@ -3,7 +3,7 @@ package com.agentengine.util.ms.server;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.agentengine.util.common.DefaultJsonCodec;
+import com.agentengine.util.common.codec.DefaultJsonCodec;
 import com.agentengine.util.common.testfixtures.Child1;
 import com.agentengine.util.common.testfixtures.Child1Variant;
 import com.agentengine.util.common.testfixtures.Child3;

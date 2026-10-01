@@ -1,6 +1,6 @@
 package com.agentengine.util.ms.client;
 
-import com.agentengine.util.common.JsonCodec;
+import com.agentengine.util.common.codec.JsonCodec;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.infra.InfraConfigService;
 import io.grpc.ManagedChannel;

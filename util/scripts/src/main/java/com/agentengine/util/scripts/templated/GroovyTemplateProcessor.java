@@ -1,6 +1,6 @@
 package com.agentengine.util.scripts.templated;
 
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.scripts.exception.TemplateException;
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.Script;

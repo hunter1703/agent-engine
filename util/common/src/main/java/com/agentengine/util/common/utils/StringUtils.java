@@ -1,4 +1,4 @@
-package com.agentengine.util.common;
+package com.agentengine.util.common.utils;
 
 import java.util.List;
 import java.util.regex.Pattern;

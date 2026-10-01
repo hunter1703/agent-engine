@@ -1,6 +1,6 @@
 package com.agentengine.scheduler.api.runner;
 
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.InstanceHandle;

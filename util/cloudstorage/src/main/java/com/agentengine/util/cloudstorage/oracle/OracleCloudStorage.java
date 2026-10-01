@@ -4,10 +4,10 @@ import static com.oracle.bmc.objectstorage.model.CreatePreauthenticatedRequestDe
 
 import com.agentengine.util.cloudstorage.AbstractCloudStorageService;
 import com.agentengine.util.cloudstorage.CloudStorageServerInfraConfig;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.FileUtils.BucketKey;
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.FileUtils.BucketKey;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.infra.InfraConfigService;
 import com.oracle.bmc.Region;
 import com.oracle.bmc.auth.BasicAuthenticationDetailsProvider;

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.agentengine.util.agents.beans.config.ChatModelConfig;
 import com.agentengine.util.agents.beans.config.EmbeddingModelConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
+import com.agentengine.util.common.codec.SimpleJsonCodec;
 import com.agentengine.util.common.testfixtures.Child1;
 import com.agentengine.util.common.testfixtures.Parent;
 import java.lang.reflect.Type;

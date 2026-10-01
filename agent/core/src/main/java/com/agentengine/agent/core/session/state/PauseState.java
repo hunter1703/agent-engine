@@ -1,7 +1,7 @@
 package com.agentengine.agent.core.session.state;
 
 import com.agentengine.util.agents.beans.ResumeRequest;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.*;

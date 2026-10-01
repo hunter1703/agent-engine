@@ -4,10 +4,10 @@ import static org.bson.codecs.configuration.CodecRegistries.fromCodecs;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.config.ApplicationConfig;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.EnvUtils;
 import com.agentengine.util.crypto.EncryptionService;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.InfraClientFactory;
