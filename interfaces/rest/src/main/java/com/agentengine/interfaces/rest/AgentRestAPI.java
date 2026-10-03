@@ -186,9 +186,9 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "404", description = "Agent not found")
   @RunOnVirtualThread
   public Response schedule(
-      @NotBlank @PathParam("agentId") final String agentId,
-      @Valid final ScheduleAgentRequest request) {
-    final AgentSchedule schedule = runtimeService.saveSchedule(request.toSchedule(agentId, null));
+      @NotBlank @PathParam("agentId") final String agentId, @Valid final AgentSchedule request) {
+    request.setAgentId(agentId);
+    final AgentSchedule schedule = runtimeService.saveSchedule(request);
     return Response.status(Response.Status.CREATED).entity(schedule).build();
   }
 
@@ -201,15 +201,20 @@ public class AgentRestAPI {
       content = @Content(schema = @Schema(implementation = AgentSchedule.class)))
   @APIResponse(responseCode = "400", description = "Invalid request parameters")
   @APIResponse(responseCode = "404", description = "Agent or schedule not found")
+  @APIResponse(
+      responseCode = "409",
+      description = "The schedule was changed since the version the request names")
   @RunOnVirtualThread
   public AgentSchedule updateSchedule(
       @NotBlank @PathParam("agentId") final String agentId,
       @NotBlank @PathParam("scheduleId") final String scheduleId,
-      @Valid final ScheduleAgentRequest request) {
+      @Valid final AgentSchedule request) {
     if (runtimeService.getSchedule(scheduleId) == null) {
       throw new AssetNotFoundException(AssetClass.AGENT_SCHEDULE, scheduleId);
     }
-    return runtimeService.saveSchedule(request.toSchedule(agentId, scheduleId));
+    request.setId(scheduleId);
+    request.setAgentId(agentId);
+    return runtimeService.saveSchedule(request);
   }
 
   @DELETE
@@ -241,23 +246,5 @@ public class AgentRestAPI {
       return new UserMessage(parts, knowledgeFiles);
     }
     throw new WebApplicationException("No user message found in messages array", 400);
-  }
-
-  /**
-   * {@code singletonSession}: when true, every firing after the first continues the session the
-   * first firing started, instead of each firing getting its own fresh one.
-   */
-  public record ScheduleAgentRequest(
-      @NotBlank String cron, @NotBlank String message, boolean singletonSession) {
-
-    private AgentSchedule toSchedule(final String agentId, final String scheduleId) {
-      final AgentSchedule schedule = new AgentSchedule();
-      schedule.setId(scheduleId);
-      schedule.setAgentId(agentId);
-      schedule.setCronSchedule(cron);
-      schedule.setMessage(message);
-      schedule.setSingletonSession(singletonSession);
-      return schedule;
-    }
   }
 }

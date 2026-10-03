@@ -8,6 +8,7 @@ import com.agentengine.util.common.repository.DocumentBackend;
 import com.agentengine.util.common.repository.DocumentRepositorySpec;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.common.validation.ValidationService;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.tenancy.AbstractPermissionedRepository;
 import com.agentengine.util.tenancy.Permission;
 import com.agentengine.util.tenancy.PermissionChecker;
@@ -47,14 +48,17 @@ public class SessionRepository extends AbstractPermissionedRepository<AgentSessi
   /**
    * Starting a session is a use of its agent, so it takes READ on the agent. A child session is
    * started by its parent's run for a sub-agent the parent's agent lists, and whoever listed it was
-   * checked for using it then.
+   * checked for using it then, so it takes acting in the parent session instead — or in the child
+   * session itself, which re-creates its own record when it recovers without one.
    */
   @Override
-  protected void canCreate(final List<AgentSession> sessions) {
+  protected void requireCreatePermission(final List<AgentSession> sessions) {
     final Set<String> agentIds = new LinkedHashSet<>();
     for (final AgentSession session : sessions) {
       if (StringUtils.isBlank(session.getParentSessionId())) {
         agentIds.add(session.getAgentId());
+      } else if (!isCreatedWithinParentOrItself(session)) {
+        throw new UnauthorizedException(AssetClass.AGENT_SESSION, session.getParentSessionId());
       }
     }
     final Set<String> permittedIds = agentRepository.findPermittedIds(agentIds, Permission.READ);
@@ -74,5 +78,17 @@ public class SessionRepository extends AbstractPermissionedRepository<AgentSessi
             AgentSession.principal(session.getAgentId(), session.getId()).toString(),
             StandardRole.EDITOR));
     return share;
+  }
+
+  private static boolean isCreatedWithinParentOrItself(final AgentSession session) {
+    final Context context = Context.require();
+    return context.isSystem()
+        || context
+            .principal()
+            .map(
+                creator ->
+                    creator.actsIn(AssetClass.AGENT_SESSION, session.getParentSessionId())
+                        || creator.actsIn(AssetClass.AGENT_SESSION, session.getId()))
+            .orElse(false);
   }
 }

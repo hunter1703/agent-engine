@@ -9,6 +9,8 @@ dependencies {
     // Annotation-only APIs: compile-time markers, runtime provided by Quarkus
     compileOnly libs.jakarta.inject.api
     compileOnly libs.jakarta.enterprise.cdi.api
+    implementation platform(libs.quarkus.bom)
+    compileOnly libs.quarkus.arc
 
     // Exposed in public API (BaseEntity, Query/Filter, Repository in repository signatures; Principal
     // in PermissionUtils; DistributedCacheManager and Guava's CacheBuilder in PermissionedCache)

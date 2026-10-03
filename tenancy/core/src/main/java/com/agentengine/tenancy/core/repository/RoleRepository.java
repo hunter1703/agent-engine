@@ -1,6 +1,6 @@
 package com.agentengine.tenancy.core.repository;
 
-import com.agentengine.tenancy.core.rbac.Role;
+import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.common.query.Filters;

@@ -8,12 +8,13 @@ import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.beans.ConnectorResult;
 import com.agentengine.connectors.api.beans.CredentialsConfig;
 import com.agentengine.connectors.api.constants.ConnectorConstants;
-import com.agentengine.connectors.api.services.ConnectionCacheTag;
 import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.connectors.core.ConnectionRepository;
 import com.agentengine.connectors.infra.beans.Connector;
 import com.agentengine.util.common.beans.Acl;
+import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.exception.UnauthorizedException;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
@@ -22,10 +23,15 @@ import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.SchemaUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.crypto.EncryptionService;
+import com.agentengine.util.distributed.CacheScope;
+import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.distributed.DistributedLockManager;
 import com.agentengine.util.scripts.TemplateUtils;
 import com.agentengine.util.scripts.templated.Template;
+import com.agentengine.util.tenancy.Permission;
+import com.agentengine.util.tenancy.PermissionChecker;
+import com.google.common.cache.CacheBuilder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Collection;
@@ -42,28 +48,29 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class ConnectionServiceImpl implements ConnectionService {
   private static final Logger LOG = LoggerFactory.getLogger(ConnectionServiceImpl.class);
+  public static final String CACHE_NAME = "connection-cache";
 
   private final ConnectionRepository connectionRepository;
   private final ConnectorRegistry connectorRegistry;
   private final ConnectorService connectorService;
   private final DistributedLockManager distributedLockManager;
-  private final DistributedCacheManager distributedCacheManager;
   private final EncryptionService encryptionService;
-
+  private final PermissionChecker permissionChecker;
+  private final DistributedCache<Connection> connectionCache;
   @Inject
   public ConnectionServiceImpl(
-      ConnectionRepository connectionRepository,
-      ConnectorRegistry connectorRegistry,
-      ConnectorService connectorService,
-      DistributedLockManager distributedLockManager,
-      DistributedCacheManager distributedCacheManager,
-      EncryptionService encryptionService) {
+          ConnectionRepository connectionRepository,
+          ConnectorRegistry connectorRegistry,
+          ConnectorService connectorService,
+          DistributedLockManager distributedLockManager,
+          EncryptionService encryptionService, PermissionChecker permissionChecker, DistributedCacheManager distributedCacheManager) {
     this.connectionRepository = connectionRepository;
     this.connectorRegistry = connectorRegistry;
     this.connectorService = connectorService;
     this.distributedLockManager = distributedLockManager;
-    this.distributedCacheManager = distributedCacheManager;
     this.encryptionService = encryptionService;
+      this.permissionChecker = permissionChecker;
+      this.connectionCache = new DistributedCache.Builder<Connection>(CACHE_NAME, distributedCacheManager).localCache(CacheBuilder.newBuilder().maximumSize(1000)).scope(CacheScope.CUSTOMER).loader(this::getDecryptedConnection).build();
   }
 
   @Override
@@ -78,7 +85,7 @@ public class ConnectionServiceImpl implements ConnectionService {
 
   @Override
   public <T> ConnectorResult<T> executeConnectorRequest(ConnectorRequest request) {
-    final Connection connection = getDecryptedConnection(request.connectionId());
+    final Connection connection = getDecryptedConnectionFromCache(request.connectionId());
     return connectorService.execute(
         new ConnectorRequest(
             request.appName(),
@@ -121,10 +128,7 @@ public class ConnectionServiceImpl implements ConnectionService {
       }
     }
     encryptSensitiveInputs(connection);
-    final Connection saved = connectionRepository.save(connection);
-    distributedCacheManager.broadcastInvalidation(
-        ConnectionCacheTag.CONNECTIONS.name(), saved.getAppName());
-    return saved;
+    return connectionRepository.save(connection);
   }
 
   @Override
@@ -251,10 +255,7 @@ public class ConnectionServiceImpl implements ConnectionService {
             getCredentialsExpiry(credentials, authConfig.refresh(), inputs));
 
         encryptSensitiveInputs(connectionFromDB);
-        Connection saved = connectionRepository.save(connectionFromDB);
-        distributedCacheManager.broadcastInvalidation(
-            ConnectionCacheTag.CONNECTIONS.name(), saved.getAppName());
-        return saved;
+        return connectionRepository.save(connectionFromDB);
       } catch (Exception e) {
         LOG.error("Failed to refresh connection {}", connection.getId(), e);
       }
@@ -316,6 +317,17 @@ public class ConnectionServiceImpl implements ConnectionService {
                   return dataNode;
                 });
     connection.setInputs(newInputs);
+  }
+
+  private Connection getDecryptedConnectionFromCache(String id) {
+    if (id == null) {
+      return null;
+    }
+    final Connection connection = connectionCache.get(id);
+    if (!permissionChecker.hasPermission(() -> connection, AssetClass.CONNECTION, Permission.READ)) {
+      throw new UnauthorizedException("User does not have permission to access connection with id: " + id);
+    }
+    return connection;
   }
 
   private static Long getCredentialsExpiry(

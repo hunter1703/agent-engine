@@ -96,7 +96,7 @@ public class InfraConfigServiceImpl implements InfraConfigService {
     final long now = System.currentTimeMillis();
     config.setCreatedTime(now);
     config.setUpdatedTime(now);
-    config.setVersion(1);
+    config.setVersion(1L);
     try {
       collection().insertOne(config);
       cache.invalidate(config.getId());

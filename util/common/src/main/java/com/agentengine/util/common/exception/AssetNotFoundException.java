@@ -1,10 +1,16 @@
 package com.agentengine.util.common.exception;
 
-public class AssetNotFoundException extends RuntimeException {
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public class AssetNotFoundException extends RuntimeException implements ApplicationException {
   private final String assetType;
   private final String assetId;
 
-  public AssetNotFoundException(final String assetType, final String assetId) {
+  @JsonCreator
+  public AssetNotFoundException(
+      @JsonProperty("assetType") final String assetType,
+      @JsonProperty("assetId") final String assetId) {
     super(buildMessage(assetType, assetId));
     this.assetType = assetType;
     this.assetId = assetId;

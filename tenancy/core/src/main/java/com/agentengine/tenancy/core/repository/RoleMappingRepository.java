@@ -77,20 +77,44 @@ public class RoleMappingRepository extends AbstractRepository<RoleMapping> {
       final Collection<String> roleIds) {
     final String id = RoleMapping.id(principal, assetClass, assetId);
     if (assetId != null) {
-      updateOneIgnoringVersion(
-          Filters.eq(BaseEntity.FIELD_ID, id),
+      updateIgnoringVersion(
+          id,
           Update.of(
               Operation.removeFromSet(RoleMapping.FIELD_ROLE_IDS, roleIds),
               Operation.set(Task.FIELD_STATUS, TaskStatus.PENDING.name())));
       return;
     }
-    updateOneIgnoringVersion(
-        Filters.eq(BaseEntity.FIELD_ID, id),
-        Update.of(Operation.removeFromSet(RoleMapping.FIELD_ROLE_IDS, roleIds)));
+    updateIgnoringVersion(
+        id, Update.of(Operation.removeFromSet(RoleMapping.FIELD_ROLE_IDS, roleIds)));
     deleteByFilterIgnoringVersion(
         Filters.and(
             Filters.eq(BaseEntity.FIELD_ID, id),
             Filters.eq(RoleMapping.FIELD_ROLE_IDS, List.of())));
+  }
+
+  /**
+   * Removes every role of {@code principal}: its mappings on one asset become empty and pending
+   * until their asset's access list is recalculated; its mapping on every asset is deleted. The
+   * {@link RoleMappingChangeListener} intercepts the resulting change events and automatically
+   * submits the pending tasks.
+   */
+  public void removeAllMappings(final String principal) {
+    final Filter onAssetsOfPrincipal =
+        Filters.and(
+            Filters.eq(RoleMapping.FIELD_PRINCIPAL, principal),
+            Filters.ne(RoleMapping.FIELD_ASSET_ID, null));
+    updateManyIgnoringVersion(
+        onAssetsOfPrincipal,
+        Update.of(
+            Operation.set(RoleMapping.FIELD_ROLE_IDS, List.of()),
+            Operation.set(Task.FIELD_STATUS, TaskStatus.PENDING.name())));
+    final RoleMapping onEveryAsset =
+        updateIgnoringVersion(
+            RoleMapping.id(principal, null, null),
+            Update.of(Operation.set(RoleMapping.FIELD_ROLE_IDS, List.of())));
+    if (onEveryAsset != null) {
+      deleteByIdIgnoringVersion(onEveryAsset.getId());
+    }
   }
 
   /**
@@ -102,16 +126,18 @@ public class RoleMappingRepository extends AbstractRepository<RoleMapping> {
     update(mapping, Update.of(Operation.set(Task.FIELD_STATUS, status.name())));
   }
 
-  /** Sets the status of every mapping on one asset that holds {@code roleId}, and returns them. */
-  public List<RoleMapping> updateStatusOnAssetsWithRole(
-      final String roleId, final TaskStatus status) {
+  /**
+   * Sets the status of every mapping on one asset that holds {@code roleId}. The {@link
+   * RoleMappingChangeListener} intercepts the resulting change events and automatically submits the
+   * pending tasks.
+   */
+  public void updateStatusOnAssetsWithRole(final String roleId, final TaskStatus status) {
     final Filter onAssetsWithRole =
         Filters.and(
             Filters.in(RoleMapping.FIELD_ROLE_IDS, List.of(roleId)),
             Filters.ne(RoleMapping.FIELD_ASSET_ID, null));
     updateManyIgnoringVersion(
         onAssetsWithRole, Update.of(Operation.set(Task.FIELD_STATUS, status.name())));
-    return findAll(onAssetsWithRole);
   }
 
   /** The mappings with {@code status} last written before {@code updatedBefore}, epoch millis. */

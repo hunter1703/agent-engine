@@ -2,6 +2,7 @@ package com.agentengine.agent.infra.notebook;
 
 import com.agentengine.tenancy.AccessControlService;
 import com.agentengine.util.agents.repository.AgentDocumentStoreClientType;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.repository.DocumentBackend;
 import com.agentengine.util.common.repository.DocumentRepositorySpec;
 import com.agentengine.util.common.validation.ValidationService;
@@ -38,15 +39,30 @@ public class NotebookRepository extends AbstractPermissionedRepository<Notebook>
    * one; no permission on every asset is taken.
    */
   @Override
-  protected void canCreate(final List<Notebook> notebooks) {}
+  protected void requireCreatePermission(final List<Notebook> notebooks) {}
 
-  /** A notebook belongs to the session it is made in, for every user acting in it. */
+  /**
+   * A notebook belongs to the session it is made in, for every user acting in it.
+   *
+   * @throws IllegalArgumentException when the creator acts in no session
+   */
   @Override
   protected List<SharingChange> getInitialShare(final Notebook notebook) {
     return Context.currentPrincipal()
         .map(
             creator ->
-                List.of(buildShare(notebook, creator.forAnyUser().toString(), StandardRole.OWNER)))
+                List.of(
+                    buildShare(
+                        notebook,
+                        creator.actingIn(AssetClass.AGENT_SESSION).forAnyUser().toString(),
+                        StandardRole.MANAGER)))
         .orElse(List.of());
+  }
+
+  @Override
+  protected java.util.Map<String, com.agentengine.util.common.beans.Acl> shareNewEntities(
+      final List<Notebook> entities) {
+    forgetAcls(entities.stream().map(Notebook::getId).toList());
+    return super.shareNewEntities(entities);
   }
 }

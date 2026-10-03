@@ -4,6 +4,7 @@ import static com.agentengine.util.common.Constants.ID_SEPARATOR;
 
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.HashUtils;
 import com.agentengine.util.common.utils.StringUtils;
@@ -19,6 +20,7 @@ import java.util.List;
 @Index(def = "{'assetClass': 1, 'assetId': 1}", name = "asset_lookup")
 @Index(def = "{'status': 1, 'updatedTime': 1}", name = "pending_lookup")
 @Index(def = "{'roleIds': 1}", name = "role_lookup")
+@Index(def = "{'principal': 1}", name = "principal_lookup")
 public class RoleMapping extends BaseEntity implements Task {
 
   /** The task type of a mapping on one asset: recalculating its asset's access list. */

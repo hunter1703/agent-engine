@@ -36,7 +36,6 @@ public final class CacheEvictionListener<T extends BaseEntity> implements Entity
           changed.idVsEntity().keySet().forEach(id -> cacheManager.invalidate(cacheName, id));
       case EntityChange.Ids<T> changed ->
           changed.ids().forEach(id -> cacheManager.invalidate(cacheName, id));
-      case EntityChange.Matching<T> _ -> cacheManager.invalidateInCustomerScope(cacheName);
     }
   }
 }

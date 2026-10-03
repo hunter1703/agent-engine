@@ -55,10 +55,24 @@ public class UserServiceImpl implements UserService {
   }
 
   @Override
-  public User create(final User user, final String password) {
-    if (StringUtils.isBlank(password)) {
+  public User create(final User user) {
+    if (StringUtils.isBlank(user.getPassword())) {
       throw new IllegalArgumentException("A password is required");
     }
-    return userRepository.create(user, password);
+    return userRepository.insert(user);
+  }
+
+  @Override
+  public User update(final String id, final User user) {
+    final User updated = userRepository.update(id, user);
+    if (updated != null) {
+      updated.setPasswordHash(null);
+    }
+    return updated;
+  }
+
+  @Override
+  public void delete(final String id) {
+    userRepository.deleteByIdIgnoringVersion(id);
   }
 }

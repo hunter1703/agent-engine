@@ -8,6 +8,7 @@ import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.context.Context;
+import org.apache.pekko.Done;
 import org.apache.pekko.actor.typed.ActorRef;
 
 /**
@@ -55,6 +56,13 @@ public interface ExternalCommand extends SessionCommand {
       implements ExternalCommand {
     public RollbackCommand(final String runId, final ActorRef<RollbackResult> replyTo) {
       this(Context.current().orElse(null), runId, replyTo);
+    }
+  }
+
+  /** Stops the session gracefully mid-run. If idle, does nothing. */
+  record StopCommand(Context context, ActorRef<Done> replyTo) implements ExternalCommand {
+    public StopCommand(final ActorRef<Done> replyTo) {
+      this(Context.current().orElse(null), replyTo);
     }
   }
 }

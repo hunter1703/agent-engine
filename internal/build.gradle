@@ -16,6 +16,7 @@ dependencies {
     implementation project(':util:cloudstorage')
     implementation project(':util:sql')
     implementation project(':util:vectordb')
+    implementation project(':util:tasks')
     implementation project(':catalog:api')
     implementation project(':agent:api')
     implementation project(':knowledge:api')

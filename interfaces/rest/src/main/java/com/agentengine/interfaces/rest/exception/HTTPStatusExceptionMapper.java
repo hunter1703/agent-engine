@@ -4,6 +4,7 @@ import com.agentengine.util.cloudstorage.CloudStorageException;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
+import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.common.exception.UnauthorizedException;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -36,7 +37,7 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
           .build();
     }
 
-    if (exception instanceof DuplicateAssetException) {
+    if (exception instanceof DuplicateAssetException || exception instanceof StaleStateException) {
       return Response.status(Response.Status.CONFLICT)
           .entity(new ErrorResponse("409", exception.getMessage()))
           .build();
@@ -86,7 +87,7 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
           switch (code) {
             case INVALID_ARGUMENT -> 400;
             case NOT_FOUND -> 404;
-            case ALREADY_EXISTS -> 409;
+            case ALREADY_EXISTS, ABORTED -> 409;
             case UNAUTHENTICATED -> 401;
             case PERMISSION_DENIED -> 403;
             case RESOURCE_EXHAUSTED -> 429;

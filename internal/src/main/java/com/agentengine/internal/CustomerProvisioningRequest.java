@@ -1,9 +1,12 @@
 package com.agentengine.internal;
 
+import com.agentengine.tenancy.beans.Role;
+import com.agentengine.tenancy.beans.User;
 import com.agentengine.util.agents.beans.config.DefaultModels;
 import com.agentengine.util.infra.provisioning.ProvisioningRequest;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 
 public class CustomerProvisioningRequest extends ProvisioningRequest {
 
@@ -12,6 +15,8 @@ public class CustomerProvisioningRequest extends ProvisioningRequest {
   private final String domain;
 
   private DefaultModels defaultModels;
+  private List<Role> roles;
+  private User user;
 
   @JsonCreator
   public CustomerProvisioningRequest(
@@ -41,5 +46,21 @@ public class CustomerProvisioningRequest extends ProvisioningRequest {
 
   public void setDefaultModels(final DefaultModels defaultModels) {
     this.defaultModels = defaultModels;
+  }
+
+  public List<Role> getRoles() {
+    return roles;
+  }
+
+  public void setRoles(final List<Role> roles) {
+    this.roles = roles;
+  }
+
+  public User getUser() {
+    return user;
+  }
+
+  public void setUser(final User user) {
+    this.user = user;
   }
 }

@@ -4,6 +4,7 @@ import static com.agentengine.util.tenancy.AclService.PERMISSIONS_ON_EVERY_ASSET
 
 import com.agentengine.tenancy.core.repository.RoleRepository;
 import com.agentengine.util.common.repository.EntityChange;
+import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.common.repository.EntityChangeListener;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.tasks.TaskStatus;
@@ -53,19 +54,12 @@ public class RoleChangeListener implements EntityChangeListener<Role> {
             changed.ids().forEach(this::evictRole);
             yield roleRepository.findByIds(changed.ids()).values();
           }
-          case EntityChange.Matching<Role> _ -> {
-            distributedCacheManager.invalidateInCustomerScope(
-                AccessControlServiceImpl.ROLE_CACHE_NAME);
-            yield List.of();
-          }
         };
     final List<Role> pending =
         roles.stream()
             .filter(role -> TaskStatus.valueOfOrDefault(role.getStatus()) == TaskStatus.PENDING)
             .toList();
-    if (change instanceof EntityChange.Matching<Role>
-        || change.type() == EntityChange.Type.DELETED
-        || !pending.isEmpty()) {
+    if (change.type() == EntityChange.Type.DELETED || !pending.isEmpty()) {
       distributedCacheManager.invalidateInCustomerScope(PERMISSIONS_ON_EVERY_ASSET_CACHE);
     }
     pending.forEach(roleTaskService::submit);

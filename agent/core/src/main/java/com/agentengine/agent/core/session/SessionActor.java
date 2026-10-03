@@ -35,7 +35,6 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.utils.*;
-import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Principal;
 import com.agentengine.util.context.UserCaller;
@@ -166,8 +165,13 @@ public final class SessionActor
 
   @Override
   protected void onPostStop(final SessionActorState state) {
-    if (state != null && state.topology() != null) {
-      runnerFactory.stop(state.topology().agentId(), state.topology().sessionId());
+    if (state != null) {
+      final SessionTopology topology = state.topology();
+      if (topology != null) {
+        final SessionRunner runner = runner(topology);
+        runner.stop();
+        runnerFactory.stopped(runner);
+      }
     }
   }
 
@@ -186,7 +190,8 @@ public final class SessionActor
     if (sessionState == SessionState.TRIGGERED_RUN) {
       sessionService.deleteSession(sessionId);
     }
-    runnerFactory.stop(topology.agentId(), sessionId);
+    SessionRunner runner = runner(topology);
+    runnerFactory.stopped(runner);
     init(topology);
     // Redone unconditionally: a crash could have landed between RollbackFact persisting and this
     // Mongo write completing, and there's no record of whether it already succeeded. Safe to redo
@@ -209,14 +214,14 @@ public final class SessionActor
         // The crash-landed before the first turn committed, so restart from the original message.
         final UniqueRecord<EnqueuedMessage> message =
             Objects.requireNonNull(state.currentRun()).message();
-        startRun(state, message, () -> runner(topology).start(message.getRecord().message()));
+        startRun(state, message, () -> runner.start(message.getRecord().message()));
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case CONTINUING -> {
         final Collection<ResumeRequest> resumeRequests = state.getAllReceivedResumes();
         resumeRequests.forEach(
             resumeRequest -> resumedInterruptIds.add(resumeRequest.getInterruptId()));
-        startRun(state, currentRunMessage(state), () -> runner(topology).resume(resumeRequests));
+        startRun(state, currentRunMessage(state), () -> runner.resume(resumeRequests));
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case RUNNING -> reRunFromLastCommittedTurn(state);
@@ -316,6 +321,7 @@ public final class SessionActor
     builder
         .forAnyState()
         .onCommand(InitializeCommand.class, this::initialize)
+        .onCommand(StopCommand.class, this::stop)
         .onCommand(StartCommand.class, this::start)
         .onCommand(ResumeCommand.class, this::resume)
         .onCommand(ResumeChildCommand.class, this::resumeChild)
@@ -356,6 +362,18 @@ public final class SessionActor
                         topology, Context.currentUserId().map(Principal::ofUser).orElse(null))),
             _ -> init(topology))
         .thenReply(command.replyTo(), _ -> Done.done());
+  }
+
+  /** Stops the session gracefully mid-run. If idle, does nothing. */
+  private Effect<SessionFact, SessionActorState> stop(
+      final SessionActorState state, final StopCommand command) {
+    final SessionTopology topology = state.topology();
+    if (topology != null) {
+      final SessionRunner runner = runner(topology);
+      runner.stop();
+      runnerFactory.stopped(runner);
+    }
+    return Effect().none().thenReply(command.replyTo(), _ -> Done.done());
   }
 
   private void init(final SessionTopology topology) {
@@ -514,8 +532,11 @@ public final class SessionActor
     if (interruptId == null) {
       return Effect().none();
     }
-    final String childAgentId = SessionUtils.agentIdFromSessionId(command.childSessionId());
-    final String author = childAgentId != null ? childAgentId : Constants.AUTHOR_USER;
+    final String author =
+        state
+            .child(command.childSessionId())
+            .map(ChildSession::agentId)
+            .orElse(Constants.AUTHOR_USER);
     final ResumeRequest resumeRequest =
         new ResumeRequest(
             interruptId,
@@ -1487,7 +1508,7 @@ public final class SessionActor
    * which it need not have been granted.
    */
   private AgentSession getSession(final String sessionId) {
-    return Context.require().as(Caller.SYSTEM).get(() -> sessionCache.get(sessionId));
+    return Context.require().asSystemCaller().get(() -> sessionCache.get(sessionId));
   }
 
   private static String resolveRootSessionId(final AgentSession parentSession) {

@@ -6,6 +6,7 @@ import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.SendMessageCommand;
 import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.utils.SessionState;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.tenancy.AccessControlService;
@@ -90,6 +91,12 @@ public final class SendMessageTool extends AbstractAgentTool {
       return completedResult;
     }
 
+    final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
+    final String childAgentId = sessionState.spawnedAgentId(childSessionId);
+    if (childAgentId == null) {
+      return ToolOutput.direct(
+          Map.of("error", "Unknown child session: " + childSessionId + ". Spawn an agent first."));
+    }
     message = buildFullMessage(goal, message);
     final List<MessagePart> parts = List.of(new MessagePart.TextPart(message));
     final ToolOutput<Map<String, Object>> violationOutput =
@@ -99,7 +106,7 @@ public final class SendMessageTool extends AbstractAgentTool {
     }
     final UserMessage userMessage = new UserMessage(parts);
     final ToolOutput<Map<String, Object>> grantError =
-        issueGrants(childSessionId, notebookIds, knowledgeIds);
+        issueGrants(childAgentId, childSessionId, notebookIds, knowledgeIds);
     if (grantError != null) {
       return grantError;
     }
@@ -116,8 +123,7 @@ public final class SendMessageTool extends AbstractAgentTool {
     return switch (result) {
       case StartSessionResult.Accepted ignored -> {
         awaitCompletion = awaitCompletion == null || awaitCompletion;
-        SessionUtils.getSessionState(toolContext.invocationContext())
-            .addSpawnedAgentReminder(childSessionId, goal, awaitCompletion);
+        sessionState.updateSpawnedAgent(childSessionId, goal, awaitCompletion);
         if (awaitCompletion) {
           yield awaitChild(toolContext, childSessionId);
         } else {

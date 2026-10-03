@@ -59,6 +59,8 @@ public class KnowledgeChunkRepository extends AbstractRepository<KnowledgeChunk>
     payload.put(KEY_KNOWLEDGE_ID, chunk.getKnowledgeId());
     payload.put(KEY_AGENT_ID, chunk.getAgentId());
     payload.put(KEY_CHUNK_INDEX, chunk.getChunkIndex());
+    payload.put(KnowledgeChunk.FIELD_KNOWLEDGE_VERSION, chunk.getKnowledgeVersion());
+    payload.put(KnowledgeChunk.FIELD_STATUS, chunk.getStatus());
     payload.put(KEY_TEXT, chunk.getText());
     payload.put(KEY_CHUNK_START, chunk.getChunkStart());
     payload.put(KEY_CHUNK_END, chunk.getChunkEnd());
@@ -70,6 +72,9 @@ public class KnowledgeChunkRepository extends AbstractRepository<KnowledgeChunk>
     chunk.setKnowledgeId(CollectionUtils.getStringValueFromMap(payload, KEY_KNOWLEDGE_ID));
     chunk.setAgentId(CollectionUtils.getStringValueFromMap(payload, KEY_AGENT_ID));
     chunk.setChunkIndex(CollectionUtils.getIntValueFromMap(payload, KEY_CHUNK_INDEX, 0));
+    final Number version = (Number) payload.get(KnowledgeChunk.FIELD_KNOWLEDGE_VERSION);
+    chunk.setKnowledgeVersion(version != null ? version.longValue() : null);
+    chunk.setStatus(CollectionUtils.getStringValueFromMap(payload, KnowledgeChunk.FIELD_STATUS));
     chunk.setText(CollectionUtils.getStringValueFromMap(payload, KEY_TEXT));
     chunk.setChunkStart(CollectionUtils.getIntValueFromMap(payload, KEY_CHUNK_START, 0));
     chunk.setChunkEnd(CollectionUtils.getIntValueFromMap(payload, KEY_CHUNK_END, 0));

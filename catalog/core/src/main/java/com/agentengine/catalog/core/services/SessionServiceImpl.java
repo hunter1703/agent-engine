@@ -4,9 +4,12 @@ import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.catalog.core.repository.SessionRepository;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.beans.Acl;
+import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.context.Context;
+import com.agentengine.util.tenancy.AclService;
 import com.agentengine.util.tenancy.Permission;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
@@ -22,10 +25,13 @@ import java.util.Set;
 public class SessionServiceImpl implements SessionService {
 
   private final SessionRepository sessionRepository;
+  private final AclService aclService;
 
   @Inject
-  public SessionServiceImpl(final SessionRepository sessionRepository) {
+  public SessionServiceImpl(
+      final SessionRepository sessionRepository, final AclService aclService) {
     this.sessionRepository = sessionRepository;
+    this.aclService = aclService;
   }
 
   @Override
@@ -64,7 +70,25 @@ public class SessionServiceImpl implements SessionService {
   @Override
   @WithSpan
   public boolean deleteSession(final String id) {
-    return sessionRepository.deleteByIdIgnoringVersion(id);
+    AgentSession session =
+        sessionRepository.findById(id, List.of(AgentSession.FIELD_AGENT_ID), null);
+    final boolean deleted = sessionRepository.deleteByIdIgnoringVersion(id);
+    if (deleted) {
+      final PaginatedResult<AgentSession> children =
+          sessionRepository.findByQuery(
+              new Query().withFilter(Filters.eq(AgentSession.FIELD_PARENT_SESSION_ID, id)));
+      for (final AgentSession child : children.getItems()) {
+        deleteSession(child.getId());
+      }
+
+      Context.require()
+          .asSystemCaller()
+          .run(
+              () ->
+                  aclService.forgetPrincipal(
+                      AgentSession.principal(session.getAgentId(), id).toString()));
+    }
+    return deleted;
   }
 
   @Override

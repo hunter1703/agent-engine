@@ -34,6 +34,7 @@ public interface Constants {
     String TOOL_CONFIRMATION = "toolConfirmation";
     String KNOWLEDGE_ID = "knowledgeId";
     String CHILD_SESSION_ID = "child_session_id";
+    String AGENT_ID = "agent_id";
     String AWAIT_COMPLETION = "await_completion";
     String GOAL = "goal";
     String NOTEBOOK_ID = "notebook_id";

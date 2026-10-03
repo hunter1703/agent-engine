@@ -103,12 +103,11 @@ public class AbstractAgentTool extends Tool {
    * shared with the session for every user acting in it.
    */
   protected ToolOutput<Map<String, Object>> issueGrants(
+      final String granteeAgentId,
       final String granteeSessionId,
       final List<String> notebookIds,
       final List<String> knowledgeIds) {
-    final Principal granteeSession =
-        AgentSession.principal(
-            SessionUtils.agentIdFromSessionId(granteeSessionId), granteeSessionId);
+    final Principal granteeSession = AgentSession.principal(granteeAgentId, granteeSessionId);
     final List<SharingChange> changes =
         new ArrayList<>(notebookService.sharingChanges(granteeSession, notebookIds));
     for (final String knowledgeId : CollectionUtils.nullSafeList(knowledgeIds)) {

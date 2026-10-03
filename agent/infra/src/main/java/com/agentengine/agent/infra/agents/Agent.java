@@ -12,7 +12,6 @@ import com.google.adk.events.Event;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 /** Engine base agent — carries {@link BaseAgentConfig} and delegates runtime to subclasses. */
 public abstract class Agent extends BaseAgent {
@@ -52,16 +51,10 @@ public abstract class Agent extends BaseAgent {
   @Override
   public Flowable<Event> runAsync(final InvocationContext invocationContext) {
     return Flowable.fromPublisher(
-        subscriber -> {
-          final Optional<Context> turn = Context.current();
-          if (turn.isEmpty()) {
-            super.runAsync(invocationContext).subscribe(subscriber);
-            return;
-          }
-          turn.get()
-              .alsoActingAs(Principal.ofAnyUser().within(AssetClass.AGENT, agentConfig.getId()))
-              .run(() -> super.runAsync(invocationContext).subscribe(subscriber));
-        });
+        subscriber ->
+            Context.require()
+                .alsoActingAs(Principal.ofAnyUser().within(AssetClass.AGENT, agentConfig.getId()))
+                .run(() -> super.runAsync(invocationContext).subscribe(subscriber)));
   }
 
   public abstract static class Builder<B extends Builder<?, ?>, A extends Agent> {

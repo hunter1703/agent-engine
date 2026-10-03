@@ -1,7 +1,6 @@
 package com.agentengine.util.common.repository;
 
 import com.agentengine.util.common.beans.BaseEntity;
-import com.agentengine.util.common.query.Filter;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -14,7 +13,7 @@ import java.util.Set;
  * ids — the filter it applied.
  */
 public sealed interface EntityChange<T extends BaseEntity>
-    permits EntityChange.Entities, EntityChange.Ids, EntityChange.Matching {
+    permits EntityChange.Entities, EntityChange.Ids {
 
   Type type();
 
@@ -32,9 +31,6 @@ public sealed interface EntityChange<T extends BaseEntity>
       ids = Set.copyOf(ids);
     }
   }
-
-  /** A write to whichever entities {@code filter} matched; null when it matched every entity. */
-  record Matching<T extends BaseEntity>(Type type, Filter filter) implements EntityChange<T> {}
 
   enum Type {
     UNKNOWN,
