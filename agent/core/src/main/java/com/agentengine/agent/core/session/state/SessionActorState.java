@@ -49,6 +49,10 @@ public record SessionActorState(
     return current == null || current.settled();
   }
 
+  public boolean isDeleted() {
+    return sessionState == SessionState.DELETED;
+  }
+
   public static SessionActorState initial() {
     return new SessionActorState(
         SessionState.IDLE,

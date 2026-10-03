@@ -8,7 +8,9 @@ public enum SessionState implements PekkoSerializable {
   TRIGGERED_RUN(false),
   RUNNING(false),
   CONTINUING(false),
-  PAUSED(true);
+  PAUSED(true),
+  /** Deleted: refuses every command, and is never run or recovered again. */
+  DELETED(true);
 
   private final boolean terminal;
 

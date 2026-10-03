@@ -1,9 +1,9 @@
 package com.agentengine.agent.core.session.commands;
 
+import com.agentengine.agent.core.session.InitializeResult;
 import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.agent.core.session.state.SessionTopology;
 import com.agentengine.util.context.Context;
-import org.apache.pekko.Done;
 import org.apache.pekko.actor.typed.ActorRef;
 
 /**
@@ -15,9 +15,11 @@ import org.apache.pekko.actor.typed.ActorRef;
 public interface ParentCommand extends SessionCommand {
 
   /** Establishes the session's identity and position in the graph. Sent once on first spawn. */
-  record InitializeCommand(Context context, SessionTopology topology, ActorRef<Done> replyTo)
+  record InitializeCommand(
+      Context context, SessionTopology topology, ActorRef<InitializeResult> replyTo)
       implements ParentCommand {
-    public InitializeCommand(final SessionTopology topology, final ActorRef<Done> replyTo) {
+    public InitializeCommand(
+        final SessionTopology topology, final ActorRef<InitializeResult> replyTo) {
       this(Context.current().orElse(null), topology, replyTo);
     }
   }

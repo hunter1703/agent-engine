@@ -45,29 +45,32 @@ service, plus a signed or service-issued identity for system calls.
 ## Access control: child-session grants are never revoked
 
 `AbstractAgentTool.issueGrants` maps roles to a child session's principal for every spawn and
-message, and nothing removes them when the child session ends. The role mappings and grant tokens on
-a widely shared notebook or knowledge item grow without bound. Revoke a session's mappings when it
-completes or is deleted.
+message. `RuntimeService.deleteSession` forgets a deleted session's own principal, but nothing
+removes a child session's mappings when it completes, nor those of a deleted session's children,
+which are never deleted themselves. The role mappings and grants on a widely shared notebook or
+knowledge item grow without bound. Revoke a child session's mappings when it completes, and retire
+a deleted session's children with it.
 
 ## Access control: leftover access lists of deleted children
 
 Deleting an asset — by id, by query, or as a child of a deleted parent — tells tenancy to forget
-its access list on a best-effort basis, so a failed call leaves one behind. Top-level assets are
-safe — creating one with a reused id
-replaces whatever access list is left — but a referenced child (a note) is created without a fresh
-access list, so leftover note-level mappings come back when the note is re-created and shared again.
-Add a periodic sweep in tenancy that forgets access lists whose assets no longer exist.
+its role mappings on a best-effort basis, so a failed call leaves them behind. An asset created
+again with the same id (agents have ids from their configs) is stored with a fresh access list, but
+the leftover mappings are still there: the next recalculation of its access list — any sharing
+change on it — reads them along with the new ones, and the old grants come back. Add a periodic
+sweep in tenancy that forgets the mappings of assets that no longer exist, or have creating an asset
+drop any mappings left on its id.
 
 ## Access control: Qdrant access-list writes are read-then-write
 
 `AbstractPermissionedRepository.applyAcls` stores an access list with a conditional `updateOne`
 (only while the stored `acl.version` is older). `QdrantEntityStore.updateOne` reads the matching
 points and then writes them, since Qdrant has no conditional writes, so two pushes to one point at
-the same moment can land out of order. `QdrantEntityStore.replace` checks the expected version
-the same way, by reading it first, so a share that lands between that check and the write is
-overwritten by the replace. Only memories are both stored in Qdrant and shared individually, so
-this is rare. Fix by re-reading after writing and repushing when the stored version is not the
-newest.
+the same moment can land out of order. `QdrantEntityStore.replace` reads the stored version and
+access list before writing, so an access list stored between that read and the write is
+overwritten by the replace; `insert` checks the id is free the same way. Only memories are both
+stored in Qdrant and shared individually, so this is rare. Fix by re-reading after writing and
+repushing when the stored access list is not the newest.
 
 ## Access control: review findings still to be discussed
 
@@ -75,18 +78,7 @@ Raised in the review of the identity/RBAC work and parked until the access-list 
 through. Not yet agreed on as problems or as fixes:
 
 - **Two concurrent `save()`s creating the same client-chosen id race.** Both see no stored entity;
-  the second upsert replaces the first's document, and both creators end up mapped as owners.
-
-## Repositories: a replace reads only the base contextual fields of the stored entity
-
-`AbstractRepository.readStored` reads the stored entity with `CONTEXTUAL_FIELDS` only, so an
-entity's `copyContextualFieldsFrom` cannot compare anything else. `Role.copyContextualFieldsFrom`
-keeps the stored status when the permissions are unchanged (so a rename does not process the role
-again), but the stored role arrives without `assetClassVsPermissions` or `status`: a rename is
-processed again anyway, and a role with no permissions gets a null status copied over. The same
-blocks carrying a `VectorEntity`'s vectors over when its text is unchanged. Options: read the whole
-stored entity on a replace (Qdrant would also need vectors returned on that read), or a repository
-hook naming the extra fields to read. To decide once the repository refactor is reviewed.
+  the second upsert replaces the first's document, and both creators end up mapped as managers.
 
 ## Knowledge: an overtaken indexing run can leave its chunks behind
 
@@ -140,7 +132,7 @@ rolling update, or every tenancy restart stops all creates.
 ## Product-specific roles belong in each product, not in agent-engine
 
 Agent-engine seeds only its generic standard roles (tenancy's `roles.json` resource: reader, editor,
-manager, creator, owner, agent) for every customer. Which further standard roles exist (e.g. a compliance
+manager) for every customer. Which further standard roles exist (e.g. a compliance
 product's "Mine Owner"/"Auditor") is product-specific and belongs in that product's own
 provisioning code, calling `RoleRepository`/`UserRepository` after a customer is provisioned.
 
@@ -210,8 +202,7 @@ buffer. Trades memory for CPU. Track as a known limitation until 100MP use cases
 before the write, one extra round trip for callers without the permission on every asset. Folding
 the permission filter into the write (Mongo: `_id` + owner/grants filter, treat zero matches as denied) needs id-filter
 support in `QdrantEntityStore`'s generic filter translation, and Qdrant deletes return no match count.
-Add both, then change the internal `updateInternal(id, ...)`/`deleteByIdInternal(id)` to take the
-permission filter.
+Add both, then fold the permission filter into those writes.
 
 ## Database: Decrypted Connection Caching
 

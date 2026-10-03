@@ -2,6 +2,7 @@ package com.agentengine.util.tenancy;
 
 import com.agentengine.util.common.annotations.Permissioned;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.distributed.CacheEvictionListener;
@@ -16,8 +17,8 @@ import java.util.function.Function;
  * A customer's {@link Permissioned} entities by id, each loaded once for the whole customer — as
  * the customer's system, whoever reads it first — and checked against the reader's permissions on
  * every read. An id with no entity is cached as such. A {@link CacheEvictionListener} listener on
- * the entities' writes evicts them. A read returns the cached instance itself, shared by every
- * reader.
+ * the entities' writes evicts them. A read returns a copy of the cached entity, so a reader that
+ * changes it changes no one else's.
  */
 public final class PermissionedCache<T extends BaseEntity> {
 
@@ -46,7 +47,7 @@ public final class PermissionedCache<T extends BaseEntity> {
   public T get(final String id, final Permission permission) {
     final T entity = cache.get(id);
     return entity != null && permissionChecker.hasPermission(() -> entity, assetClass, permission)
-        ? entity
+        ? JsonUtils.copy(entity)
         : null;
   }
 

@@ -17,7 +17,6 @@ import com.google.common.cache.CacheBuilder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Singleton
@@ -37,7 +36,6 @@ public class ConnectorCacheService {
     this.permissionChecker = permissionChecker;
     this.connectionsCache =
         new DistributedCache.Builder<List<Connection>>(CONNECTION_IDS_CACHE_NAME, cacheManager)
-            .tags(Set.of(ConnectionCacheTag.CONNECTIONS))
             .localCache(CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS))
             .loader(
                 appName ->

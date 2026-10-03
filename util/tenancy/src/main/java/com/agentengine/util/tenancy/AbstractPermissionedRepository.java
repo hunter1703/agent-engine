@@ -19,7 +19,6 @@ import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.validation.ValidationService;
-import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -83,15 +82,9 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
     final Map<String, T> found =
         super.findByIds(
             ids, withPermissionFields(includeFields), withoutPermissionFields(excludeFields));
-    final Set<String> permitted = getPermittedIds(found, Permission.READ);
-    final Map<String, T> result = new LinkedHashMap<>();
-    found.forEach(
-        (id, entity) -> {
-          if (permitted.contains(id)) {
-            result.put(id, entity);
-          }
-        });
-    return result;
+    final Map<String, T> permitted = new LinkedHashMap<>(found);
+    permitted.values().removeIf(entity -> !hasPermission(entity, Permission.READ));
+    return permitted;
   }
 
   @Override
@@ -239,11 +232,7 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
               Filters.and(
                   Filters.eq(BaseEntity.FIELD_ID, id),
                   Filters.lt(BaseEntity.FIELD_ACL_VERSION, acl.version()));
-          final Update apply =
-              new Update(
-                  List.of(
-                      Operation.set(BaseEntity.FIELD_ACL, JsonUtils.toMap(acl)),
-                      Operation.inc(BaseEntity.FIELD_VERSION, 1L)));
+          final Update apply = Update.of(Operation.set(BaseEntity.FIELD_ACL, JsonUtils.toMap(acl)));
           if (store.updateOne(older, apply) > 0) {
             applied.add(id);
           }
@@ -255,14 +244,14 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
   }
 
   /**
-   * How a newly created entity is shared, each change adding roles on it alone: {@code owner} for
+   * How a newly created entity is shared, each change adding roles on it alone: {@code manager} for
    * the principal creating it — what a user creates directly is theirs, what is created within a
    * context belongs to that context. Nothing when the system creates it. A class may share it with
    * another principal instead, or with more.
    */
   protected List<SharingChange> getInitialShare(final T entity) {
     return Context.currentPrincipal()
-        .map(creator -> List.of(buildShare(entity, creator.toString(), StandardRole.OWNER)))
+        .map(creator -> List.of(buildShare(entity, creator.toString(), StandardRole.MANAGER)))
         .orElse(List.of());
   }
 
@@ -276,8 +265,10 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
    * Throws unless the caller may create {@code entities}: CREATE on every asset of the class. Runs
    * after they are validated and before they are stored.
    */
-  protected void canCreate(final List<T> entities) {
-    requireCreatePermission();
+  protected void requireCreatePermission(final List<T> entities) {
+    if (!permissionChecker.hasPermissionOnEveryAsset(assetClass, Permission.CREATE)) {
+      throw new UnauthorizedException(entityClass.getSimpleName(), null);
+    }
   }
 
   /**
@@ -287,7 +278,7 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
    */
   @Override
   protected final List<T> create(final List<T> entities) {
-    canCreate(entities);
+    requireCreatePermission(entities);
     final List<T> prepared = prepareNewEntities(entities);
     final Map<String, Acl> idVsAcl = shareNewEntities(prepared);
     for (final T entity : prepared) {
@@ -303,8 +294,9 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
 
   /**
    * Checks the caller may edit the stored entity, or creates it as a new one when there is none.
-   * Like any replace, the write goes through only while the entity is at the version read, and
-   * applying an access list counts a new version, so one applied meanwhile is never overwritten.
+   * Like any replace, the write goes through only while the entity is at the version read; the
+   * stored access list is kept whatever the replacement carries, so one applied meanwhile is never
+   * overwritten.
    */
   @Override
   protected final T replace(
@@ -322,12 +314,6 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
   protected final void requireEditPermission(final T entity) {
     if (entity != null && !hasPermission(entity, Permission.EDIT)) {
       throw new UnauthorizedException(entityClass.getSimpleName(), entity.getId());
-    }
-  }
-
-  protected final void requireCreatePermission() {
-    if (!permissionChecker.hasPermissionOnEveryAsset(assetClass, Permission.CREATE)) {
-      throw new UnauthorizedException(entityClass.getSimpleName(), null);
     }
   }
 
@@ -384,7 +370,7 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
    * page at a time, each page deleted before the next is read.
    */
   private void deleteMatching(final Filter filter) {
-    if (!receivesAcls()) {
+    if (!inCustomer()) {
       store.deleteByFilter(filter);
       return;
     }
@@ -408,11 +394,11 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
    * system: the caller's right to delete them is already checked.
    */
   private void forgetAcls(final List<String> ids) {
-    if (!receivesAcls() || ids.isEmpty()) {
+    if (!inCustomer() || ids.isEmpty()) {
       return;
     }
     try {
-      Context.require().as(Caller.SYSTEM).run(() -> aclService.deleteAcls(assetClass, ids));
+      Context.require().asSystemCaller().run(() -> aclService.deleteAcls(assetClass, ids));
     } catch (final RuntimeException exception) {
       LOG.warn(
           "Could not forget the access lists of {} {}",
@@ -430,7 +416,7 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
    *     role mappings would be taken as already applied, and never reach that other asset
    */
   private Map<String, Acl> shareNewEntities(final List<T> entities) {
-    if (!receivesAcls()) {
+    if (!inCustomer()) {
       return Map.of();
     }
     final List<SharingChange> changes = new ArrayList<>();
@@ -447,15 +433,7 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
     if (changes.isEmpty()) {
       return Map.of();
     }
-    return Context.require().as(Caller.SYSTEM).get(() -> aclService.shareNewAssets(changes));
-  }
-
-  /**
-   * Whether tenancy keeps access lists here: access lists belong to a customer, so there are none
-   * outside of one.
-   */
-  private static boolean receivesAcls() {
-    return inCustomer();
+    return Context.require().asSystemCaller().get(() -> aclService.shareNewAssets(changes));
   }
 
   private static void requireSystem() {
@@ -464,6 +442,10 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
     }
   }
 
+  /**
+   * Whether the context is in a customer, where tenancy keeps access lists: access lists belong to
+   * a customer, so there are none outside of one.
+   */
   private static boolean inCustomer() {
     return Context.currentCustomerId()
         .filter(id -> !Context.SYSTEM_CUSTOMER_ID.equals(id))

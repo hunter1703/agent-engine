@@ -38,7 +38,7 @@ public class NotebookRepository extends AbstractPermissionedRepository<Notebook>
    * one; no permission on every asset is taken.
    */
   @Override
-  protected void canCreate(final List<Notebook> notebooks) {}
+  protected void requireCreatePermission(final List<Notebook> notebooks) {}
 
   /** A notebook belongs to the session it is made in, for every user acting in it. */
   @Override
@@ -46,7 +46,8 @@ public class NotebookRepository extends AbstractPermissionedRepository<Notebook>
     return Context.currentPrincipal()
         .map(
             creator ->
-                List.of(buildShare(notebook, creator.forAnyUser().toString(), StandardRole.OWNER)))
+                List.of(
+                    buildShare(notebook, creator.forAnyUser().toString(), StandardRole.MANAGER)))
         .orElse(List.of());
   }
 }

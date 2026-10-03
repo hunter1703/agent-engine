@@ -94,6 +94,25 @@ public class RoleMappingRepository extends AbstractRepository<RoleMapping> {
   }
 
   /**
+   * Removes every role of {@code principal}, as {@link #removeRoles} does for each of its mappings:
+   * those on one asset become empty and pending until their asset's access list is recalculated,
+   * those on every asset are deleted.
+   */
+  public void removeAllRoles(final String principal) {
+    final Filter ofPrincipal = Filters.eq(RoleMapping.FIELD_PRINCIPAL, principal);
+    updateManyIgnoringVersion(
+        Filters.and(ofPrincipal, Filters.ne(RoleMapping.FIELD_ASSET_ID, null)),
+        Update.of(
+            Operation.set(RoleMapping.FIELD_ROLE_IDS, List.of()),
+            Operation.set(Task.FIELD_STATUS, TaskStatus.PENDING.name())));
+    final Filter onEveryAsset =
+        Filters.and(ofPrincipal, Filters.eq(RoleMapping.FIELD_ASSET_ID, null));
+    updateManyIgnoringVersion(
+        onEveryAsset, Update.of(Operation.set(RoleMapping.FIELD_ROLE_IDS, List.of())));
+    deleteByFilterIgnoringVersion(onEveryAsset);
+  }
+
+  /**
    * Sets the mapping's status, only while it is at the version read.
    *
    * @throws StaleStateException if the mapping is gone or was written since

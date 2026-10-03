@@ -2,18 +2,14 @@ package com.agentengine.util.ms.server;
 
 import com.agentengine.util.common.Defaults;
 import com.agentengine.util.common.codec.JsonCodec;
-import com.agentengine.util.common.exception.AssetNotFoundException;
-import com.agentengine.util.common.exception.ConfigurationException;
-import com.agentengine.util.common.exception.DuplicateAssetException;
-import com.agentengine.util.common.exception.UnauthorizedException;
 import com.agentengine.util.common.utils.FlowableUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.ms.client.MicroService;
+import com.agentengine.util.ms.client.MicroServiceErrors;
 import com.agentengine.util.ms.client.MicroServiceMethod;
 import com.agentengine.util.ms.grpc.Request;
 import com.agentengine.util.ms.grpc.Response;
 import com.agentengine.util.ms.grpc.ServiceGrpc;
-import com.google.common.base.Throwables;
 import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.stub.ServerCallStreamObserver;
@@ -213,7 +209,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
                       LOG.error("Flowable error", err);
                       span.setAttribute("ms.item_count", itemCount.get())
                           .setAttribute("ms.batch_count", batchCount.get());
-                      responseObserver.onError(rootCauseStatus(err).asRuntimeException());
+                      responseObserver.onError(MicroServiceErrors.toStatusException(err));
                     },
                     () -> {
                       span.setAttribute("ms.item_count", itemCount.get())
@@ -231,27 +227,12 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
       responseObserver.onCompleted();
     } catch (final Exception exception) {
       LOG.error("Error executing {}/{}", serviceName, methodName, exception);
-      responseObserver.onError(rootCauseStatus(exception).asRuntimeException());
+      responseObserver.onError(MicroServiceErrors.toStatusException(exception));
     }
   }
 
   private void send(final StreamObserver<Response> responseObserver, final ByteString payload) {
     responseObserver.onNext(Response.newBuilder().setPayload(payload).build());
-  }
-
-  private static Status rootCauseStatus(final Throwable throwable) {
-    final Throwable cause = Throwables.getRootCause(throwable);
-    return switch (cause) {
-      case AssetNotFoundException _ ->
-          Status.NOT_FOUND.withDescription(cause.getMessage()).withCause(cause);
-      case DuplicateAssetException _ ->
-          Status.ALREADY_EXISTS.withDescription(cause.getMessage()).withCause(cause);
-      case UnauthorizedException _ ->
-          Status.PERMISSION_DENIED.withDescription(cause.getMessage()).withCause(cause);
-      case IllegalArgumentException _, ConfigurationException _ ->
-          Status.INVALID_ARGUMENT.withDescription(cause.getMessage()).withCause(cause);
-      default -> Status.INTERNAL.withDescription(cause.getMessage()).withCause(cause);
-    };
   }
 
   private static Class<?> microServiceInterface(final Class<?> clazz) {

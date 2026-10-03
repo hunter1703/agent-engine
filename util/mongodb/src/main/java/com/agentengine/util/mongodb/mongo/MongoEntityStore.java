@@ -29,8 +29,8 @@ import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.IndexModel;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
-import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
+import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import java.lang.reflect.Field;
@@ -40,6 +40,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.bson.BsonDocument;
+import org.bson.BsonDocumentWrapper;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -80,16 +82,14 @@ public final class MongoEntityStore<T extends BaseEntity> implements EntityStore
 
   @Override
   public T insert(final T entity) {
+    if (StringUtils.isBlank(entity.getId())) {
+      entity.setId(newId());
+    }
     try {
-      if (StringUtils.isBlank(entity.getId())) {
-        entity.setId(newId());
-      }
-      try {
-        collection().insertOne(entity);
-        return entity;
-      } catch (final MongoWriteException exception) {
-        throw translateWriteException(exception, entity.getId());
-      }
+      collection().insertOne(entity);
+      return entity;
+    } catch (final MongoWriteException exception) {
+      throw translateWriteException(exception, entity.getId());
     } catch (final Exception exception) {
       LOG.error("Error inserting entity: {}", entity, exception);
       throw ExceptionUtils.wrapInRuntimeException(exception, "Error inserting entity");
@@ -188,6 +188,11 @@ public final class MongoEntityStore<T extends BaseEntity> implements EntityStore
     }
   }
 
+  /**
+   * Replaces the stored entity in one write that keeps the stored access list, so an access list
+   * applied since the entity was read is never overwritten. Upserts only when no version is
+   * expected: an entity at another version is stale, not missing.
+   */
   @Override
   public T replace(final T entity, final Long expectedVersion, final boolean upsert) {
     try {
@@ -196,9 +201,12 @@ public final class MongoEntityStore<T extends BaseEntity> implements EntityStore
       if (expectedVersion != null) {
         conditions.add(Filters.eq(BaseEntity.FIELD_VERSION, expectedVersion));
       }
+      final MongoCollection<T> collection = collection();
       final UpdateResult result =
-          collection()
-              .replaceOne(Filters.and(conditions), entity, new ReplaceOptions().upsert(upsert));
+          collection.updateOne(
+              Filters.and(conditions),
+              List.of(replacementKeepingAcl(entity, collection)),
+              new UpdateOptions().upsert(upsert && expectedVersion == null));
       if (result.getMatchedCount() > 0 || result.getUpsertedId() != null) {
         return entity;
       }
@@ -406,6 +414,24 @@ public final class MongoEntityStore<T extends BaseEntity> implements EntityStore
       options.partialFilterExpression(Document.parse(declaration.partialFilterExpression()));
     }
     return options;
+  }
+
+  /**
+   * The pipeline stage replacing a stored document with {@code entity}, but for the stored access
+   * list, when there is one. The entity is taken literally, so none of its values is read as an
+   * expression.
+   */
+  private static <T> Bson replacementKeepingAcl(
+      final T entity, final MongoCollection<T> collection) {
+    final BsonDocument replacement =
+        BsonDocumentWrapper.asBsonDocument(entity, collection.getCodecRegistry());
+    return new Document(
+        "$replaceWith",
+        new Document(
+            "$mergeObjects",
+            List.of(
+                new Document("$literal", replacement),
+                new Document(BaseEntity.FIELD_ACL, "$" + BaseEntity.FIELD_ACL))));
   }
 
   private long count(final Bson filter) {

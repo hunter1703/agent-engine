@@ -35,7 +35,6 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.utils.*;
-import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Principal;
 import com.agentengine.util.context.UserCaller;
@@ -173,7 +172,7 @@ public final class SessionActor
 
   @Override
   protected void onRecoveryCompleted(final SessionActorState state) {
-    if (state == null || state.topology() == null) {
+    if (state == null || state.topology() == null || state.isDeleted()) {
       return;
     }
     recover(state);
@@ -314,8 +313,26 @@ public final class SessionActor
     final CommandHandlerBuilder<SessionCommand, SessionFact, SessionActorState> builder =
         newCommandHandlerBuilder();
     builder
+        .forState(SessionActorState::isDeleted)
+        .onCommand(
+            InitializeCommand.class,
+            command -> Effect().none().thenReply(command.replyTo(), _ -> InitializeResult.DELETED))
+        .onCommand(
+            StartCommand.class,
+            command ->
+                Effect()
+                    .none()
+                    .thenReply(
+                        command.replyTo(),
+                        _ -> new StartSessionResult.Rejected("The session was deleted")))
+        .onCommand(
+            DeleteCommand.class,
+            command -> Effect().none().thenReply(command.replyTo(), _ -> Done.done()))
+        .onAnyCommand(() -> Effect().none());
+    builder
         .forAnyState()
         .onCommand(InitializeCommand.class, this::initialize)
+        .onCommand(DeleteCommand.class, this::delete)
         .onCommand(StartCommand.class, this::start)
         .onCommand(ResumeCommand.class, this::resume)
         .onCommand(ResumeChildCommand.class, this::resumeChild)
@@ -347,7 +364,7 @@ public final class SessionActor
     // Persist InitializedFact only on first initialization — re-sending InitializeCommand for an
     // existing session (e.g. a new turn on a root session) must not wipe accumulated state.
     if (state.topology() != null) {
-      return Effect().none().thenReply(command.replyTo(), _ -> Done.done());
+      return Effect().none().thenReply(command.replyTo(), _ -> InitializeResult.INITIALIZED);
     }
     return thenRun(
             Effect()
@@ -355,6 +372,19 @@ public final class SessionActor
                     new InitializedFact(
                         topology, Context.currentUserId().map(Principal::ofUser).orElse(null))),
             _ -> init(topology))
+        .thenReply(command.replyTo(), _ -> InitializeResult.INITIALIZED);
+  }
+
+  /** Stops the session's runner and marks it deleted, so its id can never be used again. */
+  private Effect<SessionFact, SessionActorState> delete(
+      final SessionActorState state, final DeleteCommand command) {
+    return thenRun(
+            Effect().persist(new DeletedFact()),
+            newState -> {
+              if (newState.topology() != null) {
+                runnerFactory.stop(newState.topology().agentId(), newState.topology().sessionId());
+              }
+            })
         .thenReply(command.replyTo(), _ -> Done.done());
   }
 
@@ -722,7 +752,7 @@ public final class SessionActor
   }
 
   /** Initializes the child, creating its session record; repeating it is harmless. */
-  private CompletionStage<Done> initializeChild(
+  private CompletionStage<InitializeResult> initializeChild(
       final SessionActorState state, final String childAgentId, final String childSessionId) {
     final SessionTopology topology = state.topology();
     final SessionTopology childTopology =
@@ -735,7 +765,7 @@ public final class SessionActor
     return refSupplier
         .apply(childSessionId)
         .ask(
-            (Function<ActorRef<Done>, SessionCommand>)
+            (Function<ActorRef<InitializeResult>, SessionCommand>)
                 initReplyTo -> new InitializeCommand(childTopology, initReplyTo),
             ASK_TIMEOUT);
   }
@@ -1175,6 +1205,7 @@ public final class SessionActor
   public EventHandler<SessionActorState, SessionFact> eventHandler() {
     return newEventHandlerBuilder()
         .forAnyState()
+        .onEvent(DeletedFact.class, (state, _) -> state.withSessionState(SessionState.DELETED))
         .onEvent(
             InitializedFact.class,
             (_, fact) ->
@@ -1487,7 +1518,7 @@ public final class SessionActor
    * which it need not have been granted.
    */
   private AgentSession getSession(final String sessionId) {
-    return Context.require().as(Caller.SYSTEM).get(() -> sessionCache.get(sessionId));
+    return Context.require().asSystemCaller().get(() -> sessionCache.get(sessionId));
   }
 
   private static String resolveRootSessionId(final AgentSession parentSession) {

@@ -118,7 +118,9 @@ public class SessionRestAPI {
     if (StringUtils.isBlank(sessionId)) {
       throw new IllegalArgumentException("Session ID is required");
     }
-    sessionService.deleteSession(sessionId);
+    if (!runtimeService.deleteSession(sessionId)) {
+      throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
+    }
   }
 
   @POST

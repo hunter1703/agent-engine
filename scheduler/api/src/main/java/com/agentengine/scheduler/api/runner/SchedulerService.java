@@ -7,7 +7,14 @@ import com.agentengine.util.ms.client.MicroService;
 
 @MicroService("scheduler")
 public interface SchedulerService {
+  /**
+   * Creates the job, or replaces the stored one while it is still at the definition's version, and
+   * schedules its next run as the caller.
+   */
   String schedule(JobDefinition jobDefinition);
+
+  /** {@link #schedule}, whatever version the stored job is at: sets the job to the definition. */
+  String scheduleIgnoringVersion(JobDefinition jobDefinition);
 
   JobDefinition getJob(String jobId);
 
