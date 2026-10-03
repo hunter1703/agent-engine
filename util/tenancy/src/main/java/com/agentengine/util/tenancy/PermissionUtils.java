@@ -66,7 +66,9 @@ public final class PermissionUtils {
   public static Set<String> contextGrants(final Permission permission) {
     return Context.current()
         .flatMap(Context::userCaller)
-        .map(caller -> callerPermissionVsGrants.getUnchecked(new CallerPermission(caller, permission)))
+        .map(
+            caller ->
+                callerPermissionVsGrants.getUnchecked(new CallerPermission(caller, permission)))
         .orElse(Set.of());
   }
 

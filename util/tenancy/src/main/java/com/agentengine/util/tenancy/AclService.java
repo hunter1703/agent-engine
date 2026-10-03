@@ -27,9 +27,9 @@ public interface AclService {
   void deleteAcls(String assetClass, Collection<String> assetIds);
 
   /**
-   * Removes every role {@code principal} holds, on single assets and on every asset, for a principal
-   * that is gone, such as a deleted session's; the access lists of the assets it held roles on are
-   * recalculated without it. By the system only.
+   * Removes every role {@code principal} holds, on single assets and on every asset, for a
+   * principal that is gone, such as a deleted session's; the access lists of the assets it held
+   * roles on are recalculated without it. By the system only.
    */
   void forgetPrincipal(String principal);
 

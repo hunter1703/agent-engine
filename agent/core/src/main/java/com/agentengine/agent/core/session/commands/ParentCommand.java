@@ -1,9 +1,9 @@
 package com.agentengine.agent.core.session.commands;
 
+import com.agentengine.agent.core.session.InitializeResult;
 import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.agent.core.session.state.SessionTopology;
 import com.agentengine.util.context.Context;
-import com.agentengine.agent.core.session.InitializeResult;
 import org.apache.pekko.actor.typed.ActorRef;
 
 /**

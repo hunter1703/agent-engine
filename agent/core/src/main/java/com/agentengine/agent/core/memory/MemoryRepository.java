@@ -74,7 +74,9 @@ public class MemoryRepository extends AbstractPermissionedRepository<Memory> {
             creator ->
                 List.of(
                     buildShare(
-                        memory, creator.actingIn(AssetClass.AGENT).toString(), StandardRole.MANAGER)))
+                        memory,
+                        creator.actingIn(AssetClass.AGENT).toString(),
+                        StandardRole.MANAGER)))
         .orElse(List.of());
   }
 

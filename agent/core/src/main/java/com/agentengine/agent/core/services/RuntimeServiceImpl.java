@@ -8,12 +8,12 @@ import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.core.memory.MemoryRepository;
 import com.agentengine.agent.core.schedule.AgentScheduleRepository;
 import com.agentengine.agent.core.session.CurrentTurnEvents;
+import com.agentengine.agent.core.session.InitializeResult;
 import com.agentengine.agent.core.session.ResumeResult;
 import com.agentengine.agent.core.session.RollbackResult;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.SessionEventChannel;
 import com.agentengine.agent.core.session.StartSessionResult;
-import com.agentengine.agent.core.session.InitializeResult;
 import com.agentengine.agent.core.session.commands.ExternalCommand.DeleteCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.GetCurrentTurnEventsCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.ResumeCommand;
@@ -216,8 +216,8 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   /**
    * Initializes the session, a new one when {@code sessionId} is blank or names none, and returns
-   * its id. An existing session takes EDIT on it, and must be of {@code agentId}; a deleted one's id
-   * can never be used again.
+   * its id. An existing session takes EDIT on it, and must be of {@code agentId}; a deleted one's
+   * id can never be used again.
    */
   private String initializeSession(final String agentId, final String sessionId) {
     requireAgentAccess(agentId);
@@ -255,9 +255,9 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   /**
-   * Throws unless no session has the id yet, or the caller may edit the session and it is of
-   * {@code agentId}. The session is read as the system, since whether it exists is not the caller's
-   * to see, and uncached, since a session missing now is about to be created.
+   * Throws unless no session has the id yet, or the caller may edit the session and it is of {@code
+   * agentId}. The session is read as the system, since whether it exists is not the caller's to
+   * see, and uncached, since a session missing now is about to be created.
    */
   private void requireCanContinueSession(final String agentId, final String sessionId) {
     final AgentSession session =

@@ -103,8 +103,8 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
   }
 
   /**
-   * Qdrant writes are upserts, so an id is checked to be free by reading it first: an entity
-   * stored with the same id between the check and the write is overwritten.
+   * Qdrant writes are upserts, so an id is checked to be free by reading it first: an entity stored
+   * with the same id between the check and the write is overwritten.
    */
   @Override
   public List<T> insertMany(final List<T> entities) {
@@ -124,8 +124,7 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
       }
     }
     for (final List<T> batch : CollectionUtils.batches(entities, DEFAULT_UPSERT_BATCH_SIZE)) {
-      await(
-          client().upsertAsync(collectionName(), batch.stream().map(this::toPoint).toList()));
+      await(client().upsertAsync(collectionName(), batch.stream().map(this::toPoint).toList()));
     }
     return entities;
   }

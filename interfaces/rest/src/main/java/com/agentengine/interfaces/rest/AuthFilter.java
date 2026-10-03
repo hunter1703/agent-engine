@@ -36,9 +36,9 @@ import java.util.concurrent.TimeUnit;
 /**
  * Binds every request to a context: the customer its origin belongs to, and the user its session
  * cookie is logged in as. Only logging in, logging out and preflight requests go without a user. A
- * logged-in request that names an origin must come from its session's customer: a browser names
- * the origin of every cross-site request, so a page on any other site cannot use the session cookie
- * it sends along.
+ * logged-in request that names an origin must come from its session's customer: a browser names the
+ * origin of every cross-site request, so a page on any other site cannot use the session cookie it
+ * sends along.
  */
 @Provider
 @PreMatching

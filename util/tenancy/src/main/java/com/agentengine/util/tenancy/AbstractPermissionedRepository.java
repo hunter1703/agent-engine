@@ -443,8 +443,8 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
   }
 
   /**
-   * Whether the context is in a customer, where tenancy keeps access lists: access lists belong to a
-   * customer, so there are none outside of one.
+   * Whether the context is in a customer, where tenancy keeps access lists: access lists belong to
+   * a customer, so there are none outside of one.
    */
   private static boolean inCustomer() {
     return Context.currentCustomerId()

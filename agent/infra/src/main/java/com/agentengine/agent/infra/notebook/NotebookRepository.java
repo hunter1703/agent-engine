@@ -46,7 +46,8 @@ public class NotebookRepository extends AbstractPermissionedRepository<Notebook>
     return Context.currentPrincipal()
         .map(
             creator ->
-                List.of(buildShare(notebook, creator.forAnyUser().toString(), StandardRole.MANAGER)))
+                List.of(
+                    buildShare(notebook, creator.forAnyUser().toString(), StandardRole.MANAGER)))
         .orElse(List.of());
   }
 }
