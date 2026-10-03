@@ -35,7 +35,10 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Binds every request to a context: the customer its origin belongs to, and the user its session
- * cookie is logged in as. Only logging in, logging out and preflight requests go without a user.
+ * cookie is logged in as. Only logging in, logging out and preflight requests go without a user. A
+ * logged-in request that names an origin must come from its session's customer: a browser names
+ * the origin of every cross-site request, so a page on any other site cannot use the session cookie
+ * it sends along.
  */
 @Provider
 @PreMatching
@@ -80,7 +83,8 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   public void filter(final ContainerRequestContext requestContext) {
     final String requestId = UUID.randomUUID().toString();
     final String path = path(requestContext);
-    final String customerId = customerIdOf(requestContext);
+    final String origin = requestContext.getHeaderString(ORIGIN_HEADER);
+    final String customerId = customerIdOf(origin);
     final Cookie sessionCookie = requestContext.getCookies().get(SESSION_COOKIE);
     final Optional<UserSession> loggedIn =
         sessionCookie == null
@@ -100,9 +104,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
       return;
     }
     if (loggedIn.isPresent()) {
-      if (customerId != null && !customerId.equals(loggedIn.get().getCustomerId())) {
-        // A session belongs to the customer it was opened with, whichever customer's origin sends
-        // it.
+      if (origin != null && !loggedIn.get().getCustomerId().equals(customerId)) {
         requestContext.abortWith(Response.status(Response.Status.FORBIDDEN).build());
       }
       return;
@@ -124,9 +126,9 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     }
   }
 
-  /** The customer whose domain the request's origin is on, if any. */
-  private String customerIdOf(final ContainerRequestContext requestContext) {
-    final String domain = domainOf(requestContext.getHeaderString(ORIGIN_HEADER));
+  /** The customer whose domain {@code origin} is on, if any. */
+  private String customerIdOf(final String origin) {
+    final String domain = domainOf(origin);
     if (domain == null) {
       return null;
     }

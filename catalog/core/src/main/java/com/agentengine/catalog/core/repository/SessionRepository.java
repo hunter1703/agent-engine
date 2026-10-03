@@ -50,7 +50,7 @@ public class SessionRepository extends AbstractPermissionedRepository<AgentSessi
    * checked for using it then.
    */
   @Override
-  protected void canCreate(final List<AgentSession> sessions) {
+  protected void requireCreatePermission(final List<AgentSession> sessions) {
     final Set<String> agentIds = new LinkedHashSet<>();
     for (final AgentSession session : sessions) {
       if (StringUtils.isBlank(session.getParentSessionId())) {

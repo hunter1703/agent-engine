@@ -13,6 +13,8 @@ import com.agentengine.agent.core.session.RollbackResult;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.SessionEventChannel;
 import com.agentengine.agent.core.session.StartSessionResult;
+import com.agentengine.agent.core.session.InitializeResult;
+import com.agentengine.agent.core.session.commands.ExternalCommand.DeleteCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.GetCurrentTurnEventsCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.ResumeCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.RollbackCommand;
@@ -29,6 +31,7 @@ import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
+import com.agentengine.tenancy.AccessControlService;
 import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
@@ -56,7 +59,6 @@ import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.common.utils.StructuredConcurrencyUtils;
-import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.tenancy.Permission;
 import com.agentengine.util.tenancy.PermissionedCache;
@@ -70,10 +72,11 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.flowables.ConnectableFlowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -115,6 +118,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   private final MemoryRepository memoryRepository;
   private final NotebookRepository notebookRepository;
   private final SchedulerService schedulerService;
+  private final AccessControlService accessControlService;
 
   @Inject
   public RuntimeServiceImpl(
@@ -130,7 +134,8 @@ public class RuntimeServiceImpl implements RuntimeService {
       final AgentScheduleRepository agentScheduleRepository,
       final MemoryRepository memoryRepository,
       final NotebookRepository notebookRepository,
-      final SchedulerService schedulerService) {
+      final SchedulerService schedulerService,
+      final AccessControlService accessControlService) {
     this.sessionActorFactory = sessionActorFactory;
     this.eventChannel = eventChannel;
     this.sessionService = sessionService;
@@ -144,6 +149,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     this.memoryRepository = memoryRepository;
     this.notebookRepository = notebookRepository;
     this.schedulerService = schedulerService;
+    this.accessControlService = accessControlService;
   }
 
   @Override
@@ -208,21 +214,31 @@ public class RuntimeServiceImpl implements RuntimeService {
     return initializedSessionId;
   }
 
+  /**
+   * Initializes the session, a new one when {@code sessionId} is blank or names none, and returns
+   * its id. An existing session takes EDIT on it, and must be of {@code agentId}; a deleted one's id
+   * can never be used again.
+   */
   private String initializeSession(final String agentId, final String sessionId) {
     requireAgentAccess(agentId);
-    if (StringUtils.isNotBlank(sessionId) && !canEditSessionOrMissing(sessionId)) {
-      throw new UnauthorizedException(AssetClass.AGENT_SESSION, sessionId);
+    if (StringUtils.isNotBlank(sessionId)) {
+      requireCanContinueSession(agentId, sessionId);
     }
     final String resolvedSessionId =
         StringUtils.isBlank(sessionId) ? SessionUtils.newSessionId(agentId) : sessionId;
-    sessionActorFactory
-        .entityRef(resolvedSessionId)
-        .<Done>ask(
-            replyTo ->
-                new InitializeCommand(SessionTopology.root(agentId, resolvedSessionId), replyTo),
-            SessionActorFactory.ASK_TIMEOUT)
-        .toCompletableFuture()
-        .join(); // block until the session is persisted
+    final InitializeResult result =
+        sessionActorFactory
+            .entityRef(resolvedSessionId)
+            .<InitializeResult>ask(
+                replyTo ->
+                    new InitializeCommand(
+                        SessionTopology.root(agentId, resolvedSessionId), replyTo),
+                SessionActorFactory.ASK_TIMEOUT)
+            .toCompletableFuture()
+            .join(); // block until the session is persisted
+    if (result.deleted()) {
+      throw new AssetNotFoundException(AssetClass.AGENT_SESSION, resolvedSessionId);
+    }
     return resolvedSessionId;
   }
 
@@ -238,13 +254,24 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
   }
 
-  /** Whether the caller may edit the session, or no session has the id yet. */
-  private boolean canEditSessionOrMissing(final String sessionId) {
-    return sessionService.hasPermission(sessionId, Permission.EDIT)
-        || Context.require()
-                .as(Caller.SYSTEM)
-                .get(() -> sessionService.getSession(sessionId, List.of(AgentSession.FIELD_STATUS)))
-            == null;
+  /**
+   * Throws unless no session has the id yet, or the caller may edit the session and it is of
+   * {@code agentId}. The session is read as the system, since whether it exists is not the caller's
+   * to see, and uncached, since a session missing now is about to be created.
+   */
+  private void requireCanContinueSession(final String agentId, final String sessionId) {
+    final AgentSession session =
+        Context.require()
+            .asSystemCaller()
+            .get(() -> sessionService.getSession(sessionId, List.of(AgentSession.FIELD_AGENT_ID)));
+    if (session == null) {
+      return;
+    }
+    requireCanEditSession(sessionId);
+    if (!agentId.equals(session.getAgentId())) {
+      throw new IllegalArgumentException(
+          "Session " + sessionId + " is of agent " + session.getAgentId() + ", not " + agentId);
+    }
   }
 
   private void startTurn(final String agentId, final String sessionId, final UserMessage message) {
@@ -378,6 +405,31 @@ public class RuntimeServiceImpl implements RuntimeService {
     if (result instanceof RollbackResult.Rejected(String reason)) {
       throw new IllegalStateException("Rollback rejected: " + reason);
     }
+  }
+
+  /**
+   * Retires the session's actor first, so no run starts while it goes, then has tenancy forget what
+   * was shared with the session, then deletes its record.
+   */
+  @Override
+  public boolean deleteSession(final String sessionId) {
+    if (!sessionService.hasPermission(sessionId, Permission.DELETE)) {
+      return false;
+    }
+    final AgentSession session =
+        Context.require().asSystemCaller().get(() -> sessionCache.get(sessionId));
+    sessionActorFactory
+        .entityRef(sessionId)
+        .<Done>ask(DeleteCommand::new, SessionActorFactory.ASK_TIMEOUT)
+        .toCompletableFuture()
+        .join();
+    Context.require()
+        .asSystemCaller()
+        .run(
+            () ->
+                accessControlService.forgetPrincipal(
+                    AgentSession.principal(session.getAgentId(), sessionId).toString()));
+    return sessionService.deleteSession(sessionId);
   }
 
   @Override

@@ -7,6 +7,7 @@ import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agentengine.util.common.exception.DuplicateAssetException;
 import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
@@ -98,24 +99,33 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
 
   @Override
   public T insert(final T entity) {
-    if (StringUtils.isBlank(entity.getId())) {
-      entity.setId(newId());
-    }
-    await(client().upsertAsync(collectionName(), List.of(toPoint(entity))));
-    return entity;
+    return insertMany(List.of(entity)).getFirst();
   }
 
+  /**
+   * Qdrant writes are upserts, so an id is checked to be free by reading it first: an entity
+   * stored with the same id between the check and the write is overwritten.
+   */
   @Override
   public List<T> insertMany(final List<T> entities) {
-    for (final List<T> batch : CollectionUtils.batches(entities, DEFAULT_UPSERT_BATCH_SIZE)) {
-      final List<Points.PointStruct> points = new ArrayList<>(batch.size());
-      for (final T entity : batch) {
-        if (StringUtils.isBlank(entity.getId())) {
-          entity.setId(newId());
-        }
-        points.add(toPoint(entity));
+    final List<String> givenIds = new ArrayList<>();
+    for (final T entity : entities) {
+      if (StringUtils.isBlank(entity.getId())) {
+        entity.setId(newId());
+      } else {
+        givenIds.add(entity.getId());
       }
-      await(client().upsertAsync(collectionName(), points));
+    }
+    if (!givenIds.isEmpty()) {
+      final Map<String, T> existing = findByIds(givenIds, List.of(BaseEntity.FIELD_ID), null);
+      if (!existing.isEmpty()) {
+        throw new DuplicateAssetException(
+            spec.entityClass().getSimpleName(), existing.keySet().iterator().next());
+      }
+    }
+    for (final List<T> batch : CollectionUtils.batches(entities, DEFAULT_UPSERT_BATCH_SIZE)) {
+      await(
+          client().upsertAsync(collectionName(), batch.stream().map(this::toPoint).toList()));
     }
     return entities;
   }
@@ -134,33 +144,46 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
     return retrievePoints(ids, includeFields, excludeFields);
   }
 
+  /**
+   * A query with a semantic search ranks the matches by similarity; any other reads the matches in
+   * storage order, since Qdrant cannot sort them.
+   */
   @Override
   public PaginatedResult<T> findByQuery(final Query query) {
-    final Filter filter = query == null ? null : query.getFilter();
+    final Query source = query == null ? new Query() : query;
+    final Filter filter = source.getFilter();
     final String embeddingModelId =
         filter == null
             ? null
             : CollectionUtils.getStringValueFromMap(
                 filter.getAdditional(), FIELD_EMBEDDING_MODEL_ID);
-    return findBySemanticQuery(
-        new Query(query).withFilter(rewriteSemanticFilter(filter, embeddingModelId)));
+    final Query rewritten =
+        new Query(source).withFilter(rewriteSemanticFilter(filter, embeddingModelId));
+    return extractSemanticFilters(rewritten.getFilter()).isEmpty()
+        ? findByFilter(rewritten)
+        : findBySemanticQuery(rewritten);
   }
 
   /**
-   * Qdrant has no conditional writes, so {@code expectedVersion} is checked by reading the point
-   * first: a write landing between the check and this one is overwritten.
+   * Qdrant has no conditional writes, so {@code expectedVersion} is checked, and the stored access
+   * list read to be kept, by reading the point first: a write landing between that read and this
+   * write is overwritten.
    */
   @Override
   public T replace(final T entity, final Long expectedVersion, final boolean upsert) {
-    if (!upsert || expectedVersion != null) {
-      final T existing = findById(entity.getId(), List.of(BaseEntity.FIELD_VERSION), null);
-      if (existing == null && !upsert) {
-        throw new AssetNotFoundException(spec.entityClass().getSimpleName(), entity.getId());
-      }
-      if (expectedVersion != null
-          && (existing == null || existing.getVersion() != expectedVersion)) {
+    final T existing =
+        findById(entity.getId(), List.of(BaseEntity.FIELD_VERSION, BaseEntity.FIELD_ACL), null);
+    if (existing == null && (!upsert || expectedVersion != null)) {
+      if (expectedVersion != null) {
         throw new StaleStateException(entity.getId(), expectedVersion);
       }
+      throw new AssetNotFoundException(spec.entityClass().getSimpleName(), entity.getId());
+    }
+    if (existing != null) {
+      if (expectedVersion != null && existing.getVersion() != expectedVersion) {
+        throw new StaleStateException(entity.getId(), expectedVersion);
+      }
+      entity.setAcl(existing.getAcl());
     }
     await(client().upsertAsync(collectionName(), List.of(toPoint(entity))));
     return entity;
@@ -203,8 +226,12 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
     return matched;
   }
 
+  /** Qdrant reports no count for a delete, so whether there was an entity is read first. */
   @Override
   public boolean deleteById(final String id) {
+    if (findById(id, List.of(BaseEntity.FIELD_ID), null) == null) {
+      return false;
+    }
     await(client().deleteAsync(collectionName(), idFilter(id)));
     return true;
   }
@@ -291,9 +318,6 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
     final Common.Filter qdrantFilter = buildQdrantFilter(query.getFilter());
 
     final List<Filter> semanticFilters = extractSemanticFilters(query.getFilter());
-    if (semanticFilters.isEmpty()) {
-      return PaginatedResult.create(List.of(), page, null);
-    }
 
     final Points.QueryPoints.Builder request =
         Points.QueryPoints.newBuilder()
@@ -336,6 +360,40 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
     final List<Points.ScoredPoint> points = await(client().queryAsync(request.build()));
     final List<T> results = points.stream().map(this::toEntity).toList();
     return PaginatedResult.create(results, page, null);
+  }
+
+  /** The page of the points {@code query}'s filter matches, in storage order. */
+  private PaginatedResult<T> findByFilter(final Query query) {
+    if (CollectionUtils.isNotEmpty(query.getSorts())) {
+      throw new UnsupportedOperationException("Qdrant collections cannot be read sorted");
+    }
+    final Page page = query.getPage();
+    final Common.Filter qdrantFilter = buildQdrantFilter(query.getFilter());
+    final List<T> results = new ArrayList<>();
+    final int[] skipped = {0};
+    forEachPage(
+        qdrantFilter,
+        page.getLimit() < 0 ? -1 : page.getOffset() + page.getLimit(),
+        payloadSelector(query.getIncludeFields(), query.getExcludeFields()),
+        points -> {
+          for (final Points.RetrievedPoint point : points) {
+            if (skipped[0] < page.getOffset()) {
+              skipped[0]++;
+            } else {
+              results.add(toEntity(point.getPayloadMap(), pointIdToString(point.getId())));
+            }
+          }
+        });
+    final Long total =
+        query.isIncludeCount()
+            ? await(
+                client()
+                    .countAsync(
+                        collectionName(),
+                        qdrantFilter == null ? Common.Filter.getDefaultInstance() : qdrantFilter,
+                        true))
+            : null;
+    return PaginatedResult.create(results, page, total);
   }
 
   private Filter rewriteSemanticFilter(final Filter filter, final String embeddingModelId) {
@@ -456,7 +514,7 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
     forEachPage(
         filter,
         limit,
-        fields,
+        WithPayloadSelectorFactory.include(List.copyOf(fields)),
         page -> {
           for (final Points.RetrievedPoint point : page) {
             applyToPoint(point, update, fields);
@@ -538,11 +596,14 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
     return number instanceof Double || number instanceof Float;
   }
 
-  /** Feeds the handler the points matching the filter, carrying only the given payload fields. */
+  /**
+   * Feeds the handler up to {@code limit} points (all when negative) matching the filter (all when
+   * null), carrying the payload {@code payload} selects.
+   */
   private void forEachPage(
       final Common.Filter filter,
       final int limit,
-      final Collection<String> payloadFields,
+      final Points.WithPayloadSelector payload,
       final Consumer<List<Points.RetrievedPoint>> handler) {
     int handled = 0;
     Common.PointId offset = null;
@@ -552,9 +613,11 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
       final Points.ScrollPoints.Builder request =
           Points.ScrollPoints.newBuilder()
               .setCollectionName(collectionName())
-              .setFilter(filter)
               .setLimit(pageSize)
-              .setWithPayload(WithPayloadSelectorFactory.include(List.copyOf(payloadFields)));
+              .setWithPayload(payload);
+      if (filter != null) {
+        request.setFilter(filter);
+      }
       if (offset != null) {
         request.setOffset(offset);
       }

@@ -7,11 +7,10 @@ package com.agentengine.util.tenancy;
 public interface StandardRole {
   String READER = "reader";
   String EDITOR = "editor";
-  String MANAGER = "manager";
-  String CREATOR = "creator";
 
   /**
-   * Every permission on the one entity it is granted on; given to whoever an entity is made for.
+   * Every permission: on the one entity it is mapped on, everything but CREATE, so it is what
+   * whoever an entity is made for gets; on every asset of a class, CREATE too.
    */
-  String OWNER = "owner";
+  String MANAGER = "manager";
 }

@@ -8,7 +8,6 @@ import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.beans.ConnectorResult;
 import com.agentengine.connectors.api.beans.CredentialsConfig;
 import com.agentengine.connectors.api.constants.ConnectorConstants;
-import com.agentengine.connectors.api.services.ConnectionCacheTag;
 import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.connectors.core.ConnectionRepository;
@@ -22,7 +21,6 @@ import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.SchemaUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.crypto.EncryptionService;
-import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.distributed.DistributedLockManager;
 import com.agentengine.util.scripts.TemplateUtils;
 import com.agentengine.util.scripts.templated.Template;
@@ -47,7 +45,6 @@ public class ConnectionServiceImpl implements ConnectionService {
   private final ConnectorRegistry connectorRegistry;
   private final ConnectorService connectorService;
   private final DistributedLockManager distributedLockManager;
-  private final DistributedCacheManager distributedCacheManager;
   private final EncryptionService encryptionService;
 
   @Inject
@@ -56,13 +53,11 @@ public class ConnectionServiceImpl implements ConnectionService {
       ConnectorRegistry connectorRegistry,
       ConnectorService connectorService,
       DistributedLockManager distributedLockManager,
-      DistributedCacheManager distributedCacheManager,
       EncryptionService encryptionService) {
     this.connectionRepository = connectionRepository;
     this.connectorRegistry = connectorRegistry;
     this.connectorService = connectorService;
     this.distributedLockManager = distributedLockManager;
-    this.distributedCacheManager = distributedCacheManager;
     this.encryptionService = encryptionService;
   }
 
@@ -121,10 +116,7 @@ public class ConnectionServiceImpl implements ConnectionService {
       }
     }
     encryptSensitiveInputs(connection);
-    final Connection saved = connectionRepository.save(connection);
-    distributedCacheManager.broadcastInvalidation(
-        ConnectionCacheTag.CONNECTIONS.name(), saved.getAppName());
-    return saved;
+    return connectionRepository.save(connection);
   }
 
   @Override
@@ -251,10 +243,7 @@ public class ConnectionServiceImpl implements ConnectionService {
             getCredentialsExpiry(credentials, authConfig.refresh(), inputs));
 
         encryptSensitiveInputs(connectionFromDB);
-        Connection saved = connectionRepository.save(connectionFromDB);
-        distributedCacheManager.broadcastInvalidation(
-            ConnectionCacheTag.CONNECTIONS.name(), saved.getAppName());
-        return saved;
+        return connectionRepository.save(connectionFromDB);
       } catch (Exception e) {
         LOG.error("Failed to refresh connection {}", connection.getId(), e);
       }

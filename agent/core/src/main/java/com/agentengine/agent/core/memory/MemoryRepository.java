@@ -61,7 +61,7 @@ public class MemoryRepository extends AbstractPermissionedRepository<Memory> {
    * permission on every asset is taken.
    */
   @Override
-  protected void canCreate(final List<Memory> memories) {}
+  protected void requireCreatePermission(final List<Memory> memories) {}
 
   /**
    * A memory belongs to the agent the creating principal acts in, for its user — not to the session
@@ -74,7 +74,7 @@ public class MemoryRepository extends AbstractPermissionedRepository<Memory> {
             creator ->
                 List.of(
                     buildShare(
-                        memory, creator.actingIn(AssetClass.AGENT).toString(), StandardRole.OWNER)))
+                        memory, creator.actingIn(AssetClass.AGENT).toString(), StandardRole.MANAGER)))
         .orElse(List.of());
   }
 

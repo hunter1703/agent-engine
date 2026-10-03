@@ -49,6 +49,13 @@ public interface RuntimeService extends AssetPermissionService {
 
   void rollbackSession(String sessionId, String runId);
 
+  /**
+   * Deletes the session: its actor refuses every command from then on, so its id can never be used
+   * again, and whatever was shared with it is forgotten. False if there was no session the caller
+   * may delete.
+   */
+  boolean deleteSession(String sessionId);
+
   String invokeExpert(String expertId, String modelId, UserMessage userMessage);
 
   /** Creates or replaces an agent schedule, and the scheduler job that fires it. */

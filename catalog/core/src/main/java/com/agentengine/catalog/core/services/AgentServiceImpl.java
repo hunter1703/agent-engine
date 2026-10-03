@@ -82,7 +82,7 @@ public class AgentServiceImpl implements AgentService {
   public BaseAgentConfig createAgent(final BaseAgentConfig agent) {
     final String id = agent == null ? null : agent.getId();
     final BaseAgentConfig sanitized = sanitizeConfig(id, agent, BuilderMode.CREATE);
-    requireAddedSubAgentAccess(id, sanitized);
+    requireCanShareAddedSubAgents(id, sanitized);
     return agentRepository.insert(sanitized);
   }
 
@@ -96,7 +96,7 @@ public class AgentServiceImpl implements AgentService {
     final boolean isEdit = StringUtils.isNotBlank(id);
     final BaseAgentConfig sanitized =
         sanitizeConfig(id, agent, isEdit ? BuilderMode.EDIT : BuilderMode.CREATE);
-    requireAddedSubAgentAccess(id, sanitized);
+    requireCanShareAddedSubAgents(id, sanitized);
     final BaseAgentConfig saved = agentRepository.save(sanitized);
     if (isEdit) {
       invalidateCachedRunners(id);
@@ -108,7 +108,7 @@ public class AgentServiceImpl implements AgentService {
   @WithSpan
   public BaseAgentConfig updateAgent(final String id, final BaseAgentConfig agent) {
     final BaseAgentConfig sanitized = sanitize(agent, BuilderMode.EDIT);
-    requireAddedSubAgentAccess(id, sanitized);
+    requireCanShareAddedSubAgents(id, sanitized);
     final BaseAgentConfig updated = agentRepository.update(id, sanitized);
     invalidateCachedRunners(id);
     return updated;
@@ -120,14 +120,18 @@ public class AgentServiceImpl implements AgentService {
     return agentRepository.deleteByIdIgnoringVersion(id);
   }
 
-  private void requireAddedSubAgentAccess(final String id, final BaseAgentConfig agent) {
+  /**
+   * Listing an agent as a sub-agent hands its use to whoever may run the listing agent, so it takes
+   * SHARE on each sub-agent added — no one hands out an agent they may only use.
+   */
+  private void requireCanShareAddedSubAgents(final String id, final BaseAgentConfig agent) {
     final Set<String> added = subAgentIds(agent);
     if (StringUtils.isNotBlank(id)) {
       added.removeAll(subAgentIds(agentRepository.findById(id)));
     }
-    final Set<String> usable = agentRepository.findPermittedIds(added, Permission.READ);
+    final Set<String> shareable = agentRepository.findPermittedIds(added, Permission.SHARE);
     for (final String subAgentId : added) {
-      if (!usable.contains(subAgentId)) {
+      if (!shareable.contains(subAgentId)) {
         throw new UnauthorizedException(AssetClass.AGENT, subAgentId);
       }
     }

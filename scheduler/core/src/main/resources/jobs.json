@@ -7,6 +7,6 @@
   {
     "id": "{{ customerId }}:ResubmitStaleRoles",
     "jobClassName": "com.agentengine.tenancy.jobs.ResubmitStaleRolesJob",
-    "cronSchedule": "0/15 * * * * ?"
+    "cronSchedule": "0 * * * * ?"
   }
 ]

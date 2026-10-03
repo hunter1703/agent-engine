@@ -125,6 +125,14 @@ public class AccessControlServiceImpl implements AccessControlService {
   }
 
   @Override
+  public void forgetPrincipal(final String principal) {
+    if (!Context.require().isSystem()) {
+      throw new UnauthorizedException("Principals are forgotten by the system only");
+    }
+    roleMappingRepository.removeAllRoles(Principal.parse(principal).toString());
+  }
+
+  @Override
   public void updateSharing(final List<SharingChange> changes) {
     final Set<String> roleIds = new HashSet<>();
     final Set<String> onEveryAssetRoleIds = new HashSet<>();
