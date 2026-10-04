@@ -3,7 +3,6 @@ package com.agentengine.tenancy.core.rbac;
 import static com.agentengine.util.tenancy.AclService.PERMISSIONS_ON_EVERY_ASSET_CACHE;
 
 import com.agentengine.tenancy.core.repository.RoleMappingRepository;
-import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.EntityChange;
 import com.agentengine.util.common.repository.EntityChangeListener;
 import com.agentengine.util.distributed.CacheScope;
@@ -48,10 +47,6 @@ public class RoleMappingChangeListener implements EntityChangeListener<RoleMappi
           case EntityChange.Entities<RoleMapping> changed -> changed.idVsEntity().values();
           case EntityChange.Ids<RoleMapping> changed ->
               roleMappingRepository.findByIds(changed.ids()).values();
-          case EntityChange.Matching<RoleMapping> changed ->
-              roleMappingRepository
-                  .findByQuery(new Query().withFilter(changed.filter()))
-                  .getItems();
         };
     for (final RoleMapping mapping : mappings) {
       if (mapping.partitionId() == null) {

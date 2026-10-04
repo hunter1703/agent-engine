@@ -80,7 +80,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolArg(name = "agent_id") final String childAgentId,
+      @ToolArg(name = Constants.ToolArgs.AGENT_ID) final String childAgentId,
       @ToolArg(name = "message") String message,
       @ToolArg(name = "goal") final String goal,
       @ToolArg(name = "await_completion", optional = true) Boolean awaitCompletion,
@@ -112,10 +112,10 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       return violationOutput;
     }
     final UserMessage userMessage = new UserMessage(parts);
-    final String childSessionId = SessionUtils.newSessionId(childAgentId);
+    final String childSessionId = SessionUtils.newSessionId();
     // Granted before the child starts, so its first run can already reach them.
     final ToolOutput<Map<String, Object>> grantError =
-        issueGrants(childSessionId, notebookIds, knowledgeIds);
+        issueGrants(childAgentId, childSessionId, notebookIds, knowledgeIds);
     if (grantError != null) {
       return grantError;
     }
@@ -135,7 +135,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       case StartSessionResult.Accepted ignored -> {
         awaitCompletion = awaitCompletion == null || awaitCompletion;
         SessionUtils.getSessionState(toolContext.invocationContext())
-            .addSpawnedAgentReminder(childSessionId, goal, awaitCompletion);
+            .addSpawnedAgent(childSessionId, childAgentId, goal, awaitCompletion);
         if (awaitCompletion) {
           yield awaitChild(toolContext, childSessionId);
         } else {

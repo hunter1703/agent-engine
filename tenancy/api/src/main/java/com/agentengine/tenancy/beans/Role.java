@@ -1,4 +1,4 @@
-package com.agentengine.tenancy.core.rbac;
+package com.agentengine.tenancy.beans;
 
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
@@ -23,7 +23,7 @@ public class Role extends BaseEntity implements Task {
   private boolean standard;
 
   private Map<String, Set<String>> assetClassVsPermissions;
-  private String status;
+  private String status = TaskStatus.PENDING.name();
 
   public String getName() {
     return name;

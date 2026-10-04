@@ -81,5 +81,8 @@ public final class EntityUtils {
       entity.setCreatedTime(now);
     }
     entity.setUpdatedTime(now);
+    if (entity.getVersion() == null) {
+      entity.setVersion(0L);
+    }
   }
 }

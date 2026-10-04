@@ -13,5 +13,9 @@ public interface UserService extends AssetPermissionService {
   /** The active user {@code password} belongs to, or null when it matches none. */
   User authenticate(String username, String password);
 
-  User create(User user, String password);
+  User create(User user);
+
+  User update(String id, User user);
+
+  void delete(String id);
 }

@@ -2,6 +2,7 @@ package com.agentengine.knowledge.core.pipeline;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import com.agentengine.knowledge.api.beans.IndexingStatus;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.core.chunking.ChunkingPipeline;
@@ -92,9 +93,9 @@ public abstract class AbstractTextKnowledgeIndexer implements KnowledgeIndexer {
         .run()
         .doOnNext(
             chunk -> {
-              // Qdrant requires point IDs to be either unsigned integers or UUIDs
               final int i = nextIndex.getAndIncrement();
-              chunk.setId(generateChunkId(knowledge.getId(), i));
+              chunk.setKnowledgeVersion(knowledge.getVersion());
+              chunk.setStatus(IndexingStatus.IN_PROGRESS.name());
               chunk.setChunkIndex(i);
               reservoirSample(sample, chunk, i);
             })
@@ -114,14 +115,7 @@ public abstract class AbstractTextKnowledgeIndexer implements KnowledgeIndexer {
     return new IndexResult(totalChunks, preview, generatedDescription);
   }
 
-  /**
-   * Generates a deterministic UUID for a knowledge chunk. Uses UUID v3 (name-based with MD5) to
-   * create a stable, reproducible ID.
-   */
-  private static String generateChunkId(final String knowledgeId, final int chunkIndex) {
-    final String name = knowledgeId + "-" + chunkIndex;
-    return UUID.nameUUIDFromBytes(name.getBytes(UTF_8)).toString();
-  }
+
 
   /**
    * Reservoir sampling (Algorithm R): maintains a uniform random sample of up to {@link

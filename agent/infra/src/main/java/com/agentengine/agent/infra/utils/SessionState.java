@@ -27,6 +27,8 @@ public final class SessionState {
 
   private RunState runState;
   private final Set<Reminder> reminders = new LinkedHashSet<>();
+  // The child sessions this session spawned, each with its agent and the goal it was given.
+  private final Map<String, SpawnedAgent> childSessionIdVsSpawnedAgent = new HashMap<>();
   private Plan plan;
 
   public static SessionState buildFrom(final List<Event> events) {
@@ -73,25 +75,36 @@ public final class SessionState {
                 + summary));
   }
 
-  public void addSpawnedAgentReminder(
-      final String childSessionId, final String goal, boolean awaited) {
-    final Reminder reminder =
-        new Reminder(
-            Reminder.GROUP_SPAWNED_AGENTS,
-            childSessionId,
-            spawnedAgentReminderMessage(childSessionId, goal, awaited));
-    addReminder(reminder);
+  /** Remembers a child session this session spawned, and reminds the agent of it. */
+  public void addSpawnedAgent(
+      final String childSessionId, final String agentId, final String goal, boolean awaited) {
+    final SpawnedAgent spawned = new SpawnedAgent(agentId, childSessionId, goal, awaited);
+    childSessionIdVsSpawnedAgent.put(childSessionId, spawned);
+    addReminder(spawnedAgentReminder(spawned));
+  }
+
+  /** Updates the reminder of a child session this session spawned with a new goal. */
+  public void updateSpawnedAgent(final String childSessionId, final String goal, boolean awaited) {
+    final SpawnedAgent spawned = childSessionIdVsSpawnedAgent.get(childSessionId);
+    if (spawned != null) {
+      addSpawnedAgent(spawned.sessionId(), spawned.agentId(), goal, awaited);
+    }
   }
 
   public void markSpawnedAgentAwaited(final String childSessionId) {
-    if (!reminders.contains(new Reminder(Reminder.GROUP_SPAWNED_AGENTS, childSessionId, null))) {
-      return;
+    final SpawnedAgent spawned = childSessionIdVsSpawnedAgent.get(childSessionId);
+    if (spawned != null) {
+      childSessionIdVsSpawnedAgent.put(
+          childSessionId,
+          new SpawnedAgent(spawned.agentId(), spawned.sessionId(), spawned.goal(), true));
+      addReminder(spawnedAgentReminder(spawned));
     }
-    addReminder(
-        new Reminder(
-            Reminder.GROUP_SPAWNED_AGENTS,
-            childSessionId,
-            spawnedAgentReminderMessage(childSessionId, null, true)));
+  }
+
+  /** The agent of a child session this session spawned; null for any other session. */
+  public String spawnedAgentId(final String childSessionId) {
+    final SpawnedAgent spawned = childSessionIdVsSpawnedAgent.get(childSessionId);
+    return spawned == null ? null : spawned.agentId();
   }
 
   /**
@@ -180,6 +193,7 @@ public final class SessionState {
   private void addToolCallReminders(
       final Content content, final Map<String, FunctionCall> idVsFunctionCall) {
     final Map<String, Boolean> sessionIdVsAwaited = new HashMap<>();
+    final Map<String, String> sessionIdVsAgentId = new HashMap<>();
     final Map<String, String> sessionIdVsGoal = new HashMap<>();
 
     for (final Part part : content.parts().orElse(List.of())) {
@@ -207,6 +221,11 @@ public final class SessionState {
         final String sessionId =
             CollectionUtils.getStringValueFromMap(result, Constants.ToolArgs.CHILD_SESSION_ID);
         sessionIdVsAwaited.put(sessionId, await == null || await);
+        if (response.name().orElse("").equals(Constants.ToolNames.SPAWN_AGENT)) {
+          sessionIdVsAgentId.put(
+              sessionId,
+              CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.AGENT_ID));
+        }
         sessionIdVsGoal.put(
             sessionId, CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.GOAL));
       }
@@ -217,12 +236,12 @@ public final class SessionState {
       }
     }
 
-    for (Map.Entry<String, String> entry : sessionIdVsGoal.entrySet()) {
+    for (final Map.Entry<String, String> entry : sessionIdVsGoal.entrySet()) {
       final String sessionId = entry.getKey();
-      final String goal = entry.getValue();
-      final boolean awaited = sessionIdVsAwaited.get(sessionId);
-
-      addSpawnedAgentReminder(sessionId, goal, awaited);
+      final String agentId = sessionIdVsAgentId.getOrDefault(sessionId, spawnedAgentId(sessionId));
+      if (agentId != null) {
+        addSpawnedAgent(sessionId, agentId, entry.getValue(), sessionIdVsAwaited.get(sessionId));
+      }
     }
   }
 
@@ -230,14 +249,19 @@ public final class SessionState {
     this.runState = runState;
   }
 
-  private static String spawnedAgentReminderMessage(
-      final String childSessionId, final String goal, final boolean awaited) {
-    final String agentId = SessionUtils.agentIdFromSessionId(childSessionId);
-    if (awaited) {
-      return "[AWAITED] agent : '%s', session_id : '%s', goal : '%s'"
-          .formatted(agentId, childSessionId, goal);
-    }
-    return "[NOT AWAITED] agent : '%s', session_id : '%s', goal : '%s'. Use %s when you need its result."
-        .formatted(agentId, childSessionId, goal, Constants.ToolNames.AWAIT_AGENT);
+  private static Reminder spawnedAgentReminder(final SpawnedAgent spawnedAgent) {
+    final String message =
+        spawnedAgent.awaited()
+            ? "[AWAITED] agent : '%s', session_id : '%s', goal : '%s'"
+                .formatted(spawnedAgent.agentId(), spawnedAgent.sessionId(), spawnedAgent.goal())
+            : "[NOT AWAITED] agent : '%s', session_id : '%s', goal : '%s'. Use %s when you need its result."
+                .formatted(
+                    spawnedAgent.agentId(),
+                    spawnedAgent.sessionId(),
+                    spawnedAgent.goal(),
+                    Constants.ToolNames.AWAIT_AGENT);
+    return new Reminder(Reminder.GROUP_SPAWNED_AGENTS, spawnedAgent.sessionId(), message);
   }
+
+  private record SpawnedAgent(String agentId, String sessionId, String goal, boolean awaited) {}
 }

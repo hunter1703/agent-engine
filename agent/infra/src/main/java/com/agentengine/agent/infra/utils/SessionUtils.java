@@ -1,11 +1,9 @@
 package com.agentengine.agent.infra.utils;
 
 import static com.agentengine.agent.infra.utils.AgentUtils.getAgentIdFromContext;
-import static com.agentengine.util.common.Constants.ID_SEPARATOR;
 
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.utils.CollectionUtils;
-import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.Session;
@@ -57,16 +55,8 @@ public final class SessionUtils {
         .orElse(true);
   }
 
-  public static String newSessionId(final String agentId) {
-    return agentId + ID_SEPARATOR + UUID.randomUUID().toString().replace("-", "");
-  }
-
-  public static String agentIdFromSessionId(final String sessionId) {
-    if (StringUtils.isBlank(sessionId)) {
-      return null;
-    }
-    final int separatorIndex = sessionId.indexOf(ID_SEPARATOR);
-    return separatorIndex < 0 ? null : sessionId.substring(0, separatorIndex);
+  public static String newSessionId() {
+    return UUID.randomUUID().toString().replace("-", "");
   }
 
   public static Map<String, Object> state(final InvocationContext context) {

@@ -116,9 +116,9 @@ docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
   keeping what the session reaches and adding what was shared with it. A session's turn always
   runs as the session for the user who sent the turn's message, so users sharing a session each
   reach only what was granted for them. `READ` on an agent means being allowed to use it:
-  starting or resuming a session with it, or listing it as a sub-agent of another agent, which
-  lets whoever runs that one use it through it. Runners are built as the system; a sub-agent is not checked again when it is
-  spawned or transferred to, since listing it was. A new entity is owned by the principal
+  starting or resuming a session with it. Listing it as a sub-agent of another agent lets whoever
+  runs that one use it through it, so it takes `SHARE` on it. Runners are built as the system; a
+  sub-agent is not checked again when it is spawned or transferred to, since listing it was. A new entity is owned by the principal
   creating it — what a user creates directly is theirs. What is created within a session for
   everyone in it (notebooks, knowledge from attachments) is owned by the session for any
   user (`Principal.forAnyUser()`), so users sharing a session share it; a memory is owned by its
@@ -161,13 +161,16 @@ Use these terms, and only these, for these ideas — in code, comments and docs:
   principals, added by the runtime (e.g. a transferred agent), add access, never attribution.
 - **Context principals**: every covering principal of every principal a request's caller acts in —
   what access is checked against.
-- **Permission** (`Permission`): an action on an asset — `READ`, `EDIT`, `DELETE`, `CREATE`. On
-  an agent, `READ` means being allowed to use it.
+- **Permission** (`Permission`): an action on an asset — `READ`, `EDIT`, `DELETE`, `SHARE`,
+  `CREATE`. `SHARE` is handing the asset on: sharing it, or listing an agent as a sub-agent; who
+  shares also needs every permission the roles they hand out grant. `CREATE` is only ever held on
+  every asset of a class. On an agent, `READ` means being allowed to use it.
 - **Grant**: one principal holding one permission, written `<principal>#<permission>`, e.g.
   `User/*:Agent/A#READ`. Never "grant key" or "token".
 - **Access list** (`Acl`): an entity's grants and the version they were calculated at, stored on it
-  as `acl`; calculated by tenancy, never written by an entity save other than its creation. "ACL" only in type and method names.
-- **Role** (`Role`): a named set of permissions per asset class, e.g. `reader`, `owner`.
+  as `acl`; calculated by tenancy, never written by an entity save other than its creation, and
+  stored without changing the entity's own version. "ACL" only in type and method names.
+- **Role** (`Role`): a named set of permissions per asset class, e.g. `reader`, `manager`.
 - **Role mapping** (`RoleMapping`): a principal holding roles on one asset, or on every asset of
   a class. Grants are calculated from role mappings.
 - **Sharing** (`SharingChange`, `AclService.updateSharing`): adding or removing role mappings.

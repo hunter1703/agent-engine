@@ -10,6 +10,11 @@
       "embeddingModelId": "nomic-embed-text",
       "chatModelId": "gemma4",
       "visionModelId": "gemma4"
+    },
+    "user": {
+      "id": "1",
+      "username": "admin",
+      "password": "password"
     }
   }
 ]

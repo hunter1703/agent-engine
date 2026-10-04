@@ -80,16 +80,14 @@ public final class MongoEntityStore<T extends BaseEntity> implements EntityStore
 
   @Override
   public T insert(final T entity) {
+    if (StringUtils.isBlank(entity.getId())) {
+      entity.setId(newId());
+    }
     try {
-      if (StringUtils.isBlank(entity.getId())) {
-        entity.setId(newId());
-      }
-      try {
-        collection().insertOne(entity);
-        return entity;
-      } catch (final MongoWriteException exception) {
-        throw translateWriteException(exception, entity.getId());
-      }
+      collection().insertOne(entity);
+      return entity;
+    } catch (final MongoWriteException exception) {
+      throw translateWriteException(exception, entity.getId());
     } catch (final Exception exception) {
       LOG.error("Error inserting entity: {}", entity, exception);
       throw ExceptionUtils.wrapInRuntimeException(exception, "Error inserting entity");
@@ -188,8 +186,14 @@ public final class MongoEntityStore<T extends BaseEntity> implements EntityStore
     }
   }
 
+  /**
+   * Replaces the stored entity in one write that keeps the stored access list, so an access list
+   * applied since the entity was read is never overwritten. Upserts only when no version is
+   * expected: an entity at another version is stale, not missing.
+   */
   @Override
-  public T replace(final T entity, final Long expectedVersion, final boolean upsert) {
+  public T replace(
+      final T entity, final Long expectedVersion, final boolean upsert, final T existing) {
     try {
       final List<Bson> conditions = new ArrayList<>();
       conditions.add(Filters.eq(MongoUtils.FIELD_MONGO_ID, entity.getId()));
@@ -198,7 +202,10 @@ public final class MongoEntityStore<T extends BaseEntity> implements EntityStore
       }
       final UpdateResult result =
           collection()
-              .replaceOne(Filters.and(conditions), entity, new ReplaceOptions().upsert(upsert));
+              .replaceOne(
+                  Filters.and(conditions),
+                  entity,
+                  new ReplaceOptions().upsert(upsert && expectedVersion == null));
       if (result.getMatchedCount() > 0 || result.getUpsertedId() != null) {
         return entity;
       }
@@ -295,8 +302,8 @@ public final class MongoEntityStore<T extends BaseEntity> implements EntityStore
   }
 
   @Override
-  public void deleteByFilter(final Filter filter) {
-    collection().deleteMany(MongoUtils.toBson(filter));
+  public long deleteByFilter(final Filter filter) {
+    return collection().deleteMany(MongoUtils.toBson(filter)).getDeletedCount();
   }
 
   /**

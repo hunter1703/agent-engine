@@ -1,6 +1,9 @@
 package com.agentengine.util.common.exception;
 
-public class UnauthorizedException extends RuntimeException {
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public class UnauthorizedException extends RuntimeException implements ApplicationException {
   private final String assetType;
   private final String assetId;
 
@@ -14,6 +17,16 @@ public class UnauthorizedException extends RuntimeException {
     super(message);
     this.assetType = null;
     this.assetId = null;
+  }
+
+  @JsonCreator
+  private UnauthorizedException(
+      @JsonProperty("message") final String message,
+      @JsonProperty("assetType") final String assetType,
+      @JsonProperty("assetId") final String assetId) {
+    super(message);
+    this.assetType = assetType;
+    this.assetId = assetId;
   }
 
   public String getAssetType() {

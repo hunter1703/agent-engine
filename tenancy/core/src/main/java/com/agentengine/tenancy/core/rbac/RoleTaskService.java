@@ -2,6 +2,7 @@ package com.agentengine.tenancy.core.rbac;
 
 import com.agentengine.tenancy.core.repository.RoleMappingRepository;
 import com.agentengine.tenancy.core.repository.RoleRepository;
+import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.pekko.tasks.AbstractActorTaskService;
 import com.agentengine.util.pekko.tasks.TaskActorFactory;
@@ -27,18 +28,15 @@ public class RoleTaskService extends AbstractActorTaskService<Role> {
 
   private final RoleRepository roleRepository;
   private final RoleMappingRepository roleMappingRepository;
-  private final RoleMappingTaskService roleMappingTaskService;
 
   @Inject
   public RoleTaskService(
       final RoleRepository roleRepository,
       final RoleMappingRepository roleMappingRepository,
-      final RoleMappingTaskService roleMappingTaskService,
       final TaskActorFactory taskActorFactory) {
     super(taskActorFactory);
     this.roleRepository = roleRepository;
     this.roleMappingRepository = roleMappingRepository;
-    this.roleMappingTaskService = roleMappingTaskService;
   }
 
   @Override
@@ -54,9 +52,7 @@ public class RoleTaskService extends AbstractActorTaskService<Role> {
   @Override
   public void handle(final List<Role> roles) {
     for (final Role role : roles) {
-      roleMappingRepository
-          .updateStatusOnAssetsWithRole(role.getId(), TaskStatus.PENDING)
-          .forEach(roleMappingTaskService::submit);
+      roleMappingRepository.updateStatusOnAssetsWithRole(role.getId(), TaskStatus.PENDING);
     }
   }
 

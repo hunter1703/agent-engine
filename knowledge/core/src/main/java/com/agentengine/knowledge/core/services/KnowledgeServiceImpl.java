@@ -177,7 +177,6 @@ public class KnowledgeServiceImpl implements KnowledgeService {
       return;
     }
     try {
-      knowledgeRepo.deleteChunks(id);
 
       final List<KnowledgeIndexer> availableIndexers = indexers.get();
       LOG.debug(
@@ -198,7 +197,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
               .findFirst()
               .orElseThrow(() -> new RuntimeException("No suitable indexer found"));
       LOG.info("Selected indexer: {}", indexer.getClass().getSimpleName());
-      final KnowledgeIndexer.IndexResult result = indexer.index(knowledge);
+      final KnowledgeIndexer.IndexResult result = indexer.index(inProgress);
 
       final List<Operation> operations =
           new ArrayList<>(
@@ -211,9 +210,12 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         operations.add(Operation.set(Knowledge.FIELD_DESCRIPTION, result.generatedDescription()));
       }
       knowledgeRepo.update(inProgress, new Update(operations));
+      knowledgeRepo.updateChunkStatus(id, inProgress.getVersion(), IndexingStatus.COMPLETED.name());
+      knowledgeRepo.deleteOlderVersions(id, inProgress.getVersion());
       LOG.info("Indexed knowledge {} — {} chunks", id, result.chunkCount());
     } catch (final StaleStateException exception) {
       LOG.info("Knowledge {} changed while indexing; result dropped", id);
+      knowledgeRepo.deleteChunksOfVersion(id, inProgress.getVersion());
     } catch (final Exception e) {
       LOG.error("Indexing failed for knowledge {}", id, e);
       try {
@@ -221,6 +223,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
       } catch (final StaleStateException exception) {
         LOG.info("Knowledge {} changed while indexing; failure not recorded", id);
       }
+      knowledgeRepo.deleteChunksOfVersion(id, inProgress.getVersion());
     }
   }
 

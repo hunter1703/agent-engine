@@ -2,11 +2,7 @@ package com.agentengine.util.common.repository;
 
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.exception.StaleStateException;
-import com.agentengine.util.common.query.Filter;
-import com.agentengine.util.common.query.Filters;
-import com.agentengine.util.common.query.Page;
-import com.agentengine.util.common.query.PaginatedResult;
-import com.agentengine.util.common.query.Query;
+import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.utils.CollectionUtils;
@@ -14,12 +10,8 @@ import com.agentengine.util.common.utils.EntityUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.common.validation.ValidationService;
 import jakarta.inject.Inject;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
+import java.util.function.ToLongFunction;
 
 /**
  * What every repository does whatever stores its entities: validating them, keeping the fields the
@@ -71,7 +63,7 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
   }
 
   @Override
-  public final T insert(final T entity) {
+  public T insert(final T entity) {
     validateEntity(entity);
     return create(List.of(entity)).getFirst();
   }
@@ -86,19 +78,20 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
   }
 
   @Override
-  public final T update(final String id, final T entity) {
+  public T update(final String id, final T entity) {
     return replace(id, entity == null ? null : entity.getVersion(), entity, false);
   }
 
   @Override
   public final T save(final T entity) {
-    return entity != null && StringUtils.isBlank(entity.getId())
-        ? insert(entity)
-        : replace(
-            entity == null ? null : entity.getId(),
-            entity == null ? null : entity.getVersion(),
-            entity,
-            true);
+    if (entity != null && entity.getVersion() == null) {
+      return insert(entity);
+    }
+    return replace(
+        entity == null ? null : entity.getId(),
+        entity == null ? null : entity.getVersion(),
+        entity,
+        false);
   }
 
   @Override
@@ -137,6 +130,11 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
     return updateMatching(filter, update, false);
   }
 
+  public long updateManyIgnoringVersion(
+      final Filter filter, final Update update, boolean invokeListeners) {
+    return updateMatching(filter, update, false, invokeListeners);
+  }
+
   @Override
   public boolean delete(final T entity) {
     return deleteFromStore(entity);
@@ -148,9 +146,26 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
   }
 
   @Override
-  public void deleteByFilterIgnoringVersion(final Filter filter) {
-    store.deleteByFilter(filter);
-    publish(new EntityChange.Matching<>(EntityChange.Type.DELETED, filter));
+  public long deleteByFilterIgnoringVersion(final Filter filter) {
+    if (changeListeners == null || !changeListeners.hasListeners(entityClass)) {
+      return store.deleteByFilter(filter);
+    }
+
+    final long[] totalDeleted = {0};
+    applyInBatches(
+        filter,
+        batchIds -> {
+          final Filter deleteFilter = Filters.in(BaseEntity.FIELD_ID, batchIds);
+          long deleted = store.deleteByFilter(deleteFilter);
+          if (deleted > 0) {
+            totalDeleted[0] += deleted;
+            publish(
+                new EntityChange.Ids<>(EntityChange.Type.DELETED, new java.util.HashSet<>(batchIds)));
+          }
+          return batchIds.size();
+        },
+        false);
+    return totalDeleted[0];
   }
 
   /** The listeners every write through this repository is published to. */
@@ -217,16 +232,34 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
 
   /** Applies {@code update} to one or every entity {@code filter} matches. */
   protected final long updateMatching(final Filter filter, final Update update, final boolean one) {
+    return updateMatching(filter, update, one, true);
+  }
+
+  protected final long updateMatching(
+      final Filter filter, final Update update, final boolean one, boolean invokeListeners) {
     final Update applicable = EntityUtils.prepareUpdate(update, contextualFields());
     if (applicable.operations().isEmpty()) {
       return 0;
     }
-    final long updated =
-        one ? store.updateOne(filter, applicable) : store.updateMany(filter, applicable);
-    if (updated > 0) {
-      publish(new EntityChange.Matching<>(EntityChange.Type.UPDATED, filter));
+    if (!invokeListeners || changeListeners == null || !changeListeners.hasListeners(entityClass)) {
+      return one ? store.updateOne(filter, applicable) : store.updateMany(filter, applicable);
     }
-    return updated;
+
+    return applyInBatches(
+        filter,
+        batchIds -> {
+          final Filter updateFilter = Filters.in(BaseEntity.FIELD_ID, batchIds);
+          final long updatedCount =
+              one
+                  ? store.updateOne(updateFilter, applicable)
+                  : store.updateMany(updateFilter, applicable);
+
+          if (updatedCount > 0) {
+            publish(new EntityChange.Ids<>(EntityChange.Type.UPDATED, new HashSet<>(batchIds)));
+          }
+          return updatedCount;
+        },
+        one);
   }
 
   /**
@@ -280,7 +313,7 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
         existing == null
             ? null
             : Objects.requireNonNullElse(expectedVersion, existing.getVersion());
-    final T written = store.replace(entity, versionToExpect, upsert);
+    final T written = store.replace(entity, versionToExpect, upsert, existing);
     publish(
         new EntityChange.Entities<>(
             existing == null ? EntityChange.Type.CREATED : EntityChange.Type.UPDATED,
@@ -317,6 +350,50 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
       throw new IllegalArgumentException("Entity is required.");
     }
     validationService.validate(entity);
+  }
+
+  private long applyInBatches(
+      final Filter filter,
+      final ToLongFunction<List<String>> batchOperation,
+      final boolean breakOnFirst) {
+    long totalAffected = 0;
+    final int batchSize = 100;
+    String lastId = null;
+
+    while (true) {
+      Filter keysetFilter = filter;
+      if (lastId != null) {
+        keysetFilter =
+            filter == null
+                ? Filters.gt(BaseEntity.FIELD_ID, lastId)
+                : Filters.and(filter, Filters.gt(BaseEntity.FIELD_ID, lastId));
+      }
+
+      final Query query =
+          new Query()
+              .withFilter(keysetFilter)
+              .withSort(
+                  new com.agentengine.util.common.query.Sort(
+                      BaseEntity.FIELD_ID, com.agentengine.util.common.query.Sort.Order.ASC))
+              .withIncludeFields(List.of(BaseEntity.FIELD_ID))
+              .withPage(new Page(0, batchSize));
+
+      final List<String> batchIds =
+          store.findByQuery(query).getItems().stream().map(BaseEntity::getId).toList();
+
+      if (batchIds.isEmpty()) {
+        break;
+      }
+
+      final long affectedCount = batchOperation.applyAsLong(batchIds);
+      totalAffected += affectedCount;
+
+      if (breakOnFirst || batchIds.size() < batchSize) {
+        break;
+      }
+      lastId = batchIds.getLast();
+    }
+    return totalAffected;
   }
 
   // Matches the entity only while the stored one is still at its version.

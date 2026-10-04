@@ -105,5 +105,5 @@ public interface Repository<T extends BaseEntity> {
    * Deletes every entity matching the filter, or every entity when the filter is null, whatever
    * their versions.
    */
-  void deleteByFilterIgnoringVersion(Filter filter);
+  long deleteByFilterIgnoringVersion(Filter filter);
 }

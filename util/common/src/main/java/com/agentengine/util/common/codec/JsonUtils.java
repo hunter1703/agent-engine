@@ -153,6 +153,19 @@ public final class JsonUtils {
     return JSON_MAPPER.convertValue(obj, new TypeReference<>() {});
   }
 
+  /** A deep copy of {@code value}, made through its JSON form: what JSON leaves out is left out. */
+  @SuppressWarnings("unchecked")
+  public static <T> T copy(final T value) {
+    if (value == null) {
+      return null;
+    }
+    try {
+      return (T) JSON_MAPPER.treeToValue(JSON_MAPPER.valueToTree(value), value.getClass());
+    } catch (final JsonProcessingException exception) {
+      throw new IllegalStateException("Failed to copy " + value.getClass().getName(), exception);
+    }
+  }
+
   public static String toStableJson(final Object value) {
     return toJson(value);
   }

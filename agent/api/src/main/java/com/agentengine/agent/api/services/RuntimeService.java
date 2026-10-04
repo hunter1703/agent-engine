@@ -49,6 +49,12 @@ public interface RuntimeService extends AssetPermissionService {
 
   void rollbackSession(String sessionId, String runId);
 
+  /**
+   * Stops the session: its actor refuses every command from then on, so its id can never be used
+   * again, and whatever was shared with it is forgotten.
+   */
+  void stopSession(String sessionId);
+
   String invokeExpert(String expertId, String modelId, UserMessage userMessage);
 
   /** Creates or replaces an agent schedule, and the scheduler job that fires it. */
@@ -64,4 +70,6 @@ public interface RuntimeService extends AssetPermissionService {
   boolean deleteSchedule(String id);
 
   void deleteAgentSchedules(Collection<String> agentIds);
+
+  void reconcileSchedules(long sinceTimestamp);
 }

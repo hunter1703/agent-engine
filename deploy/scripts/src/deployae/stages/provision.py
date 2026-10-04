@@ -33,7 +33,13 @@ class ProvisionStage(InternalEndpointStage):
 
     def _customers(self) -> list[dict]:
         path = CONFIGS_DIR / self.environment / "customers.json"
-        return json.loads(expand_json_vars(path)) if path.is_file() else []
+        roles_path = CONFIGS_DIR / self.environment / "governance" / "roles.json"
+        roles = json.loads(expand_json_vars(roles_path)) if roles_path.is_file() else []
+        customers = json.loads(expand_json_vars(path)) if path.is_file() else []
+        for customer in customers:
+            if "roles" not in customer:
+                customer["roles"] = roles
+        return customers
 
     def _provision(self, target: str, response: httpx.Response, service: str) -> None:
         steps = self._succeeded(response, service).json()["steps"]

@@ -18,6 +18,8 @@ public class KnowledgeChunk extends VectorEntity {
 
   public static final String FIELD_KNOWLEDGE_ID = "knowledgeId";
   public static final String FIELD_AGENT_ID = "agentId";
+  public static final String FIELD_KNOWLEDGE_VERSION = "knowledgeVersion";
+  public static final String FIELD_STATUS = "status";
 
   public static final String FIELD_TEXT = "text";
 
@@ -26,6 +28,8 @@ public class KnowledgeChunk extends VectorEntity {
 
   @Indexed private String knowledgeId;
   @Indexed private String agentId;
+  @Indexed private long knowledgeVersion;
+  @Indexed private String status;
   private int chunkIndex;
 
   @Indexed(vector = true)
@@ -64,6 +68,22 @@ public class KnowledgeChunk extends VectorEntity {
 
   public void setAgentId(final String agentId) {
     this.agentId = agentId;
+  }
+
+  public String getStatus() {
+    return status;
+  }
+
+  public void setStatus(final String status) {
+    this.status = status;
+  }
+
+  public long getKnowledgeVersion() {
+    return knowledgeVersion;
+  }
+
+  public void setKnowledgeVersion(final long knowledgeVersion) {
+    this.knowledgeVersion = knowledgeVersion;
   }
 
   public int getChunkIndex() {

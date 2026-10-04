@@ -1,5 +1,7 @@
 package com.agentengine.util.common.beans;
 
+import com.agentengine.util.common.utils.CollectionUtils;
+
 import java.util.List;
 
 /**
@@ -9,6 +11,10 @@ import java.util.List;
  * by resolving roles itself.
  */
 public record Acl(List<String> grants, long version) {
+
+  public Acl{
+    grants = CollectionUtils.nullSafeList(grants);
+  }
 
   public static final String FIELD_GRANTS = "grants";
   public static final String FIELD_VERSION = "version";

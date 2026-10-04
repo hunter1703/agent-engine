@@ -12,5 +12,8 @@ public interface EntityChangeListener<T extends BaseEntity> {
   /** The entity class whose repository's writes this listener is told about. */
   Class<T> entityClass();
 
+  default void onChange(Class<T> entityClass, EntityChange<T> change) {
+    onChange(change);
+  }
   void onChange(EntityChange<T> change);
 }

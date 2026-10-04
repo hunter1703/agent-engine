@@ -85,17 +85,12 @@ public class SchedulerProvisioningServiceImpl implements SchedulerProvisioningSe
 
   /**
    * Schedules the customer's jobs as {@value #JOBS_RESOURCE} defines them. A job's id is stable per
-   * customer, so provisioning again sets a stored job to its template, at the version stored.
+   * customer, so provisioning again sets a stored job to its template, whatever it was.
    */
   private void scheduleCustomerJobs(final String customerId) {
     for (final Map<String, Object> definition :
         jobTemplates.getValue(Map.of(CUSTOMER_ID_PARAMETER, customerId))) {
-      final JobDefinition job = JsonUtils.fromMap(definition, JobDefinition.class);
-      final JobDefinition existingJob = schedulerService.getJob(job.getId());
-      if (existingJob != null) {
-        job.setVersion(existingJob.getVersion());
-      }
-      schedulerService.schedule(job);
+      schedulerService.scheduleIgnoringVersion(JsonUtils.fromMap(definition, JobDefinition.class));
     }
   }
 }

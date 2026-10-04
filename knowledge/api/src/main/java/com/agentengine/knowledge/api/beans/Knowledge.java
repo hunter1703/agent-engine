@@ -1,11 +1,15 @@
 package com.agentengine.knowledge.api.beans;
 
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
+import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.annotations.Permissioned;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.FileDetails;
 
+@Index(name = "knowledge_updated_idx", def = "{'updatedTime': -1}")
+@Index(name = "knowledge_agent_updated_idx", def = "{'agentId': 1, 'updatedTime': -1}")
+@Index(name = "knowledge_status_updated_idx", def = "{'indexingStatus': 1, 'updatedTime': -1}")
 @Permissioned(assetClass = AssetClass.KNOWLEDGE)
 public class Knowledge extends BaseEntity {
   public static final String FIELD_INDEXING_STATUS = "indexingStatus";

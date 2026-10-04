@@ -77,7 +77,7 @@ public class RunnerFactory {
     this.notebookService = notebookService;
     this.cache =
         new DistributedCache.Builder<SessionRunner>(RuntimeService.RUNNER_CACHE, cacheManager)
-            .removalListener(SessionRunner::close)
+            .removalListener(SessionRunner::stop)
             .build();
   }
 
@@ -93,8 +93,8 @@ public class RunnerFactory {
         key -> Context.require().asSystemCaller().get(() -> build(agentId, sessionId, actor)));
   }
 
-  public void stop(final String agentId, final String sessionId) {
-    cache.invalidateLocally(cacheKey(agentId, sessionId));
+  public void stopped(final SessionRunner runner) {
+    cache.invalidateLocally(cacheKey(runner.getAgentId(), runner.getSessionId()));
   }
 
   private static String cacheKey(final String agentId, final String sessionId) {
@@ -120,7 +120,7 @@ public class RunnerFactory {
             .sessionService(inMemorySessionService)
             .memoryService(memoryService)
             .build();
-    return new SessionRunner(sessionId, actor, agent, runner, agentSession.getCreatedBy());
+    return new SessionRunner(agentId, sessionId, actor, runner, agentSession.getCreatedBy());
   }
 
   private InMemorySessionService buildInMemorySessionService(

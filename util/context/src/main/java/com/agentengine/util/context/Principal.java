@@ -2,12 +2,8 @@ package com.agentengine.util.context;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+
+import java.util.*;
 
 /**
  * A user acting in the context of a chain of assets, each acting in the context of the one before
@@ -71,6 +67,16 @@ public record Principal(List<Segment> segments) {
     return segments.size() == 1;
   }
 
+  /** The id of the asset of {@code assetClass} in this principal, if present. */
+  public Optional<String> assetId(final String assetClass) {
+    for (final Segment segment : segments) {
+      if (segment.assetClass().equals(assetClass)) {
+        return Optional.of(segment.assetId());
+      }
+    }
+    return Optional.empty();
+  }
+
   /** This principal, acting in the context of asset {@code assetClass}/{@code assetId}. */
   public Principal within(final String assetClass, final String assetId) {
     final List<Segment> extended = new ArrayList<>(segments);
@@ -86,6 +92,11 @@ public record Principal(List<Segment> segments) {
   /** This principal, for any user instead of its own. */
   public Principal forAnyUser() {
     return withUser(Segment.anyOf(USER));
+  }
+
+  /** Whether this principal acts in the asset {@code assetClass}/{@code assetId}. */
+  public boolean actsIn(final String assetClass, final String assetId) {
+    return segments.subList(1, segments.size()).contains(new Segment(assetClass, assetId));
   }
 
   /**

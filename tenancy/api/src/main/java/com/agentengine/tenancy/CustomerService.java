@@ -11,4 +11,6 @@ public interface CustomerService {
   Customer getByDomain(String domain);
 
   Customer create(Customer customer);
+
+  Customer update(String id, Customer customer);
 }

@@ -53,12 +53,25 @@ public class UserRepository extends AbstractPermissionedRepository<User> {
     this.sequenceRepository = new SequenceRepository(documentBackend, validationService);
   }
 
-  public User create(final User user, final String password) {
+  @Override
+  public User insert(final User user) {
     user.setId(String.valueOf(sequenceRepository.increment(AssetClass.USER)));
-    user.setPasswordHash(BcryptUtil.bcryptHash(password));
-    final User created = insert(user);
+    user.setPasswordHash(BcryptUtil.bcryptHash(user.getPassword()));
+    final User created = super.insert(user);
     created.setPasswordHash(null);
     return created;
+  }
+
+  @Override
+  public User update(final String id, final User user) {
+    if (StringUtils.isNotBlank(user.getPassword())) {
+      user.setPasswordHash(BcryptUtil.bcryptHash(user.getPassword()));
+    }
+    final User updated = super.update(id, user);
+    if (updated != null) {
+      updated.setPasswordHash(null);
+    }
+    return updated;
   }
 
   public User authenticate(final String username, final String password) {
@@ -103,13 +116,29 @@ public class UserRepository extends AbstractPermissionedRepository<User> {
     if (updated == null) {
       throw new UnauthorizedException(User.class.getSimpleName(), id);
     }
+    updated.setPasswordHash(null);
     return updated;
   }
 
   @Override
   public User findOneAndUpdateIgnoringVersion(final Query query, final Update update) {
-    return super.findOneAndUpdateIgnoringVersion(withoutPasswordHash(query), update);
+    final User updated = super.findOneAndUpdateIgnoringVersion(withoutPasswordHash(query), update);
+    if (updated != null) {
+      updated.setPasswordHash(null);
+    }
+    return updated;
   }
+
+  @Override
+  public User update(final User entity, final Update update) {
+    final User updated = super.update(entity, update);
+    if (updated != null) {
+      updated.setPasswordHash(null);
+    }
+    return updated;
+  }
+
+
 
   private static Query getUserNameQuery(final String username) {
     return new Query()

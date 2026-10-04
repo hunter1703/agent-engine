@@ -22,7 +22,7 @@ public abstract class BaseEntity {
   private String id;
   private long createdTime;
   private long updatedTime;
-  private long version = 0;
+  private Long version;
   private String createdBy;
   private List<String> tags;
 
@@ -58,11 +58,11 @@ public abstract class BaseEntity {
     this.updatedTime = updatedTime;
   }
 
-  public long getVersion() {
+  public Long getVersion() {
     return version;
   }
 
-  public void setVersion(final long version) {
+  public void setVersion(final Long version) {
     this.version = version;
   }
 
@@ -113,7 +113,7 @@ public abstract class BaseEntity {
   public void cleanContextualFields() {
     createdTime = 0;
     updatedTime = 0;
-    version = 0;
+    version = null;
     createdBy = null;
     acl = Acl.EMPTY;
   }

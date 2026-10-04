@@ -1,7 +1,11 @@
 package com.agentengine.util.common.exception;
 
-public class ConfigurationException extends RuntimeException {
-  public ConfigurationException(final String message) {
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public class ConfigurationException extends RuntimeException implements ApplicationException {
+  @JsonCreator
+  public ConfigurationException(@JsonProperty("message") final String message) {
     super(message);
   }
 

@@ -10,7 +10,7 @@ app-base:
   replicas: 1
   resources:
     requests:
-      cpu: "100m"
+      cpu: "75m"
       memory: "256Mi"
     limits:
       cpu: "100m"

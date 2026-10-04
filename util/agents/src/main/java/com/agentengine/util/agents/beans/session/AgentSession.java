@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Index(name = "agent_session_updated_idx", def = "{'updatedTime': -1}")
+@Index(name = "agent_session_agent_updated_idx", def = "{'agentId': 1, 'updatedTime': -1}")
+@Index(name = "agent_session_status_updated_idx", def = "{'status': 1, 'updatedTime': -1}")
 @Permissioned(assetClass = AssetClass.AGENT_SESSION)
 public class AgentSession extends NamedEntity {
   public static final String FIELD_STATE = "state";

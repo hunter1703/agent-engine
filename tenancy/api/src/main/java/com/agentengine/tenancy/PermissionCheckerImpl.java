@@ -15,7 +15,12 @@ import com.agentengine.util.tenancy.PermissionUtils;
 import com.google.common.cache.CacheBuilder;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -30,10 +35,9 @@ public class PermissionCheckerImpl implements PermissionChecker {
   private static final long ACTIVE_USERS_TTL_SECONDS = 60;
 
   private final AccessControlService accessControlService;
-  // Looked up lazily, since in the tenancy service the users' own repository checks access here.
   private final DistributedCache<Map<String, Set<Permission>>> permissionsOnEveryAssetCache;
   private final DistributedCache<Boolean> activeUsersCache;
-
+  // Looked up lazily, since in the tenancy service the users' own repository checks access here.
   private final LazyLoader<UserService> userService;
 
   public PermissionCheckerImpl(
@@ -68,26 +72,19 @@ public class PermissionCheckerImpl implements PermissionChecker {
       final Supplier<BaseEntity> entitySupplier,
       final String assetClass,
       final Permission permission) {
-    if (isSystem()) {
-      return true;
-    }
-    if (!actsForActiveUser()) {
-      return false;
-    }
-    final BaseEntity entity = entitySupplier.get();
-    return entity != null && grantsGivePermission(entity.getAcl().grants(), assetClass, permission);
+    return aclGivesPermission(
+        () -> {
+          final BaseEntity entity = entitySupplier.get();
+          return entity == null ? null : entity.getAcl();
+        },
+        assetClass,
+        permission);
   }
 
   @Override
   public boolean hasPermission(
       final Acl acl, final String assetClass, final Permission permission) {
-    if (isSystem()) {
-      return true;
-    }
-    if (!actsForActiveUser()) {
-      return false;
-    }
-    return acl != null && grantsGivePermission(acl.grants(), assetClass, permission);
+    return aclGivesPermission(() -> acl, assetClass, permission);
   }
 
   @Override
@@ -95,9 +92,34 @@ public class PermissionCheckerImpl implements PermissionChecker {
     if (isSystem()) {
       return true;
     }
+    return actsForActiveUser() && contextHasPermissionOnEveryAsset(assetClass, permission);
+  }
+
+  /**
+   * Whether the access list, read only when the context is a user's, or the context's roles on
+   * every asset, give {@code permission}; always for the system.
+   */
+  private boolean aclGivesPermission(
+      final Supplier<Acl> aclSupplier, final String assetClass, final Permission permission) {
+    if (isSystem()) {
+      return true;
+    }
     if (!actsForActiveUser()) {
       return false;
     }
+    final Acl acl = aclSupplier.get();
+    if (acl == null) {
+      return false;
+    }
+    if (CollectionUtils.isNotEmpty(acl.grants())
+        && !Collections.disjoint(acl.grants(), PermissionUtils.contextGrants(permission))) {
+      return true;
+    }
+    return contextHasPermissionOnEveryAsset(assetClass, permission);
+  }
+
+  private boolean contextHasPermissionOnEveryAsset(
+      final String assetClass, final Permission permission) {
     for (final Map<String, Set<Permission>> assetClassVsPermissions :
         permissionsOnEveryAsset(PermissionUtils.contextPrincipals())) {
       if (assetClassVsPermissions.getOrDefault(assetClass, Set.of()).contains(permission)) {
@@ -112,7 +134,7 @@ public class PermissionCheckerImpl implements PermissionChecker {
    * uncached one in a single call.
    */
   private Collection<Map<String, Set<Permission>>> permissionsOnEveryAsset(
-      final List<Principal> principals) {
+      final Set<Principal> principals) {
     return permissionsOnEveryAssetCache
         .getAll(principals.stream().map(Principal::toString).toList(), this::loadPermissions)
         .values();
@@ -154,16 +176,6 @@ public class PermissionCheckerImpl implements PermissionChecker {
    * scheduled jobs, running sessions — lose every permission within {@link
    * #ACTIVE_USERS_TTL_SECONDS}.
    */
-  /** Whether {@code grants}, or the context's roles on every asset, give {@code permission}. */
-  private boolean grantsGivePermission(
-      final List<String> grants, final String assetClass, final Permission permission) {
-    if (CollectionUtils.isNotEmpty(grants)
-        && !Collections.disjoint(grants, PermissionUtils.contextGrants(permission))) {
-      return true;
-    }
-    return hasPermissionOnEveryAsset(assetClass, permission);
-  }
-
   private boolean actsForActiveUser() {
     final String userId = Context.currentUserId().orElse(null);
     return userId != null && activeUsersCache.get(userId);

@@ -41,10 +41,13 @@ public class SchedulerServiceImpl implements SchedulerService {
 
   @Override
   public String schedule(final JobDefinition jobDefinition) {
-    final Context context = Context.require();
-    jobDefinition.setCustomerId(context.customerId());
-    jobDefinition.setCaller(context.caller().toString());
-    saveTrigger(jobDefinitionRepository.save(jobDefinition));
+    saveTrigger(jobDefinitionRepository.save(addCaller(jobDefinition)));
+    return jobDefinition.getId();
+  }
+
+  @Override
+  public String scheduleIgnoringVersion(final JobDefinition jobDefinition) {
+    saveTrigger(jobDefinitionRepository.saveIgnoringVersion(addCaller(jobDefinition)));
     return jobDefinition.getId();
   }
 
@@ -65,6 +68,14 @@ public class SchedulerServiceImpl implements SchedulerService {
     }
     triggerDefinitionRepository.cancelAllJobTriggers(jobId);
     return true;
+  }
+
+  /** The job, set to run in the current customer, as the current caller. */
+  private static JobDefinition addCaller(final JobDefinition jobDefinition) {
+    final Context context = Context.require();
+    jobDefinition.setCustomerId(context.customerId());
+    jobDefinition.setCaller(context.caller().toString());
+    return jobDefinition;
   }
 
   /**

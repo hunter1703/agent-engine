@@ -10,6 +10,7 @@ import com.agentengine.util.ms.grpc.Response;
 import com.agentengine.util.ms.grpc.ServiceGrpc;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ClientCallStreamObserver;
 import io.grpc.stub.ClientResponseObserver;
 import io.opentelemetry.api.trace.Span;
@@ -73,7 +74,12 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
     if (Publisher.class.isAssignableFrom(method.getReturnType())) {
       return streamingCall(request, method, raw);
     }
-    final Object result = blockingCall(request, method);
+    final Object result;
+    try {
+      result = blockingCall(request, method);
+    } catch (final StatusRuntimeException exception) {
+      throw MicroServiceUtils.fromStatusException(exception);
+    }
     return method.getReturnType().equals(CompletionStage.class)
         ? CompletableFuture.completedFuture(result)
         : result;
@@ -205,7 +211,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
                           @Override
                           public void onError(final Throwable throwable) {
-                            emitter.onError(throwable);
+                            emitter.onError(MicroServiceUtils.fromStatusException(throwable));
                           }
 
                           @Override

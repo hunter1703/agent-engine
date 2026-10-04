@@ -17,6 +17,7 @@ import com.agentengine.agent.core.session.commands.ExternalCommand.GetCurrentTur
 import com.agentengine.agent.core.session.commands.ExternalCommand.ResumeCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.RollbackCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.StartCommand;
+import com.agentengine.agent.core.session.commands.ExternalCommand.StopCommand;
 import com.agentengine.agent.core.session.commands.ParentCommand.InitializeCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.state.SessionTopology;
@@ -56,7 +57,6 @@ import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.common.utils.StructuredConcurrencyUtils;
-import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.tenancy.Permission;
 import com.agentengine.util.tenancy.PermissionedCache;
@@ -70,14 +70,16 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.flowables.ConnectableFlowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.StructuredTaskScope.Subtask;
+import java.util.stream.Collectors;
 import org.apache.pekko.Done;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.reactivestreams.Publisher;
@@ -208,13 +210,21 @@ public class RuntimeServiceImpl implements RuntimeService {
     return initializedSessionId;
   }
 
+  /**
+   * Initializes the session, a new one when {@code sessionId} is blank or names none, and returns
+   * its id. An existing session takes EDIT on it, and must be of {@code agentId}; a deleted one's
+   * id can never be used again.
+   *
+   * @throws IllegalArgumentException when {@code sessionId} is not an id a principal can hold
+   */
   private String initializeSession(final String agentId, final String sessionId) {
     requireAgentAccess(agentId);
-    if (StringUtils.isNotBlank(sessionId) && !canEditSessionOrMissing(sessionId)) {
-      throw new UnauthorizedException(AssetClass.AGENT_SESSION, sessionId);
+    if (StringUtils.isNotBlank(sessionId)) {
+      requireCanContinueSession(agentId, sessionId);
     }
     final String resolvedSessionId =
-        StringUtils.isBlank(sessionId) ? SessionUtils.newSessionId(agentId) : sessionId;
+        StringUtils.isBlank(sessionId) ? SessionUtils.newSessionId() : sessionId;
+
     sessionActorFactory
         .entityRef(resolvedSessionId)
         .<Done>ask(
@@ -232,19 +242,27 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
   }
 
-  private void requireCanEditSession(final String sessionId) {
-    if (!sessionService.hasPermission(sessionId, Permission.EDIT)) {
+  private void requireCanUseSession(final String sessionId) {
+    if (!sessionService.hasPermission(sessionId, Permission.READ)) {
       throw new UnauthorizedException(AssetClass.AGENT_SESSION, sessionId);
     }
   }
 
-  /** Whether the caller may edit the session, or no session has the id yet. */
-  private boolean canEditSessionOrMissing(final String sessionId) {
-    return sessionService.hasPermission(sessionId, Permission.EDIT)
-        || Context.require()
-                .as(Caller.SYSTEM)
-                .get(() -> sessionService.getSession(sessionId, List.of(AgentSession.FIELD_STATUS)))
-            == null;
+  /**
+   * Throws unless no session has the id yet, or the caller may edit the session and it is of {@code
+   * agentId}. The session is read as the system, since whether it exists is not the caller's to
+   * see, and uncached, since a session missing now is about to be created.
+   */
+  private void requireCanContinueSession(final String agentId, final String sessionId) {
+    final AgentSession session =
+        sessionService.getSession(sessionId, List.of(AgentSession.FIELD_AGENT_ID));
+    if (session == null) {
+      return;
+    }
+    if (!agentId.equals(session.getAgentId())) {
+      throw new IllegalArgumentException(
+          "Session " + sessionId + " is of agent " + session.getAgentId() + ", not " + agentId);
+    }
   }
 
   private void startTurn(final String agentId, final String sessionId, final UserMessage message) {
@@ -267,15 +285,15 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private UserMessage resolveMessage(
       final String agentId, final String sessionId, final UserMessage message) {
+    final List<AgentFileDetails> attachments = message.attachments();
+    if (CollectionUtils.isEmpty(attachments)) {
+      return message;
+    }
+
     return Context.require()
         .actingAs(AgentSession.principal(agentId, sessionId))
         .get(
             () -> {
-              final List<AgentFileDetails> attachments = message.attachments();
-              if (CollectionUtils.isEmpty(attachments)) {
-                return message;
-              }
-
               final List<AgentFileDetails> toIndex = new ArrayList<>();
               final List<AgentFileDetails> resolved = new ArrayList<>();
               for (final AgentFileDetails fileDetails : attachments) {
@@ -350,7 +368,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   public void resumeSession(final String sessionId, final ResumeRequest resumeRequest) {
     LOG.debug(
         "Resuming session {} with interrupt id '{}'", sessionId, resumeRequest.getInterruptId());
-    requireCanEditSession(sessionId);
+    requireCanUseSession(sessionId);
     requireAgentAccess(sessionCache.get(sessionId).getAgentId());
     final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
     ref.<ResumeResult>ask(
@@ -368,7 +386,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   @Override
   public void rollbackSession(final String sessionId, final String runId) {
     LOG.debug("Rolling back run {} for session {}", runId, sessionId);
-    requireCanEditSession(sessionId);
+    requireCanUseSession(sessionId);
     final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
     final RollbackResult result =
         ref.<RollbackResult>ask(
@@ -380,6 +398,24 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
   }
 
+  /**
+   * Retires the session's actor first, so no run starts while it goes, then has tenancy forget what
+   * was shared with the session, then deletes its record.
+   */
+  @Override
+  public void stopSession(final String sessionId) {
+    final AgentSession session =
+        Context.require().asSystemCaller().get(() -> sessionCache.get(sessionId));
+    if (session == null) {
+      return;
+    }
+    sessionActorFactory
+        .entityRef(sessionId)
+        .<Done>ask(StopCommand::new, SessionActorFactory.ASK_TIMEOUT)
+        .toCompletableFuture()
+        .join();
+  }
+
   @Override
   public String invokeExpert(
       final String expertId, final String modelId, final UserMessage userMessage) {
@@ -389,7 +425,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   @Override
   public AgentSchedule saveSchedule(final AgentSchedule schedule) {
     requireAgentAccess(schedule.getAgentId());
-    final AgentSchedule saved = agentScheduleRepository.save(schedule);
+    final AgentSchedule saved = agentScheduleRepository.saveIgnoringVersion(schedule);
     final JobDefinition existingJob = schedulerService.getJob(saved.getId());
     schedulerService.schedule(
         invokeAgentJob(existingJob == null ? new JobDefinition() : existingJob, saved));
@@ -432,6 +468,77 @@ public class RuntimeServiceImpl implements RuntimeService {
             .getItems();
     for (final AgentSchedule schedule : schedules) {
       deleteSchedule(schedule.getId());
+    }
+  }
+
+  @Override
+  public void reconcileSchedules(final long sinceTimestamp) {
+    // Pass 1: Ensure every AgentSchedule has a corresponding and correct JobDefinition
+    int scheduleOffset = 0;
+    while (true) {
+      Query scheduleQuery = new Query().withPage(new Page(scheduleOffset, 100));
+      if (sinceTimestamp > 0) {
+        scheduleQuery =
+            scheduleQuery.withFilter(Filters.gte(BaseEntity.FIELD_UPDATED_TIME, sinceTimestamp));
+      }
+
+      final PaginatedResult<AgentSchedule> result =
+          agentScheduleRepository.findByQuery(scheduleQuery);
+      final List<AgentSchedule> schedules = result.getItems();
+      if (schedules.isEmpty()) {
+        break;
+      }
+
+      final List<String> scheduleIds = schedules.stream().map(BaseEntity::getId).toList();
+      final List<JobDefinition> jobs =
+          schedulerService
+              .findJobs(
+                  new Query()
+                      .withFilter(
+                          Filters.and(
+                              Filters.eq(
+                                  JobDefinition.FIELD_JOB_CLASS_NAME, INVOKE_AGENT_JOB_CLASS_NAME),
+                              Filters.in(BaseEntity.FIELD_ID, scheduleIds)))
+                      .withPage(new Page(0, scheduleIds.size())))
+              .getItems();
+
+      final Map<String, JobDefinition> jobMap =
+          jobs.stream().collect(Collectors.toMap(BaseEntity::getId, item -> item));
+
+      for (final AgentSchedule schedule : schedules) {
+        final JobDefinition existingJob = jobMap.get(schedule.getId());
+        schedulerService.scheduleIgnoringVersion(
+            invokeAgentJob(existingJob == null ? new JobDefinition() : existingJob, schedule));
+      }
+
+      scheduleOffset += schedules.size();
+    }
+
+    // Pass 2: Ensure every InvokeAgentJob has a corresponding AgentSchedule (delete orphaned jobs)
+    int jobOffset = 0;
+    while (true) {
+      final Query jobQuery =
+          new Query()
+              .withFilter(
+                  Filters.eq(JobDefinition.FIELD_JOB_CLASS_NAME, INVOKE_AGENT_JOB_CLASS_NAME))
+              .withPage(new Page(jobOffset, 100));
+
+      final PaginatedResult<JobDefinition> result = schedulerService.findJobs(jobQuery);
+      final List<JobDefinition> jobs = result.getItems();
+      if (jobs.isEmpty()) {
+        break;
+      }
+
+      final List<String> jobIds = jobs.stream().map(BaseEntity::getId).toList();
+      final Map<String, AgentSchedule> scheduleMap = agentScheduleRepository.findByIds(jobIds);
+
+      for (final JobDefinition job : jobs) {
+        if (!scheduleMap.containsKey(job.getId())) {
+          schedulerService.cancelJob(job.getId());
+        }
+      }
+
+      jobOffset += jobs.size();
     }
   }
 

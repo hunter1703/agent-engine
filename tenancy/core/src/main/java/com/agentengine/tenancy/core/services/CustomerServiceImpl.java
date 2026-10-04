@@ -38,4 +38,13 @@ public class CustomerServiceImpl implements CustomerService {
     cacheManager.broadcastInvalidation(CUSTOMER_BY_DOMAIN_CACHE, created.getDomain());
     return created;
   }
+
+  @Override
+  public Customer update(final String id, final Customer customer) {
+    Customer existing = customerRepository.findById(id);
+    Customer updated = customerRepository.update(id, customer);
+    cacheManager.broadcastInvalidation(CUSTOMER_BY_DOMAIN_CACHE, existing.getDomain());
+    cacheManager.broadcastInvalidation(CUSTOMER_BY_DOMAIN_CACHE, updated.getDomain());
+    return updated;
+  }
 }

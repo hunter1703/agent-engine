@@ -4,6 +4,7 @@ import com.agentengine.tenancy.AccessControlService;
 import com.agentengine.tenancy.core.helpers.AssetPermissionHelper;
 import com.agentengine.tenancy.core.repository.RoleMappingRepository;
 import com.agentengine.tenancy.core.repository.RoleRepository;
+import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.exception.ConfigurationException;
@@ -93,6 +94,26 @@ public class AccessControlServiceImpl implements AccessControlService {
   }
 
   @Override
+  public Role createRole(final Role role) {
+    return roleRepository.insert(role);
+  }
+
+  @Override
+  public Role getRole(final String id) {
+    return roleRepository.findById(id);
+  }
+
+  @Override
+  public Role updateRole(final String id, final Role role) {
+    return roleRepository.update(id, role);
+  }
+
+  @Override
+  public void deleteRole(final String id) {
+    roleRepository.deleteByIdIgnoringVersion(id);
+  }
+
+  @Override
   public Map<String, Map<String, Set<String>>> getAssetClassPermissions(
       final Collection<String> principals) {
     final Set<String> mappingIds = new HashSet<>();
@@ -122,6 +143,14 @@ public class AccessControlServiceImpl implements AccessControlService {
       throw new UnauthorizedException("Access lists are deleted by the system only");
     }
     roleMappingRepository.deleteForAssets(assetClass, assetIds);
+  }
+
+  @Override
+  public void forgetPrincipal(final String principal) {
+    if (!Context.require().isSystem()) {
+      throw new UnauthorizedException("Principals are forgotten by the system only");
+    }
+    roleMappingRepository.removeAllMappings(Principal.parse(principal).toString());
   }
 
   @Override
