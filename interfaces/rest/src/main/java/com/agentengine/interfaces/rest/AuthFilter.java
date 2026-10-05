@@ -3,6 +3,7 @@ package com.agentengine.interfaces.rest;
 import com.agentengine.identity.IdentityProvider;
 import com.agentengine.identity.UserSession;
 import com.agentengine.tenancy.CustomerService;
+import com.agentengine.tenancy.UserService;
 import com.agentengine.tenancy.beans.Customer;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Caller;
@@ -50,32 +51,46 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
   private static final String ORIGIN_HEADER = "Origin";
   private static final String LOGIN_PATH = "v1/auth/login";
   private static final String LOGOUT_PATH = "v1/auth/logout";
-  private static final long CUSTOMER_CACHE_TTL_SECONDS = 300;
-  private static final long CUSTOMER_CACHE_MAX_SIZE = 10_000;
 
   private final RequestContextProvider requestContextProvider;
   private final IdentityProvider identityProvider;
   private final CustomerService customerService;
+  private final UserService userService;
   private final DistributedCache<Optional<Customer>> domainVsCustomer;
+  private final DistributedCache<Boolean> activeUsersCache;
 
   @Inject
   public AuthFilter(
       final RequestContextProvider requestContextProvider,
       final IdentityProvider identityProvider,
       final CustomerService customerService,
+      final UserService userService,
       final DistributedCacheManager cacheManager) {
     this.requestContextProvider = requestContextProvider;
     this.identityProvider = identityProvider;
     this.customerService = customerService;
+    this.userService = userService;
     this.domainVsCustomer =
         new DistributedCache.Builder<Optional<Customer>>(
                 CustomerService.CUSTOMER_BY_DOMAIN_CACHE, cacheManager)
             .scope(CacheScope.GLOBAL)
             .localCache(
                 CacheBuilder.newBuilder()
-                    .maximumSize(CUSTOMER_CACHE_MAX_SIZE)
-                    .expireAfterWrite(CUSTOMER_CACHE_TTL_SECONDS, TimeUnit.SECONDS))
+                    .maximumSize(10_000)
+                    .expireAfterWrite(300, TimeUnit.SECONDS))
             .loader(this::getByDomain)
+            .build();
+    this.activeUsersCache =
+        new DistributedCache.Builder<Boolean>("ACTIVE_USERS", cacheManager)
+            .scope(CacheScope.CUSTOMER)
+            .localCache(
+                CacheBuilder.newBuilder()
+                    .expireAfterWrite(300, TimeUnit.SECONDS))
+            .loader(
+                userId ->
+                    Context.require()
+                        .asSystemCaller()
+                        .get(() -> this.userService.isActive(userId)))
             .build();
   }
 
@@ -104,7 +119,16 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
       return;
     }
     if (loggedIn.isPresent()) {
-      if (origin != null && !loggedIn.get().getCustomerId().equals(customerId)) {
+      final UserSession session = loggedIn.get();
+      final boolean active =
+          Context.asSystemUser(session.getCustomerId())
+              .get(() -> activeUsersCache.get(session.getUserId()));
+      if (!active) {
+        identityProvider.logout(sessionCookie.getValue());
+        requestContext.abortWith(Response.status(Response.Status.UNAUTHORIZED).build());
+        return;
+      }
+      if (origin != null && !session.getCustomerId().equals(customerId)) {
         requestContext.abortWith(Response.status(Response.Status.FORBIDDEN).build());
       }
       return;

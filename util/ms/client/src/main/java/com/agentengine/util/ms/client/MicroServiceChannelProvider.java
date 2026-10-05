@@ -1,7 +1,7 @@
 package com.agentengine.util.ms.client;
 
 import com.agentengine.util.distributed.DistributedCacheManager;
-import com.agentengine.util.infra.InfraClientFactory;
+import com.agentengine.util.infra.ClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.ServerType;
 import io.grpc.ManagedChannelBuilder;
@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 
 @Singleton
 public class MicroServiceChannelProvider
-    extends InfraClientFactory<
+    extends ClientFactory<
         MicroServiceClientInfraConfig, MicroServiceServerInfraConfig, Channel> {
 
   private static final Logger LOG = LoggerFactory.getLogger(MicroServiceChannelProvider.class);

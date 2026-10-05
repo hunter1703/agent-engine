@@ -14,11 +14,7 @@ public interface AclService {
 
   String PERMISSIONS_ON_EVERY_ASSET_CACHE = "PERMISSIONS_ON_EVERY_ASSET";
 
-  /**
-   * Each of {@code principals}' permissions on every asset, by principal: asset class to the names
-   * of the permissions held on all of its assets, each with every permission it implies.
-   */
-  Map<String, Map<String, Set<String>>> getAssetClassPermissions(Collection<String> principals);
+
 
   /**
    * Deletes the role mappings of the assets, for assets their owning service has deleted; by the
@@ -32,16 +28,6 @@ public interface AclService {
    * roles on are recalculated without it. By the system only.
    */
   void forgetPrincipal(String principal);
-
-  /**
-   * Recalculates the asset's access list from all its role mappings and stores it, one version on
-   * from the one the asset holds, only while the asset still holds that one. The role mappings of
-   * an asset that no longer exists are deleted. By the system only.
-   *
-   * @throws com.agentengine.util.common.exception.StaleStateException when the asset's access list
-   *     was written meanwhile
-   */
-  void recalculateAcl(String assetClass, String assetId);
 
   /**
    * Applies every change or, when the caller may not make one of them, none. Each asset's access

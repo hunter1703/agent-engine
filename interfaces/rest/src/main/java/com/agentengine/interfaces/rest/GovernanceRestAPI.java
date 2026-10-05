@@ -3,6 +3,7 @@ package com.agentengine.interfaces.rest;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 
 import com.agentengine.tenancy.AccessControlService;
+import com.agentengine.tenancy.RoleService;
 import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.context.ContextAware;
 import com.agentengine.util.tenancy.SharingChange;
@@ -21,10 +22,14 @@ import com.agentengine.util.common.update.Update;
 public class GovernanceRestAPI {
 
   private final AccessControlService accessControlService;
+  private final RoleService roleService;
 
   @Inject
-  public GovernanceRestAPI(final AccessControlService accessControlService) {
+  public GovernanceRestAPI(
+      final AccessControlService accessControlService,
+      final RoleService roleService) {
     this.accessControlService = accessControlService;
+    this.roleService = roleService;
   }
 
   @GET
@@ -32,7 +37,7 @@ public class GovernanceRestAPI {
   @Produces(APPLICATION_JSON)
   @Operation(summary = "Get role by ID")
   public Role getRole(@PathParam("id") final String id) {
-    return accessControlService.getRole(id);
+    return roleService.getRole(id);
   }
 
   @POST
@@ -41,7 +46,7 @@ public class GovernanceRestAPI {
   @Produces(APPLICATION_JSON)
   @Operation(summary = "Create role")
   public Role createRole(final Role role) {
-    return accessControlService.createRole(role);
+    return roleService.createRole(role);
   }
 
   @PUT
@@ -50,7 +55,7 @@ public class GovernanceRestAPI {
   @Produces(APPLICATION_JSON)
   @Operation(summary = "Update role")
   public Role updateRole(@PathParam("id") final String id, final Role role) {
-    return accessControlService.updateRole(id, role);
+    return roleService.updateRole(id, role);
   }
 
   @DELETE
@@ -58,7 +63,7 @@ public class GovernanceRestAPI {
   @Produces(APPLICATION_JSON)
   @Operation(summary = "Delete role")
   public void deleteRole(@PathParam("id") final String id) {
-    accessControlService.deleteRole(id);
+    roleService.deleteRole(id);
   }
 
   @POST

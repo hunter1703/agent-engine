@@ -4,7 +4,7 @@ import com.agentengine.util.cloudstorage.oracle.OracleCloudStorage;
 import com.agentengine.util.cloudstorage.s3.S3CloudStorage;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.distributed.DistributedCacheManager;
-import com.agentengine.util.infra.InfraClientFactory;
+import com.agentengine.util.infra.ClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.ServerType;
 import jakarta.inject.Inject;
@@ -12,7 +12,7 @@ import jakarta.inject.Singleton;
 
 @Singleton
 public class CloudStorageServiceFactory
-    extends InfraClientFactory<
+    extends ClientFactory<
         CloudStorageClientInfraConfig, CloudStorageServerInfraConfig, CloudStorageService> {
 
   private final ApplicationConfig applicationConfig;

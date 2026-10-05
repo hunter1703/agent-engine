@@ -5,13 +5,15 @@ import static com.agentengine.util.common.Constants.ID_SEPARATOR;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.distributed.DistributedCacheManager;
-import com.agentengine.util.infra.InfraClientFactory;
+import com.agentengine.util.infra.ClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.ServerType;
 import com.oracle.bmc.auth.InstancePrincipalsAuthenticationDetailsProvider;
 import com.oracle.bmc.keymanagement.KmsCryptoClient;
 import com.oracle.bmc.keymanagement.model.DecryptDataDetails;
 import com.oracle.bmc.keymanagement.requests.DecryptRequest;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -20,13 +22,14 @@ import javax.crypto.spec.SecretKeySpec;
 
 @Singleton
 public class EncryptionClientProvider
-    extends InfraClientFactory<
+    extends ClientFactory<
         EncryptionClientInfraConfig, EncryptionKeyInfraConfig, CryptoClient> {
 
   private final ApplicationConfig applicationConfig;
 
+  @Inject
   protected EncryptionClientProvider(
-      InfraConfigService infraConfigService,
+      @Named("encryptionInfraConfigService") InfraConfigService infraConfigService,
       DistributedCacheManager cacheManager,
       ApplicationConfig applicationConfig) {
     super(infraConfigService, cacheManager, ServerType.ENCRYPTION_KEY);

@@ -3,7 +3,7 @@ package com.agentengine.util.vectordb;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.distributed.DistributedCacheManager;
-import com.agentengine.util.infra.InfraClientFactory;
+import com.agentengine.util.infra.ClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.ServerType;
 import io.qdrant.client.QdrantClient;
@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 
 @Singleton
 public class VectorDbClientFactory
-    extends InfraClientFactory<VectorClientInfraConfig, VectorServerInfraConfig, QdrantClient> {
+    extends ClientFactory<VectorClientInfraConfig, VectorServerInfraConfig, QdrantClient> {
 
   private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
   private static final Logger LOG = LoggerFactory.getLogger(VectorDbClientFactory.class);

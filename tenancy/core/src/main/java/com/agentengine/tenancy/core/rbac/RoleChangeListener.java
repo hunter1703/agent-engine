@@ -66,6 +66,6 @@ public class RoleChangeListener implements EntityChangeListener<Role> {
   }
 
   private void evictRole(final String roleId) {
-    distributedCacheManager.invalidate(AccessControlServiceImpl.ROLE_CACHE_NAME, roleId);
+    distributedCacheManager.invalidate(RoleServiceImpl.ROLE_CACHE_NAME, roleId);
   }
 }

@@ -7,6 +7,7 @@ import com.agentengine.knowledge.api.services.KnowledgeProvisioningService;
 import com.agentengine.scheduler.api.runner.SchedulerProvisioningService;
 import com.agentengine.tenancy.AccessControlService;
 import com.agentengine.tenancy.CustomerService;
+import com.agentengine.tenancy.RoleService;
 import com.agentengine.tenancy.TenancyProvisioningService;
 import com.agentengine.tenancy.UserService;
 import com.agentengine.tenancy.beans.Customer;
@@ -20,14 +21,12 @@ import com.agentengine.util.crypto.EncryptionClientProvisioner;
 import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.infra.provisioning.ProvisioningResult;
 import com.agentengine.util.infra.provisioning.ProvisioningRun;
-import com.agentengine.util.infra.provisioning.ProvisioningService;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import com.agentengine.util.tasks.TaskStatus;
 import com.agentengine.util.tenancy.SharingChange;
 import com.agentengine.util.tenancy.StandardRole;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -125,11 +124,11 @@ public class CustomerProvisioningService {
     if (request.getRoles() == null) {
       return;
     }
-    final AccessControlService accessControlService = client(AccessControlService.class);
+    final RoleService roleService = client(RoleService.class);
     for (Role role : request.getRoles()) {
       Role existing = null;
       try {
-        existing = accessControlService.getRole(role.getId());
+        existing = roleService.getRole(role.getId());
       } catch (Exception e) {
         // Not found
       }
@@ -138,9 +137,9 @@ public class CustomerProvisioningService {
         existing.setName(role.getName());
         existing.setStatus(TaskStatus.PENDING.name());
         existing.setStandard(role.isStandard());
-        accessControlService.updateRole(role.getId(), existing);
+        roleService.updateRole(role.getId(), existing);
       } else {
-        accessControlService.createRole(role);
+        roleService.createRole(role);
       }
     }
   }
@@ -168,8 +167,9 @@ public class CustomerProvisioningService {
 
     AccessControlService accessControlService = client(AccessControlService.class);
     // Assign owner role to the user
-    SharingChange change = SharingChange.onEveryAsset(
-        Map.of(Principal.ofUser(user.getId()).toString(), Set.of(StandardRole.MANAGER)));
+    SharingChange change =
+        SharingChange.onEveryAsset(
+            Map.of(Principal.ofUser(user.getId()).toString(), Set.of(StandardRole.MANAGER)));
     accessControlService.updateSharing(List.of(change));
   }
 

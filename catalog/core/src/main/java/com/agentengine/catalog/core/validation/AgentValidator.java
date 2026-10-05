@@ -1,6 +1,5 @@
 package com.agentengine.catalog.core.validation;
 
-import com.agentengine.catalog.core.repository.AgentRepository;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.DefaultAgentConfig;
 import com.agentengine.util.agents.beans.config.OrchestrationMode;
@@ -9,30 +8,25 @@ import com.agentengine.util.agents.beans.config.OrchestratorParallelConfig;
 import com.agentengine.util.agents.beans.config.ParallelStoppingPolicy;
 import com.agentengine.util.agents.beans.config.ToolsConfig;
 import com.agentengine.util.agents.beans.tools.ConnectorToolConfigsList;
+import com.agentengine.util.common.validation.ValidationCollector;
+import com.agentengine.util.common.validation.Validator;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
-import com.agentengine.util.common.validation.ValidationCollector;
-import com.agentengine.util.common.validation.Validator;
-import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.validation.ConstraintViolation;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Singleton
 public class AgentValidator implements Validator<BaseAgentConfig> {
   private static final String CONNECTORS_TOOL_NAME = "connectors";
 
-  private final Instance<AgentRepository> agentRepository;
   private final jakarta.validation.Validator beanValidator;
 
-  public AgentValidator(
-      final Instance<AgentRepository> agentRepository,
-      final jakarta.validation.Validator beanValidator) {
-    this.agentRepository = agentRepository;
+  @Inject
+  public AgentValidator(final jakarta.validation.Validator beanValidator) {
     this.beanValidator = beanValidator;
   }
 
@@ -90,26 +84,6 @@ public class AgentValidator implements Validator<BaseAgentConfig> {
               + subAgentIds.size()
               + " agent_id="
               + config.getId());
-    }
-    validateOrchestratorSubAgentsExist(config, errors);
-  }
-
-  private void validateOrchestratorSubAgentsExist(
-      final OrchestratorAgentConfig config, final ValidationCollector errors) {
-    if (CollectionUtils.isEmpty(config.getSubAgentIds())) {
-      return;
-    }
-    final List<String> allSubAgentIds =
-        config.getSubAgentIds().stream()
-            .filter(StringUtils::isNotBlank)
-            .collect(Collectors.toCollection(ArrayList::new));
-    allSubAgentIds.addAll(
-        config.getTransferableSubAgentIds().stream().filter(StringUtils::isNotBlank).toList());
-    final Map<String, BaseAgentConfig> subAgents = agentRepository.get().findByIds(allSubAgentIds);
-    final List<String> missing =
-        allSubAgentIds.stream().filter(id -> !subAgents.containsKey(id)).toList();
-    if (!missing.isEmpty()) {
-      errors.add("Sub-agent(s) not found: " + String.join(", ", missing));
     }
   }
 

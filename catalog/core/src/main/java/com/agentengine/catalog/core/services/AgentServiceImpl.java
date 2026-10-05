@@ -82,6 +82,7 @@ public class AgentServiceImpl implements AgentService {
   public BaseAgentConfig createAgent(final BaseAgentConfig agent) {
     final String id = agent == null ? null : agent.getId();
     final BaseAgentConfig sanitized = sanitizeConfig(id, agent, BuilderMode.CREATE);
+    requireSubAgentsExist(sanitized);
     requireCanShareAddedSubAgents(id, sanitized);
     return agentRepository.insert(sanitized);
   }
@@ -96,6 +97,7 @@ public class AgentServiceImpl implements AgentService {
     final boolean isEdit = StringUtils.isNotBlank(id);
     final BaseAgentConfig sanitized =
         sanitizeConfig(id, agent, isEdit ? BuilderMode.EDIT : BuilderMode.CREATE);
+    requireSubAgentsExist(sanitized);
     requireCanShareAddedSubAgents(id, sanitized);
     final BaseAgentConfig saved = agentRepository.save(sanitized);
     if (isEdit) {
@@ -108,6 +110,7 @@ public class AgentServiceImpl implements AgentService {
   @WithSpan
   public BaseAgentConfig updateAgent(final String id, final BaseAgentConfig agent) {
     final BaseAgentConfig sanitized = sanitize(agent, BuilderMode.EDIT);
+    requireSubAgentsExist(sanitized);
     requireCanShareAddedSubAgents(id, sanitized);
     final BaseAgentConfig updated = agentRepository.update(id, sanitized);
     invalidateCachedRunners(id);
@@ -134,6 +137,18 @@ public class AgentServiceImpl implements AgentService {
       if (!shareable.contains(subAgentId)) {
         throw new UnauthorizedException(AssetClass.AGENT, subAgentId);
       }
+    }
+  }
+
+  private void requireSubAgentsExist(final BaseAgentConfig agent) {
+    final Set<String> ids = subAgentIds(agent);
+    if (ids.isEmpty()) {
+      return;
+    }
+    final Map<String, BaseAgentConfig> subAgents = agentRepository.findByIds(ids);
+    final List<String> missing = ids.stream().filter(id -> !subAgents.containsKey(id)).toList();
+    if (!missing.isEmpty()) {
+      throw new IllegalArgumentException("Sub-agent(s) not found: " + String.join(", ", missing));
     }
   }
 

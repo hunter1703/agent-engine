@@ -4,8 +4,8 @@ import com.agentengine.tenancy.core.repository.RoleMappingRepository;
 import com.agentengine.tenancy.core.repository.RoleRepository;
 import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.common.exception.StaleStateException;
+import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.tasks.AbstractActorTaskService;
-import com.agentengine.util.pekko.tasks.TaskActorFactory;
 import com.agentengine.util.tasks.TaskStatus;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -33,8 +33,8 @@ public class RoleTaskService extends AbstractActorTaskService<Role> {
   public RoleTaskService(
       final RoleRepository roleRepository,
       final RoleMappingRepository roleMappingRepository,
-      final TaskActorFactory taskActorFactory) {
-    super(taskActorFactory);
+      final ActorSystemProvider actorSystemProvider) {
+    super(actorSystemProvider);
     this.roleRepository = roleRepository;
     this.roleMappingRepository = roleMappingRepository;
   }

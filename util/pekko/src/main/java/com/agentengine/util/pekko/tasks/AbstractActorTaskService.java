@@ -1,6 +1,7 @@
 package com.agentengine.util.pekko.tasks;
 
 import com.agentengine.util.context.Context;
+import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.tasks.Task;
 import com.agentengine.util.tasks.TaskService;
 
@@ -11,10 +12,10 @@ import com.agentengine.util.tasks.TaskService;
  */
 public abstract class AbstractActorTaskService<T extends Task> implements TaskService<T> {
 
-  private final TaskActorFactory taskActorFactory;
+  private final TaskActorFactory<T> taskActorFactory;
 
-  protected AbstractActorTaskService(final TaskActorFactory taskActorFactory) {
-    this.taskActorFactory = taskActorFactory;
+  protected AbstractActorTaskService(final ActorSystemProvider actorSystemProvider) {
+    this.taskActorFactory = new TaskActorFactory<>(actorSystemProvider, this);
   }
 
   /**
@@ -25,7 +26,7 @@ public abstract class AbstractActorTaskService<T extends Task> implements TaskSe
   public void submit(final T task) {
     final String customerId = Context.require().customerId();
     taskActorFactory
-        .entityRef(TaskActorFactory.entityId(customerId, task.taskType(), task.partitionId()))
+        .entityRef(TaskActorFactory.entityId(customerId, task.partitionId()))
         .tell(new TaskActor.Command.Execute(task));
   }
 }

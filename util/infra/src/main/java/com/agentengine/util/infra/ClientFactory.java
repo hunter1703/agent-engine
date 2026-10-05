@@ -10,16 +10,16 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class InfraClientFactory<
+public abstract class ClientFactory<
     C extends InfraConfig, S extends InfraConfig, T extends AutoCloseable> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(InfraClientFactory.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ClientFactory.class);
 
   protected final InfraConfigService infraConfigService;
   private final ServerType serverType;
   private final DistributedCache<T> connections;
 
-  protected InfraClientFactory(
+  protected ClientFactory(
       final InfraConfigService infraConfigService,
       final DistributedCacheManager cacheManager,
       final ServerType serverType) {
@@ -29,7 +29,7 @@ public abstract class InfraClientFactory<
         new DistributedCache.Builder<T>("INFRA_CONNECTION_CACHE_" + serverType, cacheManager)
             .scope(CacheScope.GLOBAL)
             .tags(Set.of(InfraCacheTag.INFRA_CONNECTION))
-            .removalListener(InfraClientFactory::close)
+            .removalListener(ClientFactory::close)
             .build();
   }
 

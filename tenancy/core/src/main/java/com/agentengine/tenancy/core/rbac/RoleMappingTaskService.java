@@ -2,10 +2,10 @@ package com.agentengine.tenancy.core.rbac;
 
 import com.agentengine.tenancy.core.repository.RoleMappingRepository;
 import com.agentengine.util.common.exception.StaleStateException;
+import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.tasks.AbstractActorTaskService;
-import com.agentengine.util.pekko.tasks.TaskActorFactory;
 import com.agentengine.util.tasks.TaskStatus;
-import com.agentengine.util.tenancy.AclService;
+
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.Duration;
@@ -26,16 +26,16 @@ public class RoleMappingTaskService extends AbstractActorTaskService<RoleMapping
   private static final Duration STALE_AFTER = Duration.ofMinutes(1);
 
   private final RoleMappingRepository roleMappingRepository;
-  private final AclService aclService;
+  private final AclCalculator aclCalculator;
 
   @Inject
   public RoleMappingTaskService(
       final RoleMappingRepository roleMappingRepository,
-      final AclService aclService,
-      final TaskActorFactory taskActorFactory) {
-    super(taskActorFactory);
+      final AclCalculator aclCalculator,
+      final ActorSystemProvider actorSystemProvider) {
+    super(actorSystemProvider);
     this.roleMappingRepository = roleMappingRepository;
-    this.aclService = aclService;
+    this.aclCalculator = aclCalculator;
   }
 
   @Override
@@ -51,7 +51,7 @@ public class RoleMappingTaskService extends AbstractActorTaskService<RoleMapping
   @Override
   public void handle(final List<RoleMapping> mappings) {
     final RoleMapping mapping = mappings.getFirst();
-    aclService.recalculateAcl(mapping.getAssetClass(), mapping.getAssetId());
+    aclCalculator.calculateAndUpdateGrants(mapping.getAssetClass(), mapping.getAssetId());
   }
 
   @Override

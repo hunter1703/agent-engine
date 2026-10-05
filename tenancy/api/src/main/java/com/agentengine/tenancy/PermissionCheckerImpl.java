@@ -31,39 +31,19 @@ import java.util.function.Supplier;
 @Singleton
 public class PermissionCheckerImpl implements PermissionChecker {
   private static final long CACHE_TTL_SECONDS = 300;
-  private static final String ACTIVE_USERS_CACHE = "ACTIVE_USERS";
-  private static final long ACTIVE_USERS_TTL_SECONDS = 60;
-
-  private final AccessControlService accessControlService;
+  private final PermissionService permissionService;
   private final DistributedCache<Map<String, Set<Permission>>> permissionsOnEveryAssetCache;
-  private final DistributedCache<Boolean> activeUsersCache;
-  // Looked up lazily, since in the tenancy service the users' own repository checks access here.
-  private final LazyLoader<UserService> userService;
 
   public PermissionCheckerImpl(
-      final AccessControlService accessControlService,
-      final Provider<UserService> userService,
+      final PermissionService permissionService,
       final DistributedCacheManager distributedCacheManager) {
-    this.accessControlService = accessControlService;
-    this.userService = new LazyLoader<>(userService::get);
+    this.permissionService = permissionService;
     this.permissionsOnEveryAssetCache =
         new DistributedCache.Builder<Map<String, Set<Permission>>>(
                 AccessControlService.PERMISSIONS_ON_EVERY_ASSET_CACHE, distributedCacheManager)
             .scope(CacheScope.CUSTOMER)
             .localCache(
                 CacheBuilder.newBuilder().expireAfterWrite(CACHE_TTL_SECONDS, TimeUnit.SECONDS))
-            .build();
-    this.activeUsersCache =
-        new DistributedCache.Builder<Boolean>(ACTIVE_USERS_CACHE, distributedCacheManager)
-            .scope(CacheScope.CUSTOMER)
-            .localCache(
-                CacheBuilder.newBuilder()
-                    .expireAfterWrite(ACTIVE_USERS_TTL_SECONDS, TimeUnit.SECONDS))
-            .loader(
-                userId ->
-                    Context.require()
-                        .asSystemCaller()
-                        .get(() -> this.userService.get().isActive(userId)))
             .build();
   }
 
@@ -92,7 +72,7 @@ public class PermissionCheckerImpl implements PermissionChecker {
     if (isSystem()) {
       return true;
     }
-    return actsForActiveUser() && contextHasPermissionOnEveryAsset(assetClass, permission);
+    return actsForUser() && contextHasPermissionOnEveryAsset(assetClass, permission);
   }
 
   /**
@@ -104,7 +84,7 @@ public class PermissionCheckerImpl implements PermissionChecker {
     if (isSystem()) {
       return true;
     }
-    if (!actsForActiveUser()) {
+    if (!actsForUser()) {
       return false;
     }
     final Acl acl = aclSupplier.get();
@@ -143,42 +123,11 @@ public class PermissionCheckerImpl implements PermissionChecker {
   /** Each of the principals' permissions on every asset; none for one tenancy maps no role to. */
   private Map<String, Map<String, Set<Permission>>> loadPermissions(
       final Collection<String> principals) {
-    final Map<String, Map<String, Set<String>>> loaded =
-        accessControlService.getAssetClassPermissions(principals);
-    final Map<String, Map<String, Set<Permission>>> principalVsPermissions = new HashMap<>();
-    for (final String principal : principals) {
-      principalVsPermissions.put(
-          principal, parsePermissions(loaded.getOrDefault(principal, Map.of())));
-    }
-    return principalVsPermissions;
+    return permissionService.getAssetClassPermissions(principals);
   }
 
-  /** Asset class to the permissions named, leaving out names this version doesn't know. */
-  private static Map<String, Set<Permission>> parsePermissions(
-      final Map<String, Set<String>> assetClassVsNames) {
-    final Map<String, Set<Permission>> assetClassVsPermissions = new HashMap<>();
-    assetClassVsNames.forEach(
-        (assetClass, names) -> {
-          final Set<Permission> permissions = new HashSet<>();
-          for (final String name : names) {
-            final Permission permission = Permission.valueOfOrDefault(name);
-            if (permission != Permission.UNKNOWN) {
-              permissions.add(permission);
-            }
-          }
-          assetClassVsPermissions.put(assetClass, Collections.unmodifiableSet(permissions));
-        });
-    return assetClassVsPermissions;
-  }
-
-  /**
-   * Whether the context acts for a user who may act at all. A disabled user's stored contexts —
-   * scheduled jobs, running sessions — lose every permission within {@link
-   * #ACTIVE_USERS_TTL_SECONDS}.
-   */
-  private boolean actsForActiveUser() {
-    final String userId = Context.currentUserId().orElse(null);
-    return userId != null && activeUsersCache.get(userId);
+  private boolean actsForUser() {
+    return Context.currentUserId().isPresent();
   }
 
   private static boolean isSystem() {

@@ -4,6 +4,8 @@ import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.exception.DuplicateAssetException;
 import com.agentengine.util.common.exception.StaleStateException;
+import com.agentengine.util.common.utils.EnvUtils;
+import com.agentengine.util.crypto.EncryptionService;
 import com.agentengine.util.distributed.CacheScope;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
@@ -11,22 +13,20 @@ import com.agentengine.util.infra.InfraCacheTag;
 import com.agentengine.util.infra.InfraConfig;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.ServerType;
-import com.agentengine.util.mongodb.mongo.MongoClientFactory;
+import com.agentengine.util.mongodb.mongo.MongoClientBuilder;
 import com.agentengine.util.mongodb.mongo.MongoUtils;
 import com.google.common.cache.CacheBuilder;
 import com.mongodb.MongoWriteException;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.result.UpdateResult;
-import jakarta.inject.Inject;
-import jakarta.inject.Provider;
-import jakarta.inject.Singleton;
+
 import java.util.ArrayList;
 import java.util.List;
 
-@Singleton
-public class InfraConfigServiceImpl implements InfraConfigService {
+public class AbstractInfraConfigService implements InfraConfigService {
 
   private static final String CACHE_NAME = "INFRA_CONFIG_CACHE";
   private static final String DATABASE = "INFRA";
@@ -34,15 +34,14 @@ public class InfraConfigServiceImpl implements InfraConfigService {
   private static final int DUPLICATE_KEY_ERROR = 11000;
   private static final String FIELD_TYPE = "type";
 
-  private final LazyLoader<MongoClientFactory> mongoClientFactory;
+  private final LazyLoader<MongoClient> infraClient;
   private final DistributedCacheManager cacheManager;
   private final DistributedCache<InfraConfig> cache;
 
-  @Inject
-  public InfraConfigServiceImpl(
-      final Provider<MongoClientFactory> mongoClientFactory,
-      final DistributedCacheManager cacheManager) {
-    this.mongoClientFactory = new LazyLoader<>(mongoClientFactory::get);
+  public AbstractInfraConfigService(
+      final MongoClientBuilder mongoClientBuilder,
+      final DistributedCacheManager cacheManager, final EncryptionService encryptionService) {
+    this.infraClient = new LazyLoader<>(() -> mongoClientBuilder.get(EnvUtils.getInfraMongoUri(), encryptionService));
     this.cacheManager = cacheManager;
     this.cache =
         new DistributedCache.Builder<InfraConfig>(CACHE_NAME, cacheManager)
@@ -114,9 +113,7 @@ public class InfraConfigServiceImpl implements InfraConfigService {
   }
 
   private MongoCollection<InfraConfig> collection() {
-    return mongoClientFactory
-        .get()
-        .getInfraClient()
+    return infraClient.get()
         .getDatabase(DATABASE)
         .getCollection(COLLECTION, InfraConfig.class);
   }

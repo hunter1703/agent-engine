@@ -22,25 +22,23 @@ import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
  * as soon as the current one finishes. A run that fails leaves its tasks pending, to be submitted
  * again.
  */
-public final class TaskActor {
-
-  public static final EntityTypeKey<Command> TYPE_KEY = EntityTypeKey.create(Command.class, "Task");
+public final class TaskActor<T extends Task> {
 
   private final ActorContext<Command> context;
   // The system context of the customer whose tasks this actor processes; every run happens in it.
   private final Context customerContext;
-  private final TaskService<Task> service;
+  private final TaskService<T> service;
   private final ExecutorService executor;
   private final Behavior<Command> idle;
   private final Behavior<Command> running;
 
   // Tasks are equal by id, so a task submitted again replaces its older copy.
-  private final Set<Task> submittedTasks = new LinkedHashSet<>();
+  private final Set<T> submittedTasks = new LinkedHashSet<>();
 
   private TaskActor(
       final ActorContext<Command> context,
       final Context customerContext,
-      final TaskService<Task> service,
+      final TaskService<T> service,
       final ExecutorService executor) {
     this.context = context;
     this.customerContext = customerContext;
@@ -72,11 +70,11 @@ public final class TaskActor {
    * system context of the customer they belong to. Idle until a task arrives.
    */
   @SuppressWarnings("unchecked")
-  public static Behavior<Command> create(
-      final Context customerContext, final TaskService<?> service, final ExecutorService executor) {
+  public static <T extends Task> Behavior<Command> create(
+      final Context customerContext, final TaskService<T> service, final ExecutorService executor) {
     return Behaviors.setup(
         context ->
-            new TaskActor(context, customerContext, (TaskService<Task>) service, executor).idle);
+            new TaskActor<>(context, customerContext, service, executor).idle);
   }
 
   private Behavior<Command> onFinished(final Command.Finished result) {
@@ -87,14 +85,15 @@ public final class TaskActor {
   }
 
   /** Keeps the latest copy of the submitted task for the next run. */
+  @SuppressWarnings("unchecked")
   private void collect(final Command.Execute execute) {
-    submittedTasks.remove(execute.task());
-    submittedTasks.add(execute.task());
+    submittedTasks.remove((T) execute.task());
+    submittedTasks.add((T) execute.task());
   }
 
   /** Hands the collected tasks to a run on the executor, and waits for it to finish. */
   private Behavior<Command> startRun() {
-    final List<Task> tasks = List.copyOf(submittedTasks);
+    final List<T> tasks = List.copyOf(submittedTasks);
     submittedTasks.clear();
     context.pipeToSelf(
         CompletableFuture.runAsync(

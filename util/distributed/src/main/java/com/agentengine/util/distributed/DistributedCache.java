@@ -113,6 +113,12 @@ public class DistributedCache<V> {
     cacheManager.broadcastInvalidation(cacheName, namespacedKey);
   }
 
+  public void remove(String key) {
+    final String namespacedKey = namespacedKey(key);
+    localCache.invalidate(namespacedKey);
+    cacheManager.broadcastInvalidation(cacheName, namespacedKey);
+  }
+
   /** Stores {@code value} on this node only, without telling other nodes to drop their entry. */
   public void putLocally(final String key, final V value) {
     localCache.put(namespacedKey(key), value);

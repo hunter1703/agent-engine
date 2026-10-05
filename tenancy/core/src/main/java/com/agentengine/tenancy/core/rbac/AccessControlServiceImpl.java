@@ -3,42 +3,34 @@ package com.agentengine.tenancy.core.rbac;
 import com.agentengine.tenancy.AccessControlService;
 import com.agentengine.tenancy.core.helpers.AssetPermissionHelper;
 import com.agentengine.tenancy.core.repository.RoleMappingRepository;
-import com.agentengine.tenancy.core.repository.RoleRepository;
+import com.agentengine.tenancy.RoleService;
 import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.common.exception.UnauthorizedException;
-import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Principal;
-import com.agentengine.util.distributed.DistributedCache;
-import com.agentengine.util.distributed.DistributedCacheManager;
-import com.agentengine.util.tasks.Task;
-import com.agentengine.util.tasks.TaskService;
 import com.agentengine.util.tasks.TaskStatus;
 import com.agentengine.util.tenancy.Permission;
 import com.agentengine.util.tenancy.PermissionChecker;
-import com.agentengine.util.tenancy.PermissionUtils;
 import com.agentengine.util.tenancy.SharingChange;
-import com.google.common.cache.CacheBuilder;
 import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -52,90 +44,40 @@ import java.util.stream.Collectors;
 @Unremovable
 public class AccessControlServiceImpl implements AccessControlService {
 
-  static final String ROLE_CACHE_NAME = "ROLE_CACHE";
-
   private final RoleMappingRepository roleMappingRepository;
-  private final RoleRepository roleRepository;
-  private final DistributedCache<Role> roleCache;
-  // Looked up lazily, since access control itself reads roles through this service.
-  private final LazyLoader<PermissionChecker> permissionChecker;
-  // Built lazily, since the helper of tenancy's own assets reaches repositories that use this
-  // service.
-  private final LazyLoader<Map<String, AssetPermissionHelper>> assetClassVsHelper;
-  // Looked up lazily, since the role mapping tasks recalculate access lists through this service.
-  private final LazyLoader<RoleMappingTaskService> roleMappingTaskService;
-  private final LazyLoader<RoleTaskService> roleTaskService;
+  private final RoleService roleService;
+  private final AclCalculator aclCalculator;
+  private final RoleMappingTaskService roleMappingTaskService;
+  private final PermissionChecker permissionChecker;
+  private final Map<String, AssetPermissionHelper> assetClassVsHelper;
 
   @Inject
   public AccessControlServiceImpl(
       final RoleMappingRepository roleMappingRepository,
-      final RoleRepository roleRepository,
+      final RoleService roleService,
+      final AclCalculator aclCalculator,
+      final RoleMappingTaskService roleMappingTaskService,
       final Instance<AssetPermissionHelper> assetPermissionHelpers,
-      final DistributedCacheManager distributedCacheManager,
-      final Provider<PermissionChecker> permissionChecker,
-      final Provider<RoleMappingTaskService> roleMappingTaskService,
-      final Provider<RoleTaskService> roleTaskService) {
+      final PermissionChecker permissionChecker) {
     this.roleMappingRepository = roleMappingRepository;
-    this.roleRepository = roleRepository;
-    this.roleCache =
-        new DistributedCache.Builder<Role>(ROLE_CACHE_NAME, distributedCacheManager)
-            .localCache(CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS))
-            .build();
-    this.permissionChecker = new LazyLoader<>(permissionChecker::get);
-    this.roleMappingTaskService = new LazyLoader<>(roleMappingTaskService::get);
-    this.roleTaskService = new LazyLoader<>(roleTaskService::get);
+    this.roleService = roleService;
+    this.aclCalculator = aclCalculator;
+    this.roleMappingTaskService = roleMappingTaskService;
+    this.permissionChecker = permissionChecker;
     this.assetClassVsHelper =
-        new LazyLoader<>(
-            () ->
-                assetPermissionHelpers.stream()
-                    .collect(
-                        Collectors.toUnmodifiableMap(
-                            AssetPermissionHelper::assetClass, helper -> helper)));
+        assetPermissionHelpers.stream()
+            .collect(
+                Collectors.toUnmodifiableMap(
+                    AssetPermissionHelper::assetClass, helper -> helper));
   }
 
   @Override
-  public Role createRole(final Role role) {
-    return roleRepository.insert(role);
+  public void resubmitStaleRoleMappings() {
+    roleMappingTaskService
+        .findStale(System.currentTimeMillis() - roleMappingTaskService.staleAfter().toMillis())
+        .forEach(roleMappingTaskService::submit);
   }
 
-  @Override
-  public Role getRole(final String id) {
-    return roleRepository.findById(id);
-  }
-
-  @Override
-  public Role updateRole(final String id, final Role role) {
-    return roleRepository.update(id, role);
-  }
-
-  @Override
-  public void deleteRole(final String id) {
-    roleRepository.deleteByIdIgnoringVersion(id);
-  }
-
-  @Override
-  public Map<String, Map<String, Set<String>>> getAssetClassPermissions(
-      final Collection<String> principals) {
-    final Set<String> mappingIds = new HashSet<>();
-    for (final String principal : principals) {
-      mappingIds.add(RoleMapping.id(principal, null, null));
-    }
-    final Map<String, Map<String, Set<String>>> principalVsAssetClassVsPermissions =
-        new HashMap<>();
-    for (final RoleMapping mapping : roleMappingRepository.findByIds(mappingIds).values()) {
-      final Map<String, Set<String>> assetClassVsPermissions = new HashMap<>();
-      for (final Entry<String, Set<Permission>> entry :
-          assetClassVsPermissions(mapping.getRoleIds()).entrySet()) {
-        final Set<String> names = new HashSet<>();
-        for (final Permission permission : entry.getValue()) {
-          names.add(permission.name());
-        }
-        assetClassVsPermissions.put(entry.getKey(), names);
-      }
-      principalVsAssetClassVsPermissions.put(mapping.getPrincipal(), assetClassVsPermissions);
-    }
-    return principalVsAssetClassVsPermissions;
-  }
 
   @Override
   public void deleteAcls(final String assetClass, final Collection<String> assetIds) {
@@ -225,40 +167,12 @@ public class AccessControlServiceImpl implements AccessControlService {
         (assetId, mappings) ->
             assetIdVsAcl.put(
                 assetId,
-                new Acl(calculateGrants(mappings.getFirst().getAssetClass(), mappings), 1)));
+                new Acl(aclCalculator.calculateGrants(mappings.getFirst().getAssetClass(), mappings), 1)));
     return assetIdVsAcl;
   }
 
-  @Override
-  public void recalculateAcl(final String assetClass, final String assetId) {
-    if (!Context.require().isSystem()) {
-      throw new UnauthorizedException("Access lists are recalculated by the system only");
-    }
-    final AssetPermissionHelper helper = assetPermissionHelper(assetClass);
-    final Acl stored = helper.getAcls(List.of(assetId)).get(assetId);
-    if (stored == null) {
-      roleMappingRepository.deleteForAssets(assetClass, List.of(assetId));
-      return;
-    }
-    final List<RoleMapping> mappings = roleMappingRepository.findForAsset(assetClass, assetId);
-    final Acl recalculated = new Acl(calculateGrants(assetClass, mappings), stored.version() + 1);
-    if (!helper.applyAcls(Map.of(assetId, recalculated)).contains(assetId)) {
-      throw new StaleStateException(RoleMapping.partitionId(assetClass, assetId), stored.version());
-    }
-  }
-
-  @Override
-  public void resubmitStaleRoleMappings() {
-    resubmitStale(roleMappingTaskService.get());
-  }
-
-  @Override
-  public void resubmitStaleRoles() {
-    resubmitStale(roleTaskService.get());
-  }
-
   private AssetPermissionHelper assetPermissionHelper(final String assetClass) {
-    final AssetPermissionHelper helper = assetClassVsHelper.get().get(assetClass);
+    final AssetPermissionHelper helper = assetClassVsHelper.get(assetClass);
     if (helper == null) {
       throw new ConfigurationException("No service keeps assets of class " + assetClass);
     }
@@ -266,7 +180,7 @@ public class AccessControlServiceImpl implements AccessControlService {
   }
 
   private void requireRolesExist(final Set<String> roleIds) {
-    final Map<String, Role> idVsRole = getRoles(roleIds);
+    final Map<String, Role> idVsRole = roleService.getRoles(roleIds);
     for (final String roleId : roleIds) {
       if (!idVsRole.containsKey(roleId)) {
         throw new IllegalArgumentException("No such role: " + roleId);
@@ -293,7 +207,7 @@ public class AccessControlServiceImpl implements AccessControlService {
           new HashSet<>(permissionsForAssetClass(assetClass, change.roleIds()));
       required.add(Permission.SHARE);
       for (final Permission permission : required) {
-        if (!permissionChecker.get().hasPermission(acl, assetClass, permission)) {
+        if (!permissionChecker.hasPermission(acl, assetClass, permission)) {
           throw new UnauthorizedException(assetClass, change.assetId());
         }
       }
@@ -309,28 +223,11 @@ public class AccessControlServiceImpl implements AccessControlService {
       final Set<Permission> required = new HashSet<>(entry.getValue());
       required.add(Permission.SHARE);
       for (final Permission permission : required) {
-        if (!permissionChecker.get().hasPermissionOnEveryAsset(entry.getKey(), permission)) {
+        if (!permissionChecker.hasPermissionOnEveryAsset(entry.getKey(), permission)) {
           throw new UnauthorizedException(entry.getKey(), null);
         }
       }
     }
-  }
-
-  private List<String> calculateGrants(final String assetClass, final List<RoleMapping> mappings) {
-    final Set<String> roleIds = new HashSet<>();
-    for (final RoleMapping mapping : mappings) {
-      roleIds.addAll(mapping.getRoleIds());
-    }
-    final Map<String, Role> idVsRole = getRoles(roleIds);
-    final Set<String> grants = new LinkedHashSet<>();
-    for (final RoleMapping mapping : mappings) {
-      grants.addAll(
-          PermissionUtils.grants(
-              Principal.parse(mapping.getPrincipal()),
-              permissionsForAssetClass(
-                  assetClass, assetClassVsPermissions(mapping.getRoleIds(), idVsRole))));
-    }
-    return new ArrayList<>(grants);
   }
 
   private Set<Permission> permissionsForAssetClass(
@@ -346,43 +243,7 @@ public class AccessControlServiceImpl implements AccessControlService {
     return permissions;
   }
 
-  /** The roles that exist among {@code roleIds}, reading only those not already cached. */
-  private Map<String, Role> getRoles(final Collection<String> roleIds) {
-    return CollectionUtils.isEmpty(roleIds)
-        ? Map.of()
-        : roleCache.getAll(roleIds, roleRepository::findByIds);
-  }
-
   private Map<String, Set<Permission>> assetClassVsPermissions(final Collection<String> roleIds) {
-    return assetClassVsPermissions(roleIds, getRoles(roleIds));
-  }
-
-  private static Map<String, Set<Permission>> assetClassVsPermissions(
-      final Collection<String> roleIds, final Map<String, Role> idVsRole) {
-    final Map<String, Set<Permission>> classVsPermissions = new HashMap<>();
-    for (final String roleId : roleIds) {
-      final Role role = idVsRole.get(roleId);
-      if (role == null) {
-        continue;
-      }
-      role.getAssetClassVsPermissions()
-          .forEach(
-              (assetClass, names) -> {
-                final Set<Permission> permissions =
-                    classVsPermissions.computeIfAbsent(assetClass, _ -> new HashSet<>());
-                for (final String name : names) {
-                  permissions.addAll(Permission.valueOfOrDefault(name).getImpliedPermissions());
-                }
-                permissions.remove(Permission.UNKNOWN);
-              });
-    }
-    return classVsPermissions;
-  }
-
-  /** Submits again every task of {@code service} pending for longer than it allows. */
-  private static <T extends Task> void resubmitStale(final TaskService<T> service) {
-    service
-        .findStale(System.currentTimeMillis() - service.staleAfter().toMillis())
-        .forEach(service::submit);
+    return com.agentengine.tenancy.core.rbac.PermissionUtils.assetClassVsPermissions(roleService.getRoles(roleIds));
   }
 }

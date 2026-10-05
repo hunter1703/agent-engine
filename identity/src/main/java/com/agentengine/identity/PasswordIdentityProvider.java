@@ -96,10 +96,7 @@ public class PasswordIdentityProvider implements IdentityProvider {
     if (session == null || session.getExpiresAt().before(new Date())) {
       return null;
     }
-    final boolean active =
-        Context.asSystemUser(session.getCustomerId())
-            .get(() -> userService.isActive(session.getUserId()));
-    return active ? session : null;
+    return session;
   }
 
   private static String tokenHash(final String token) {

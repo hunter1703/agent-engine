@@ -1,7 +1,7 @@
 package com.agentengine.util.pekko.persistence;
 
 import com.agentengine.util.context.Context;
-import com.agentengine.util.infra.InfraClientFactory;
+import com.agentengine.util.infra.ClientFactory;
 import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.sql.SQLClientInfraConfig;
 import com.agentengine.util.sql.SQLServerInfraConfig;
@@ -13,7 +13,7 @@ import org.apache.pekko.persistence.jdbc.db.SlickDatabase;
 import org.apache.pekko.persistence.jdbc.db.SlickDatabaseProvider;
 
 public class PekkoSlickDatabaseProvider
-    extends InfraClientFactory<
+    extends ClientFactory<
         SQLClientInfraConfig, SQLServerInfraConfig, PekkoSlickDatabaseProvider.Pool>
     implements SlickDatabaseProvider {
 
