@@ -41,7 +41,7 @@ public record Principal(List<Segment> segments) {
     return new Principal(List.of(Segment.anyOf(USER)));
   }
 
-  @JsonCreator
+  @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
   public static Principal parse(final String value) {
     return new Principal(
         Arrays.stream(Objects.requireNonNull(value, "value").strip().split(SEGMENT_SEPARATOR, -1))
