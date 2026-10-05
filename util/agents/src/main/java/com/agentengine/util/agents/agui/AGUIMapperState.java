@@ -158,6 +158,14 @@ public final class AGUIMapperState {
     runScope().partialContentStreamed = true;
   }
 
+  public boolean hasStreamedPartialContentForStep() {
+    return runScope().partialContentStreamedForStep;
+  }
+
+  public void markPartialContentStreamedForStep() {
+    runScope().partialContentStreamedForStep = true;
+  }
+
   public void closeReasoning() {
     final RunScope scope = runScope();
     scope.reasoningOpen = false;
@@ -220,10 +228,12 @@ public final class AGUIMapperState {
     private int reasoningMessageSequence;
 
     private boolean partialContentStreamed;
+    private boolean partialContentStreamedForStep;
 
     private String startNextStep(final String sourceEventId) {
       final String prefix = runId != null ? "step-" + shortId(runId) + "-" : "step-";
       currentStepName = stableReplayId(prefix, sourceEventId, ++stepSequence);
+      partialContentStreamedForStep = false;
       return currentStepName;
     }
 

@@ -97,6 +97,9 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
     final Optional<Content> content = Optional.ofNullable(event.getContent());
     if (content.isPresent()) {
       final boolean partial = Boolean.TRUE.equals(event.isPartial());
+      if (partial) {
+        state.markPartialContentStreamedForStep();
+      }
       for (final Part part : content.get().parts().orElse(List.of())) {
         flowable = flowable.concatWith(mapPart(part, partial));
       }
@@ -116,6 +119,9 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
 
   private Flowable<Event> mapPart(final Part part, final boolean partial) {
     if (part.thought().orElse(false)) {
+      if (!partial && state.hasStreamedPartialContentForStep()) {
+        return Flowable.empty();
+      }
       return textMapper.mapThought(part.text().orElse(""), partial);
     }
 
@@ -123,23 +129,35 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
     final String text = part.text().orElse(null);
 
     if (text != null) {
-      flowable = flowable.concatWith(textMapper.mapText(text, partial));
+      if (!partial && state.hasStreamedPartialContentForStep()) {
+        // Echo of already-streamed text; do nothing.
+      } else {
+        flowable = flowable.concatWith(textMapper.mapText(text, partial));
+      }
     }
 
     final FunctionCall call = part.functionCall().orElse(null);
     if (call != null) {
-      flowable =
-          flowable
-              .concatWith(textMapper.closeReasoningIfNeeded())
-              .concatWith(toolCallMapper.mapToolCall(call));
+      if (!partial && state.hasStreamedPartialContentForStep()) {
+        // Echo of already-streamed call; do nothing.
+      } else {
+        flowable =
+            flowable
+                .concatWith(textMapper.closeReasoningIfNeeded())
+                .concatWith(toolCallMapper.mapToolCall(call));
+      }
     }
 
     final FunctionResponse response = part.functionResponse().orElse(null);
     if (response != null) {
-      flowable =
-          flowable
-              .concatWith(textMapper.closeReasoningIfNeeded())
-              .concatWith(toolCallMapper.mapToolResponse(response));
+      if (!partial && state.hasStreamedPartialContentForStep()) {
+        // Echo of already-streamed response; do nothing.
+      } else {
+        flowable =
+            flowable
+                .concatWith(textMapper.closeReasoningIfNeeded())
+                .concatWith(toolCallMapper.mapToolResponse(response));
+      }
     }
     return flowable;
   }
