@@ -14,11 +14,11 @@ public class KeyValuePair {
 
   @UiField(label = "Value", order = 20)
   @UiText
-  private Object value;
+  private String value;
 
   public KeyValuePair() {}
 
-  public KeyValuePair(final String key, final Object value) {
+  public KeyValuePair(final String key, final String value) {
     this.key = key;
     this.value = value;
   }
@@ -31,11 +31,11 @@ public class KeyValuePair {
     this.key = key;
   }
 
-  public Object getValue() {
+  public String getValue() {
     return value;
   }
 
-  public void setValue(final Object value) {
+  public void setValue(final String value) {
     this.value = value;
   }
 

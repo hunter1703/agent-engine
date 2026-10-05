@@ -68,7 +68,7 @@ public class ModelServiceImpl implements ModelService {
 
   @Override
   @WithSpan
-  public ModelConfig saveModel(final ModelConfig model) {
+  public ModelConfig saveModel(final ModelConfig model, final boolean skipVersion) {
     if (model == null) {
       throw new IllegalArgumentException("Model should be non-null");
     }
@@ -78,7 +78,7 @@ public class ModelServiceImpl implements ModelService {
     if (mode == BuilderMode.EDIT) {
       sanitized.setId(id);
     }
-    final ModelConfig saved = modelRepository.save(sanitized);
+    final ModelConfig saved = skipVersion ? modelRepository.saveIgnoringVersion(sanitized) : modelRepository.save(sanitized);
     invalidateCached(saved.getId());
     return saved;
   }

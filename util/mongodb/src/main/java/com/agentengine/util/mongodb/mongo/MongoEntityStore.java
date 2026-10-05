@@ -61,7 +61,10 @@ public final class MongoEntityStore<T extends BaseEntity> implements EntityStore
       final DocumentRepositorySpec<T> spec, final MongoClientFactory clientFactory) {
     this.spec = spec;
     this.clientFactory = clientFactory;
-    this.collectionName = spec.entityClass().getSimpleName();
+    this.collectionName =
+        StringUtils.isNotBlank(spec.collectionName())
+            ? spec.collectionName()
+            : spec.entityClass().getSimpleName();
   }
 
   public DocumentRepositorySpec<T> spec() {

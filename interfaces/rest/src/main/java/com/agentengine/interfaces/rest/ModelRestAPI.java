@@ -17,6 +17,8 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -89,11 +91,13 @@ public class ModelRestAPI {
       responseCode = "200",
       description = "Model created or updated",
       content = @Content(schema = @Schema(implementation = ModelConfig.class)))
-  public ModelConfig upsertModel(final ModelConfig modelConfig) {
+  public ModelConfig upsertModel(
+      @QueryParam("skipVersion") @DefaultValue("false") final boolean skipVersion,
+      final ModelConfig modelConfig) {
     if (modelConfig == null) {
       throw new IllegalArgumentException("Model config is required");
     }
-    return modelService.saveModel(modelConfig);
+    return modelService.saveModel(modelConfig, skipVersion);
   }
 
   @PUT

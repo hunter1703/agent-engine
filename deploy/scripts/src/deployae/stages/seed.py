@@ -64,6 +64,19 @@ class SeedAppConfigStage(Stage):
         namespace = "agent-engine"
         rest_service_name = f"rest-{self.tier}"
         
+        # Read the first customer's domain and credentials
+        customers_path = CONFIGS_DIR / self.environment / "customers.json"
+        seed_domain = "localhost"
+        seed_username = "admin"
+        seed_password = "password"
+        if customers_path.is_file():
+            customers = json.loads(expand_json_vars(customers_path))
+            if customers:
+                seed_domain = customers[0].get("domain", "localhost")
+                user = customers[0].get("user", {})
+                seed_username = user.get("username", "admin")
+                seed_password = user.get("password", "password")
+        
         output.info(f"Seeding app config using Job {run_id}")
         
         # 1. ConfigMap for seed_app.py
@@ -95,6 +108,12 @@ spec:
           env:
             - name: REST_URL
               value: "http://{rest_service_name}:8080"
+            - name: SEED_DOMAIN
+              value: "{seed_domain}"
+            - name: SEED_USERNAME
+              value: "{seed_username}"
+            - name: SEED_PASSWORD
+              value: "{seed_password}"
           envFrom:
             - secretRef:
                 name: agent-engine-secrets

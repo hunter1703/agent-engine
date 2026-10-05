@@ -17,7 +17,7 @@ public interface AgentService {
 
   BaseAgentConfig createAgent(BaseAgentConfig agent);
 
-  BaseAgentConfig saveAgent(BaseAgentConfig agent);
+  BaseAgentConfig saveAgent(BaseAgentConfig agent, boolean skipVersion);
 
   BaseAgentConfig updateAgent(String id, BaseAgentConfig agent);
 

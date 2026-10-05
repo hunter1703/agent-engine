@@ -78,7 +78,7 @@ public class AgentServiceImpl implements AgentService {
 
   @Override
   @WithSpan
-  public BaseAgentConfig saveAgent(final BaseAgentConfig agent) {
+  public BaseAgentConfig saveAgent(final BaseAgentConfig agent, final boolean skipVersion) {
     if (agent == null) {
       throw new IllegalArgumentException("Agent should be non-null");
     }
@@ -88,7 +88,7 @@ public class AgentServiceImpl implements AgentService {
         sanitizeConfig(id, agent, isEdit ? BuilderMode.EDIT : BuilderMode.CREATE);
     requireSubAgentsExist(sanitized);
     requireCanShareAddedSubAgents(id, sanitized);
-    final BaseAgentConfig saved = agentRepository.save(sanitized);
+    final BaseAgentConfig saved = skipVersion ? agentRepository.saveIgnoringVersion(sanitized) : agentRepository.save(sanitized);
     if (isEdit) {
       invalidateCachedRunners(id);
     }

@@ -52,7 +52,10 @@ public class AuthRestAPI {
     try {
       final LoginResult result = identityProvider.login(request);
       return Response.ok()
-          .cookie(sessionCookie(result.token(), SESSION_COOKIE_MAX_AGE_SECONDS))
+          .header(
+              "Set-Cookie",
+              sessionCookie(result.token(), SESSION_COOKIE_MAX_AGE_SECONDS).toString()
+                  + "; Partitioned")
           .build();
     } catch (final UnauthorizedException exception) {
       return Response.status(Response.Status.UNAUTHORIZED).build();
@@ -63,7 +66,9 @@ public class AuthRestAPI {
   @Path("/logout")
   public Response logout(@CookieParam(AuthFilter.SESSION_COOKIE) final String token) {
     identityProvider.logout(token);
-    return Response.ok().cookie(sessionCookie("", 0)).build();
+    return Response.ok()
+        .header("Set-Cookie", sessionCookie("", 0).toString() + "; Partitioned")
+        .build();
   }
 
   private NewCookie sessionCookie(final String value, final int maxAgeSeconds) {

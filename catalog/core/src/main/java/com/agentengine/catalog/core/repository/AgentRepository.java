@@ -23,7 +23,7 @@ public class AgentRepository extends AbstractPermissionedRepository<BaseAgentCon
     super(
         documentBackend.getEntityStore(
             DocumentRepositorySpec.perCustomer(
-                CatalogDocumentStoreClientType.CATALOG, BaseAgentConfig.class)),
+                CatalogDocumentStoreClientType.CATALOG, BaseAgentConfig.class, "AgentConfig")),
         validationService,
         permissionChecker,
         accessControlService);

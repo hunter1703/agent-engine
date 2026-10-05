@@ -37,6 +37,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.DefaultValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -95,14 +97,16 @@ public class AgentRestAPI {
       description = "Agent created or updated",
       content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
   @RunOnVirtualThread
-  public BaseAgentConfig upsertAgent(final BaseAgentConfig agentConfig) {
+  public BaseAgentConfig upsertAgent(
+      @QueryParam("skipVersion") @DefaultValue("false") final boolean skipVersion,
+      final BaseAgentConfig agentConfig) {
     if (agentConfig == null) {
       throw new WebApplicationException("Agent config is required", 400);
     }
     if (StringUtils.isBlank(agentConfig.getId())) {
       throw new IllegalArgumentException("Agent ID is required");
     }
-    return agentService.saveAgent(agentConfig);
+    return agentService.saveAgent(agentConfig, skipVersion);
   }
 
   @PUT

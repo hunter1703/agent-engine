@@ -4,6 +4,7 @@ import com.agentengine.tenancy.CustomerService;
 import com.agentengine.tenancy.beans.Customer;
 import com.agentengine.tenancy.core.repository.CustomerRepository;
 import com.agentengine.util.common.exception.DuplicateAssetException;
+import com.agentengine.util.distributed.CacheScope;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
@@ -35,7 +36,9 @@ public class CustomerServiceImpl implements CustomerService {
     }
     final Customer created = customerRepository.insert(customer);
     // Its domain may be cached as unknown by the services resolving tenants.
-    cacheManager.broadcastInvalidation(CUSTOMER_BY_DOMAIN_CACHE, created.getDomain());
+    cacheManager.broadcastInvalidation(
+        CUSTOMER_BY_DOMAIN_CACHE,
+        CacheScope.GLOBAL.namespace(CUSTOMER_BY_DOMAIN_CACHE, created.getDomain()));
     return created;
   }
 
@@ -43,8 +46,12 @@ public class CustomerServiceImpl implements CustomerService {
   public Customer update(final String id, final Customer customer) {
     Customer existing = customerRepository.findById(id);
     Customer updated = customerRepository.update(id, customer);
-    cacheManager.broadcastInvalidation(CUSTOMER_BY_DOMAIN_CACHE, existing.getDomain());
-    cacheManager.broadcastInvalidation(CUSTOMER_BY_DOMAIN_CACHE, updated.getDomain());
+    cacheManager.broadcastInvalidation(
+        CUSTOMER_BY_DOMAIN_CACHE,
+        CacheScope.GLOBAL.namespace(CUSTOMER_BY_DOMAIN_CACHE, existing.getDomain()));
+    cacheManager.broadcastInvalidation(
+        CUSTOMER_BY_DOMAIN_CACHE,
+        CacheScope.GLOBAL.namespace(CUSTOMER_BY_DOMAIN_CACHE, updated.getDomain()));
     return updated;
   }
 }

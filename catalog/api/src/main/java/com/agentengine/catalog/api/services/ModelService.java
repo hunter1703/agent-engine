@@ -20,7 +20,7 @@ public interface ModelService {
 
   ModelConfig createModel(ModelConfig model);
 
-  ModelConfig saveModel(ModelConfig model);
+  ModelConfig saveModel(ModelConfig model, boolean skipVersion);
 
   ModelConfig updateModel(String id, ModelConfig model);
 
