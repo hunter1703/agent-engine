@@ -15,7 +15,7 @@ public interface ConnectionService {
 
   <T> ConnectorResult<T> executeConnectorRequest(ConnectorRequest request);
 
-  Connection saveConnection(Connection connection);
+  Connection saveConnection(Connection connection, boolean skipVersion);
 
   /** The app's connections the caller may read. */
   default PaginatedResult<Connection> getConnections(final String appName, final Page page) {

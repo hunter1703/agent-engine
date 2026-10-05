@@ -8,7 +8,10 @@ import com.agentengine.util.tenancy.AbstractAssetAclService;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
+import io.quarkus.arc.Unremovable;
+
 @Singleton
+@Unremovable
 public class AgentSessionAclServiceImpl extends AbstractAssetAclService<AgentSession>
     implements com.agentengine.catalog.api.services.AgentSessionAclService {
 

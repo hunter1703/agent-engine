@@ -31,8 +31,10 @@ public class ConnectionRestAPI {
   @Consumes(APPLICATION_JSON)
   @Produces(APPLICATION_JSON)
   @Operation(summary = "Save a connection")
-  public Connection save(final Connection connection) {
-    return connectionService.saveConnection(connection);
+  public Connection save(
+      @QueryParam("skipVersion") @DefaultValue("false") final boolean skipVersion,
+      final Connection connection) {
+    return connectionService.saveConnection(connection, skipVersion);
   }
 
   @GET

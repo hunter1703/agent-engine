@@ -106,7 +106,7 @@ def seed():
         if not isinstance(docs, list):
             docs = [docs]
         for doc in docs:
-            post_json(f"{rest_url}/v1/connection/", doc)
+            post_json(f"{rest_url}/v1/connection/?skipVersion=true", doc)
             print(f"Seeded connection {doc.get('id') or doc.get('appName')}", flush=True)
 
 

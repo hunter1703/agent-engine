@@ -8,7 +8,10 @@ import com.agentengine.util.tenancy.AbstractAssetAclService;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
+import io.quarkus.arc.Unremovable;
+
 @Singleton
+@Unremovable
 public class ConnectionAclServiceImpl extends AbstractAssetAclService<Connection>
     implements com.agentengine.connectors.api.services.ConnectionAclService {
 

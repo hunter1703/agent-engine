@@ -12,7 +12,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import io.quarkus.arc.Unremovable;
+
 @Singleton
+@Unremovable
 public class PermissionServiceImpl implements PermissionService {
 
   private final RoleMappingRepository roleMappingRepository;

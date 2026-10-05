@@ -13,7 +13,10 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import io.quarkus.arc.Unremovable;
+
 @Singleton
+@Unremovable
 public class RoleServiceImpl implements RoleService {
 
   public static final String ROLE_CACHE_NAME = "ROLE_CACHE";

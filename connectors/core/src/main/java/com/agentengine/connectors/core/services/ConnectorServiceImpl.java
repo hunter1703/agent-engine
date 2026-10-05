@@ -13,7 +13,10 @@ import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.Map;
 
+import io.quarkus.arc.Unremovable;
+
 @Singleton
+@Unremovable
 public class ConnectorServiceImpl implements ConnectorService {
   private final ConnectorRegistry registry;
   private final ConnectorExecutorFactory executorFactory;

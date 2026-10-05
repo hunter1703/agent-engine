@@ -35,7 +35,10 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.quarkus.arc.Unremovable;
+
 @Singleton
+@Unremovable
 public class ConnectionServiceImpl implements ConnectionService {
   private static final Logger LOG = LoggerFactory.getLogger(ConnectionServiceImpl.class);
   public static final String CACHE_NAME = "connection-cache";
@@ -87,7 +90,7 @@ public class ConnectionServiceImpl implements ConnectionService {
   }
 
   @Override
-  public Connection saveConnection(Connection connection) {
+  public Connection saveConnection(Connection connection, boolean skipVersion) {
     final ConnectionSpec spec = getConnectionSpec(connection.getAppName());
     final AuthSpec authConfig =
         CollectionUtils.getValueFromMap(spec.authConfigs(), connection.getAuthType());
@@ -120,7 +123,7 @@ public class ConnectionServiceImpl implements ConnectionService {
       }
     }
     ConnectionUtils.encryptSensitiveInputs(connection, spec, encryptionService);
-    return connectionRepository.save(connection);
+    return skipVersion ? connectionRepository.saveIgnoringVersion(connection) : connectionRepository.save(connection);
   }
 
   @Override
