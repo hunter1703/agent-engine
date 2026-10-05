@@ -18,6 +18,8 @@ import com.agentengine.util.context.Context;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.apache.pekko.actor.typed.ActorRef;
+
 import java.time.Instant;
 import java.util.Optional;
 
@@ -98,8 +100,10 @@ public class SchedulerServiceImpl implements SchedulerService {
     triggerDefinition.setDueAt(
         CronUtils.applyJitter(scheduled.get(), Instant.now(), JITTER_FRACTION).toEpochMilli());
     final TriggerDefinition savedTrigger = triggerDefinitionRepository.save(triggerDefinition);
-    schedulerActorFactory
-        .getSchedulerRef()
-        .tell(new SchedulerActor.Command.JobScheduled(savedTrigger));
+    final ActorRef<SchedulerActor.Command> schedulerRef =
+        schedulerActorFactory.getSchedulerRef();
+    if (schedulerRef != null) {
+      schedulerRef.tell(new SchedulerActor.Command.JobScheduled(savedTrigger));
+    }
   }
 }

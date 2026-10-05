@@ -58,7 +58,9 @@ public class EntityChangeListeners {
   @SuppressWarnings("unchecked")
   public <T extends BaseEntity> void publish(
       final Class<T> entityClass, final EntityChange<T> change) {
-    final List<EntityChangeListener<?>> listeners = CollectionUtils.nullSafeMutableList(entityClassVsListeners.get().getOrDefault(entityClass, List.of()));
+    final List<EntityChangeListener<?>> listeners =
+        CollectionUtils.nullSafeMutableList(
+            entityClassVsListeners.get().getOrDefault(entityClass, List.of()));
     listeners.addAll(CollectionUtils.nullSafeList(globalListeners.get()));
     for (final EntityChangeListener<?> listener : listeners) {
       try {
