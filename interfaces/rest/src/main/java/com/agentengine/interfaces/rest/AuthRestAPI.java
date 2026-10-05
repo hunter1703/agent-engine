@@ -7,11 +7,9 @@ import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.common.exception.UnauthorizedException;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.ContextAware;
+import com.agentengine.util.context.RequestContextProvider;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.CookieParam;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
@@ -27,13 +25,24 @@ public class AuthRestAPI {
 
   private final IdentityProvider identityProvider;
   private final NewCookie.SameSite sessionCookieSameSite;
+  private final RequestContextProvider requestContextProvider;
 
   @Inject
   public AuthRestAPI(
-      final IdentityProvider identityProvider, final ApplicationConfig applicationConfig) {
+      final IdentityProvider identityProvider,
+      final ApplicationConfig applicationConfig,
+      final RequestContextProvider requestContextProvider) {
     this.identityProvider = identityProvider;
     this.sessionCookieSameSite =
         sameSite(applicationConfig.getString(SESSION_COOKIE_SAME_SITE_KEY));
+    this.requestContextProvider = requestContextProvider;
+  }
+
+  @GET
+  @Path("/me")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response me() {
+    return Response.ok(requestContextProvider.get()).build();
   }
 
   @POST
