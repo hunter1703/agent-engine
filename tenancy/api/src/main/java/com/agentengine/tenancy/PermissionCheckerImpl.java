@@ -1,6 +1,5 @@
 package com.agentengine.tenancy;
 
-import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.utils.CollectionUtils;
@@ -13,12 +12,9 @@ import com.agentengine.util.tenancy.Permission;
 import com.agentengine.util.tenancy.PermissionChecker;
 import com.agentengine.util.tenancy.PermissionUtils;
 import com.google.common.cache.CacheBuilder;
-import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;

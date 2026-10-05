@@ -13,7 +13,6 @@ import java.util.concurrent.ExecutorService;
 import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.javadsl.ActorContext;
 import org.apache.pekko.actor.typed.javadsl.Behaviors;
-import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
 
 /**
  * Processes the tasks of one partition of one task type for one customer, a run at a time, with
@@ -73,8 +72,7 @@ public final class TaskActor<T extends Task> {
   public static <T extends Task> Behavior<Command> create(
       final Context customerContext, final TaskService<T> service, final ExecutorService executor) {
     return Behaviors.setup(
-        context ->
-            new TaskActor<>(context, customerContext, service, executor).idle);
+        context -> new TaskActor<>(context, customerContext, service, executor).idle);
   }
 
   private Behavior<Command> onFinished(final Command.Finished result) {

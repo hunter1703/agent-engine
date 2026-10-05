@@ -160,7 +160,8 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
           if (deleted > 0) {
             totalDeleted[0] += deleted;
             publish(
-                new EntityChange.Ids<>(EntityChange.Type.DELETED, new java.util.HashSet<>(batchIds)));
+                new EntityChange.Ids<>(
+                    EntityChange.Type.DELETED, new java.util.HashSet<>(batchIds)));
           }
           return batchIds.size();
         },

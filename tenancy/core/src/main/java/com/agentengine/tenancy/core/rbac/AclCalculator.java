@@ -1,9 +1,9 @@
 package com.agentengine.tenancy.core.rbac;
 
-import com.agentengine.tenancy.core.helpers.AssetPermissionHelper;
-import com.agentengine.tenancy.core.repository.RoleMappingRepository;
 import com.agentengine.tenancy.RoleService;
 import com.agentengine.tenancy.beans.Role;
+import com.agentengine.tenancy.core.helpers.AssetAclHelper;
+import com.agentengine.tenancy.core.repository.RoleMappingRepository;
 import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.StaleStateException;
@@ -15,9 +15,7 @@ import com.agentengine.util.tenancy.PermissionUtils;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.ArrayList;
-
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -30,20 +28,18 @@ public class AclCalculator {
 
   private final RoleMappingRepository roleMappingRepository;
   private final RoleService roleService;
-  private final Map<String, AssetPermissionHelper> assetClassVsHelper;
+  private final Map<String, AssetAclHelper> assetClassVsHelper;
 
   @Inject
   AclCalculator(
       final RoleMappingRepository roleMappingRepository,
       final RoleService roleService,
-      final Instance<AssetPermissionHelper> assetPermissionHelpers) {
+      final Instance<AssetAclHelper> assetAclHelpers) {
     this.roleMappingRepository = roleMappingRepository;
     this.roleService = roleService;
     this.assetClassVsHelper =
-        assetPermissionHelpers.stream()
-            .collect(
-                Collectors.toUnmodifiableMap(
-                    AssetPermissionHelper::assetClass, helper -> helper));
+        assetAclHelpers.stream()
+            .collect(Collectors.toUnmodifiableMap(AssetAclHelper::assetClass, helper -> helper));
   }
 
   public List<String> calculateGrants(final String assetClass, final List<RoleMapping> mappings) {
@@ -55,10 +51,12 @@ public class AclCalculator {
     final Set<String> grants = new LinkedHashSet<>();
     for (final RoleMapping mapping : mappings) {
       grants.addAll(
-              PermissionUtils.grants(
-                      Principal.parse(mapping.getPrincipal()),
-                      permissionsForAssetClass(
-                              assetClass, com.agentengine.tenancy.core.rbac.PermissionUtils.assetClassVsPermissions(idVsRole))));
+          PermissionUtils.grants(
+              Principal.parse(mapping.getPrincipal()),
+              permissionsForAssetClass(
+                  assetClass,
+                  com.agentengine.tenancy.core.rbac.PermissionUtils.assetClassVsPermissions(
+                      idVsRole))));
     }
     return new ArrayList<>(grants);
   }
@@ -67,7 +65,7 @@ public class AclCalculator {
     if (!Context.require().isSystem()) {
       throw new UnauthorizedException("Access lists are recalculated by the system only");
     }
-    final AssetPermissionHelper helper = assetPermissionHelper(assetClass);
+    final AssetAclHelper helper = assetAclHelper(assetClass);
     final Acl stored = helper.getAcls(List.of(assetId)).get(assetId);
     if (stored == null) {
       roleMappingRepository.deleteForAssets(assetClass, List.of(assetId));
@@ -80,14 +78,13 @@ public class AclCalculator {
     }
   }
 
-  private AssetPermissionHelper assetPermissionHelper(final String assetClass) {
-    final AssetPermissionHelper helper = assetClassVsHelper.get(assetClass);
+  private AssetAclHelper assetAclHelper(final String assetClass) {
+    final AssetAclHelper helper = assetClassVsHelper.get(assetClass);
     if (helper == null) {
       throw new ConfigurationException("No service keeps assets of class " + assetClass);
     }
     return helper;
   }
-
 
   private static Set<Permission> permissionsForAssetClass(
       final String assetClass, final Map<String, Set<Permission>> classVsPermissions) {

@@ -15,5 +15,6 @@ public interface EntityChangeListener<T extends BaseEntity> {
   default void onChange(Class<T> entityClass, EntityChange<T> change) {
     onChange(change);
   }
+
   void onChange(EntityChange<T> change);
 }

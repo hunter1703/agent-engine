@@ -12,7 +12,10 @@ import jakarta.inject.Singleton;
 public class DefaultInfraConfigService extends AbstractInfraConfigService {
 
   @Inject
-  public DefaultInfraConfigService(MongoClientBuilder mongoClientBuilder, DistributedCacheManager cacheManager, EncryptionService encryptionService) {
+  public DefaultInfraConfigService(
+      MongoClientBuilder mongoClientBuilder,
+      DistributedCacheManager cacheManager,
+      EncryptionService encryptionService) {
     super(mongoClientBuilder, cacheManager, encryptionService);
   }
 }

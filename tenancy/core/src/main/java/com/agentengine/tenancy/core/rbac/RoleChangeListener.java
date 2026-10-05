@@ -2,9 +2,9 @@ package com.agentengine.tenancy.core.rbac;
 
 import static com.agentengine.util.tenancy.AclService.PERMISSIONS_ON_EVERY_ASSET_CACHE;
 
+import com.agentengine.tenancy.beans.Role;
 import com.agentengine.tenancy.core.repository.RoleRepository;
 import com.agentengine.util.common.repository.EntityChange;
-import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.common.repository.EntityChangeListener;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.tasks.TaskStatus;

@@ -22,7 +22,6 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.result.UpdateResult;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,8 +39,11 @@ public class AbstractInfraConfigService implements InfraConfigService {
 
   public AbstractInfraConfigService(
       final MongoClientBuilder mongoClientBuilder,
-      final DistributedCacheManager cacheManager, final EncryptionService encryptionService) {
-    this.infraClient = new LazyLoader<>(() -> mongoClientBuilder.get(EnvUtils.getInfraMongoUri(), encryptionService));
+      final DistributedCacheManager cacheManager,
+      final EncryptionService encryptionService) {
+    this.infraClient =
+        new LazyLoader<>(
+            () -> mongoClientBuilder.get(EnvUtils.getInfraMongoUri(), encryptionService));
     this.cacheManager = cacheManager;
     this.cache =
         new DistributedCache.Builder<InfraConfig>(CACHE_NAME, cacheManager)
@@ -113,8 +115,6 @@ public class AbstractInfraConfigService implements InfraConfigService {
   }
 
   private MongoCollection<InfraConfig> collection() {
-    return infraClient.get()
-        .getDatabase(DATABASE)
-        .getCollection(COLLECTION, InfraConfig.class);
+    return infraClient.get().getDatabase(DATABASE).getCollection(COLLECTION, InfraConfig.class);
   }
 }

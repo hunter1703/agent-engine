@@ -2,13 +2,10 @@ package com.agentengine.tenancy;
 
 import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.ms.client.MicroService;
-
 import java.util.Collection;
 import java.util.Map;
 
-/**
- * The role management service.
- */
+/** The role management service. */
 @MicroService("tenancy")
 public interface RoleService {
 

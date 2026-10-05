@@ -1,10 +1,4 @@
 package com.agentengine.interfaces.rest.services;
-import com.agentengine.tenancy.AccessControlService;
-import com.agentengine.tenancy.PermissionService;
-import com.agentengine.tenancy.RoleService;
-import com.agentengine.tenancy.UserService;
-import com.agentengine.tenancy.TenancyProvisioningService;
-
 
 import com.agentengine.agent.api.services.ToolCatalog;
 import com.agentengine.catalog.api.services.AgentService;
@@ -12,7 +6,12 @@ import com.agentengine.catalog.api.services.ModelService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorService;
+import com.agentengine.tenancy.AccessControlService;
 import com.agentengine.tenancy.CustomerService;
+import com.agentengine.tenancy.PermissionService;
+import com.agentengine.tenancy.RoleService;
+import com.agentengine.tenancy.TenancyProvisioningService;
+import com.agentengine.tenancy.UserService;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.inject.Produces;
@@ -102,7 +101,8 @@ public class ClientProducer {
   @Produces
   @Singleton
   @DefaultBean
-  public TenancyProvisioningService tenancyProvisioningService(final MicroServiceClientProvider provider) {
+  public TenancyProvisioningService tenancyProvisioningService(
+      final MicroServiceClientProvider provider) {
     return provider.get(TenancyProvisioningService.class);
   }
 }

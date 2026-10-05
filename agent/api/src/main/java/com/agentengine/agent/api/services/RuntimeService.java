@@ -1,7 +1,6 @@
 package com.agentengine.agent.api.services;
 
 import com.agentengine.agent.api.model.UserMessage;
-import com.agentengine.tenancy.AssetPermissionService;
 import com.agentengine.util.agents.beans.AgentSchedule;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
@@ -14,7 +13,7 @@ import java.util.Map;
 import org.reactivestreams.Publisher;
 
 @MicroService("agent")
-public interface RuntimeService extends AssetPermissionService {
+public interface RuntimeService {
 
   String RUNNER_CACHE = "session-runner-cache";
 

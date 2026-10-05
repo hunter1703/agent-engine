@@ -3,7 +3,6 @@ package com.agentengine.util.tenancy;
 import com.agentengine.util.common.annotations.Permissioned;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.repository.EntityChange;
-import com.agentengine.util.common.repository.EntityChangeListener;
 import com.agentengine.util.common.repository.GlobalEntityChangeListener;
 import com.agentengine.util.context.Context;
 import io.quarkus.arc.Unremovable;
@@ -27,12 +26,12 @@ public class PermissionedEntityDeleteListener implements GlobalEntityChangeListe
 
   @Override
   public Class<BaseEntity> entityClass() {
-    throw new UnsupportedOperationException("Global listener does not have a specific entity class");
+    throw new UnsupportedOperationException(
+        "Global listener does not have a specific entity class");
   }
 
   @Override
-  public void onChange(EntityChange<BaseEntity> change) {
-  }
+  public void onChange(EntityChange<BaseEntity> change) {}
 
   @Override
   public void onChange(Class<BaseEntity> entityClass, EntityChange<BaseEntity> change) {
@@ -47,10 +46,11 @@ public class PermissionedEntityDeleteListener implements GlobalEntityChangeListe
     }
 
     final List<String> ids =
-            switch (change) {
-              case EntityChange.Ids<?> idsChange -> List.copyOf(idsChange.ids());
-              case EntityChange.Entities<?> entitiesChange -> List.copyOf(entitiesChange.idVsEntity().keySet());
-            };
+        switch (change) {
+          case EntityChange.Ids<?> idsChange -> List.copyOf(idsChange.ids());
+          case EntityChange.Entities<?> entitiesChange ->
+              List.copyOf(entitiesChange.idVsEntity().keySet());
+        };
 
     if (ids.isEmpty()) {
       return;

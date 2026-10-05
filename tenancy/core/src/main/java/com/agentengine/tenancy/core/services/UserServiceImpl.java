@@ -3,15 +3,11 @@ package com.agentengine.tenancy.core.services;
 import com.agentengine.tenancy.UserService;
 import com.agentengine.tenancy.beans.User;
 import com.agentengine.tenancy.core.repository.UserRepository;
-import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
 
 @Singleton
 @Unremovable
@@ -21,19 +17,10 @@ public class UserServiceImpl implements UserService {
   private final DistributedCacheManager cacheManager;
 
   @Inject
-  public UserServiceImpl(final UserRepository userRepository, final DistributedCacheManager cacheManager) {
+  public UserServiceImpl(
+      final UserRepository userRepository, final DistributedCacheManager cacheManager) {
     this.userRepository = userRepository;
     this.cacheManager = cacheManager;
-  }
-
-  @Override
-  public Map<String, Acl> getAcls(final String assetClass, final Collection<String> assetIds) {
-    return userRepository.readAcls(assetIds);
-  }
-
-  @Override
-  public Set<String> applyAcls(final String assetClass, final Map<String, Acl> assetIdVsAcl) {
-    return userRepository.applyAcls(assetIdVsAcl);
   }
 
   @Override

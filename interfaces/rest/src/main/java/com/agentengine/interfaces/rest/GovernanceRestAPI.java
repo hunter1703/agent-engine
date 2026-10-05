@@ -13,7 +13,6 @@ import jakarta.ws.rs.*;
 import java.util.List;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import com.agentengine.util.common.update.Update;
 
 @Path("/v1/governance")
 @Tag(name = "Governance", description = "Role and sharing management API")
@@ -26,8 +25,7 @@ public class GovernanceRestAPI {
 
   @Inject
   public GovernanceRestAPI(
-      final AccessControlService accessControlService,
-      final RoleService roleService) {
+      final AccessControlService accessControlService, final RoleService roleService) {
     this.accessControlService = accessControlService;
     this.roleService = roleService;
   }

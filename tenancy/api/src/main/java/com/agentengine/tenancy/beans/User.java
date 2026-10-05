@@ -6,9 +6,8 @@ import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotBlank;
-import org.bson.codecs.pojo.annotations.BsonIgnore;
-
 import java.util.Locale;
+import org.bson.codecs.pojo.annotations.BsonIgnore;
 
 @Permissioned(assetClass = AssetClass.USER)
 @Index(def = "{'username': 1}", name = "username_unique", unique = true)
@@ -22,8 +21,8 @@ public class User extends BaseEntity {
 
   /** The bcrypt hash of the user's password. Never read back, except to check a password. */
   @JsonIgnore @NotBlank private String passwordHash;
-  @BsonIgnore
-  private String password;
+
+  @BsonIgnore private String password;
 
   public String getUsername() {
     return username;

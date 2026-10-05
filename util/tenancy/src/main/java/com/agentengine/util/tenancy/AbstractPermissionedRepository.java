@@ -146,10 +146,10 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
 
   @Override
   public boolean delete(final T entity) {
-    Filter filter = Filters.and(
-        Filters.eq(BaseEntity.FIELD_ID, entity.getId()),
-        Filters.eq(BaseEntity.FIELD_VERSION, entity.getVersion())
-    );
+    Filter filter =
+        Filters.and(
+            Filters.eq(BaseEntity.FIELD_ID, entity.getId()),
+            Filters.eq(BaseEntity.FIELD_VERSION, entity.getVersion()));
     return deleteByFilterIgnoringVersion(filter) > 0;
   }
 
@@ -160,7 +160,8 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
 
   @Override
   public long deleteByFilterIgnoringVersion(final Filter filter) {
-    return super.deleteByFilterIgnoringVersion(decorateWithPermissionFilter(filter, Permission.DELETE));
+    return super.deleteByFilterIgnoringVersion(
+        decorateWithPermissionFilter(filter, Permission.DELETE));
   }
 
   @Override

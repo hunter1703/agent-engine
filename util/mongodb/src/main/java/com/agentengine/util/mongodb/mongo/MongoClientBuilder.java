@@ -34,9 +34,9 @@ public class MongoClientBuilder {
 
   @Inject
   public MongoClientBuilder(
-      MongoClientSupport mongoClientSupport,
-      Instance<Codec<?>> customCodecs) {
-    this.bsonDiscriminators = CollectionUtils.nullSafeList(mongoClientSupport.getBsonDiscriminators());
+      MongoClientSupport mongoClientSupport, Instance<Codec<?>> customCodecs) {
+    this.bsonDiscriminators =
+        CollectionUtils.nullSafeList(mongoClientSupport.getBsonDiscriminators());
     this.customCodecs = customCodecs;
   }
 
@@ -44,7 +44,8 @@ public class MongoClientBuilder {
     return MongoClients.create(buildClientSettings(uri, encryptionService));
   }
 
-  private MongoClientSettings buildClientSettings(final String connectionStringStr, final EncryptionService encryptionService) {
+  private MongoClientSettings buildClientSettings(
+      final String connectionStringStr, final EncryptionService encryptionService) {
     final ConnectionString connectionString = new ConnectionString(connectionStringStr);
 
     final List<Convention> conventions = new ArrayList<>(Conventions.DEFAULT_CONVENTIONS);

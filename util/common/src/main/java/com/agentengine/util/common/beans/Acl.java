@@ -1,7 +1,6 @@
 package com.agentengine.util.common.beans;
 
 import com.agentengine.util.common.utils.CollectionUtils;
-
 import java.util.List;
 
 /**
@@ -12,7 +11,7 @@ import java.util.List;
  */
 public record Acl(List<String> grants, long version) {
 
-  public Acl{
+  public Acl {
     grants = CollectionUtils.nullSafeList(grants);
   }
 

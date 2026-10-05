@@ -83,14 +83,10 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     this.activeUsersCache =
         new DistributedCache.Builder<Boolean>("ACTIVE_USERS", cacheManager)
             .scope(CacheScope.CUSTOMER)
-            .localCache(
-                CacheBuilder.newBuilder()
-                    .expireAfterWrite(300, TimeUnit.SECONDS))
+            .localCache(CacheBuilder.newBuilder().expireAfterWrite(300, TimeUnit.SECONDS))
             .loader(
                 userId ->
-                    Context.require()
-                        .asSystemCaller()
-                        .get(() -> this.userService.isActive(userId)))
+                    Context.require().asSystemCaller().get(() -> this.userService.isActive(userId)))
             .build();
   }
 

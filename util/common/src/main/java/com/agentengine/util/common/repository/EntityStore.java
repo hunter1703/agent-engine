@@ -74,7 +74,10 @@ public interface EntityStore<T extends BaseEntity> {
   /** Deletes the entity, only while it is still at {@code version}. Returns whether it did. */
   boolean delete(String id, long version);
 
-  /** Deletes every entity {@code filter} matches, or every entity when it is null. Returns the number of entities deleted. */
+  /**
+   * Deletes every entity {@code filter} matches, or every entity when it is null. Returns the
+   * number of entities deleted.
+   */
   long deleteByFilter(Filter filter);
 
   /** Sets up the current customer's collection, or the shared one for a global store. */

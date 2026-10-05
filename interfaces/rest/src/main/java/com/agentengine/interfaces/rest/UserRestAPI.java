@@ -4,10 +4,6 @@ import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 
 import com.agentengine.tenancy.UserService;
 import com.agentengine.tenancy.beans.User;
-import com.agentengine.util.common.query.Page;
-import com.agentengine.util.common.query.PaginatedResult;
-import com.agentengine.util.common.query.Query;
-import com.agentengine.util.common.update.Update;
 import com.agentengine.util.context.ContextAware;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;

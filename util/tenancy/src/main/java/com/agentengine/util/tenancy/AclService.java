@@ -4,7 +4,6 @@ import com.agentengine.util.common.beans.Acl;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * The tenancy service's access lists: the role mappings it keeps, and the access lists and
@@ -13,8 +12,6 @@ import java.util.Set;
 public interface AclService {
 
   String PERMISSIONS_ON_EVERY_ASSET_CACHE = "PERMISSIONS_ON_EVERY_ASSET";
-
-
 
   /**
    * Deletes the role mappings of the assets, for assets their owning service has deleted; by the

@@ -11,7 +11,8 @@ import jakarta.inject.Singleton;
 public class EncryptionInfraConfigService extends AbstractInfraConfigService {
 
   @Inject
-  public EncryptionInfraConfigService(MongoClientBuilder mongoClientBuilder, DistributedCacheManager cacheManager) {
+  public EncryptionInfraConfigService(
+      MongoClientBuilder mongoClientBuilder, DistributedCacheManager cacheManager) {
     super(mongoClientBuilder, cacheManager, null);
   }
 }

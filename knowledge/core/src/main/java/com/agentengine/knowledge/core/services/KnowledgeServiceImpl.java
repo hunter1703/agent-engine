@@ -7,7 +7,6 @@ import com.agentengine.knowledge.core.repository.KnowledgeRepository;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.util.common.LazyLoader;
-import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.update.Operation;
@@ -64,16 +63,6 @@ public class KnowledgeServiceImpl implements KnowledgeService {
               return sorted;
             });
     this.schedulerService = schedulerService;
-  }
-
-  @Override
-  public Map<String, Acl> getAcls(final String assetClass, final Collection<String> assetIds) {
-    return knowledgeRepo.readAcls(assetIds);
-  }
-
-  @Override
-  public Set<String> applyAcls(final String assetClass, final Map<String, Acl> assetIdVsAcl) {
-    return knowledgeRepo.applyAcls(assetIdVsAcl);
   }
 
   @Override

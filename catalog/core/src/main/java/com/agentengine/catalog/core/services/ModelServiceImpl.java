@@ -6,7 +6,6 @@ import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.agents.builder.BuilderDefinition;
 import com.agentengine.util.agents.builder.BuilderDefinitionUtils;
 import com.agentengine.util.agents.builder.BuilderMode;
-import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.utils.CollectionUtils;
@@ -18,7 +17,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
 
 @Singleton
 @Unremovable
@@ -35,16 +33,6 @@ public class ModelServiceImpl implements ModelService {
       final ModelRepository modelRepository, final DistributedCacheManager cacheManager) {
     this.modelRepository = modelRepository;
     this.cacheManager = cacheManager;
-  }
-
-  @Override
-  public Map<String, Acl> getAcls(final String assetClass, final Collection<String> assetIds) {
-    return modelRepository.readAcls(assetIds);
-  }
-
-  @Override
-  public Set<String> applyAcls(final String assetClass, final Map<String, Acl> assetIdVsAcl) {
-    return modelRepository.applyAcls(assetIdVsAcl);
   }
 
   @Override

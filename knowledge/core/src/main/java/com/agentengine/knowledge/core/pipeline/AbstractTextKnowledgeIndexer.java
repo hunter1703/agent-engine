@@ -1,7 +1,5 @@
 package com.agentengine.knowledge.core.pipeline;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import com.agentengine.knowledge.api.beans.IndexingStatus;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
@@ -22,7 +20,6 @@ import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -114,8 +111,6 @@ public abstract class AbstractTextKnowledgeIndexer implements KnowledgeIndexer {
             : null;
     return new IndexResult(totalChunks, preview, generatedDescription);
   }
-
-
 
   /**
    * Reservoir sampling (Algorithm R): maintains a uniform random sample of up to {@link

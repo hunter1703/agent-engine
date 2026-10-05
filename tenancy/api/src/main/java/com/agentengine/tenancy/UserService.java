@@ -4,7 +4,7 @@ import com.agentengine.tenancy.beans.User;
 import com.agentengine.util.ms.client.MicroService;
 
 @MicroService("tenancy")
-public interface UserService extends AssetPermissionService {
+public interface UserService {
 
   User get(String id);
 

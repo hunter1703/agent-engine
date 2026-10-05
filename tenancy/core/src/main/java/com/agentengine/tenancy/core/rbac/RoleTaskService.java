@@ -1,8 +1,8 @@
 package com.agentengine.tenancy.core.rbac;
 
+import com.agentengine.tenancy.beans.Role;
 import com.agentengine.tenancy.core.repository.RoleMappingRepository;
 import com.agentengine.tenancy.core.repository.RoleRepository;
-import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.tasks.AbstractActorTaskService;

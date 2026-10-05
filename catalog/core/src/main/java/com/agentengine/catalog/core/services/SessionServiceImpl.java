@@ -3,7 +3,6 @@ package com.agentengine.catalog.core.services;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.catalog.core.repository.SessionRepository;
 import com.agentengine.util.agents.beans.session.AgentSession;
-import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
@@ -18,7 +17,6 @@ import jakarta.inject.Singleton;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Singleton
 @Unremovable
@@ -32,16 +30,6 @@ public class SessionServiceImpl implements SessionService {
       final SessionRepository sessionRepository, final AclService aclService) {
     this.sessionRepository = sessionRepository;
     this.aclService = aclService;
-  }
-
-  @Override
-  public Map<String, Acl> getAcls(final String assetClass, final Collection<String> assetIds) {
-    return sessionRepository.readAcls(assetIds);
-  }
-
-  @Override
-  public Set<String> applyAcls(final String assetClass, final Map<String, Acl> assetIdVsAcl) {
-    return sessionRepository.applyAcls(assetIdVsAcl);
   }
 
   @Override

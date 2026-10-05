@@ -1,7 +1,6 @@
 package com.agentengine.knowledge.api.services;
 
 import com.agentengine.knowledge.api.beans.*;
-import com.agentengine.tenancy.AssetPermissionService;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.ms.client.MicroService;
@@ -11,7 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 @MicroService("knowledge")
-public interface KnowledgeService extends AssetPermissionService {
+public interface KnowledgeService {
   Knowledge create(IndexRequest request);
 
   Knowledge findById(String id);

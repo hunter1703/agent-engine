@@ -3,9 +3,6 @@ package com.agentengine.tenancy.core.rbac;
 import com.agentengine.tenancy.RoleService;
 import com.agentengine.tenancy.beans.Role;
 import com.agentengine.tenancy.core.repository.RoleRepository;
-
-import com.agentengine.util.tasks.Task;
-import com.agentengine.util.tasks.TaskService;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
@@ -35,7 +32,7 @@ public class RoleServiceImpl implements RoleService {
     this.roleCache =
         new DistributedCache.Builder<Role>(ROLE_CACHE_NAME, distributedCacheManager)
             .localCache(CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS))
-                .loader(roleRepository::findById)
+            .loader(roleRepository::findById)
             .build();
   }
 
@@ -71,7 +68,7 @@ public class RoleServiceImpl implements RoleService {
   @Override
   public void resubmitStaleRoles() {
     roleTaskService
-            .findStale(System.currentTimeMillis() - roleTaskService.staleAfter().toMillis())
-            .forEach(roleTaskService::submit);
+        .findStale(System.currentTimeMillis() - roleTaskService.staleAfter().toMillis())
+        .forEach(roleTaskService::submit);
   }
 }

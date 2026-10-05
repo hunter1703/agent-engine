@@ -1,11 +1,10 @@
 package com.agentengine.scheduler.core.services;
+
 import com.agentengine.tenancy.AccessControlService;
+import com.agentengine.tenancy.CustomerService;
 import com.agentengine.tenancy.PermissionService;
 import com.agentengine.tenancy.RoleService;
-import com.agentengine.tenancy.CustomerService;
 import com.agentengine.tenancy.TenancyProvisioningService;
-
-
 import com.agentengine.tenancy.UserService;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import io.quarkus.arc.DefaultBean;
@@ -22,8 +21,6 @@ public class ClientProducer {
   public UserService userService(final MicroServiceClientProvider provider) {
     return provider.get(UserService.class);
   }
-
-
 
   @Produces
   @Singleton
@@ -56,7 +53,8 @@ public class ClientProducer {
   @Produces
   @Singleton
   @DefaultBean
-  public TenancyProvisioningService tenancyProvisioningService(final MicroServiceClientProvider provider) {
+  public TenancyProvisioningService tenancyProvisioningService(
+      final MicroServiceClientProvider provider) {
     return provider.get(TenancyProvisioningService.class);
   }
 }

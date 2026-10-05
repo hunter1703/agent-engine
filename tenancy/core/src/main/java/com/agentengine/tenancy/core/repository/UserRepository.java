@@ -138,8 +138,6 @@ public class UserRepository extends AbstractPermissionedRepository<User> {
     return updated;
   }
 
-
-
   private static Query getUserNameQuery(final String username) {
     return new Query()
         .withFilter(Filters.eq(User.FIELD_USERNAME, username))

@@ -11,7 +11,6 @@ import com.agentengine.util.agents.beans.config.GuardrailsConfig;
 import com.agentengine.util.agents.builder.BuilderDefinition;
 import com.agentengine.util.agents.builder.BuilderDefinitionUtils;
 import com.agentengine.util.agents.builder.BuilderMode;
-import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.UnauthorizedException;
 import com.agentengine.util.common.query.PaginatedResult;
@@ -45,16 +44,6 @@ public class AgentServiceImpl implements AgentService {
       final AgentRepository agentRepository, final DistributedCacheManager cacheManager) {
     this.agentRepository = agentRepository;
     this.cacheManager = cacheManager;
-  }
-
-  @Override
-  public Map<String, Acl> getAcls(final String assetClass, final Collection<String> assetIds) {
-    return agentRepository.readAcls(assetIds);
-  }
-
-  @Override
-  public Set<String> applyAcls(final String assetClass, final Map<String, Acl> assetIdVsAcl) {
-    return agentRepository.applyAcls(assetIdVsAcl);
   }
 
   @Override

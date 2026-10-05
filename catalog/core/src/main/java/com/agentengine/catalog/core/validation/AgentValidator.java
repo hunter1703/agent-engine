@@ -8,16 +8,15 @@ import com.agentengine.util.agents.beans.config.OrchestratorParallelConfig;
 import com.agentengine.util.agents.beans.config.ParallelStoppingPolicy;
 import com.agentengine.util.agents.beans.config.ToolsConfig;
 import com.agentengine.util.agents.beans.tools.ConnectorToolConfigsList;
-import com.agentengine.util.common.validation.ValidationCollector;
-import com.agentengine.util.common.validation.Validator;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.common.validation.ValidationCollector;
+import com.agentengine.util.common.validation.Validator;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.validation.ConstraintViolation;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Singleton
 public class AgentValidator implements Validator<BaseAgentConfig> {

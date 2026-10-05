@@ -22,8 +22,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 @Singleton
 public class EncryptionClientProvider
-    extends ClientFactory<
-        EncryptionClientInfraConfig, EncryptionKeyInfraConfig, CryptoClient> {
+    extends ClientFactory<EncryptionClientInfraConfig, EncryptionKeyInfraConfig, CryptoClient> {
 
   private final ApplicationConfig applicationConfig;
 

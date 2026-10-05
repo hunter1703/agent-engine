@@ -17,7 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Registers the sharded {@link TaskActor}s for a specific task type. */
-public class TaskActorFactory<T extends Task> extends AutoPassivableShardedEntityFactory<TaskActor.Command> {
+public class TaskActorFactory<T extends Task>
+    extends AutoPassivableShardedEntityFactory<TaskActor.Command> {
 
   private static final Logger LOG = LoggerFactory.getLogger(TaskActorFactory.class);
   private static final Duration PASSIVATION_TIMEOUT = Duration.ofMinutes(2);
@@ -27,7 +28,11 @@ public class TaskActorFactory<T extends Task> extends AutoPassivableShardedEntit
 
   public TaskActorFactory(
       final ActorSystemProvider actorSystemProvider, final TaskService<T> service) {
-    super(actorSystemProvider, EntityTypeKey.create(TaskActor.Command.class, "Task_" + service.taskType()), PASSIVATION_TIMEOUT, null);
+    super(
+        actorSystemProvider,
+        EntityTypeKey.create(TaskActor.Command.class, "Task_" + service.taskType()),
+        PASSIVATION_TIMEOUT,
+        null);
     this.service = service;
   }
 
@@ -39,8 +44,7 @@ public class TaskActorFactory<T extends Task> extends AutoPassivableShardedEntit
   }
 
   /** The id of the actor of one customer's partition of this task type. */
-  public static String entityId(
-      final String customerId, final String partitionId) {
+  public static String entityId(final String customerId, final String partitionId) {
     return String.join(ID_SEPARATOR, customerId, partitionId);
   }
 }

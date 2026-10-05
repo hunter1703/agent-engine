@@ -1,14 +1,12 @@
 package com.agentengine.tenancy.core.rbac;
 
 import com.agentengine.tenancy.AccessControlService;
-import com.agentengine.tenancy.core.helpers.AssetPermissionHelper;
-import com.agentengine.tenancy.core.repository.RoleMappingRepository;
 import com.agentengine.tenancy.RoleService;
 import com.agentengine.tenancy.beans.Role;
-import com.agentengine.util.common.LazyLoader;
+import com.agentengine.tenancy.core.helpers.AssetAclHelper;
+import com.agentengine.tenancy.core.repository.RoleMappingRepository;
 import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.exception.ConfigurationException;
-import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.common.exception.UnauthorizedException;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Principal;
@@ -19,12 +17,9 @@ import com.agentengine.util.tenancy.SharingChange;
 import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
-
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,7 +44,7 @@ public class AccessControlServiceImpl implements AccessControlService {
   private final AclCalculator aclCalculator;
   private final RoleMappingTaskService roleMappingTaskService;
   private final PermissionChecker permissionChecker;
-  private final Map<String, AssetPermissionHelper> assetClassVsHelper;
+  private final Map<String, AssetAclHelper> assetClassVsHelper;
 
   @Inject
   public AccessControlServiceImpl(
@@ -57,7 +52,7 @@ public class AccessControlServiceImpl implements AccessControlService {
       final RoleService roleService,
       final AclCalculator aclCalculator,
       final RoleMappingTaskService roleMappingTaskService,
-      final Instance<AssetPermissionHelper> assetPermissionHelpers,
+      final Instance<AssetAclHelper> assetAclHelpers,
       final PermissionChecker permissionChecker) {
     this.roleMappingRepository = roleMappingRepository;
     this.roleService = roleService;
@@ -65,10 +60,8 @@ public class AccessControlServiceImpl implements AccessControlService {
     this.roleMappingTaskService = roleMappingTaskService;
     this.permissionChecker = permissionChecker;
     this.assetClassVsHelper =
-        assetPermissionHelpers.stream()
-            .collect(
-                Collectors.toUnmodifiableMap(
-                    AssetPermissionHelper::assetClass, helper -> helper));
+        assetAclHelpers.stream()
+            .collect(Collectors.toUnmodifiableMap(AssetAclHelper::assetClass, helper -> helper));
   }
 
   @Override
@@ -77,7 +70,6 @@ public class AccessControlServiceImpl implements AccessControlService {
         .findStale(System.currentTimeMillis() - roleMappingTaskService.staleAfter().toMillis())
         .forEach(roleMappingTaskService::submit);
   }
-
 
   @Override
   public void deleteAcls(final String assetClass, final Collection<String> assetIds) {
@@ -167,12 +159,14 @@ public class AccessControlServiceImpl implements AccessControlService {
         (assetId, mappings) ->
             assetIdVsAcl.put(
                 assetId,
-                new Acl(aclCalculator.calculateGrants(mappings.getFirst().getAssetClass(), mappings), 1)));
+                new Acl(
+                    aclCalculator.calculateGrants(mappings.getFirst().getAssetClass(), mappings),
+                    1)));
     return assetIdVsAcl;
   }
 
-  private AssetPermissionHelper assetPermissionHelper(final String assetClass) {
-    final AssetPermissionHelper helper = assetClassVsHelper.get(assetClass);
+  private AssetAclHelper assetAclHelper(final String assetClass) {
+    final AssetAclHelper helper = assetClassVsHelper.get(assetClass);
     if (helper == null) {
       throw new ConfigurationException("No service keeps assets of class " + assetClass);
     }
@@ -199,7 +193,7 @@ public class AccessControlServiceImpl implements AccessControlService {
             .asSystemCaller()
             .get(
                 () ->
-                    assetPermissionHelper(assetClass)
+                    assetAclHelper(assetClass)
                         .getAcls(changes.stream().map(SharingChange::assetId).toList()));
     for (final SharingChange change : changes) {
       final Acl acl = assetIdVsAcl.get(change.assetId());
@@ -244,6 +238,7 @@ public class AccessControlServiceImpl implements AccessControlService {
   }
 
   private Map<String, Set<Permission>> assetClassVsPermissions(final Collection<String> roleIds) {
-    return com.agentengine.tenancy.core.rbac.PermissionUtils.assetClassVsPermissions(roleService.getRoles(roleIds));
+    return com.agentengine.tenancy.core.rbac.PermissionUtils.assetClassVsPermissions(
+        roleService.getRoles(roleIds));
   }
 }

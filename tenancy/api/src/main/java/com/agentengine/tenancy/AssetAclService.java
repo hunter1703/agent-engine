@@ -9,7 +9,7 @@ import java.util.Set;
  * What tenancy asks of the service that keeps a class of assets. The domain service of each
  * permissioned asset class provides it.
  */
-public interface AssetPermissionService {
+public interface AssetAclService {
 
   /** The stored access lists of the assets among {@code assetIds} that exist. */
   Map<String, Acl> getAcls(String assetClass, Collection<String> assetIds);

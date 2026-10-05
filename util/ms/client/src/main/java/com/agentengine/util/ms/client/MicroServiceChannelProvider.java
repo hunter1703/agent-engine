@@ -13,8 +13,7 @@ import org.slf4j.LoggerFactory;
 
 @Singleton
 public class MicroServiceChannelProvider
-    extends ClientFactory<
-        MicroServiceClientInfraConfig, MicroServiceServerInfraConfig, Channel> {
+    extends ClientFactory<MicroServiceClientInfraConfig, MicroServiceServerInfraConfig, Channel> {
 
   private static final Logger LOG = LoggerFactory.getLogger(MicroServiceChannelProvider.class);
 

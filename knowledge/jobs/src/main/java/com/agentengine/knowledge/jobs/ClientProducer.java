@@ -1,11 +1,4 @@
 package com.agentengine.knowledge.jobs;
-import com.agentengine.tenancy.AccessControlService;
-import com.agentengine.tenancy.PermissionService;
-import com.agentengine.tenancy.RoleService;
-import com.agentengine.tenancy.UserService;
-import com.agentengine.tenancy.CustomerService;
-import com.agentengine.tenancy.TenancyProvisioningService;
-
 
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
@@ -21,49 +14,5 @@ public class ClientProducer {
   @DefaultBean
   public KnowledgeService knowledgeService(final MicroServiceClientProvider provider) {
     return provider.get(KnowledgeService.class);
-  }
-
-
-
-  @Produces
-  @Singleton
-  @DefaultBean
-  public AccessControlService accessControlService(final MicroServiceClientProvider provider) {
-    return provider.get(AccessControlService.class);
-  }
-
-  @Produces
-  @Singleton
-  @DefaultBean
-  public PermissionService permissionService(final MicroServiceClientProvider provider) {
-    return provider.get(PermissionService.class);
-  }
-
-  @Produces
-  @Singleton
-  @DefaultBean
-  public RoleService roleService(final MicroServiceClientProvider provider) {
-    return provider.get(RoleService.class);
-  }
-
-  @Produces
-  @Singleton
-  @DefaultBean
-  public UserService userService(final MicroServiceClientProvider provider) {
-    return provider.get(UserService.class);
-  }
-
-  @Produces
-  @Singleton
-  @DefaultBean
-  public CustomerService customerService(final MicroServiceClientProvider provider) {
-    return provider.get(CustomerService.class);
-  }
-
-  @Produces
-  @Singleton
-  @DefaultBean
-  public TenancyProvisioningService tenancyProvisioningService(final MicroServiceClientProvider provider) {
-    return provider.get(TenancyProvisioningService.class);
   }
 }

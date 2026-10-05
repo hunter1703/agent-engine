@@ -31,9 +31,12 @@ public class ConnectionsEvictionListener implements EntityChangeListener<Connect
   @Override
   public void onChange(final EntityChange<Connection> change) {
     cacheManager.invalidateInCustomerScope(ConnectorCacheService.CONNECTION_IDS_CACHE_NAME);
-    
+
     if (change instanceof EntityChange.Entities<Connection> entities) {
-      entities.idVsEntity().keySet().forEach(id -> cacheManager.invalidate(ConnectionServiceImpl.CACHE_NAME, id));
+      entities
+          .idVsEntity()
+          .keySet()
+          .forEach(id -> cacheManager.invalidate(ConnectionServiceImpl.CACHE_NAME, id));
     } else if (change instanceof EntityChange.Ids<Connection> ids) {
       ids.ids().forEach(id -> cacheManager.invalidate(ConnectionServiceImpl.CACHE_NAME, id));
     }

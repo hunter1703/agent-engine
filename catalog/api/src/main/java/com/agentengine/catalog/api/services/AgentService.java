@@ -1,6 +1,5 @@
 package com.agentengine.catalog.api.services;
 
-import com.agentengine.tenancy.AssetPermissionService;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
@@ -9,7 +8,7 @@ import java.util.Collection;
 import java.util.Map;
 
 @MicroService("catalog")
-public interface AgentService extends AssetPermissionService {
+public interface AgentService {
   PaginatedResult<BaseAgentConfig> findAgents(Query query);
 
   BaseAgentConfig getAgent(String id);

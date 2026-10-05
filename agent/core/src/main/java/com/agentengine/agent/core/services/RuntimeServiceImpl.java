@@ -40,14 +40,12 @@ import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.cloudstorage.CloudStorageService;
-import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
-import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.UnauthorizedException;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
@@ -146,26 +144,6 @@ public class RuntimeServiceImpl implements RuntimeService {
     this.memoryRepository = memoryRepository;
     this.notebookRepository = notebookRepository;
     this.schedulerService = schedulerService;
-  }
-
-  @Override
-  public Map<String, Acl> getAcls(final String assetClass, final Collection<String> assetIds) {
-    return switch (assetClass) {
-      case AssetClass.AGENT_SCHEDULE -> agentScheduleRepository.readAcls(assetIds);
-      case AssetClass.MEMORY -> memoryRepository.readAcls(assetIds);
-      case AssetClass.NOTEBOOK -> notebookRepository.readAcls(assetIds);
-      default -> throw new ConfigurationException("No repository serves asset class " + assetClass);
-    };
-  }
-
-  @Override
-  public Set<String> applyAcls(final String assetClass, final Map<String, Acl> assetIdVsAcl) {
-    return switch (assetClass) {
-      case AssetClass.AGENT_SCHEDULE -> agentScheduleRepository.applyAcls(assetIdVsAcl);
-      case AssetClass.MEMORY -> memoryRepository.applyAcls(assetIdVsAcl);
-      case AssetClass.NOTEBOOK -> notebookRepository.applyAcls(assetIdVsAcl);
-      default -> throw new ConfigurationException("No repository serves asset class " + assetClass);
-    };
   }
 
   @Override

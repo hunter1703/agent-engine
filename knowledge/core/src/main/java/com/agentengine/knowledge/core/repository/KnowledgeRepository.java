@@ -79,11 +79,12 @@ public class KnowledgeRepository extends AbstractPermissionedRepository<Knowledg
             ? findPermittedIds(new Query().withPage(Page.UNBOUNDED), Permission.READ).getItems()
             : List.copyOf(findPermittedIds(knowledgeIds, Permission.READ));
     final Filter readable = Filters.in(KnowledgeChunk.FIELD_KNOWLEDGE_ID, readableIds);
-    final Filter completed = Filters.eq(KnowledgeChunk.FIELD_STATUS, IndexingStatus.COMPLETED.name());
-    final Filter combined = source.getFilter() == null ? readable : Filters.and(source.getFilter(), readable);
+    final Filter completed =
+        Filters.eq(KnowledgeChunk.FIELD_STATUS, IndexingStatus.COMPLETED.name());
+    final Filter combined =
+        source.getFilter() == null ? readable : Filters.and(source.getFilter(), readable);
     return chunkRepository.findByQuery(
-        new Query(source)
-            .withFilter(Filters.and(combined, completed)));
+        new Query(source).withFilter(Filters.and(combined, completed)));
   }
 
   public void deleteChunksOfVersion(final String knowledgeId, final Long knowledgeVersion) {
@@ -101,7 +102,8 @@ public class KnowledgeRepository extends AbstractPermissionedRepository<Knowledg
             Filters.lt(KnowledgeChunk.FIELD_KNOWLEDGE_VERSION, knowledgeVersion)));
   }
 
-  public void updateChunkStatus(final String knowledgeId, final Long knowledgeVersion, final String status) {
+  public void updateChunkStatus(
+      final String knowledgeId, final Long knowledgeVersion, final String status) {
     requirePermission(knowledgeId, Permission.EDIT);
     chunkRepository.updateManyIgnoringVersion(
         Filters.and(

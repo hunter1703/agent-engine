@@ -5,14 +5,13 @@ import com.agentengine.connectors.api.beans.ConnectionSpec;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
 import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.beans.ConnectorResult;
-import com.agentengine.tenancy.AssetPermissionService;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.ms.client.MicroService;
 import java.util.List;
 
 @MicroService("connectors")
-public interface ConnectionService extends ConnectionRefresher, AssetPermissionService {
+public interface ConnectionService {
 
   <T> ConnectorResult<T> executeConnectorRequest(ConnectorRequest request);
 
