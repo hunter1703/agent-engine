@@ -38,9 +38,12 @@ public class JgroupsService implements Receiver {
   private JChannel mainChannel;
   private LockService lockService;
   private final Map<String, List<Consumer<String>>> listeners = new ConcurrentHashMap<>();
+  private boolean started = false;
 
-  @PostConstruct
-  public void start() {
+  public synchronized void start() {
+    if (started) {
+      return;
+    }
     try {
       LOG.info("Initializing JgroupsService programmatically");
       this.mainChannel =
@@ -75,10 +78,10 @@ public class JgroupsService implements Receiver {
           new ForkChannel(mainChannel, "lock-stack", "lock-rpc-channel", new CENTRAL_LOCK2());
       this.lockService = new LockService(lockChannel);
 
-      // Connect the main channel (this automatically activates the fork channels)
       this.mainChannel.connect("coordination-channel");
       LOG.info(
           "Successfully connected to JGroups cluster: coordination-channel via isolated channels");
+      started = true;
     } catch (Exception e) {
       LOG.error("Failed to initialize JgroupsService", e);
       throw new RuntimeException("Could not start JgroupsService", e);

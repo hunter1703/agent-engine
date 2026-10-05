@@ -4,6 +4,7 @@ import static com.agentengine.util.common.Constants.ID_SEPARATOR;
 
 import com.agentengine.util.common.beans.CacheTag;
 import com.agentengine.util.common.utils.CollectionUtils;
+import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +16,11 @@ public class DistributedCacheManager {
   private final ConcurrentMap<String, List<DistributedCache<?>>> tagVsCaches =
       new ConcurrentHashMap<>();
   private final JgroupsService jgroupsService;
+
+  @PostConstruct
+  public void init() {
+    jgroupsService.start();
+  }
 
   public DistributedCacheManager(JgroupsService jgroupsService) {
     jgroupsService.registerListener(

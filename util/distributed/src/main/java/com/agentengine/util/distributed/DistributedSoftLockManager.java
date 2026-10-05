@@ -1,5 +1,6 @@
 package com.agentengine.util.distributed;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.Duration;
@@ -13,6 +14,11 @@ public class DistributedSoftLockManager implements DistributedLockManager {
   @Inject
   public DistributedSoftLockManager(JgroupsService jgroupsService) {
     this.jgroupsService = jgroupsService;
+  }
+
+  @PostConstruct
+  public void init() {
+    jgroupsService.start();
   }
 
   @Override
