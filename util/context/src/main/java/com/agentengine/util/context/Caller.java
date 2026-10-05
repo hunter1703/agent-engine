@@ -16,7 +16,7 @@ public sealed interface Caller permits Caller.SystemCaller, Caller.AnonymousCall
   SystemCaller SYSTEM = new SystemCaller();
   AnonymousCaller ANONYMOUS = new AnonymousCaller();
 
-  @JsonCreator
+  @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
   static Caller parse(final String value) {
     return switch (value) {
       case SYSTEM_NAME -> SYSTEM;

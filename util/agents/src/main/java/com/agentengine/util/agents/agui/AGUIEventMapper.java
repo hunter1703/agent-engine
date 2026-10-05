@@ -138,26 +138,18 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
 
     final FunctionCall call = part.functionCall().orElse(null);
     if (call != null) {
-      if (!partial && state.hasStreamedPartialContentForStep()) {
-        // Echo of already-streamed call; do nothing.
-      } else {
-        flowable =
-            flowable
-                .concatWith(textMapper.closeReasoningIfNeeded())
-                .concatWith(toolCallMapper.mapToolCall(call));
-      }
+      flowable =
+          flowable
+              .concatWith(textMapper.closeReasoningIfNeeded())
+              .concatWith(toolCallMapper.mapToolCall(call));
     }
 
     final FunctionResponse response = part.functionResponse().orElse(null);
     if (response != null) {
-      if (!partial && state.hasStreamedPartialContentForStep()) {
-        // Echo of already-streamed response; do nothing.
-      } else {
-        flowable =
-            flowable
-                .concatWith(textMapper.closeReasoningIfNeeded())
-                .concatWith(toolCallMapper.mapToolResponse(response));
-      }
+      flowable =
+          flowable
+              .concatWith(textMapper.closeReasoningIfNeeded())
+              .concatWith(toolCallMapper.mapToolResponse(response));
     }
     return flowable;
   }
