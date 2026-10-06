@@ -55,7 +55,7 @@ public class NotebookRepository extends AbstractPermissionedRepository<Notebook>
                     buildShare(
                         notebook,
                         creator.actingIn(AssetClass.AGENT_SESSION).forAnyUser().toString(),
-                        StandardRole.MANAGER)))
+                        StandardRole.OWNER)))
         .orElse(List.of());
   }
 

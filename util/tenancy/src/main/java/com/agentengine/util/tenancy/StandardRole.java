@@ -8,4 +8,5 @@ public interface StandardRole {
   String READER = "reader";
   String EDITOR = "editor";
   String MANAGER = "manager";
+  String OWNER = "owner";
 }

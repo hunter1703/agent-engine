@@ -242,7 +242,7 @@ public abstract class AbstractPermissionedRepository<T extends BaseEntity>
    */
   protected List<SharingChange> getInitialShare(final T entity) {
     return Context.currentPrincipal()
-        .map(creator -> List.of(buildShare(entity, creator.toString(), StandardRole.MANAGER)))
+        .map(creator -> List.of(buildShare(entity, creator.toString(), StandardRole.OWNER)))
         .orElse(List.of());
   }
 

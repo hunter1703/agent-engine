@@ -16,13 +16,7 @@
       "Knowledge": [
         "READ"
       ],
-      "Memory": [
-        "READ"
-      ],
       "Model": [
-        "READ"
-      ],
-      "Notebook": [
         "READ"
       ],
       "User": [
@@ -54,15 +48,7 @@
         "READ",
         "EDIT"
       ],
-      "Memory": [
-        "READ",
-        "EDIT"
-      ],
       "Model": [
-        "READ",
-        "EDIT"
-      ],
-      "Notebook": [
         "READ",
         "EDIT"
       ],
@@ -80,6 +66,62 @@
     "id": "manager",
     "name": "Manager",
     "standard": true,
+    "assetClassVsPermissions": {
+      "Agent": [
+        "READ",
+        "EDIT",
+        "DELETE",
+        "SHARE",
+        "CREATE"
+      ],
+      "AgentSession": [
+        "READ",
+        "EDIT",
+        "DELETE",
+        "SHARE",
+        "CREATE"
+      ],
+      "Connection": [
+        "READ",
+        "EDIT",
+        "DELETE",
+        "SHARE",
+        "CREATE"
+      ],
+      "Knowledge": [
+        "READ",
+        "EDIT",
+        "DELETE",
+        "SHARE",
+        "CREATE"
+      ],
+      "Model": [
+        "READ",
+        "EDIT",
+        "DELETE",
+        "SHARE",
+        "CREATE"
+      ],
+      "User": [
+        "READ",
+        "EDIT",
+        "DELETE",
+        "SHARE",
+        "CREATE"
+      ],
+      "AgentSchedule": [
+        "READ",
+        "EDIT",
+        "DELETE",
+        "SHARE",
+        "CREATE"
+      ]
+    }
+  },
+  {
+    "id": "owner",
+    "name": "Owner",
+    "standard": false,
     "assetClassVsPermissions": {
       "Agent": [
         "READ",

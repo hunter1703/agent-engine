@@ -122,7 +122,7 @@ public class KnowledgeRepository extends AbstractPermissionedRepository<Knowledg
         // if user created then its scoped to user only, otherwise its scoped to any user acting in
         // the nested scoped like agent or session scoped across the users
         .map(creator -> creator.isUserActingDirectly() ? creator : creator.forAnyUser())
-        .map(owner -> List.of(buildShare(knowledge, owner.toString(), StandardRole.MANAGER)))
+        .map(owner -> List.of(buildShare(knowledge, owner.toString(), StandardRole.OWNER)))
         .orElse(List.of());
   }
 

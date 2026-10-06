@@ -160,7 +160,7 @@ public class NotebookService {
           SharingChange.ofAsset(
               AssetClass.NOTEBOOK,
               notebookId,
-              Map.of(session.toString(), Set.of(StandardRole.EDITOR))));
+              Map.of(session.toString(), Set.of(StandardRole.OWNER))));
     }
     return changes;
   }
