@@ -7,7 +7,7 @@
   "topK": 40,
   "topP": 0.9,
   "repeatPenalty": 1.05,
-  "numPredict": 16384,
+  "maxOutputTokens": 16384,
   "maxContextLength": 40960,
   "toolCallingEnabled": true,
   "thoughtsEnabled": true,

@@ -114,7 +114,7 @@ Model config is polymorphic, discriminated by `type`:
 - `toolCallingEnabled` (default `false`)
 - `thoughtsEnabled` (default `true`)
 - `temperature`, `topK`, `topP`, `repeatPenalty`
-- `numPredict` (max tokens to generate)
+- `maxOutputTokens` (max tokens to generate)
 - `maxContextLength`
 
 ### `EMBEDDING` fields (`EmbeddingModelConfig`)

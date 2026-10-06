@@ -56,10 +56,6 @@ public class ChatModelConfig extends ModelConfig {
   @UiNumber
   private Double temperature;
 
-  @UiField(label = "Max Tokens to Generate", step = "sampling", order = 20)
-  @UiNumber
-  private Integer numPredict;
-
   @UiField(label = "Top-K", step = "sampling", order = 30)
   @UiNumber
   private Integer topK;
@@ -72,13 +68,25 @@ public class ChatModelConfig extends ModelConfig {
   @UiNumber
   private Double repeatPenalty;
 
+  @UiField(label = "Frequency Penalty", step = "sampling", order = 53)
+  @UiNumber
+  private Double frequencyPenalty;
+
+  @UiField(label = "Presence Penalty", step = "sampling", order = 56)
+  @UiNumber
+  private Double presencePenalty;
+
+  @UiField(label = "Max Output Tokens", step = "sampling", order = 25)
+  @UiNumber
+  private Integer maxOutputTokens;
+
   @UiField(label = "Max Context Length", step = "sampling", order = 60, advanced = true)
   @UiNumber
   private Integer maxContextLength;
 
-  @UiField(label = "Stop Tokens", step = "sampling", order = 70, advanced = true)
+  @UiField(label = "Stop Sequences", step = "sampling", order = 75, advanced = true)
   @UiText
-  private List<String> stopTokens;
+  private List<String> stopSequences;
 
   public String getInstructions() {
     return instructions;
@@ -121,14 +129,6 @@ public class ChatModelConfig extends ModelConfig {
     this.temperature = temperature;
   }
 
-  public Integer getNumPredict() {
-    return numPredict;
-  }
-
-  public void setNumPredict(final Integer numPredict) {
-    this.numPredict = numPredict;
-  }
-
   public Integer getTopK() {
     return topK;
   }
@@ -161,11 +161,35 @@ public class ChatModelConfig extends ModelConfig {
     this.maxContextLength = maxContextLength;
   }
 
-  public List<String> getStopTokens() {
-    return stopTokens;
+  public Double getFrequencyPenalty() {
+    return frequencyPenalty;
   }
 
-  public void setStopTokens(final List<String> stopTokens) {
-    this.stopTokens = stopTokens;
+  public void setFrequencyPenalty(final Double frequencyPenalty) {
+    this.frequencyPenalty = frequencyPenalty;
+  }
+
+  public Double getPresencePenalty() {
+    return presencePenalty;
+  }
+
+  public void setPresencePenalty(final Double presencePenalty) {
+    this.presencePenalty = presencePenalty;
+  }
+
+  public Integer getMaxOutputTokens() {
+    return maxOutputTokens;
+  }
+
+  public void setMaxOutputTokens(final Integer maxOutputTokens) {
+    this.maxOutputTokens = maxOutputTokens;
+  }
+
+  public List<String> getStopSequences() {
+    return stopSequences;
+  }
+
+  public void setStopSequences(final List<String> stopSequences) {
+    this.stopSequences = stopSequences;
   }
 }

@@ -51,24 +51,24 @@ public final class SpawnAgentTool extends AbstractAgentTool {
           Map.of());
 
   private static final Schema KNOWLEDGE_IDS_SCHEMA =
-          ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
-                  .description(
-                          "Knowledge ids to grant the spawned agent. Source material you have access to "
-                                  + "is not automatically visible to the child — pass the ids of any documents "
-                                  + "or references the child's work depends on. A child working from your "
-                                  + "paraphrase of source material produces weaker work than one reading the "
-                                  + "source directly. Optional.")
-                  .build();
+      ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
+          .description(
+              "Knowledge ids to grant the spawned agent. Source material you have access to "
+                  + "is not automatically visible to the child — pass the ids of any documents "
+                  + "or references the child's work depends on. A child working from your "
+                  + "paraphrase of source material produces weaker work than one reading the "
+                  + "source directly. Optional.")
+          .build();
 
   private static final Schema NOTEBOOK_IDS_SCHEMA =
-          ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
-                  .description(
-                          "Ids of notebooks to grant the spawned agent. Notebooks you have access to are "
-                                  + "not automatically visible to the child — pass every notebook the child's "
-                                  + "work depends on, including the shared workspace if the team is using one. "
-                                  + "Optional, but a child spawned without the notebooks it needs may proceed "
-                                  + "silently with incomplete context.")
-                  .build();
+      ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
+          .description(
+              "Ids of notebooks to grant the spawned agent. Notebooks you have access to are "
+                  + "not automatically visible to the child — pass every notebook the child's "
+                  + "work depends on, including the shared workspace if the team is using one. "
+                  + "Optional, but a child spawned without the notebooks it needs may proceed "
+                  + "silently with incomplete context.")
+          .build();
 
   private final List<String> subAgentIds;
   private final FunctionDeclaration declaration;
@@ -199,14 +199,14 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .description(GOAL_SCHEMA_DESCRIPTION + " Required.")
             .build());
     properties.put(
-            Constants.ToolArgs.AWAIT_COMPLETION,
-            Schema.builder()
-                    .type(Known.BOOLEAN)
-                    .description(
-                            "If true (the default), the tool waits for the child agent to finish and "
-                                    + "returns its result. If false, the tool returns immediately with the "
-                                    + "child_session_id.")
-                    .build());
+        Constants.ToolArgs.AWAIT_COMPLETION,
+        Schema.builder()
+            .type(Known.BOOLEAN)
+            .description(
+                "If true (the default), the tool waits for the child agent to finish and "
+                    + "returns its result. If false, the tool returns immediately with the "
+                    + "child_session_id.")
+            .build());
     properties.put(Constants.ToolArgs.KNOWLEDGE_IDS, KNOWLEDGE_IDS_SCHEMA);
     properties.put(Constants.ToolArgs.NOTEBOOK_IDS, NOTEBOOK_IDS_SCHEMA);
     final Schema params =

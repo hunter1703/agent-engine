@@ -95,11 +95,11 @@ docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
   backing store for the Pekko actor journal itself (event-sourcing facts, via JDBC) — the ADK
   runner's in-memory session rebuild (`RunnerFactory`) is the one path that reads that journal
   directly, to fold in turn/rollback bookkeeping before fetching event bodies from Mongo.
-- **Uncapped local models can loop forever**: a `ChatModelConfig` with no `numPredict` set has no
+- **Uncapped local models can loop forever**: a `ChatModelConfig` with no `maxOutputTokens` set has no
   generation length limit, and `repeatPenalty` alone doesn't reliably stop a weaker local model
   from degenerating into repeating the same section (with a plausible-looking Markdown/frontmatter
   boundary in between) until it fills the context window — symptom: a single response that never
-  terminates. Always set `numPredict` (and `maxContextLength` matching the model's `num_ctx`) for
+  terminates. Always set `maxOutputTokens` (and `maxContextLength` matching the model's `num_ctx`) for
   local Ollama-backed models in `deploy/configs/local/models/`.
 - **Access control model**: a request's `Context` carries its customer and its `Caller` — the
   system, nobody (before logging in), or a user (`UserCaller`). A principal (`Principal`) is a user

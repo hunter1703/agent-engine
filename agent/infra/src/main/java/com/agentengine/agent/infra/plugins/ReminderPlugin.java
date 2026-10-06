@@ -117,7 +117,8 @@ public final class ReminderPlugin extends BasePlugin {
         newPayload.put(
             "message",
             "This historical snapshot is expired. See the latest refresh_reminders result.");
-        final FunctionResponse expiredResponse = functionResponse.toBuilder().response(newPayload).build();
+        final FunctionResponse expiredResponse =
+            functionResponse.toBuilder().response(newPayload).build();
         updatedParts.add(Part.builder().functionResponse(expiredResponse).build());
       } else {
         updatedParts.add(part);

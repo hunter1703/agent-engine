@@ -53,9 +53,9 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
         .topK(config.getTopK())
         .topP(config.getTopP())
         .repeatPenalty(config.getRepeatPenalty())
-        .numPredict(config.getNumPredict())
+        .numPredict(config.getMaxOutputTokens())
         .numCtx(config.getMaxContextLength())
-        .stop(config.getStopTokens())
+        .stop(config.getStopSequences())
         .timeout(DEFAULT_TIMEOUT)
         .build();
   }
@@ -69,7 +69,10 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
             .apiKey(config.getApiKey())
             .temperature(config.getTemperature())
             .topP(config.getTopP())
-            .stop(config.getStopTokens())
+            .stop(config.getStopSequences())
+            .maxTokens(config.getMaxOutputTokens())
+            .frequencyPenalty(config.getFrequencyPenalty())
+            .presencePenalty(config.getPresencePenalty())
             .returnThinking(config.isThoughtsEnabled())
             .timeout(DEFAULT_TIMEOUT);
     final Map<String, Object> customParams = getParamsMap(config.getAdditionalParams());
@@ -88,9 +91,9 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
         .topK(config.getTopK())
         .topP(config.getTopP())
         .repeatPenalty(config.getRepeatPenalty())
-        .numPredict(config.getNumPredict())
+        .numPredict(config.getMaxOutputTokens())
         .numCtx(config.getMaxContextLength())
-        .stop(config.getStopTokens())
+        .stop(config.getStopSequences())
         .timeout(DEFAULT_TIMEOUT)
         .build();
   }
@@ -104,7 +107,10 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
             .apiKey(config.getApiKey())
             .temperature(config.getTemperature())
             .topP(config.getTopP())
-            .stop(config.getStopTokens())
+            .stop(config.getStopSequences())
+            .maxTokens(config.getMaxOutputTokens())
+            .frequencyPenalty(config.getFrequencyPenalty())
+            .presencePenalty(config.getPresencePenalty())
             .returnThinking(config.isThoughtsEnabled())
             .timeout(DEFAULT_TIMEOUT);
     final Map<String, Object> customParams = getParamsMap(config.getAdditionalParams());

@@ -32,9 +32,7 @@ public class RefreshRemindersTool extends Tool {
 
     reminderSyncService.syncAll(sessionState);
 
-    final String formattedReminders =
-        ReminderPlugin.formatReminders(
-            sessionState.reminders());
+    final String formattedReminders = ReminderPlugin.formatReminders(sessionState.reminders());
 
     return ToolOutput.direct(
         Map.of(
