@@ -7,6 +7,7 @@ import com.agentengine.agent.core.session.StartChildResult;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.StartChildCommand;
 import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
 import com.agentengine.knowledge.api.services.KnowledgeService;
@@ -66,8 +67,8 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       final List<String> subAgentIds,
       final NotebookService notebookService,
       final KnowledgeService knowledgeService,
-      final AccessControlService accessControlService) {
-    super(DESCRIPTOR, actorSystemProvider, notebookService, knowledgeService, accessControlService);
+      final AccessControlService accessControlService, final ReminderSyncService reminderSyncService) {
+    super(DESCRIPTOR, actorSystemProvider, notebookService, knowledgeService, accessControlService, reminderSyncService);
     this.subAgentIds = List.copyOf(subAgentIds);
     this.declaration = buildDeclaration(this.subAgentIds);
   }

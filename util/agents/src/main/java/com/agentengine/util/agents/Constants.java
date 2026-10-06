@@ -21,6 +21,7 @@ public interface Constants {
     String DELETE_NOTE = "delete_note";
     String DELETE_NOTEBOOK = "delete_notebook";
     String SEARCH_KNOWLEDGE = "search_knowledge";
+    String REFRESH_REMINDERS = "refresh_reminders";
 
     static boolean isAgentRoutingTool(String toolName) {
       return SPAWN_AGENT.equals(toolName)

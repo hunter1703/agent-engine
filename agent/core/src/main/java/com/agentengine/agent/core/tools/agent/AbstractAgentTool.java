@@ -6,6 +6,7 @@ import com.agentengine.agent.core.session.commands.SelfCommand.AwaitChildCommand
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
@@ -58,10 +59,11 @@ public class AbstractAgentTool extends Tool {
   protected final NotebookService notebookService;
   protected final KnowledgeService knowledgeService;
   protected final AccessControlService accessControlService;
+  protected final ReminderSyncService reminderSyncService;
 
   protected AbstractAgentTool(
       final ToolDescriptor toolDescriptor, final ActorSystemProvider actorSystemProvider) {
-    this(toolDescriptor, actorSystemProvider, null, null, null);
+    this(toolDescriptor, actorSystemProvider, null, null, null, null);
   }
 
   protected AbstractAgentTool(
@@ -69,12 +71,14 @@ public class AbstractAgentTool extends Tool {
       final ActorSystemProvider actorSystemProvider,
       final NotebookService notebookService,
       final KnowledgeService knowledgeService,
-      final AccessControlService accessControlService) {
+      final AccessControlService accessControlService,
+      final ReminderSyncService reminderSyncService) {
     super(toolDescriptor, true);
     this.actorSystemProvider = actorSystemProvider;
     this.notebookService = notebookService;
     this.knowledgeService = knowledgeService;
     this.accessControlService = accessControlService;
+    this.reminderSyncService = reminderSyncService;
   }
 
   protected EntityRef<SessionCommand> actorRef(final ToolContext toolContext) {
@@ -153,6 +157,12 @@ public class AbstractAgentTool extends Tool {
     }
     SessionUtils.getSessionState(toolContext.invocationContext())
         .markSpawnedAgentAwaited(childSessionId);
+
+    // if child has finished, it may have touched the reminders, refresh them.
+    if (reminderSyncService != null) {
+      reminderSyncService.syncAll(SessionUtils.getSessionState(toolContext.invocationContext()));
+    }
+
     return ToolOutput.direct(AwaitAgentTool.buildCompletedResponseMap(childSessionId, result));
   }
 

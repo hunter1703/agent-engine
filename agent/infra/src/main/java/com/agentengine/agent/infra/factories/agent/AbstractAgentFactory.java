@@ -56,6 +56,7 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
       tools.add(toolFactory.getHITLTool());
     }
     tools.add(toolFactory.getSearchKnowledgeTool());
+    tools.add(toolFactory.getRefreshRemindersTool());
     final BaseLlmAgentBuilder baseLlmAgentBuilder = new BaseLlmAgentBuilder(builder);
     return baseLlmAgentBuilder
         .systemInstructions(

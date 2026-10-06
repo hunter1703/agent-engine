@@ -6,6 +6,7 @@ import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.SendMessageCommand;
 import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.agent.infra.utils.SessionState;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.knowledge.api.services.KnowledgeService;
@@ -43,11 +44,11 @@ public final class SendMessageTool extends AbstractAgentTool {
           Map.of());
 
   public SendMessageTool(
-      final ActorSystemProvider actorSystemProvider,
-      final NotebookService notebookService,
-      final KnowledgeService knowledgeService,
-      final AccessControlService accessControlService) {
-    super(DESCRIPTOR, actorSystemProvider, notebookService, knowledgeService, accessControlService);
+          final ActorSystemProvider actorSystemProvider,
+          final NotebookService notebookService,
+          final KnowledgeService knowledgeService,
+          final AccessControlService accessControlService, final ReminderSyncService reminderSyncService) {
+    super(DESCRIPTOR, actorSystemProvider, notebookService, knowledgeService, accessControlService, reminderSyncService);
   }
 
   public ToolOutput<Map<String, Object>> execute(

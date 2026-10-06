@@ -1,5 +1,8 @@
 package com.agentengine.agent.infra.tools;
 
+import com.agentengine.agent.infra.reminders.ReminderSyncService;
+import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.tools.agent.RefreshRemindersTool;
 import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.beans.config.ToolsConfig;
@@ -23,6 +26,8 @@ public final class ToolFactory {
   private final KnowledgeService knowledgeService;
   private final DefaultModelsRepository defaultModelsRepository;
   private final ModelProvider modelProvider;
+  private final NotebookService notebookService;
+  private final ReminderSyncService reminderSyncService;
 
   @Inject
   public ToolFactory(
@@ -30,12 +35,16 @@ public final class ToolFactory {
       final CloudStorageService cloudStorageService,
       final KnowledgeService knowledgeService,
       final DefaultModelsRepository defaultModelsRepository,
-      final ModelProvider modelProvider) {
+      final ModelProvider modelProvider,
+      final NotebookService notebookService,
+      final ReminderSyncService reminderSyncService) {
     this.toolService = toolService;
     this.cloudStorageService = cloudStorageService;
     this.knowledgeService = knowledgeService;
     this.defaultModelsRepository = defaultModelsRepository;
     this.modelProvider = modelProvider;
+    this.notebookService = notebookService;
+    this.reminderSyncService = reminderSyncService;
   }
 
   public HumanInTheLoopTool getHITLTool() {
@@ -45,6 +54,10 @@ public final class ToolFactory {
   public BaseTool getSearchKnowledgeTool() {
     return new SearchKnowledgeTool(
         knowledgeService, cloudStorageService, defaultModelsRepository, modelProvider);
+  }
+
+  public BaseTool getRefreshRemindersTool() {
+    return new RefreshRemindersTool(reminderSyncService);
   }
 
   public List<BaseTool> buildTools(final List<ToolsConfig> toolConfigs) {

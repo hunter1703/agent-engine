@@ -82,4 +82,13 @@ public class PaginatedResult<T> {
     result.setHasMore(this.hasMore);
     return result;
   }
+
+  public static <T> PaginatedResult<T> empty() {
+    PaginatedResult<T> result = new PaginatedResult<>();
+    result.setItems(List.of());
+    result.setTotal(0L);
+    result.setHasMore(false);
+    result.setNextCursor(null);
+    return result;
+  }
 }

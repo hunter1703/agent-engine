@@ -166,10 +166,10 @@ public class NotebookService {
   }
 
   private void invalidateNotebookCache(final Notebook notebook) {
+    invalidateCurrentSessionCache();
     if (notebook == null
         || notebook.getAcl() == null
         || CollectionUtils.isEmpty(notebook.getAcl().grants())) {
-      invalidateCurrentSessionCache();
       return;
     }
     final Set<String> sessionIds = new LinkedHashSet<>();

@@ -8,6 +8,7 @@ import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.genai.types.Content;
+import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import java.util.*;
@@ -86,6 +87,28 @@ public final class ContentUtils {
         : content.parts().orElse(List.of()).stream()
             .filter(part -> part.functionResponse().isPresent())
             .toList();
+  }
+
+  public static List<FunctionCall> getFunctionCalls(final Content content, final String toolName) {
+    if (content == null || StringUtils.isBlank(toolName)) {
+      return List.of();
+    }
+    return content.parts().orElse(List.of()).stream()
+        .map(Part::functionCall)
+        .flatMap(Optional::stream)
+        .filter(call -> toolName.equals(call.name().orElse("")))
+        .toList();
+  }
+
+  public static List<FunctionResponse> getFunctionResponses(final Content content, final String toolName) {
+    if (content == null || StringUtils.isBlank(toolName)) {
+      return List.of();
+    }
+    return content.parts().orElse(List.of()).stream()
+        .map(Part::functionResponse)
+        .flatMap(Optional::stream)
+        .filter(response -> toolName.equals(response.name().orElse("")))
+        .toList();
   }
 
   public static boolean hasVisibleText(final Content content) {

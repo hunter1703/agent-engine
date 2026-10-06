@@ -27,6 +27,7 @@ public final class SessionState {
 
   private RunState runState;
   private final Set<Reminder> reminders = new LinkedHashSet<>();
+  private List<Reminder> initialReminders;
   // The child sessions this session spawned, each with its agent and the goal it was given.
   private final Map<String, SpawnedAgent> childSessionIdVsSpawnedAgent = new HashMap<>();
   private Plan plan;
@@ -40,6 +41,7 @@ public final class SessionState {
   }
 
   public void syncKnowledgeReminders(final KnowledgeService knowledgeService) {
+    reminders.removeIf(r -> Objects.equals(r.group(), Reminder.GROUP_KNOWLEDGE_IDS));
     final List<Knowledge> knowledges =
         knowledgeService.findByQuery(new Query().withPage(Page.UNBOUNDED)).getItems();
     for (final Knowledge knowledge : knowledges) {
@@ -63,6 +65,7 @@ public final class SessionState {
   }
 
   public void syncNotebookReminder(final NotebookService notebookService) {
+    reminders.removeIf(r -> Objects.equals(r.group(), Reminder.GROUP_NOTEBOOK_ACCESS));
     final String summary = notebookService.summary();
     if (StringUtils.isBlank(summary)) {
       return;
@@ -146,6 +149,13 @@ public final class SessionState {
             PlanningUtils.activePlanBrief(plan)));
   }
 
+  public List<Reminder> initialReminders() {
+    if (initialReminders == null) {
+      initialReminders = List.copyOf(reminders);
+    }
+    return initialReminders;
+  }
+
   public List<Reminder> reminders() {
     return List.copyOf(reminders);
   }
@@ -154,7 +164,7 @@ public final class SessionState {
     if (reminder == null) {
       return;
     }
-    reminders.remove(reminder);
+    reminders.removeIf(r -> Objects.equals(r.group(), reminder.group()) && Objects.equals(r.id(), reminder.id()));
     reminders.add(reminder);
   }
 

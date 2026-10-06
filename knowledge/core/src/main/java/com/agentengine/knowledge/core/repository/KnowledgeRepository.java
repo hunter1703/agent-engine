@@ -78,6 +78,9 @@ public class KnowledgeRepository extends AbstractPermissionedRepository<Knowledg
         CollectionUtils.isEmpty(knowledgeIds)
             ? findPermittedIds(new Query().withPage(Page.UNBOUNDED), Permission.READ).getItems()
             : List.copyOf(findPermittedIds(knowledgeIds, Permission.READ));
+    if (readableIds.isEmpty()) {
+      return PaginatedResult.empty();
+    }
     final Filter readable = Filters.in(KnowledgeChunk.FIELD_KNOWLEDGE_ID, readableIds);
     final Filter completed =
         Filters.eq(KnowledgeChunk.FIELD_STATUS, IndexingStatus.COMPLETED.name());
