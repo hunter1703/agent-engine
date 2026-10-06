@@ -23,9 +23,7 @@ public final class KnowledgePlugin extends BasePlugin {
   public Maybe<Content> beforeAgentCallback(
       final BaseAgent agent, final CallbackContext callbackContext) {
     final InvocationContext invocationContext = callbackContext.invocationContext();
-    if (SessionUtils.isNewRun(invocationContext)) {
-      SessionUtils.getSessionState(invocationContext).syncKnowledgeReminders(knowledgeService);
-    }
+    SessionUtils.getSessionState(invocationContext).syncKnowledgeReminders(knowledgeService);
     return Maybe.empty();
   }
 }

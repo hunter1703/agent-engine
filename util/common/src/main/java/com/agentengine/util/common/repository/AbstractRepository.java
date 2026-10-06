@@ -200,14 +200,22 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
   }
 
   /** Stores entities readied by {@link #prepareNewEntities}, and publishes their creation. */
-  protected final List<T> storeNew(final List<T> entities) {
-    final List<T> stored =
-        entities.size() == 1
-            ? List.of(store.insert(entities.getFirst()))
-            : store.insertMany(entities);
+  protected List<T> storeNew(final List<T> entities) {
+    List<T> stored = storeNewNoListener(entities);
     publish(
         new EntityChange.Entities<>(
             EntityChange.Type.CREATED, CollectionUtils.transformToMap(stored, BaseEntity::getId)));
+    return stored;
+  }
+
+  protected final List<T> storeNewNoListener(final List<T> entities) {
+    final List<T> stored =
+            entities.size() == 1
+                    ? List.of(store.insert(entities.getFirst()))
+                    : store.insertMany(entities);
+    publish(
+            new EntityChange.Entities<>(
+                    EntityChange.Type.CREATED, CollectionUtils.transformToMap(stored, BaseEntity::getId)));
     return stored;
   }
 
@@ -216,17 +224,26 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
    * none does. An update that changes nothing the entity's author owns returns the first match
    * unchanged.
    */
-  protected final T updateFirst(final Query query, final Update update) {
+  protected T updateFirst(final Query query, final Update update) {
+    T updated = updateFirstNoListener(query, update);
+    if (updated != null) {
+      publish(
+          new EntityChange.Entities<>(EntityChange.Type.UPDATED, Map.of(updated.getId(), updated)));
+    }
+    return updated;
+  }
+
+  protected final T updateFirstNoListener(final Query query, final Update update) {
     final Update applicable = EntityUtils.prepareUpdate(update, contextualFields());
     if (applicable.operations().isEmpty()) {
       return store.findByQuery(new Query(query).withPage(new Page(0, 1))).getItems().stream()
-          .findFirst()
-          .orElse(null);
+              .findFirst()
+              .orElse(null);
     }
     final T updated = store.findOneAndUpdate(query, applicable);
     if (updated != null) {
       publish(
-          new EntityChange.Entities<>(EntityChange.Type.UPDATED, Map.of(updated.getId(), updated)));
+              new EntityChange.Entities<>(EntityChange.Type.UPDATED, Map.of(updated.getId(), updated)));
     }
     return updated;
   }
@@ -269,14 +286,18 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
    * is created without going through {@link #create}.
    */
   protected final T upsertOne(final Filter filter, final Update update) {
+    final T upserted = upsertOneNoListener(filter, update);
+    publish(
+        new EntityChange.Entities<>(EntityChange.Type.UPDATED, Map.of(upserted.getId(), upserted)));
+    return upserted;
+  }
+
+  protected final T upsertOneNoListener(Filter filter, Update update) {
     final List<Operation> operations =
         new ArrayList<>(EntityUtils.prepareUpdate(update, contextualFields()).operations());
     operations.add(
         Operation.setOnInsert(BaseEntity.FIELD_CREATED_TIME, System.currentTimeMillis()));
-    final T upserted = store.upsertOne(filter, new Update(operations));
-    publish(
-        new EntityChange.Entities<>(EntityChange.Type.UPDATED, Map.of(upserted.getId(), upserted)));
-    return upserted;
+      return store.upsertOne(filter, new Update(operations));
   }
 
   /**
@@ -302,19 +323,13 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
    * when it is null, and publishes the write. It goes through only while the stored entity is at
    * {@code expectedVersion} or, without one, at {@code existing}'s.
    */
-  protected final T write(
+  protected T write(
       final String id,
       final Long expectedVersion,
       final T entity,
       final boolean upsert,
       final T existing) {
-    entity.setId(id);
-    EntityUtils.prepareReplacement(entity, existing);
-    final Long versionToExpect =
-        existing == null
-            ? null
-            : Objects.requireNonNullElse(expectedVersion, existing.getVersion());
-    final T written = store.replace(entity, versionToExpect, upsert, existing);
+    final T written = writeNoListener(id, expectedVersion, entity, upsert, existing);
     publish(
         new EntityChange.Entities<>(
             existing == null ? EntityChange.Type.CREATED : EntityChange.Type.UPDATED,
@@ -322,8 +337,23 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
     return written;
   }
 
+  protected final T writeNoListener(
+          final String id,
+          final Long expectedVersion,
+          final T entity,
+          final boolean upsert,
+          final T existing) {
+    entity.setId(id);
+    EntityUtils.prepareReplacement(entity, existing);
+    final Long versionToExpect =
+            existing == null
+                    ? null
+                    : Objects.requireNonNullElse(expectedVersion, existing.getVersion());
+    return store.replace(entity, versionToExpect, upsert, existing);
+  }
+
   /** Deletes the entity with id {@code id}, whatever its version, and publishes the delete. */
-  protected final boolean deleteFromStore(final String id) {
+  protected boolean deleteFromStore(final String id) {
     final boolean deleted = store.deleteById(id);
     if (deleted) {
       publish(new EntityChange.Ids<>(EntityChange.Type.DELETED, Set.of(id)));
@@ -332,7 +362,7 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
   }
 
   /** Deletes the entity while it is still at its version, and publishes the delete. */
-  protected final boolean deleteFromStore(final T entity) {
+  protected boolean deleteFromStore(final T entity) {
     final boolean deleted = store.delete(entity.getId(), entity.getVersion());
     if (deleted) {
       publish(new EntityChange.Ids<>(EntityChange.Type.DELETED, Set.of(entity.getId())));

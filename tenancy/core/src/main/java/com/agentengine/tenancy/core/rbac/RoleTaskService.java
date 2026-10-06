@@ -50,7 +50,7 @@ public class RoleTaskService extends AbstractActorTaskService<Role> {
   }
 
   @Override
-  public void handle(final List<Role> roles) {
+  public void handle(final Collection<Role> roles) {
     for (final Role role : roles) {
       roleMappingRepository.updateStatusOnAssetsWithRole(role.getId(), TaskStatus.PENDING);
     }

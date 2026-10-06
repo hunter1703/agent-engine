@@ -45,6 +45,16 @@ public interface Constants {
     String NOTEBOOK_IDS = "notebook_ids";
   }
 
+  interface HitlArgs {
+    String KIND = "kind";
+    String ALLOW_CUSTOM_ANSWER = "allowCustomAnswer";
+    String IS_MULTI_SELECT = "isMultiSelect";
+    String INTERRUPT_ID = "interruptId";
+    String PROMPT = "prompt";
+    String ORIGINAL_TOOL_CALL_ID = "originalToolCallId";
+    String OPTIONS = "options";
+  }
+
   /** The {@code status} field/value a tool's response map commonly carries. */
   interface ToolStatus {
     String STATUS = "status";

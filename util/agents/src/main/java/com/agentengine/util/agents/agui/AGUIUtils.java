@@ -40,14 +40,22 @@ public final class AGUIUtils {
       final String prompt,
       final String originalToolCallId,
       final List<String> options,
+      final Boolean allowCustomAnswer,
+      final Boolean isMultiSelect,
       final InterruptKind kind,
       final long timestamp) {
     final Map<String, Object> fields = new LinkedHashMap<>();
-    fields.put("interruptId", interruptId);
-    fields.put("prompt", prompt);
-    fields.put("originalToolCallId", originalToolCallId);
-    fields.put("options", options);
-    fields.put("kind", kind == null ? null : kind.name());
+    fields.put(com.agentengine.util.agents.Constants.HitlArgs.INTERRUPT_ID, interruptId);
+    fields.put(com.agentengine.util.agents.Constants.HitlArgs.PROMPT, prompt);
+    fields.put(com.agentengine.util.agents.Constants.HitlArgs.ORIGINAL_TOOL_CALL_ID, originalToolCallId);
+    fields.put(com.agentengine.util.agents.Constants.HitlArgs.OPTIONS, options);
+    if (allowCustomAnswer != null) {
+      fields.put(com.agentengine.util.agents.Constants.HitlArgs.ALLOW_CUSTOM_ANSWER, allowCustomAnswer);
+    }
+    if (isMultiSelect != null) {
+      fields.put(com.agentengine.util.agents.Constants.HitlArgs.IS_MULTI_SELECT, isMultiSelect);
+    }
+    fields.put(com.agentengine.util.agents.Constants.HitlArgs.KIND, kind == null ? null : kind.name());
     return new CustomEvent("interrupt_requested", fields, timestamp, null);
   }
 

@@ -50,14 +50,26 @@ public final class HumanInTheLoopTool extends Tool {
       @ToolArg(
               name = KIND,
               description =
-                  "Type of input required. TEXT: critical information is missing with no reasonable default. DECISION: user must approve a destructive action or choose between mutually exclusive options with no clear preference. Do NOT use for routine confirmations.")
+                  "Type of input required. TEXT: expecting information, choices, or custom answers. DECISION: user must only approve or reject an action (ALLOW/DISALLOW). DECISION requires no other parameters.")
           final String kind,
       @ToolArg(
               name = RESPONSE_OPTIONS,
               description =
-                  "Required when kind is DECISION. A small list of explicit user-selectable choices, such as ['Yes', 'No'] or ['Use Option A', 'Use Option B']. Do not include this for TEXT unless the choices are genuinely constrained.",
+                  "Used when kind is TEXT. A list of explicit user-selectable choices (e.g., ['Alice', 'Bob']).",
               optional = true)
           List<String> options,
+      @ToolArg(
+              name = "allowCustomAnswer",
+              description =
+                  "Used when kind is TEXT. If true, allows the user to provide a free-form text answer. MUST be true if kind is TEXT and options are empty. MUST be false or omitted if the user is strictly required to select from the provided options.",
+              optional = true)
+          final Boolean allowCustomAnswer,
+      @ToolArg(
+              name = "isMultiSelect",
+              description =
+                  "Used when kind is TEXT and options are provided. If true, allows the user to select multiple options. MUST be false or omitted if the user is required to select exactly one option.",
+              optional = true)
+          final Boolean isMultiSelect,
       @ToolArg(
               name = CONTEXT,
               description =
@@ -69,6 +81,22 @@ public final class HumanInTheLoopTool extends Tool {
           Map.of("message", "Invocation context is not available for request_human_input."));
     }
     final InterruptKind pauseKind = InterruptKind.valueOfOrDefault(kind);
+    if (pauseKind == InterruptKind.DECISION) {
+      if (CollectionUtils.isNotEmpty(options)) {
+        return ToolOutput.direct(Map.of("error", "options must be empty when kind is DECISION. Either omit options or use TEXT instead."));
+      }
+      if (Boolean.TRUE.equals(allowCustomAnswer)) {
+        return ToolOutput.direct(Map.of("error", "allowCustomAnswer must be false/null when kind is DECISION. Either omit allowCustomAnswer or use TEXT instead."));
+      }
+      if (Boolean.TRUE.equals(isMultiSelect)) {
+        return ToolOutput.direct(Map.of("error", "isMultiSelect must be false/null when kind is DECISION. Either omit isMultiSelect or use TEXT instead."));
+      }
+    } else if (pauseKind == InterruptKind.TEXT) {
+      if (CollectionUtils.isEmpty(options) && !Boolean.TRUE.equals(allowCustomAnswer)) {
+        return ToolOutput.direct(Map.of("error", "allowCustomAnswer MUST be true when kind is TEXT and no options are provided."));
+      }
+    }
+
     final ToolConfirmation confirmation = toolContext.toolConfirmation().orElse(null);
     if (confirmation != null) {
       LOG.debug(
@@ -80,7 +108,7 @@ public final class HumanInTheLoopTool extends Tool {
     }
 
     LOG.debug("Requesting HITL interrupt kind={}", pauseKind);
-    requestInterrupt(toolContext, prompt, options, context, pauseKind);
+    requestInterrupt(toolContext, prompt, options, allowCustomAnswer, isMultiSelect, context, pauseKind);
     return ToolOutput.empty();
   }
 
@@ -88,6 +116,8 @@ public final class HumanInTheLoopTool extends Tool {
       final ToolContext toolContext,
       final String prompt,
       List<String> options,
+      final Boolean allowCustomAnswer,
+      final Boolean isMultiSelect,
       final Map<String, Object> context,
       final InterruptKind pauseKind) {
     final String sanitizedPrompt =
@@ -103,6 +133,12 @@ public final class HumanInTheLoopTool extends Tool {
     payload.put(KIND, pauseKind.name());
     if (CollectionUtils.isNotEmpty(options)) {
       payload.put(RESPONSE_OPTIONS, options);
+    }
+    if (Boolean.TRUE.equals(allowCustomAnswer)) {
+      payload.put("allowCustomAnswer", true);
+    }
+    if (Boolean.TRUE.equals(isMultiSelect)) {
+      payload.put("isMultiSelect", true);
     }
     if (CollectionUtils.isNotEmpty(context)) {
       payload.put(CONTEXT, context);

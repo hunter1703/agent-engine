@@ -62,9 +62,6 @@ public class AclCalculator {
   }
 
   public void calculateAndUpdateGrants(final String assetClass, final String assetId) {
-    if (!Context.require().isSystem()) {
-      throw new UnauthorizedException("Access lists are recalculated by the system only");
-    }
     final AssetAclHelper helper = assetAclHelper(assetClass);
     final Acl stored = helper.getAcls(List.of(assetId)).get(assetId);
     if (stored == null) {

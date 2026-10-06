@@ -48,9 +48,10 @@ public class RoleMappingTaskService extends AbstractActorTaskService<RoleMapping
   }
 
   @Override
-  public void handle(final List<RoleMapping> mappings) {
-    final RoleMapping mapping = mappings.getFirst();
-    aclCalculator.calculateAndUpdateGrants(mapping.getAssetClass(), mapping.getAssetId());
+  public void handle(final Collection<RoleMapping> mappings) {
+    for (final RoleMapping mapping : mappings) {
+      aclCalculator.calculateAndUpdateGrants(mapping.getAssetClass(), mapping.getAssetId());
+    }
   }
 
   @Override

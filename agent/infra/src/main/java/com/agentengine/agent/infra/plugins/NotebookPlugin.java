@@ -47,7 +47,7 @@ public final class NotebookPlugin extends BasePlugin {
   public Maybe<Content> beforeAgentCallback(
       final BaseAgent agent, final CallbackContext callbackContext) {
     final InvocationContext invocationContext = callbackContext.invocationContext();
-    if (agentsWithNotebook.contains(agent.name()) && SessionUtils.isNewRun(invocationContext)) {
+    if (agentsWithNotebook.contains(agent.name())) {
       SessionUtils.getSessionState(invocationContext).syncNotebookReminder(notebookService);
     }
     return Maybe.empty();

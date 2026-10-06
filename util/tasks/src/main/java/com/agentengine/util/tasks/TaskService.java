@@ -30,7 +30,7 @@ public interface TaskService<T extends Task> {
    * the system context of their customer. Each task is marked done once this returns; when it
    * throws, every task stays pending.
    */
-  void handle(List<T> tasks);
+  void handle(Collection<T> tasks);
 
   /** Marks the task done, unless it was written since it was submitted: then it stays pending. */
   void markDone(T task);

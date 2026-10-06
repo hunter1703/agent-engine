@@ -10,21 +10,23 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.AbstractRepository;
 import com.agentengine.util.common.repository.DocumentBackend;
 import com.agentengine.util.common.repository.DocumentRepositorySpec;
+import com.agentengine.util.common.repository.EntityChange;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.validation.ValidationService;
 import com.agentengine.util.tasks.Task;
 import com.agentengine.util.tasks.TaskStatus;
 import io.quarkus.runtime.Startup;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+
+import java.util.*;
 
 @Singleton
 @Startup
 public class RoleMappingRepository extends AbstractRepository<RoleMapping> {
+  public static final String UPDATE_GRANTS_IN_SYNC = "updateGrantsInSync";
 
   @Inject
   public RoleMappingRepository(
@@ -60,9 +62,12 @@ public class RoleMappingRepository extends AbstractRepository<RoleMapping> {
     if (assetId != null) {
       operations.add(Operation.set(Task.FIELD_STATUS, status.name()));
     }
-    return upsertOne(
-        Filters.eq(BaseEntity.FIELD_ID, RoleMapping.id(principal, assetClass, assetId)),
-        new Update(operations));
+    final RoleMapping upserted = upsertOneNoListener(
+            Filters.eq(BaseEntity.FIELD_ID, RoleMapping.id(principal, assetClass, assetId)),
+            new Update(operations));
+    publish(
+            new EntityChange.Entities<>(EntityChange.Type.UPDATED, Map.of(upserted.getId(), upserted), Map.of(UPDATE_GRANTS_IN_SYNC, true)));
+    return upserted;
   }
 
   /**
@@ -90,6 +95,59 @@ public class RoleMappingRepository extends AbstractRepository<RoleMapping> {
         Filters.and(
             Filters.eq(BaseEntity.FIELD_ID, id),
             Filters.eq(RoleMapping.FIELD_ROLE_IDS, List.of())));
+  }
+
+  @Override
+  protected RoleMapping updateFirst(final Query query, final Update update) {
+    RoleMapping updated = updateFirstNoListener(query, update);
+    if (updated != null) {
+      publish(
+              new EntityChange.Entities<>(EntityChange.Type.UPDATED, Map.of(updated.getId(), updated), Map.of(UPDATE_GRANTS_IN_SYNC, true)));
+    }
+    return updated;
+  }
+  
+  @Override
+  protected List<RoleMapping> storeNew(final List<RoleMapping> entities) {
+    List<RoleMapping> stored = storeNewNoListener(entities);
+    publish(
+            new EntityChange.Entities<>(
+                    EntityChange.Type.CREATED, CollectionUtils.transformToMap(stored, BaseEntity::getId), Map.of(UPDATE_GRANTS_IN_SYNC, true)));
+    return stored;
+  }
+
+  @Override
+  protected RoleMapping write(
+          final String id,
+          final Long expectedVersion,
+          final RoleMapping entity,
+          final boolean upsert,
+          final RoleMapping existing) {
+    final RoleMapping written = writeNoListener(id, expectedVersion, entity, upsert, existing);
+    publish(
+            new EntityChange.Entities<>(
+                    existing == null ? EntityChange.Type.CREATED : EntityChange.Type.UPDATED,
+                    Map.of(id, written), Map.of(UPDATE_GRANTS_IN_SYNC, true)));
+    return written;
+  }
+
+  @Override
+  protected boolean deleteFromStore(final String id) {
+    final boolean deleted = store.deleteById(id);
+    if (deleted) {
+      publish(new EntityChange.Ids<>(EntityChange.Type.DELETED, Set.of(id), Map.of(UPDATE_GRANTS_IN_SYNC, true)));
+    }
+    return deleted;
+  }
+
+  /** Deletes the entity while it is still at its version, and publishes the delete. */
+  @Override
+  protected boolean deleteFromStore(final RoleMapping entity) {
+    final boolean deleted = store.delete(entity.getId(), entity.getVersion());
+    if (deleted) {
+      publish(new EntityChange.Ids<>(EntityChange.Type.DELETED, Set.of(entity.getId()), Map.of(UPDATE_GRANTS_IN_SYNC, true)));
+    }
+    return deleted;
   }
 
   /**
@@ -123,7 +181,10 @@ public class RoleMappingRepository extends AbstractRepository<RoleMapping> {
    * @throws StaleStateException if the mapping is gone or was written since
    */
   public void updateStatus(final RoleMapping mapping, final TaskStatus status) {
-    update(mapping, Update.of(Operation.set(Task.FIELD_STATUS, status.name())));
+    final RoleMapping updated = updateFirstNoListener(new Query().withFilter(withIdAndVersionFilter(mapping)), Update.of(Operation.set(Task.FIELD_STATUS, status.name())));
+    if (updated == null) {
+      throw new StaleStateException(mapping.getId(), mapping.getVersion());
+    }
   }
 
   /**
