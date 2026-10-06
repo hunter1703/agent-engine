@@ -1,6 +1,5 @@
 package com.agentengine.util.agents.agui;
 
-import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.Constants.HitlArgs;
 import com.agentengine.util.agents.beans.InterruptKind;
 import com.agentengine.util.common.Violation;
@@ -49,18 +48,15 @@ public final class AGUIUtils {
     final Map<String, Object> fields = new LinkedHashMap<>();
     fields.put(HitlArgs.INTERRUPT_ID, interruptId);
     fields.put(HitlArgs.PROMPT, prompt);
-    fields.put(
-        HitlArgs.ORIGINAL_TOOL_CALL_ID, originalToolCallId);
+    fields.put(HitlArgs.ORIGINAL_TOOL_CALL_ID, originalToolCallId);
     fields.put(HitlArgs.OPTIONS, options);
     if (allowCustomAnswer != null) {
-      fields.put(
-          HitlArgs.ALLOW_CUSTOM_ANSWER, allowCustomAnswer);
+      fields.put(HitlArgs.ALLOW_CUSTOM_ANSWER, allowCustomAnswer);
     }
     if (isMultiSelect != null) {
       fields.put(HitlArgs.IS_MULTI_SELECT, isMultiSelect);
     }
-    fields.put(
-        HitlArgs.KIND, kind == null ? null : kind.name());
+    fields.put(HitlArgs.KIND, kind == null ? null : kind.name());
     return new CustomEvent("interrupt_requested", fields, timestamp, null);
   }
 

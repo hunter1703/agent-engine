@@ -1,7 +1,7 @@
 package com.agentengine.agent.infra.tools;
 
-import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.agent.infra.tools.agent.RefreshRemindersTool;
 import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
 import com.agentengine.knowledge.api.services.KnowledgeService;

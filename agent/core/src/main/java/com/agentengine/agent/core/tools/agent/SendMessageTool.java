@@ -38,17 +38,24 @@ public final class SendMessageTool extends AbstractAgentTool {
       new ToolDescriptor(
           Constants.ToolNames.SEND_MESSAGE,
           """
-          Sends a follow-up message to an existing child agent session, preserving its full conversation history. Use when the child has completed its previous task but its accumulated context is still relevant — for example, to give corrections, additional instructions, or a new related request without starting a fresh session. The child session must have already finished processing its previous message before a new one is accepted; sending to an active session will be rejected. A successful response confirms the message was accepted and the child has begun processing — it does not mean the child has finished.
+          Sends a follow-up message to an ongoing child agent session, allowing you to have a back-and-forth dialogue while preserving its full conversation history. Use this to continue a complex task, provide missing information, grant additional access, or issue corrections to a session that you previously spawned. The child session must have already finished processing its previous message before a new one is accepted; sending to an active session will be rejected. A successful response confirms the message was accepted and the child has begun processing — it does not mean the child has finished.
 
           Returns: { child_session_id } on success, or { error } on failure.""",
           Map.of());
 
   public SendMessageTool(
-          final ActorSystemProvider actorSystemProvider,
-          final NotebookService notebookService,
-          final KnowledgeService knowledgeService,
-          final AccessControlService accessControlService, final ReminderSyncService reminderSyncService) {
-    super(DESCRIPTOR, actorSystemProvider, notebookService, knowledgeService, accessControlService, reminderSyncService);
+      final ActorSystemProvider actorSystemProvider,
+      final NotebookService notebookService,
+      final KnowledgeService knowledgeService,
+      final AccessControlService accessControlService,
+      final ReminderSyncService reminderSyncService) {
+    super(
+        DESCRIPTOR,
+        actorSystemProvider,
+        notebookService,
+        knowledgeService,
+        accessControlService,
+        reminderSyncService);
   }
 
   public ToolOutput<Map<String, Object>> execute(

@@ -100,7 +100,8 @@ public final class ContentUtils {
         .toList();
   }
 
-  public static List<FunctionResponse> getFunctionResponses(final Content content, final String toolName) {
+  public static List<FunctionResponse> getFunctionResponses(
+      final Content content, final String toolName) {
     if (content == null || StringUtils.isBlank(toolName)) {
       return List.of();
     }

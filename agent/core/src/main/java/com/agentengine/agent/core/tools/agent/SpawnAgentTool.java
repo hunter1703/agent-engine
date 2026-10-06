@@ -41,23 +41,34 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       new ToolDescriptor(
           Constants.ToolNames.SPAWN_AGENT,
           """
-          Creates a new subordinate agent session and starts it immediately with an initial message. Use to delegate a self-contained task to a specialised agent, or to run multiple tasks concurrently across independent child sessions. Returns a session identifier before the child has produced any output — the child runs asynchronously. The returned identifier can be used in subsequent calls to deliver follow-up messages or to wait for the result.
+                  Creates a new child agent session and starts it with the given message. The child has no prior context — it sees only the message you send and the material you explicitly grant. To continue an existing child session, use SendMessageTool instead.
 
-          Returns: { child_session_id } on success, or { error } on failure.""",
+                  Nothing you have access to is automatically available to the child. Pass `notebook_ids` for every notebook the child needs to read or write — including the shared workspace. A child spawned without the notebooks it needs may proceed silently with incomplete context rather than fail.
+
+                  By default the tool waits for the child to finish and returns its result. Set `await_completion` to false to return immediately with just the child session id; use AwaitAgentTool to collect its result later.
+
+                  Returns: { child_session_id, result } if awaited, { child_session_id, status: "started" } if not, or { error } on failure.""",
           Map.of());
 
   private static final Schema KNOWLEDGE_IDS_SCHEMA =
-      ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
-          .description("Knowledge ids to grant the spawned agent. " + KNOWLEDGES_ACCESS_DESCRIPTION)
-          .build();
+          ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
+                  .description(
+                          "Knowledge ids to grant the spawned agent. Source material you have access to "
+                                  + "is not automatically visible to the child — pass the ids of any documents "
+                                  + "or references the child's work depends on. A child working from your "
+                                  + "paraphrase of source material produces weaker work than one reading the "
+                                  + "source directly. Optional.")
+                  .build();
 
   private static final Schema NOTEBOOK_IDS_SCHEMA =
-      ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
-          .description(
-              "Ids of existing notebooks to grant the spawned agent. "
-                  + NOTEBOOKS_ACCESS_DESCRIPTION
-                  + " Optional.")
-          .build();
+          ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
+                  .description(
+                          "Ids of notebooks to grant the spawned agent. Notebooks you have access to are "
+                                  + "not automatically visible to the child — pass every notebook the child's "
+                                  + "work depends on, including the shared workspace if the team is using one. "
+                                  + "Optional, but a child spawned without the notebooks it needs may proceed "
+                                  + "silently with incomplete context.")
+                  .build();
 
   private final List<String> subAgentIds;
   private final FunctionDeclaration declaration;
@@ -67,8 +78,15 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       final List<String> subAgentIds,
       final NotebookService notebookService,
       final KnowledgeService knowledgeService,
-      final AccessControlService accessControlService, final ReminderSyncService reminderSyncService) {
-    super(DESCRIPTOR, actorSystemProvider, notebookService, knowledgeService, accessControlService, reminderSyncService);
+      final AccessControlService accessControlService,
+      final ReminderSyncService reminderSyncService) {
+    super(
+        DESCRIPTOR,
+        actorSystemProvider,
+        notebookService,
+        knowledgeService,
+        accessControlService,
+        reminderSyncService);
     this.subAgentIds = List.copyOf(subAgentIds);
     this.declaration = buildDeclaration(this.subAgentIds);
   }
@@ -181,12 +199,14 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .description(GOAL_SCHEMA_DESCRIPTION + " Required.")
             .build());
     properties.put(
-        Constants.ToolArgs.AWAIT_COMPLETION,
-        Schema.builder()
-            .type(Known.BOOLEAN)
-            .description(
-                "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been spawned.")
-            .build());
+            Constants.ToolArgs.AWAIT_COMPLETION,
+            Schema.builder()
+                    .type(Known.BOOLEAN)
+                    .description(
+                            "If true (the default), the tool waits for the child agent to finish and "
+                                    + "returns its result. If false, the tool returns immediately with the "
+                                    + "child_session_id.")
+                    .build());
     properties.put(Constants.ToolArgs.KNOWLEDGE_IDS, KNOWLEDGE_IDS_SCHEMA);
     properties.put(Constants.ToolArgs.NOTEBOOK_IDS, NOTEBOOK_IDS_SCHEMA);
     final Schema params =

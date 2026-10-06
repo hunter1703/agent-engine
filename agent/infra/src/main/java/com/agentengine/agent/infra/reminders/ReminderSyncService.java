@@ -9,18 +9,18 @@ import jakarta.inject.Singleton;
 @Singleton
 public class ReminderSyncService {
 
-    private final NotebookService notebookService;
-    private final KnowledgeService knowledgeService;
+  private final NotebookService notebookService;
+  private final KnowledgeService knowledgeService;
 
-    @Inject
-    public ReminderSyncService(
-            final NotebookService notebookService, final KnowledgeService knowledgeService) {
-        this.notebookService = notebookService;
-        this.knowledgeService = knowledgeService;
-    }
+  @Inject
+  public ReminderSyncService(
+      final NotebookService notebookService, final KnowledgeService knowledgeService) {
+    this.notebookService = notebookService;
+    this.knowledgeService = knowledgeService;
+  }
 
-    public void syncAll(final SessionState sessionState) {
-        sessionState.syncNotebookReminder(notebookService);
-        sessionState.syncKnowledgeReminders(knowledgeService);
-    }
+  public void syncAll(final SessionState sessionState) {
+    sessionState.syncNotebookReminder(notebookService);
+    sessionState.syncKnowledgeReminders(knowledgeService);
+  }
 }

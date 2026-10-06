@@ -11,6 +11,7 @@ import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.agent.infra.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.agent.infra.factories.agent.builders.ParallelOrchestratorAgentBuilder;
 import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.knowledge.api.services.KnowledgeService;
@@ -38,6 +39,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
   private final NotebookService notebookService;
   private final KnowledgeService knowledgeService;
   private final AccessControlService accessControlService;
+  private final ReminderSyncService reminderSyncService;
 
   @Inject
   public OrchestratorAgentFactory(
@@ -48,7 +50,8 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
       final ActorSystemProvider actorSystemProvider,
       final NotebookService notebookService,
       final KnowledgeService knowledgeService,
-      final AccessControlService accessControlService) {
+      final AccessControlService accessControlService,
+      ReminderSyncService reminderSyncService) {
     super(modelProvider, toolFactory);
     this.agentService = agentService;
     this.agentProviderInstance = agentProviderInstance;
@@ -56,6 +59,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
     this.notebookService = notebookService;
     this.knowledgeService = knowledgeService;
     this.accessControlService = accessControlService;
+    this.reminderSyncService = reminderSyncService;
   }
 
   @Override
@@ -120,9 +124,14 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
                 subAgentIds,
                 notebookService,
                 knowledgeService,
-                accessControlService),
+                accessControlService,
+                reminderSyncService),
             new SendMessageTool(
-                actorSystemProvider, notebookService, knowledgeService, accessControlService),
+                actorSystemProvider,
+                notebookService,
+                knowledgeService,
+                accessControlService,
+                reminderSyncService),
             new AwaitAgentTool(actorSystemProvider)));
 
     final List<? extends Agent> transferableSubAgents =

@@ -164,7 +164,8 @@ public final class SessionState {
     if (reminder == null) {
       return;
     }
-    reminders.removeIf(r -> Objects.equals(r.group(), reminder.group()) && Objects.equals(r.id(), reminder.id()));
+    reminders.removeIf(
+        r -> Objects.equals(r.group(), reminder.group()) && Objects.equals(r.id(), reminder.id()));
     reminders.add(reminder);
   }
 
