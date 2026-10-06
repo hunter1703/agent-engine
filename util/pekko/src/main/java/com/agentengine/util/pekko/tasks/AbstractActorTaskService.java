@@ -2,20 +2,28 @@ package com.agentengine.util.pekko.tasks;
 
 import com.agentengine.util.context.Context;
 import com.agentengine.util.pekko.ActorSystemProvider;
+import com.agentengine.util.pekko.actor.ShardedEntityDefinition;
 import com.agentengine.util.tasks.Task;
 import com.agentengine.util.tasks.TaskService;
+import org.apache.pekko.actor.typed.ActorSystem;
+import org.apache.pekko.cluster.sharding.typed.javadsl.Entity;
 
 /**
  * A {@link TaskService} whose tasks are processed by one sharded {@link TaskActor} per customer,
  * task type and partition, so runs of a partition never overlap across the cluster. A subclass
  * keeps the tasks; submitting one sends it to its partition's actor.
  */
-public abstract class AbstractActorTaskService<T extends Task> implements TaskService<T> {
+public abstract class AbstractActorTaskService<T extends Task> implements TaskService<T>, ShardedEntityDefinition {
 
   private final TaskActorFactory<T> taskActorFactory;
 
   protected AbstractActorTaskService(final ActorSystemProvider actorSystemProvider) {
     this.taskActorFactory = new TaskActorFactory<>(actorSystemProvider, this);
+  }
+
+  @Override
+  public <M, E> Entity<M, E> entity(final ActorSystem<?> system) {
+    return taskActorFactory.entity(system);
   }
 
   /**
