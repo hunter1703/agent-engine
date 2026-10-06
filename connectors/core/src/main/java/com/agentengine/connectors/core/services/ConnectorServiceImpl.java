@@ -8,12 +8,11 @@ import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.connectors.infra.beans.Connector;
 import com.agentengine.connectors.infra.builders.ConnectorExecutorFactory;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
+import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.Map;
-
-import io.quarkus.arc.Unremovable;
 
 @Singleton
 @Unremovable

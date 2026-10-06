@@ -5,10 +5,9 @@ import com.agentengine.connectors.core.ConnectorsDocumentStoreClientType;
 import com.agentengine.util.common.repository.DocumentBackend;
 import com.agentengine.util.common.repository.DocumentRepositorySpec;
 import com.agentengine.util.tenancy.AbstractAssetAclService;
+import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
-import io.quarkus.arc.Unremovable;
 
 @Singleton
 @Unremovable

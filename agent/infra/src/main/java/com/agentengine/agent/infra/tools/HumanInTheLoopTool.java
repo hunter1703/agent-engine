@@ -83,17 +83,29 @@ public final class HumanInTheLoopTool extends Tool {
     final InterruptKind pauseKind = InterruptKind.valueOfOrDefault(kind);
     if (pauseKind == InterruptKind.DECISION) {
       if (CollectionUtils.isNotEmpty(options)) {
-        return ToolOutput.direct(Map.of("error", "options must be empty when kind is DECISION. Either omit options or use TEXT instead."));
+        return ToolOutput.direct(
+            Map.of(
+                "error",
+                "options must be empty when kind is DECISION. Either omit options or use TEXT instead."));
       }
       if (Boolean.TRUE.equals(allowCustomAnswer)) {
-        return ToolOutput.direct(Map.of("error", "allowCustomAnswer must be false/null when kind is DECISION. Either omit allowCustomAnswer or use TEXT instead."));
+        return ToolOutput.direct(
+            Map.of(
+                "error",
+                "allowCustomAnswer must be false/null when kind is DECISION. Either omit allowCustomAnswer or use TEXT instead."));
       }
       if (Boolean.TRUE.equals(isMultiSelect)) {
-        return ToolOutput.direct(Map.of("error", "isMultiSelect must be false/null when kind is DECISION. Either omit isMultiSelect or use TEXT instead."));
+        return ToolOutput.direct(
+            Map.of(
+                "error",
+                "isMultiSelect must be false/null when kind is DECISION. Either omit isMultiSelect or use TEXT instead."));
       }
     } else if (pauseKind == InterruptKind.TEXT) {
       if (CollectionUtils.isEmpty(options) && !Boolean.TRUE.equals(allowCustomAnswer)) {
-        return ToolOutput.direct(Map.of("error", "allowCustomAnswer MUST be true when kind is TEXT and no options are provided."));
+        return ToolOutput.direct(
+            Map.of(
+                "error",
+                "allowCustomAnswer MUST be true when kind is TEXT and no options are provided."));
       }
     }
 
@@ -108,7 +120,8 @@ public final class HumanInTheLoopTool extends Tool {
     }
 
     LOG.debug("Requesting HITL interrupt kind={}", pauseKind);
-    requestInterrupt(toolContext, prompt, options, allowCustomAnswer, isMultiSelect, context, pauseKind);
+    requestInterrupt(
+        toolContext, prompt, options, allowCustomAnswer, isMultiSelect, context, pauseKind);
     return ToolOutput.empty();
   }
 

@@ -127,7 +127,7 @@ public final class SendMessageTool extends AbstractAgentTool {
         if (awaitCompletion) {
           yield awaitChild(toolContext, childSessionId);
         } else {
-          yield ToolOutput.direct(Map.of("child_session_id", childSessionId));
+          yield ToolOutput.direct(Map.of("child_session_id", childSessionId, "status", "started"));
         }
       }
       case StartSessionResult.Rejected(String reason) ->

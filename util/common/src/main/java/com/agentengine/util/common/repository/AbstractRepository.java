@@ -210,12 +210,12 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
 
   protected final List<T> storeNewNoListener(final List<T> entities) {
     final List<T> stored =
-            entities.size() == 1
-                    ? List.of(store.insert(entities.getFirst()))
-                    : store.insertMany(entities);
+        entities.size() == 1
+            ? List.of(store.insert(entities.getFirst()))
+            : store.insertMany(entities);
     publish(
-            new EntityChange.Entities<>(
-                    EntityChange.Type.CREATED, CollectionUtils.transformToMap(stored, BaseEntity::getId)));
+        new EntityChange.Entities<>(
+            EntityChange.Type.CREATED, CollectionUtils.transformToMap(stored, BaseEntity::getId)));
     return stored;
   }
 
@@ -237,13 +237,13 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
     final Update applicable = EntityUtils.prepareUpdate(update, contextualFields());
     if (applicable.operations().isEmpty()) {
       return store.findByQuery(new Query(query).withPage(new Page(0, 1))).getItems().stream()
-              .findFirst()
-              .orElse(null);
+          .findFirst()
+          .orElse(null);
     }
     final T updated = store.findOneAndUpdate(query, applicable);
     if (updated != null) {
       publish(
-              new EntityChange.Entities<>(EntityChange.Type.UPDATED, Map.of(updated.getId(), updated)));
+          new EntityChange.Entities<>(EntityChange.Type.UPDATED, Map.of(updated.getId(), updated)));
     }
     return updated;
   }
@@ -297,7 +297,7 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
         new ArrayList<>(EntityUtils.prepareUpdate(update, contextualFields()).operations());
     operations.add(
         Operation.setOnInsert(BaseEntity.FIELD_CREATED_TIME, System.currentTimeMillis()));
-      return store.upsertOne(filter, new Update(operations));
+    return store.upsertOne(filter, new Update(operations));
   }
 
   /**
@@ -338,17 +338,17 @@ public abstract class AbstractRepository<T extends BaseEntity> implements Reposi
   }
 
   protected final T writeNoListener(
-          final String id,
-          final Long expectedVersion,
-          final T entity,
-          final boolean upsert,
-          final T existing) {
+      final String id,
+      final Long expectedVersion,
+      final T entity,
+      final boolean upsert,
+      final T existing) {
     entity.setId(id);
     EntityUtils.prepareReplacement(entity, existing);
     final Long versionToExpect =
-            existing == null
-                    ? null
-                    : Objects.requireNonNullElse(expectedVersion, existing.getVersion());
+        existing == null
+            ? null
+            : Objects.requireNonNullElse(expectedVersion, existing.getVersion());
     return store.replace(entity, versionToExpect, upsert, existing);
   }
 

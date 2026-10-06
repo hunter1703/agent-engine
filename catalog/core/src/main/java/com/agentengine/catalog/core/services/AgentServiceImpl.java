@@ -88,7 +88,10 @@ public class AgentServiceImpl implements AgentService {
         sanitizeConfig(id, agent, isEdit ? BuilderMode.EDIT : BuilderMode.CREATE);
     requireSubAgentsExist(sanitized);
     requireCanShareAddedSubAgents(id, sanitized);
-    final BaseAgentConfig saved = skipVersion ? agentRepository.saveIgnoringVersion(sanitized) : agentRepository.save(sanitized);
+    final BaseAgentConfig saved =
+        skipVersion
+            ? agentRepository.saveIgnoringVersion(sanitized)
+            : agentRepository.save(sanitized);
     if (isEdit) {
       invalidateCachedRunners(id);
     }

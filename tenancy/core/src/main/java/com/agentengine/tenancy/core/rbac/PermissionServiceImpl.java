@@ -4,6 +4,7 @@ import com.agentengine.tenancy.PermissionService;
 import com.agentengine.tenancy.RoleService;
 import com.agentengine.tenancy.core.repository.RoleMappingRepository;
 import com.agentengine.util.tenancy.Permission;
+import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Collection;
@@ -11,8 +12,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import io.quarkus.arc.Unremovable;
 
 @Singleton
 @Unremovable

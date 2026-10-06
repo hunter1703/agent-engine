@@ -139,7 +139,8 @@ public final class SpawnAgentTool extends AbstractAgentTool {
         if (awaitCompletion) {
           yield awaitChild(toolContext, childSessionId);
         } else {
-          yield ToolOutput.direct(Map.of(Constants.ToolArgs.CHILD_SESSION_ID, childSessionId));
+          yield ToolOutput.direct(
+              Map.of(Constants.ToolArgs.CHILD_SESSION_ID, childSessionId, "status", "started"));
         }
       }
       case StartSessionResult.Rejected(String r) ->

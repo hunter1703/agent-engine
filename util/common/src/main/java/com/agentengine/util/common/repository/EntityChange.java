@@ -2,7 +2,6 @@ package com.agentengine.util.common.repository;
 
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.utils.CollectionUtils;
-
 import java.util.Collections;
 import java.util.Locale;
 import java.util.Map;
@@ -19,7 +18,8 @@ public sealed interface EntityChange<T extends BaseEntity>
   Type type();
 
   /** A write to these entities, each as it is after the write, by id. */
-  record Entities<T extends BaseEntity>(Type type, Map<String, T> idVsEntity, Map<String, Object> additional)
+  record Entities<T extends BaseEntity>(
+      Type type, Map<String, T> idVsEntity, Map<String, Object> additional)
       implements EntityChange<T> {
     public Entities {
       idVsEntity = CollectionUtils.nullSafeMap(idVsEntity);
@@ -32,7 +32,8 @@ public sealed interface EntityChange<T extends BaseEntity>
   }
 
   /** A write to some or all of the entities with these ids. */
-  record Ids<T extends BaseEntity>(Type type, Set<String> ids, Map<String, Object> additional) implements EntityChange<T> {
+  record Ids<T extends BaseEntity>(Type type, Set<String> ids, Map<String, Object> additional)
+      implements EntityChange<T> {
     public Ids {
       ids = Set.copyOf(ids);
       additional = CollectionUtils.nullSafeMap(additional);

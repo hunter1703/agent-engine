@@ -48,11 +48,17 @@ public class RoleMappingChangeListener implements EntityChangeListener<RoleMappi
     final Collection<RoleMapping> mappings =
         switch (change) {
           case EntityChange.Entities<RoleMapping> changed -> {
-            updateGrantsInSync = Boolean.TRUE.equals(CollectionUtils.getBooleanValueFromMap(changed.additional(), RoleMappingRepository.UPDATE_GRANTS_IN_SYNC));
+            updateGrantsInSync =
+                Boolean.TRUE.equals(
+                    CollectionUtils.getBooleanValueFromMap(
+                        changed.additional(), RoleMappingRepository.UPDATE_GRANTS_IN_SYNC));
             yield changed.idVsEntity().values();
           }
           case EntityChange.Ids<RoleMapping> changed -> {
-            updateGrantsInSync = Boolean.TRUE.equals(CollectionUtils.getBooleanValueFromMap(changed.additional(), RoleMappingRepository.UPDATE_GRANTS_IN_SYNC));
+            updateGrantsInSync =
+                Boolean.TRUE.equals(
+                    CollectionUtils.getBooleanValueFromMap(
+                        changed.additional(), RoleMappingRepository.UPDATE_GRANTS_IN_SYNC));
             yield roleMappingRepository.findByIds(changed.ids()).values();
           }
         };

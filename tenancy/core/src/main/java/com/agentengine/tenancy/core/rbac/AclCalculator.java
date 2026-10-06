@@ -7,8 +7,6 @@ import com.agentengine.tenancy.core.repository.RoleMappingRepository;
 import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.StaleStateException;
-import com.agentengine.util.common.exception.UnauthorizedException;
-import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Principal;
 import com.agentengine.util.tenancy.Permission;
 import com.agentengine.util.tenancy.PermissionUtils;

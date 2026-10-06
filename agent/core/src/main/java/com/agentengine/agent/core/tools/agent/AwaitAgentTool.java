@@ -54,7 +54,8 @@ public final class AwaitAgentTool extends AbstractAgentTool {
     }
 
     if (result.output() != null) {
-      return Map.of("child_session_id", childSessionId, "result", result.output());
+      return Map.of(
+          "child_session_id", childSessionId, "status", "completed", "result", result.output());
     }
 
     return Map.of("child_session_id", childSessionId, "status", "completed");

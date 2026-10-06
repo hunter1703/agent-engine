@@ -78,7 +78,10 @@ public class ModelServiceImpl implements ModelService {
     if (mode == BuilderMode.EDIT) {
       sanitized.setId(id);
     }
-    final ModelConfig saved = skipVersion ? modelRepository.saveIgnoringVersion(sanitized) : modelRepository.save(sanitized);
+    final ModelConfig saved =
+        skipVersion
+            ? modelRepository.saveIgnoringVersion(sanitized)
+            : modelRepository.save(sanitized);
     invalidateCached(saved.getId());
     return saved;
   }

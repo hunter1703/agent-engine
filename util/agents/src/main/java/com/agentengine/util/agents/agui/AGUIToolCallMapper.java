@@ -139,22 +139,34 @@ public final class AGUIToolCallMapper {
     final String prompt = toolConfirmation.hint();
     @SuppressWarnings("unchecked")
     final Map<String, Object> payload = (Map<String, Object>) toolConfirmation.payload();
-    final List<String> options = CollectionUtils.getListFromMap(payload, Constants.HitlArgs.OPTIONS);
+    final List<String> options =
+        CollectionUtils.getListFromMap(payload, Constants.HitlArgs.OPTIONS);
 
     InterruptKind kind;
     Boolean allowCustomAnswer = null;
     Boolean isMultiSelect = null;
     if (Objects.equals(Constants.ToolNames.HITL, functionName)) {
-      kind = InterruptKind.valueOfOrDefault(CollectionUtils.getStringValueFromMap(payload, Constants.HitlArgs.KIND));
-      allowCustomAnswer = CollectionUtils.getBooleanValueFromMap(payload, Constants.HitlArgs.ALLOW_CUSTOM_ANSWER);
-      isMultiSelect = CollectionUtils.getBooleanValueFromMap(payload, Constants.HitlArgs.IS_MULTI_SELECT);
+      kind =
+          InterruptKind.valueOfOrDefault(
+              CollectionUtils.getStringValueFromMap(payload, Constants.HitlArgs.KIND));
+      allowCustomAnswer =
+          CollectionUtils.getBooleanValueFromMap(payload, Constants.HitlArgs.ALLOW_CUSTOM_ANSWER);
+      isMultiSelect =
+          CollectionUtils.getBooleanValueFromMap(payload, Constants.HitlArgs.IS_MULTI_SELECT);
     } else {
       kind = InterruptKind.DECISION;
     }
 
     final CustomEvent event =
         AGUIUtils.buildInterruptRequestedEvent(
-            interruptId, prompt, originalToolCallId, options, allowCustomAnswer, isMultiSelect, kind, state.timestamp());
+            interruptId,
+            prompt,
+            originalToolCallId,
+            options,
+            allowCustomAnswer,
+            isMultiSelect,
+            kind,
+            state.timestamp());
     LOG.debug(
         "Generated output event - eventType=interrupt_requested, interruptId={}, originalToolCallId={}",
         interruptId,

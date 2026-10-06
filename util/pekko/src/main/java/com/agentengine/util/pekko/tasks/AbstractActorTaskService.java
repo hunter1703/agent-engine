@@ -13,7 +13,8 @@ import org.apache.pekko.cluster.sharding.typed.javadsl.Entity;
  * task type and partition, so runs of a partition never overlap across the cluster. A subclass
  * keeps the tasks; submitting one sends it to its partition's actor.
  */
-public abstract class AbstractActorTaskService<T extends Task> implements TaskService<T>, ShardedEntityDefinition {
+public abstract class AbstractActorTaskService<T extends Task>
+    implements TaskService<T>, ShardedEntityDefinition {
 
   private final TaskActorFactory<T> taskActorFactory;
 

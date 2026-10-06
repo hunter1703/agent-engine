@@ -7,13 +7,12 @@ import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.common.cache.CacheBuilder;
+import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import io.quarkus.arc.Unremovable;
 
 @Singleton
 @Unremovable

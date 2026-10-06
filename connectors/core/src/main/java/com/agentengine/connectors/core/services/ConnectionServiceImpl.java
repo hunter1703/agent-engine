@@ -28,14 +28,13 @@ import com.agentengine.util.distributed.DistributedLockManager;
 import com.agentengine.util.tenancy.Permission;
 import com.agentengine.util.tenancy.PermissionChecker;
 import com.google.common.cache.CacheBuilder;
+import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import io.quarkus.arc.Unremovable;
 
 @Singleton
 @Unremovable
@@ -123,7 +122,9 @@ public class ConnectionServiceImpl implements ConnectionService {
       }
     }
     ConnectionUtils.encryptSensitiveInputs(connection, spec, encryptionService);
-    return skipVersion ? connectionRepository.saveIgnoringVersion(connection) : connectionRepository.save(connection);
+    return skipVersion
+        ? connectionRepository.saveIgnoringVersion(connection)
+        : connectionRepository.save(connection);
   }
 
   @Override
