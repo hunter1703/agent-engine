@@ -92,11 +92,11 @@ public final class RunState {
     }
 
     final List<Event> events = new ArrayList<>();
-    if (CollectionUtils.isNotEmpty(violations)) {
-      events.add(EventUtils.buildCorrectiveEvent(context, violations));
-    }
     for (final String textUpdate : textUpdates) {
       events.add(EventUtils.buildUserTextEvent(context, textUpdate));
+    }
+    if (CollectionUtils.isNotEmpty(violations)) {
+      events.add(EventUtils.buildCorrectiveEvent(context, violations));
     }
 
     clearSignals(events);
@@ -122,6 +122,10 @@ public final class RunState {
    */
   public boolean continuationRequested() {
     return signals.stream().anyMatch(Signal::requiresContinuation);
+  }
+
+  public boolean hasSignal(final String prefix) {
+    return signals.stream().anyMatch(signal -> signal.id() != null && signal.id().startsWith(prefix));
   }
 
   public void startNote(final String notebookId, final String noteTitle) {

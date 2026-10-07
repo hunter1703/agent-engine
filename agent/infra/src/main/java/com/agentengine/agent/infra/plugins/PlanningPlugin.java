@@ -28,10 +28,9 @@ public final class PlanningPlugin extends BasePlugin {
   public Maybe<LlmResponse> afterModelCallback(
       final CallbackContext callbackContext, final LlmResponse response) {
 
-    if (response.partial().orElse(false)) {
+    if (!ResponseUtils.isFinalAnswer(response)) {
       return Maybe.empty();
     }
-
     final SessionState sessionState =
         SessionUtils.getSessionState(callbackContext.invocationContext());
     final RunState runState = sessionState.runState();
@@ -40,7 +39,8 @@ public final class PlanningPlugin extends BasePlugin {
       return Maybe.empty();
     }
 
-    if (!ResponseUtils.isFinalAnswer(response)) {
+    // either not a final answer or final answer being consumed as notebook content and not actual user facing final answer
+    if (runState.hasSignal("note_saved_")) {
       return Maybe.empty();
     }
 

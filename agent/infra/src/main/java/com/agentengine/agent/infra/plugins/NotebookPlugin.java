@@ -86,9 +86,6 @@ public final class NotebookPlugin extends BasePlugin {
   @Override
   public Maybe<LlmResponse> afterModelCallback(
       final CallbackContext callbackContext, final LlmResponse response) {
-    if (response.partial().orElse(false)) {
-      return Maybe.empty();
-    }
     final InvocationContext invocationContext = callbackContext.invocationContext();
     final SessionState sessionState = SessionUtils.getSessionState(invocationContext);
     final RunState runState = sessionState.runState();

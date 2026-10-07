@@ -1,6 +1,7 @@
 package com.agentengine.agent.infra.plugins;
 
 import com.agentengine.agent.infra.agents.Agent;
+import com.agentengine.agent.infra.utils.ResponseUtils;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.agent.infra.utils.SchemaUtils;
 import com.agentengine.util.agents.beans.Signal;
@@ -10,6 +11,7 @@ import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.adk.agents.CallbackContext;
+import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.plugins.BasePlugin;
 import com.google.genai.types.Content;
@@ -44,11 +46,8 @@ public final class ResponseValidationPlugin extends BasePlugin {
   public Maybe<LlmResponse> afterModelCallback(
       final CallbackContext callbackContext, final LlmResponse response) {
 
-    if (response.partial().orElse(false)) {
-      return Maybe.empty();
-    }
-
-    if (!(callbackContext.invocationContext().agent() instanceof Agent engineAgent)) {
+    final InvocationContext context = callbackContext.invocationContext();
+    if (!ResponseUtils.isFinalAnswer(response) || RunUtils.getRunState(context).hasSignal("note_saved_") || !(context.agent() instanceof Agent engineAgent)) {
       return Maybe.empty();
     }
 
@@ -61,13 +60,13 @@ public final class ResponseValidationPlugin extends BasePlugin {
         response.content().map(Content::text).filter(StringUtils::isNotBlank).orElse(null);
 
     final String violationMessage =
-        validate(callbackContext.invocationContext().agent().name(), schemaMap, text);
+        validate(context.agent().name(), schemaMap, text);
     if (violationMessage != null) {
       LOG.info(
           "Response format violation for agent {}: {}",
-          callbackContext.invocationContext().agent().name(),
+          context.agent().name(),
           violationMessage);
-      RunUtils.getRunState(callbackContext.invocationContext())
+      RunUtils.getRunState(context)
           .addSignal(
               callbackContext,
               new Signal<>(
