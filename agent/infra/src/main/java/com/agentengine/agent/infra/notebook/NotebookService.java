@@ -194,7 +194,7 @@ public class NotebookService {
   }
 
   /** Each notebook the caller can reach explicitly via their current session context. */
-  public String summary() {
+  public String summary(boolean skipCache) {
     final String sessionId =
         Context.require()
             .principal()
@@ -205,6 +205,9 @@ public class NotebookService {
       return "You have no notebook access.";
     }
 
+    if (skipCache) {
+      summaryCache.remove(sessionId);
+    }
     return summaryCache.get(sessionId);
   }
 

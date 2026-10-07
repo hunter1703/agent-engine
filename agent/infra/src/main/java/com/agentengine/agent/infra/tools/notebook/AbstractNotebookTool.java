@@ -16,7 +16,7 @@ public abstract class AbstractNotebookTool extends Tool {
       final NotebookService notebookService, final String message) {
     final Map<String, Object> error = new LinkedHashMap<>();
     error.put("error", message);
-    error.put("hint", "The notebooks you can access:\n" + notebookService.summary());
+    error.put("hint", "The notebooks you can access:\n" + notebookService.summary(false));
     return error;
   }
 }

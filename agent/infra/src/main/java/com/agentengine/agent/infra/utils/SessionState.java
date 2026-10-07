@@ -66,7 +66,7 @@ public final class SessionState {
 
   public void syncNotebookReminder(final NotebookService notebookService) {
     reminders.removeIf(r -> Objects.equals(r.group(), Reminder.GROUP_NOTEBOOK_ACCESS));
-    final String summary = notebookService.summary();
+    final String summary = notebookService.summary(true);
     if (StringUtils.isBlank(summary)) {
       return;
     }
