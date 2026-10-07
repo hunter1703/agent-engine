@@ -1,0 +1,16 @@
+{
+  "id": "kimik3",
+  "model": "moonshotai/kimi-k3",
+  "name": "Kimi K3 (Nvidia)",
+  "baseUrl": "https://integrate.api.nvidia.com/v1",
+  "apiKey": "{{ env.NVIDIA_API_KEY }}",
+  "temperature": 0.35,
+  "topK": 40,
+  "topP": 0.9,
+  "repeatPenalty": 1.05,
+  "maxContextLength": 32768,
+  "toolCallingEnabled": true,
+  "thoughtsEnabled": true,
+  "provider": "OPEN_AI_COMPATIBLE",
+  "type": "CHAT"
+}

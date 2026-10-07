@@ -1,0 +1,15 @@
+{
+  "id": "llm7-default",
+  "model": "default",
+  "name": "Default (LLM7.io)",
+  "baseUrl": "https://api.llm7.io/v1",
+  "apiKey": "{{ env.LLM7_API_KEY }}",
+  "temperature": 0.35,
+  "topK": 40,
+  "repeatPenalty": 1.05,
+  "maxContextLength": 32768,
+  "toolCallingEnabled": true,
+  "thoughtsEnabled": true,
+  "provider": "OPEN_AI_COMPATIBLE",
+  "type": "CHAT"
+}
