@@ -214,7 +214,8 @@ public class NotebookService {
         notebookRepository.findByQuery(new Query().withPage(Page.UNBOUNDED)).getItems()) {
       notebookIdVsSummary.put(
           notebook.getId(),
-          new NotebookSummary(notebook, notebookRepository.hasPermission(notebook, Permission.EDIT)));
+          new NotebookSummary(
+              notebook, notebookRepository.hasPermission(notebook, Permission.EDIT)));
     }
     if (notebookIdVsSummary.isEmpty()) {
       return "You have no notebook access.";

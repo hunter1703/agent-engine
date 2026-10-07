@@ -192,10 +192,10 @@ public class RunnerFactory {
             new KnowledgePlugin(knowledgeService),
             new GuardrailPlugin(policies),
             new ContextManagementPlugin(contextManagers),
-            new NotebookPlugin(notebookService, agentsWithNotebook),
             new ReminderPlugin(),
             new PlanningPlugin(),
-            new ResponseValidationPlugin());
+            new ResponseValidationPlugin(),
+            new NotebookPlugin(notebookService, agentsWithNotebook));
     return List.of(new PluginGroup("engine", plugins), AddEventMetadataPlugin.INSTANCE);
   }
 }

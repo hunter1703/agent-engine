@@ -39,7 +39,8 @@ public final class PlanningPlugin extends BasePlugin {
       return Maybe.empty();
     }
 
-    // either not a final answer or final answer being consumed as notebook content and not actual user facing final answer
+    // either not a final answer or final answer being consumed as notebook content and not actual
+    // user facing final answer
     if (runState.hasSignal("note_saved_")) {
       return Maybe.empty();
     }

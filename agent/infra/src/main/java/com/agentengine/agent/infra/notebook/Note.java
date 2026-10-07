@@ -10,12 +10,9 @@ public class Note extends BaseEntity {
   public static final String FIELD_NOTEBOOK_ID = "notebookId";
   public static final String FIELD_CONTENT = "content";
 
-  @NotBlank
-  private String notebookId;
-  @NotBlank
-  private String noteTitle;
-  @NotBlank
-  private String content;
+  @NotBlank private String notebookId;
+  @NotBlank private String noteTitle;
+  @NotBlank private String content;
 
   public Note() {}
 

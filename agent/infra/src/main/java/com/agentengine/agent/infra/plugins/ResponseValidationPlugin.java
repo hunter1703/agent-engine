@@ -47,7 +47,9 @@ public final class ResponseValidationPlugin extends BasePlugin {
       final CallbackContext callbackContext, final LlmResponse response) {
 
     final InvocationContext context = callbackContext.invocationContext();
-    if (!ResponseUtils.isFinalAnswer(response) || RunUtils.getRunState(context).hasSignal("note_saved_") || !(context.agent() instanceof Agent engineAgent)) {
+    if (!ResponseUtils.isFinalAnswer(response)
+        || RunUtils.getRunState(context).hasSignal("note_saved_")
+        || !(context.agent() instanceof Agent engineAgent)) {
       return Maybe.empty();
     }
 
@@ -59,13 +61,10 @@ public final class ResponseValidationPlugin extends BasePlugin {
     final String text =
         response.content().map(Content::text).filter(StringUtils::isNotBlank).orElse(null);
 
-    final String violationMessage =
-        validate(context.agent().name(), schemaMap, text);
+    final String violationMessage = validate(context.agent().name(), schemaMap, text);
     if (violationMessage != null) {
       LOG.info(
-          "Response format violation for agent {}: {}",
-          context.agent().name(),
-          violationMessage);
+          "Response format violation for agent {}: {}", context.agent().name(), violationMessage);
       RunUtils.getRunState(context)
           .addSignal(
               callbackContext,

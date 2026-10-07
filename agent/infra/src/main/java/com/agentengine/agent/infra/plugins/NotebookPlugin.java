@@ -112,8 +112,7 @@ public final class NotebookPlugin extends BasePlugin {
             .formatted(noteTitle);
     runState.addSignal(
         callbackContext,
-        new Signal<>(
-            "note_saved_" + NotebookUtils.noteId(notebookId, noteTitle), message, true));
+        new Signal<>("note_saved_" + NotebookUtils.noteId(notebookId, noteTitle), message, true));
     return Maybe.empty();
   }
 }

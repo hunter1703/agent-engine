@@ -125,7 +125,8 @@ public final class RunState {
   }
 
   public boolean hasSignal(final String prefix) {
-    return signals.stream().anyMatch(signal -> signal.id() != null && signal.id().startsWith(prefix));
+    return signals.stream()
+        .anyMatch(signal -> signal.id() != null && signal.id().startsWith(prefix));
   }
 
   public void startNote(final String notebookId, final String noteTitle) {

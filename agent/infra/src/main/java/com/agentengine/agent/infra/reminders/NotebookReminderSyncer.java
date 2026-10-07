@@ -7,15 +7,15 @@ import jakarta.inject.Singleton;
 
 @Singleton
 public class NotebookReminderSyncer implements ReminderSyncer {
-    private final NotebookService notebookService;
+  private final NotebookService notebookService;
 
-    @Inject
-    public NotebookReminderSyncer(final NotebookService notebookService) {
-        this.notebookService = notebookService;
-    }
+  @Inject
+  public NotebookReminderSyncer(final NotebookService notebookService) {
+    this.notebookService = notebookService;
+  }
 
-    @Override
-    public void sync(final SessionState sessionState) {
-        sessionState.syncNotebookReminder(notebookService);
-    }
+  @Override
+  public void sync(final SessionState sessionState) {
+    sessionState.syncNotebookReminder(notebookService);
+  }
 }

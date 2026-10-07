@@ -57,12 +57,11 @@ public abstract class RememberedPassivableShardedEntityFactory<Command>
   }
 
   /**
-   * Supervisor strategy to wrap the {@link #domainBehavior}.
-   * Returns a restart with backoff strategy by default.
+   * Supervisor strategy to wrap the {@link #domainBehavior}. Returns a restart with backoff
+   * strategy by default.
    */
   protected SupervisorStrategy supervisorStrategy() {
-    return SupervisorStrategy.restartWithBackoff(
-            Duration.ofSeconds(1), Duration.ofSeconds(30), 0.2)
+    return SupervisorStrategy.restartWithBackoff(Duration.ofSeconds(1), Duration.ofSeconds(30), 0.2)
         .withMaxRestarts(3);
   }
 
