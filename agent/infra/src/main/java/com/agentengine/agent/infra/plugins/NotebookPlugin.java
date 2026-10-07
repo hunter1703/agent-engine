@@ -110,13 +110,13 @@ public final class NotebookPlugin extends BasePlugin {
     LOG.info("Created or updated note notebook={} title={}", notebookId, noteTitle);
     final String message =
         """
-            Note '%s' saved to the notebook. Its content now lives in the shared record, where anyone with access can read it. Don't restate it in your reply. Continue your task, or give your final answer if you're done.
+            Note '%s' saved. Its content now lives in the shared notebook, where anyone with access can read it. Your reply and the note are separate channels : the note carries the content and, the reply carries whatever else you want to communicate. Continue your task, or give your final answer if you're done.
             """
             .formatted(noteTitle);
     runState.addSignal(
         callbackContext,
         new Signal<>(
-            "note_" + NotebookUtils.noteId(notebookId, noteTitle) + "_saved", message, true));
+            "note_saved_" + NotebookUtils.noteId(notebookId, noteTitle), message, true));
     return Maybe.empty();
   }
 }
