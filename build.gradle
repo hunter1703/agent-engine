@@ -1,6 +1,6 @@
 allprojects {
     group = 'com.agentengine'
-    version = '1.0.0-SNAPSHOT'
+    version = '1.0.1-SNAPSHOT'
 }
 
 subprojects {
@@ -28,6 +28,30 @@ subprojects {
     afterEvaluate {
         tasks.matching { it.name == 'build' }.configureEach {
             dependsOn rootProject.tasks.named('installGitHooks')
+        }
+    }
+}
+
+tasks.register('cleanupOldPackages', Exec) {
+    description = 'Cleans up old packages via GitHub CLI'
+    group = 'publishing'
+    workingDir = rootProject.projectDir
+    
+    def ghToken = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN") ?: ""
+    def ghUser = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR") ?: "hunter1703"
+    
+    if (ghToken) {
+        environment 'GH_TOKEN', ghToken
+    }
+    environment 'ORG', ghUser
+    
+    commandLine './cleanup_packages.sh'
+}
+
+subprojects {
+    plugins.withId('maven-publish') {
+        tasks.named('publish').configure {
+            finalizedBy rootProject.tasks.named('cleanupOldPackages')
         }
     }
 }
