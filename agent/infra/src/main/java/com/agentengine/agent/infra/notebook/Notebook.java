@@ -15,7 +15,6 @@ public class Notebook extends BaseEntity {
   public Notebook() {}
 
   public Notebook(final String author, final String name, final String description) {
-    super(NotebookUtils.notebookId(author, name));
     this.author = author;
     this.name = name;
     this.description = description;

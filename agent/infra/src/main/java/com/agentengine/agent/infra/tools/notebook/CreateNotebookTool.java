@@ -35,7 +35,7 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
               name = "name",
               description =
                   """
-                  A short, memorable name for this notebook. This becomes its notebook_id — the exact value you and every agent you grant access to will use to reference it.""")
+                  A short, memorable name for this notebook.""")
           final String name,
       @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_DESCRIPTION,
