@@ -9,6 +9,7 @@ import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.context.Principal;
 import com.agentengine.util.distributed.CacheScope;
@@ -213,7 +214,7 @@ public class NotebookService {
         notebookRepository.findByQuery(new Query().withPage(Page.UNBOUNDED)).getItems()) {
       notebookIdVsSummary.put(
           notebook.getId(),
-          new NotebookSummary(notebookRepository.hasPermission(notebook, Permission.EDIT)));
+          new NotebookSummary(notebook, notebookRepository.hasPermission(notebook, Permission.EDIT)));
     }
     if (notebookIdVsSummary.isEmpty()) {
       return "You have no notebook access.";
@@ -239,6 +240,11 @@ public class NotebookService {
       final NotebookSummary summary = entry.getValue();
       sb.append("   ").append(index++).append(". Notebook id: `");
       sb.append(entry.getKey()).append("`\n");
+      final Notebook notebook = summary.notebook;
+      sb.append("      - name: ").append(notebook.getName()).append("\n");
+      if (StringUtils.isNotBlank(notebook.getDescription())) {
+        sb.append("      - description: ").append(notebook.getDescription()).append("\n");
+      }
       sb.append("      - add, change and delete notes: ")
           .append(summary.canWrite ? "yes" : "no, read only")
           .append("\n");
@@ -256,10 +262,12 @@ public class NotebookService {
   }
 
   private static final class NotebookSummary {
+    private final Notebook notebook;
     private final boolean canWrite;
     private final Set<String> noteTitles = new LinkedHashSet<>();
 
-    private NotebookSummary(final boolean canWrite) {
+    private NotebookSummary(final Notebook notebook, final boolean canWrite) {
+      this.notebook = notebook;
       this.canWrite = canWrite;
     }
   }

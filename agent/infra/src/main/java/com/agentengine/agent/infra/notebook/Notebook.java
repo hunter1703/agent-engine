@@ -4,11 +4,14 @@ import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.util.common.annotations.Permissioned;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
+import jakarta.validation.constraints.NotBlank;
 
 @Permissioned(assetClass = AssetClass.NOTEBOOK)
 public class Notebook extends BaseEntity {
 
+  @NotBlank
   private String author;
+  @NotBlank
   private String name;
   private String description;
 

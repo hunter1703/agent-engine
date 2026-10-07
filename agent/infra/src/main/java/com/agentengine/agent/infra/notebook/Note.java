@@ -3,14 +3,18 @@ package com.agentengine.agent.infra.notebook;
 import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
+import jakarta.validation.constraints.NotBlank;
 
 @Index(name = "note_notebook_idx", def = "{'notebookId': 1}")
 public class Note extends BaseEntity {
   public static final String FIELD_NOTEBOOK_ID = "notebookId";
   public static final String FIELD_CONTENT = "content";
 
+  @NotBlank
   private String notebookId;
+  @NotBlank
   private String noteTitle;
+  @NotBlank
   private String content;
 
   public Note() {}

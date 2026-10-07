@@ -3,6 +3,7 @@ package com.agentengine.util.pekko.actor;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import java.time.Duration;
 import org.apache.pekko.actor.typed.Behavior;
+import org.apache.pekko.actor.typed.SupervisorStrategy;
 import org.apache.pekko.actor.typed.javadsl.Behaviors;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityContext;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
@@ -44,11 +45,25 @@ public abstract class RememberedPassivableShardedEntityFactory<Command>
   @Override
   protected final Behavior<Command> behavior(final EntityContext<Command> entityContext) {
     final Behavior<Command> behavior = domainBehavior(entityContext);
+    final Behavior<Command> supervised =
+        supervisorStrategy() != null
+            ? Behaviors.supervise(behavior).onFailure(Exception.class, supervisorStrategy())
+            : behavior;
     return Behaviors.intercept(
         () ->
             new IdlePassivationInterceptor<>(
                 commandType, idleTimeoutCommand(), passivationTimeout, entityContext.getShard()),
-        behavior);
+        supervised);
+  }
+
+  /**
+   * Supervisor strategy to wrap the {@link #domainBehavior}.
+   * Returns a restart with backoff strategy by default.
+   */
+  protected SupervisorStrategy supervisorStrategy() {
+    return SupervisorStrategy.restartWithBackoff(
+            Duration.ofSeconds(1), Duration.ofSeconds(30), 0.2)
+        .withMaxRestarts(3);
   }
 
   /** Same role {@link #behavior(EntityContext)} plays on the base class, minus passivation. */
