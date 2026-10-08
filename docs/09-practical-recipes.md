@@ -11,7 +11,7 @@ curl -s -X POST http://localhost:18080/v1/model/upsert \
     "id":"local-qwen",
     "name":"Local Qwen",
     "type":"CHAT",
-    "provider":"OPEN_AI_COMPATIBLE",
+    "provider":"OPEN_AI",
     "model":"qwen2.5-1.5b-instruct-q5_k_m",
     "baseUrl":"http://127.0.0.1:17000/v1",
     "apiKey":""

@@ -5,9 +5,11 @@ import com.agentengine.util.common.utils.StringUtils;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Mutable state for {@link AGUIEventMapper}.
@@ -65,7 +67,22 @@ public final class AGUIMapperState {
   }
 
   public void startRun(final String runId) {
-    runScope().runId = runId;
+    final RunScope scope = runScope();
+    scope.runId = runId;
+  }
+
+  /** A confirmation was requested in the current session and has not been answered yet. */
+  public void confirmationRequested(final String interruptId) {
+    runScope().pendingConfirmationIds.add(interruptId);
+  }
+
+  public void confirmationAnswered(final String interruptId) {
+    runScope().pendingConfirmationIds.remove(interruptId);
+  }
+
+  /** Whether the current session's run is still waiting for an answer to a confirmation request. */
+  public boolean hasPendingConfirmations() {
+    return !runScope().pendingConfirmationIds.isEmpty();
   }
 
   /**
@@ -75,6 +92,7 @@ public final class AGUIMapperState {
     final RunScope scope = runScope();
     final String finishedRunId = scope.runId;
     scope.runId = null;
+    scope.pendingConfirmationIds.clear();
     return finishedRunId;
   }
 
@@ -213,6 +231,7 @@ public final class AGUIMapperState {
   /** Run/step/message tracking for a single source session */
   private static final class RunScope {
     private String runId;
+    private final Set<String> pendingConfirmationIds = new HashSet<>();
     private String currentStepName;
     private int stepSequence;
 

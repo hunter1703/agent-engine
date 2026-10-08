@@ -97,7 +97,7 @@ Rule base fields:
 Model config is polymorphic, discriminated by `type`:
 
 - `type`: `CHAT` (`ChatModelConfig`) or `EMBEDDING` (`EmbeddingModelConfig`)
-- `provider`: `OLLAMA`, `OPEN_AI_COMPATIBLE`, `GEMINI`
+- `provider`: `OPEN_AI`, `OLLAMA`, `Z_AI`, `GEMINI`. `OPEN_AI` is the default for any provider that follows the OpenAI API as is (OpenAI, Groq, Mistral, NVIDIA, LLM7, llama.cpp and so on). `OLLAMA`, `Z_AI` and `GEMINI` each have a provider of their own because they differ: Ollama ignores `tool_choice`, Z.ai has a `thinking` field and accepts only `tool_choice: auto`, and Gemini has its own client. A server reached through `OPEN_AI` or `OLLAMA` needs a base URL ending in `/v1`.
 
 ### Base fields (all model types)
 
@@ -130,7 +130,7 @@ Example chat model:
   "id": "devstral",
   "name": "Devstral",
   "type": "CHAT",
-  "provider": "OPEN_AI_COMPATIBLE",
+  "provider": "OPEN_AI",
   "model": "devstral-latest",
   "baseUrl": "https://api.mistral.ai/v1",
   "apiKey": "",

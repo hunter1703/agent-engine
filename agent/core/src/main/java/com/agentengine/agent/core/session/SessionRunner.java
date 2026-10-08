@@ -77,7 +77,7 @@ public final class SessionRunner {
               sessionActor.tell(new PublishEventCommand(event));
             },
             error ->
-                sessionActor.tell(new CompleteRunCommand(ExceptionUtils.getFullStackTrace(error))),
+                sessionActor.tell(new CompleteRunCommand(ExceptionUtils.getErrorSummary(error))),
             () -> {
               LOG.debug("[USER_MESSAGE_TRACE][{}] ADK runAsync stream completed", sessionId);
               sessionActor.tell(new CompleteRunCommand());
@@ -101,7 +101,7 @@ public final class SessionRunner {
         .subscribe(
             event -> sessionActor.tell(new PublishEventCommand(event)),
             error ->
-                sessionActor.tell(new CompleteRunCommand(ExceptionUtils.getFullStackTrace(error))),
+                sessionActor.tell(new CompleteRunCommand(ExceptionUtils.getErrorSummary(error))),
             () -> {
               LOG.debug("[{}] resume onComplete", sessionId);
               sessionActor.tell(new CompleteRunCommand());

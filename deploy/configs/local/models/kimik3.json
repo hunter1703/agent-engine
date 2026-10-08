@@ -11,6 +11,6 @@
   "maxContextLength": 32768,
   "toolCallingEnabled": true,
   "thoughtsEnabled": true,
-  "provider": "OPEN_AI_COMPATIBLE",
+  "provider": "OPEN_AI",
   "type": "CHAT"
 }

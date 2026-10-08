@@ -9,6 +9,6 @@
   "repeatPenalty": 1.1,
   "toolCallingEnabled": true,
   "thoughtsEnabled": true,
-  "provider": "OPEN_AI_COMPATIBLE",
+  "provider": "OLLAMA",
   "type": "CHAT"
 }

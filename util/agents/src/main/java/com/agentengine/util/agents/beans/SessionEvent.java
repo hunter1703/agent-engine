@@ -29,6 +29,8 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
   public static final String FIELD_SESSION_ID = "sessionId";
   public static final String FIELD_ROOT_SESSION_ID = "rootSessionId";
   public static final String FIELD_PARENT_SESSION_ID = "parentSessionId";
+  public static final String FIELD_RUN_ID = "runId";
+  public static final String FIELD_PARENT_RUN_ID = "parentRunId";
   public static final String FIELD_TURN_ID = "turnId";
   public static final String FIELD_SEQUENCE = "sequence";
   public static final String FIELD_TYPE = "type";
@@ -56,6 +58,8 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
   private String rootSessionId;
   private String parentSessionId;
   private String sessionId;
+  private String runId;
+  private String parentRunId;
   private long sequence;
   private Type type = Type.NORMAL;
   private String turnId;
@@ -69,6 +73,8 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
       final String rootSessionId,
       final String parentSessionId,
       final String sessionId,
+      final String runId,
+      final String parentRunId,
       final long sequence,
       final Type type,
       final String turnId,
@@ -78,6 +84,8 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
     this.rootSessionId = rootSessionId;
     this.parentSessionId = parentSessionId;
     this.sessionId = sessionId;
+    this.runId = runId;
+    this.parentRunId = parentRunId;
     this.sequence = sequence;
     this.type = type;
     this.turnId = turnId;
@@ -98,6 +106,8 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
     this.rootSessionId = other.rootSessionId;
     this.parentSessionId = other.parentSessionId;
     this.sessionId = other.sessionId;
+    this.runId = other.runId;
+    this.parentRunId = other.parentRunId;
     this.sequence = other.sequence;
     this.type = other.type;
     this.turnId = other.turnId;
@@ -130,10 +140,14 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
     return sessionId;
   }
 
-  @BsonIgnore
-  @JsonIgnore
+  /** the logical run id that client see. a logical run will only have single runId even in the face of pause-resume cycle */
   public String getRunId() {
-    return rawEvent.invocationId();
+    return runId;
+  }
+
+  /** The run of the parent session in which this event's run was started, if a parent started it. */
+  public String getParentRunId() {
+    return parentRunId;
   }
 
   @BsonIgnore
@@ -266,7 +280,7 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
         + ", sessionId="
         + sessionId
         + ", runId="
-        + getRunId()
+        + runId
         + ", author="
         + getAuthor()
         + ", content="
@@ -304,6 +318,14 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
     this.sessionId = sessionId;
   }
 
+  public void setRunId(final String runId) {
+    this.runId = runId;
+  }
+
+  public void setParentRunId(final String parentRunId) {
+    this.parentRunId = parentRunId;
+  }
+
   public void setSequence(final long sequence) {
     this.sequence = sequence;
   }
@@ -311,14 +333,14 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
   public static SessionEvent liveMarker(final String sessionId) {
     final String id = UUID.randomUUID().toString();
     final Event rawEvent = Event.builder().id(id).timestamp(System.currentTimeMillis()).build();
-    return new SessionEvent(id, null, null, sessionId, 0L, Type.LIVE_MARKER, null, rawEvent);
+    return new SessionEvent(id, null, null, sessionId, null, null, 0L, Type.LIVE_MARKER, null, rawEvent);
   }
 
   public static SessionEvent terminal(final String sessionId) {
     final String id = UUID.randomUUID().toString();
     final Event rawEvent = Event.builder().id(id).timestamp(System.currentTimeMillis()).build();
     return new SessionEvent(
-        id, null, null, sessionId, Long.MAX_VALUE, Type.TERMINAL, null, rawEvent);
+        id, null, null, sessionId, null, null, Long.MAX_VALUE, Type.TERMINAL, null, rawEvent);
   }
 
   /**
@@ -335,6 +357,8 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
   public static SessionEvent error(
       final String rootSessionId,
       final String sessionId,
+      final String runId,
+      final String agentId,
       final String errorMessage,
       final long sequence,
       final String turnId) {
@@ -342,11 +366,12 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
     final Event rawEvent =
         Event.builder()
             .id(id)
+            .author(agentId)
             .timestamp(System.currentTimeMillis())
             .errorMessage(errorMessage)
             .build();
     return new SessionEvent(
-        id, rootSessionId, null, sessionId, sequence, Type.ERROR, turnId, rawEvent);
+        id, rootSessionId, null, sessionId, runId, null, sequence, Type.ERROR, turnId, rawEvent);
   }
 
   private static Map<String, Object> extractMetadata(final Event event) {

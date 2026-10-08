@@ -17,12 +17,23 @@ import org.apache.pekko.actor.typed.ActorRef;
  */
 public interface ExternalCommand extends SessionCommand {
 
+  /** {@code parentRunId} is the run of the parent session that sent the message, if one did. */
   record StartCommand(
-      Context context, UniqueRecord<UserMessage> message, ActorRef<StartSessionResult> replyTo)
+      Context context,
+      UniqueRecord<UserMessage> message,
+      String parentRunId,
+      ActorRef<StartSessionResult> replyTo)
       implements ExternalCommand {
     public StartCommand(
         final UniqueRecord<UserMessage> message, final ActorRef<StartSessionResult> replyTo) {
-      this(Context.current().orElse(null), message, replyTo);
+      this(message, null, replyTo);
+    }
+
+    public StartCommand(
+        final UniqueRecord<UserMessage> message,
+        final String parentRunId,
+        final ActorRef<StartSessionResult> replyTo) {
+      this(Context.current().orElse(null), message, parentRunId, replyTo);
     }
   }
 

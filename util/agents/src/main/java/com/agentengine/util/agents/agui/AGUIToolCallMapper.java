@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.agentengine.util.agents.tools.ToolUtils;
 
 public final class AGUIToolCallMapper {
 
@@ -84,6 +85,7 @@ public final class AGUIToolCallMapper {
 
   public Flowable<Event> mapResumedResponse(final FunctionResponse response) {
     final String interruptId = response.id().orElse(null);
+    state.confirmationAnswered(interruptId);
     final ToolConfirmation toolConfirmation =
         JsonUtils.fromMap(
             CollectionUtils.nullSafeMap(response.response().orElse(Map.of())),
@@ -97,10 +99,13 @@ public final class AGUIToolCallMapper {
     final FunctionCall originalFunctionCall =
         Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ORIGINAL_FUNCTION_CALL));
     final String functionName = originalFunctionCall.name().orElse(null);
+    final ToolConfirmation requestedConfirmation =
+        CollectionUtils.getValueFromMap(args, Constants.ToolArgs.TOOL_CONFIRMATION);
     // The tool's own re-invocation on resume already returns the confirmed payload as its
     // genuine FunctionResponse (AbstractAgentTool.getResultIfCompleted), which mapToolResponse
     // delivers normally — synthesizing a result here too would just duplicate it.
-    if (Constants.ToolNames.isAgentRoutingTool(functionName)) {
+    if (ToolUtils.waitsOnChild(
+        functionName, requestedConfirmation == null ? null : requestedConfirmation.payload())) {
       return Flowable.empty();
     }
     final boolean accepted = toolConfirmation != null && toolConfirmation.confirmed();
@@ -121,21 +126,21 @@ public final class AGUIToolCallMapper {
 
   private Flowable<Event> mapInterruptCall(final FunctionCall call) {
     final String interruptId = call.id().orElseThrow();
+    state.confirmationRequested(interruptId);
     final Map<String, Object> args = CollectionUtils.nullSafeMap(call.args().orElse(Map.of()));
 
     final FunctionCall originalFunctionCall =
         Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ORIGINAL_FUNCTION_CALL));
     final String functionName = originalFunctionCall.name().orElse(null);
-    // paused by a tool whose interrupt is not supposed to be answered by the user, so suppress that
-    // event
-    if (Constants.ToolNames.isAgentRoutingTool(functionName)) {
+    final ToolConfirmation toolConfirmation =
+        Objects.requireNonNull(
+            CollectionUtils.getValueFromMap(args, Constants.ToolArgs.TOOL_CONFIRMATION));
+    // a wait for a child is not a question for the user, so suppress that event
+    if (ToolUtils.waitsOnChild(functionName, toolConfirmation.payload())) {
       return Flowable.empty();
     }
     final String originalToolCallId = originalFunctionCall.id().orElseThrow();
 
-    final ToolConfirmation toolConfirmation =
-        Objects.requireNonNull(
-            CollectionUtils.getValueFromMap(args, Constants.ToolArgs.TOOL_CONFIRMATION));
     final String prompt = toolConfirmation.hint();
     @SuppressWarnings("unchecked")
     final Map<String, Object> payload = (Map<String, Object>) toolConfirmation.payload();

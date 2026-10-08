@@ -3,6 +3,7 @@ package com.agentengine.util.models.llm;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.ExceptionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Context;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -48,8 +49,14 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import io.reactivex.rxjava3.core.BackpressureStrategy;
 import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.FlowableEmitter;
+import java.io.IOException;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,17 +97,22 @@ import org.slf4j.LoggerFactory;
  */
 public final class LangChain4jModel extends BaseLlm {
   private static final Logger LOGGER = LoggerFactory.getLogger(LangChain4jModel.class);
+  private static final int MAX_RETRIES = 2;
+  private static final long RETRY_DELAY_MILLIS = 500;
 
   private final ChatModel chatModel;
   private final StreamingChatModel streamingChatModel;
+  private final ToolsOffMode toolsOffMode;
 
   public LangChain4jModel(
       final ChatModel chatModel,
       final StreamingChatModel streamingChatModel,
-      final String modelName) {
+      final String modelName,
+      final ToolsOffMode toolsOffMode) {
     super(Objects.requireNonNull(modelName, "model name cannot be null"));
     this.chatModel = chatModel;
     this.streamingChatModel = streamingChatModel;
+    this.toolsOffMode = toolsOffMode;
   }
 
   @Override
@@ -113,80 +125,102 @@ public final class LangChain4jModel extends BaseLlm {
       if (streamingChatModel == null) {
         return Flowable.error(new IllegalStateException("StreamingChatModel is not configured"));
       }
-      return Flowable.create(
-          emitter ->
-              streamingChatModel.chat(
-                  chatRequest,
-                  new StreamingChatResponseHandler() {
-                    @Override
-                    public void onPartialResponse(final String token) {
-                      context.run(
-                          () ->
-                              emitter.onNext(
-                                  LlmResponse.builder()
-                                      .content(
-                                          Content.builder()
-                                              .role("model")
-                                              .parts(Part.fromText(token))
-                                              .build())
-                                      .partial(true)
-                                      .build()));
-                    }
-
-                    @Override
-                    public void onPartialThinking(final PartialThinking partialThinking) {
-                      context.run(
-                          () ->
-                              emitter.onNext(
-                                  LlmResponse.builder()
-                                      .content(
-                                          Content.builder()
-                                              .role("model")
-                                              .parts(
-                                                  Part.builder()
-                                                      .text(partialThinking.text())
-                                                      .thought(true)
-                                                      .build())
-                                              .build())
-                                      .partial(true)
-                                      .build()));
-                    }
-
-                    @Override
-                    public void onCompleteResponse(final ChatResponse chatResponse) {
-                      context.run(
-                          () -> {
-                            LOGGER.debug("Raw ChatResponse (onComplete): {}", chatResponse);
-                            final List<Part> parts = toParts(chatResponse.aiMessage(), chatRequest);
-                            if (CollectionUtils.isNotEmpty(parts)) {
-                              emitter.onNext(finalResponse(parts));
-                            }
-                            emitter.onComplete();
-                          });
-                    }
-
-                    @Override
-                    public void onError(final Throwable throwable) {
-                      context.run(
-                          () -> {
-                            LOGGER.debug("LangChain4jModel onError", throwable);
-                            emitter.onError(throwable);
-                          });
-                    }
-                  }),
-          BackpressureStrategy.BUFFER);
-    } else {
-      if (chatModel == null) {
-        return Flowable.error(new IllegalStateException("ChatModel is not configured"));
-      }
-      return Flowable.just(
-          finalResponse(toParts(chatModel.chat(chatRequest).aiMessage(), chatRequest)));
+      return Flowable.defer(() -> streamWithRetry(chatRequest, context));
     }
+    if (chatModel == null) {
+      return Flowable.error(new IllegalStateException("ChatModel is not configured"));
+    }
+    return Flowable.just(
+        finalResponse(toParts(chatModel.chat(chatRequest).aiMessage(), chatRequest)));
   }
 
   @Override
   public BaseLlmConnection connect(final LlmRequest llmRequest) {
     throw new UnsupportedOperationException("Live connection is not supported.");
+  }
+
+  // A call is retried only while nothing has reached the consumer: once a token has been emitted,
+  // another attempt would repeat content the consumer has already seen.
+  private Flowable<LlmResponse> streamWithRetry(
+      final ChatRequest chatRequest, final Context context) {
+    final AtomicBoolean emitted = new AtomicBoolean();
+    final AtomicInteger retries = new AtomicInteger();
+    return Flowable.<LlmResponse>create(
+            emitter ->
+                streamingChatModel.chat(chatRequest, streamHandler(chatRequest, emitter, context)),
+            BackpressureStrategy.BUFFER)
+        .doOnNext(_ -> emitted.set(true))
+        .retryWhen(failures -> failures.flatMap(error -> retryAfterDelay(error, emitted, retries)));
+  }
+
+  // Emits once the delay has passed, which resubscribes; an error ends the retrying.
+  private static Flowable<Long> retryAfterDelay(
+      final Throwable error, final AtomicBoolean emitted, final AtomicInteger retries) {
+    if (retries.incrementAndGet() > MAX_RETRIES || emitted.get() || !isTransportFailure(error)) {
+      return Flowable.error(error);
+    }
+    LOGGER.warn(
+        "Retrying model call after transport failure ({} of {}): {}",
+        retries.get(),
+        MAX_RETRIES,
+        error.toString());
+    return Flowable.timer(RETRY_DELAY_MILLIS, TimeUnit.MILLISECONDS);
+  }
+
+  // A timeout is not a transport failure: the connection was slow, not broken.
+  private static boolean isTransportFailure(final Throwable error) {
+    return ExceptionUtils.hasCause(error, IOException.class::isInstance)
+        && !ExceptionUtils.hasCause(error, HttpTimeoutException.class::isInstance);
+  }
+
+  private static StreamingChatResponseHandler streamHandler(
+      final ChatRequest chatRequest,
+      final FlowableEmitter<LlmResponse> emitter,
+      final Context context) {
+    return new StreamingChatResponseHandler() {
+      @Override
+      public void onPartialResponse(final String token) {
+        context.run(() -> emitter.onNext(partialResponse(Part.fromText(token))));
+      }
+
+      @Override
+      public void onPartialThinking(final PartialThinking partialThinking) {
+        context.run(
+            () ->
+                emitter.onNext(
+                    partialResponse(
+                        Part.builder().text(partialThinking.text()).thought(true).build())));
+      }
+
+      @Override
+      public void onCompleteResponse(final ChatResponse chatResponse) {
+        context.run(
+            () -> {
+              LOGGER.debug("Raw ChatResponse (onComplete): {}", chatResponse);
+              final List<Part> parts = toParts(chatResponse.aiMessage(), chatRequest);
+              if (CollectionUtils.isNotEmpty(parts)) {
+                emitter.onNext(finalResponse(parts));
+              }
+              emitter.onComplete();
+            });
+      }
+
+      @Override
+      public void onError(final Throwable throwable) {
+        context.run(
+            () -> {
+              LOGGER.debug("LangChain4jModel onError", throwable);
+              emitter.onError(throwable);
+            });
+      }
+    };
+  }
+
+  private static LlmResponse partialResponse(final Part part) {
+    return LlmResponse.builder()
+        .content(Content.builder().role("model").parts(part).build())
+        .partial(true)
+        .build();
   }
 
   private static LlmResponse finalResponse(final List<Part> parts) {
@@ -196,7 +230,7 @@ public final class LangChain4jModel extends BaseLlm {
         .build();
   }
 
-  private static ChatRequest toChatRequest(final LlmRequest llmRequest) {
+  private ChatRequest toChatRequest(final LlmRequest llmRequest) {
     final ChatRequest.Builder builder = ChatRequest.builder();
     final List<ToolSpecification> toolSpecifications = toToolSpecifications(llmRequest);
     builder.toolSpecifications(toolSpecifications);
@@ -206,7 +240,7 @@ public final class LangChain4jModel extends BaseLlm {
     return chatRequest;
   }
 
-  private static void applyConfig(
+  private void applyConfig(
       final ChatRequest.Builder builder,
       final GenerateContentConfig config,
       final List<ToolSpecification> toolSpecifications) {
@@ -448,7 +482,7 @@ public final class LangChain4jModel extends BaseLlm {
     return strings;
   }
 
-  private static void applyToolConfig(
+  private void applyToolConfig(
       final ChatRequest.Builder builder,
       final ToolConfig toolConfig,
       final List<ToolSpecification> toolSpecifications) {
@@ -477,7 +511,10 @@ public final class LangChain4jModel extends BaseLlm {
                                                 .toList()));
                           } else if (FunctionCallingConfigMode.Known.NONE.equals(
                               mode.knownEnum())) {
-                            builder.toolSpecifications(List.of());
+                            switch (toolsOffMode) {
+                              case SEND_TOOL_CHOICE_NONE -> builder.toolChoice(ToolChoice.NONE);
+                              case REMOVE_TOOL_DEFINITIONS -> builder.toolSpecifications(List.of());
+                            }
                           }
                         }));
   }
@@ -545,7 +582,6 @@ public final class LangChain4jModel extends BaseLlm {
             mergeTextContents(parts.stream().map(LangChain4jModel::toUserContent).toList())));
   }
 
-  // Ollama's adapter calls UserMessage.singleText(), which throws for multi-element lists.
   // Merge consecutive text runs so adapters that don't support multi-part text still work.
   private static List<dev.langchain4j.data.message.Content> mergeTextContents(
       final List<dev.langchain4j.data.message.Content> contents) {

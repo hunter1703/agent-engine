@@ -20,7 +20,6 @@ dependencies {
     api platform(libs.langchain4j.bom)
     api libs.langchain4j.core
     implementation libs.langchain4j.open.ai
-    implementation libs.langchain4j.ollama
     implementation libs.langchain4j.http.client.jdk
 
     implementation libs.rxjava

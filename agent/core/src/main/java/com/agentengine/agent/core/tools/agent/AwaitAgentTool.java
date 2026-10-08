@@ -38,7 +38,7 @@ public final class AwaitAgentTool extends AbstractAgentTool {
       @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
       @ToolArg(
-              name = CHILD_SESSION_ID,
+              name = Constants.ToolArgs.CHILD_SESSION_ID,
               description =
                   """
                   The opaque identifier of the child agent session to wait for, as returned when the session was created or last messaged.""")

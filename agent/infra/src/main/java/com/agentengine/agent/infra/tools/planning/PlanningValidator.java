@@ -101,7 +101,7 @@ public final class PlanningValidator {
       }
     }
     final List<Task> inProgressTasks = collectInProgressTasks(plan, null, null, false);
-    final String lineageError = validateSingleLineage(inProgressTasks, tasksById);
+    final String lineageError = validateSingleLineage(inProgressTasks, tasksById, null);
     if (lineageError != null) {
       return lineageError;
     }
@@ -168,7 +168,7 @@ public final class PlanningValidator {
         return ancestorError;
       }
       final List<Task> inProgressTasks = collectInProgressTasks(plan, task, status, true);
-      final String lineageError = validateSingleLineage(inProgressTasks, tasksById);
+      final String lineageError = validateSingleLineage(inProgressTasks, tasksById, task);
       if (lineageError != null) {
         return lineageError;
       }
@@ -273,7 +273,7 @@ public final class PlanningValidator {
     }
 
     final List<Task> inProgressTasks = collectInProgressTasks(plan, task, newStatus, false);
-    final String lineageError = validateSingleLineage(inProgressTasks, tasksById);
+    final String lineageError = validateSingleLineage(inProgressTasks, tasksById, task);
     if (lineageError != null) {
       return lineageError;
     }
@@ -421,10 +421,10 @@ public final class PlanningValidator {
     if (StringUtils.isNotBlank(taskId) && taskId.equals(nextId)) {
       return null;
     }
-    return "Next task to start is "
-        + describeTask(nextTask)
-        + "; cannot start "
+    return "Tasks are started in plan order, so "
         + describeTask(task)
+        + " cannot be started yet: the next task to start is "
+        + describeTask(nextTask)
         + ".";
   }
 
@@ -447,9 +447,10 @@ public final class PlanningValidator {
         return "In-progress " + describeTask(task) + " is missing an id.";
       }
       if (!lineage.contains(taskId)) {
-        return "In-progress task "
-            + describeTask(task)
-            + " is out of order; next task to start is "
+        return describeTask(task)
+            + " is still in progress, so no other task can be started or completed yet. Carry on"
+            + " with its work and then complete it with its result, or complete it now if its work"
+            + " is already done. The next task to start after that is "
             + describeTask(nextTodo)
             + " in "
             + describePlan(plan)
@@ -485,8 +486,9 @@ public final class PlanningValidator {
     return inProgress;
   }
 
+  /** {@code actedOn} is the task being started or completed, or null when a whole plan is checked. */
   private static String validateSingleLineage(
-      final List<Task> inProgressTasks, final Map<String, Task> tasksById) {
+      final List<Task> inProgressTasks, final Map<String, Task> tasksById, final Task actedOn) {
     if (inProgressTasks.size() <= 1) {
       return null;
     }
@@ -501,11 +503,22 @@ public final class PlanningValidator {
         return "In-progress " + describeTask(task) + " is missing an id.";
       }
       if (!lineageIds.contains(taskId)) {
-        return "Only one in-progress task lineage is allowed; "
-            + describeTask(task)
-            + " is outside the lineage rooted at "
-            + describeTask(deepest)
-            + ".";
+        if (actedOn == null) {
+          return "The plan marks "
+              + describeTask(task)
+              + " and "
+              + describeTask(deepest)
+              + " as in progress in different branches, but only one branch can be in progress at"
+              + " a time. Mark at most one of them as in progress.";
+        }
+        final Task blocking = taskId.equals(PlanningUtils.getTaskIdValue(actedOn)) ? deepest : task;
+        return describeTask(actedOn)
+            + " cannot be started or completed while "
+            + describeTask(blocking)
+            + " is still in progress. Carry on with the work of "
+            + describeTask(blocking)
+            + " and then complete it with its result, or complete it now if its work is already"
+            + " done, and then retry.";
       }
     }
     return null;

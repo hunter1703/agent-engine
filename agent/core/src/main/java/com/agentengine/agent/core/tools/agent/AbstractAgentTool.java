@@ -9,7 +9,6 @@ import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.agent.infra.utils.SessionUtils;
-import com.agentengine.agent.infra.utils.ToolUtils;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.tenancy.AccessControlService;
 import com.agentengine.util.agents.Constants;
@@ -37,10 +36,9 @@ import java.util.Set;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.agentengine.util.agents.tools.ToolUtils;
 
 public class AbstractAgentTool extends Tool {
-
-  public static final String CHILD_SESSION_ID = "child_session_id";
 
   public static final String GOAL_SCHEMA_DESCRIPTION =
       """
@@ -82,7 +80,7 @@ public class AbstractAgentTool extends Tool {
   }
 
   protected EntityRef<SessionCommand> actorRef(final ToolContext toolContext) {
-    final String sessionId = ToolUtils.sessionId(toolContext);
+    final String sessionId = com.agentengine.agent.infra.utils.ToolUtils.sessionId(toolContext);
     return actorSystemProvider.entityRefFor(
         SessionActor.TYPE_KEY, SessionActorFactory.entityId(sessionId));
   }
@@ -149,7 +147,7 @@ public class AbstractAgentTool extends Tool {
 
     if (!result.completedRun()) {
       toolContext.requestConfirmation(
-          "Waiting for child agent run to complete.", Map.of(CHILD_SESSION_ID, childSessionId));
+          "Waiting for child agent run to complete.", Map.of(Constants.ToolArgs.CHILD_SESSION_ID, childSessionId));
       LOGGER.debug("Awaiting child session {} to complete.", childSessionId);
       return ToolOutput.empty();
     } else {
@@ -170,7 +168,8 @@ public class AbstractAgentTool extends Tool {
     final Optional<ToolConfirmation> toolConfirmationOptional = toolContext.toolConfirmation();
     if (toolConfirmationOptional.isPresent()) {
       final ToolConfirmation toolConfirmation = toolConfirmationOptional.get();
-      if (toolConfirmation.confirmed()) {
+      if (toolConfirmation.confirmed()
+          && ToolUtils.waitsOnChild(name(), toolConfirmation.payload())) {
         //noinspection unchecked
         return ToolOutput.direct((Map<String, Object>) toolConfirmation.payload());
       }

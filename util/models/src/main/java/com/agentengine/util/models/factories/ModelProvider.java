@@ -14,7 +14,6 @@ import com.agentengine.util.distributed.RefCountedDistributedCache;
 import com.agentengine.util.models.factories.Model.LLMModel;
 import com.google.adk.models.BaseLlm;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -33,7 +32,6 @@ public class ModelProvider {
   private static final Duration DEFAULT_EMBEDDING_TIMEOUT = Duration.ofMinutes(2);
 
   private final Map<String, ModelFactory<?>> typeVsFactory;
-  private final ModelFactory<?> defaultFactory;
   private final ModelService modelService;
   private final DefaultModelsRepository defaultModelsRepository;
   private final RefCountedDistributedCache<Model<?>> cache;
@@ -41,14 +39,12 @@ public class ModelProvider {
   @Inject
   public ModelProvider(
       final Instance<ModelFactory<?>> allFactories,
-      final OpenAIModelFactory openAIModelFactory,
       final ModelService modelService,
       final DefaultModelsRepository defaultModelsRepository,
       final DistributedCacheManager cacheManager) {
     this.typeVsFactory =
         CollectionUtils.transformToMap(
             allFactories.stream().toList(), ModelFactory::type, Function.identity());
-    this.defaultFactory = openAIModelFactory;
     this.modelService = modelService;
     this.defaultModelsRepository = defaultModelsRepository;
     final RefCountedDistributedCache.Builder<Model<?>> cacheBuilder =
@@ -108,8 +104,10 @@ public class ModelProvider {
     if (config == null) {
       throw new IllegalStateException("Model config missing for model_id=" + modelId);
     }
-    final ModelFactory<?> factory =
-        typeVsFactory.getOrDefault(config.getProvider(), defaultFactory);
+    final ModelFactory<?> factory = typeVsFactory.get(config.getProvider());
+    if (factory == null) {
+      throw new IllegalArgumentException("Unsupported model provider: " + config.getProvider());
+    }
     return factory.build(config);
   }
 
@@ -126,14 +124,7 @@ public class ModelProvider {
     final String baseUrl = config.getBaseUrl();
     final String model = config.getModel();
     return switch (provider) {
-      case OLLAMA ->
-          OllamaEmbeddingModel.builder()
-              .httpClientBuilder(LangchainUtils.httpClientBuilder())
-              .baseUrl(baseUrl)
-              .modelName(model)
-              .timeout(DEFAULT_EMBEDDING_TIMEOUT)
-              .build();
-      case OPEN_AI_COMPATIBLE ->
+      case OPEN_AI, OLLAMA, Z_AI ->
           OpenAiEmbeddingModel.builder()
               .httpClientBuilder(LangchainUtils.httpClientBuilder())
               .baseUrl(baseUrl)

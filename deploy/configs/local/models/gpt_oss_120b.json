@@ -16,6 +16,6 @@
       "value": "parsed"
     }
   ],
-  "provider": "OPEN_AI_COMPATIBLE",
+  "provider": "OPEN_AI",
   "type": "CHAT"
 }

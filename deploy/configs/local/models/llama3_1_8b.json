@@ -9,6 +9,6 @@
   "repeatPenalty": 1.05,
   "toolCallingEnabled": true,
   "thoughtsEnabled": false,
-  "provider": "OPEN_AI_COMPATIBLE",
+  "provider": "OPEN_AI",
   "type": "CHAT"
 }

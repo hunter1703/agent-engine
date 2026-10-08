@@ -51,8 +51,9 @@ public abstract class ModelConfig extends NamedEntity implements Config {
 
   public enum Provider {
     UNKNOWN,
+    OPEN_AI,
     OLLAMA,
-    OPEN_AI_COMPATIBLE,
+    Z_AI,
     GEMINI;
 
     public String type() {
@@ -117,7 +118,7 @@ public abstract class ModelConfig extends NamedEntity implements Config {
       effect = UiRuleEffect.VISIBLE,
       field = "provider",
       operator = UiConditionOperator.IN,
-      values = {"OLLAMA", "OPEN_AI_COMPATIBLE"})
+      values = {"OPEN_AI", "OLLAMA", "Z_AI"})
   private String baseUrl;
 
   @UiField(label = "API Key", step = "integration", order = 20)
@@ -127,7 +128,7 @@ public abstract class ModelConfig extends NamedEntity implements Config {
       effect = UiRuleEffect.VISIBLE,
       field = "provider",
       operator = UiConditionOperator.IN,
-      values = {"GEMINI", "OPEN_AI_COMPATIBLE"})
+      values = {"OPEN_AI", "Z_AI", "GEMINI"})
   private String apiKey;
 
   protected ModelConfig(final ModelType modelType) {

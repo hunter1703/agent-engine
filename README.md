@@ -59,7 +59,7 @@ The result is a runtime where the interesting work lives in configuration and sm
 - **Stateful sessions** — pause/resume for human-in-the-loop and tool-approval interrupts, plus run-level rollback.
 - **Streaming API** — REST gateway emitting AG-UI server-sent events.
 - **Distributed by design** — internal gRPC microservice transport with local-bean-first dispatch and dynamic proxy fallback.
-- **Multi-provider models** — LangChain4j adapters for Ollama, OpenAI-compatible, and Gemini backends.
+- **Multi-provider models** — LangChain4j adapters for OpenAI-compatible backends (OpenAI, Groq, Mistral and others, Ollama, Z.ai) and Gemini.
 
 ---
 

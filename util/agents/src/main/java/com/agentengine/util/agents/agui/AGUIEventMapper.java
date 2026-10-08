@@ -14,6 +14,7 @@ import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,7 +46,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
     LOG.debug("Processing error mapping - throwable={}", ExceptionUtils.getErrorMessage(throwable));
     final RunErrorEvent errorEvent =
         new RunErrorEvent(
-            ExceptionUtils.getFullStackTrace(throwable), null, state.timestamp(), null);
+            ExceptionUtils.getErrorSummary(throwable), null, state.timestamp(), null);
     LOG.debug("Generated output event in onError - eventType=RunErrorEvent");
     return Flowable.just(errorEvent);
   }
@@ -73,14 +74,19 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
           "Mapping error event for session={}, errorMessage={}",
           event.getSessionId(),
           event.getErrorMessage());
+      // RunErrorEvent has no run field, so the failed run — the one open in the failing
+      // session, which may be a child's — travels in the raw event.
+      final String failedRunId = state.finishRun();
+      final Map<String, Object> rawEvent =
+          failedRunId == null ? null : new HashMap<>(Map.of("runId", failedRunId));
       final RunErrorEvent errorEvent =
-          new RunErrorEvent(event.getErrorMessage(), null, state.timestamp(), null);
+          new RunErrorEvent(event.getErrorMessage(), null, state.timestamp(), rawEvent);
       return textMapper.finalizeOpenContent().concatWith(Flowable.just(errorEvent));
     }
 
     Flowable<Event> eventFlow = Flowable.empty();
     if (state.hasNewRun(event.getRunId())) {
-      eventFlow = eventFlow.concatWith(startRun(event.getRunId()));
+      eventFlow = eventFlow.concatWith(startRun(event));
     }
     return eventFlow.concatWith(mapEventInternal(event)).concatWith(finishRunIfNeeded(event));
   }
@@ -154,17 +160,27 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
     return flowable;
   }
 
-  private Flowable<Event> startRun(final String runId) {
-    state.startRun(runId);
+  private Flowable<Event> startRun(final SessionEvent sourceEvent) {
+    state.startRun(sourceEvent.getRunId());
     final RunStartedEvent event =
         new RunStartedEvent(
-            state.sessionId(), state.currentRunId(), null, null, state.timestamp(), null);
+            state.sessionId(),
+            state.currentRunId(),
+            sourceEvent.getParentRunId(),
+            null,
+            state.timestamp(),
+            null);
     LOG.debug("Generated output event - eventType=RunStartedEvent, runId={}", event.threadId());
     return Flowable.just(event);
   }
 
   private Flowable<Event> finishRunIfNeeded(final SessionEvent event) {
     if (event.getFinishReason() == null) {
+      return Flowable.empty();
+    }
+    if (state.hasPendingConfirmations()) {
+      // The run is waiting for an answer, from a child or from a person, and goes on when it
+      // arrives, so the listener sees one run that waited.
       return Flowable.empty();
     }
 

@@ -13,6 +13,6 @@
   "maxContextLength": 40960,
   "toolCallingEnabled": true,
   "thoughtsEnabled": true,
-  "provider": "OPEN_AI_COMPATIBLE",
+  "provider": "OLLAMA",
   "type": "CHAT"
 }

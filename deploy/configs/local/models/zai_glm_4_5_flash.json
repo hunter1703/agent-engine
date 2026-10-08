@@ -1,0 +1,14 @@
+{
+  "id": "zai-glm-4-5-flash",
+  "model": "glm-4.5-flash",
+  "name": "GLM 4.5 Flash (Z.ai)",
+  "baseUrl": "https://api.z.ai/api/paas/v4",
+  "apiKey": "{{ env.ZAI_API_KEY }}",
+  "temperature": 0.35,
+  "topP": 0.9,
+  "maxContextLength": 131072,
+  "toolCallingEnabled": true,
+  "thoughtsEnabled": false,
+  "provider": "Z_AI",
+  "type": "CHAT"
+}

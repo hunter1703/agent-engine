@@ -15,6 +15,11 @@ public record RunState(
     RunResult result,
     boolean settled) {
 
+  /** The run of the parent session that sent this run's message, or null if no parent did. */
+  public String parentRunId() {
+    return message == null ? null : message.getRecord().parentRunId();
+  }
+
   public RunState withCommittedTurn(final CommittedTurn turn) {
     final Set<Integer> updatedCommittedTurnIds = new HashSet<>(committedTurnIds);
     updatedCommittedTurnIds.add(turn.turnId());

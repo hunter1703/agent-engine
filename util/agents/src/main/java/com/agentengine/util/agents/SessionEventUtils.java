@@ -35,6 +35,8 @@ public final class SessionEventUtils {
       final String rootSessionId,
       final String parentSessionId,
       final String sessionId,
+      final String runId,
+      final String parentRunId,
       final String turnId,
       final List<Event> events,
       final long startSequence) {
@@ -48,6 +50,8 @@ public final class SessionEventUtils {
               rootSessionId,
               parentSessionId,
               sessionId,
+              runId,
+              parentRunId,
               turnId,
               events.get(index),
               startSequence + index));
@@ -59,6 +63,8 @@ public final class SessionEventUtils {
       final String rootSessionId,
       final String parentSessionId,
       final String sessionId,
+      final String runId,
+      final String parentRunId,
       final String turnId,
       final Event event,
       final long sequence) {
@@ -67,6 +73,8 @@ public final class SessionEventUtils {
         rootSessionId,
         parentSessionId,
         sessionId,
+        runId,
+        parentRunId,
         sequence,
         SessionEvent.Type.NORMAL,
         turnId,

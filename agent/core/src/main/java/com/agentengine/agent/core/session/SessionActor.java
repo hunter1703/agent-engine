@@ -14,7 +14,6 @@ import com.agentengine.agent.core.session.commands.SelfCommand.*;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.events.*;
 import com.agentengine.agent.core.session.state.*;
-import com.agentengine.agent.core.tools.agent.AbstractAgentTool;
 import com.agentengine.agent.core.tools.agent.AwaitAgentTool;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.agent.infra.utils.EventUtils;
@@ -65,6 +64,7 @@ import org.apache.pekko.persistence.typed.javadsl.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.concurrent.ExecutionContextExecutor;
+import com.agentengine.util.agents.tools.ToolUtils;
 
 /** Persistent, cluster-sharded actor that manages a single agent session. */
 public final class SessionActor
@@ -274,6 +274,8 @@ public final class SessionActor
               rootSessionId,
               topology.parentSessionId(),
               sessionId,
+              Objects.requireNonNull(state.currentRun()).runId(),
+              Objects.requireNonNull(state.currentRun()).parentRunId(),
               lastCommittedTurnId,
               lastCommitedEvents.get(i),
               state.nextSequence() - num + i);
@@ -406,7 +408,8 @@ public final class SessionActor
     UniqueRecord<UserMessage> message = command.message();
     final UniqueRecord<EnqueuedMessage> uniqueRecord =
         new UniqueRecord<>(
-            message.getId(), new EnqueuedMessage(message.getRecord(), turnContext(state)));
+            message.getId(),
+            new EnqueuedMessage(message.getRecord(), command.parentRunId(), turnContext(state)));
     final UniqueRecord<EnqueuedMessage> currentMessage = state.currentMessage();
     boolean isDuplicate =
         Objects.equals(currentMessage, uniqueRecord) || state.queue().contains(uniqueRecord);
@@ -694,7 +697,12 @@ public final class SessionActor
                       new StartingChild(command.agentId(), childSessionId, commandMessage))),
           (_ ->
               pipeToSelf(
-                  startChildSession(state, childAgentId, childSessionId, message),
+                  startChildSession(
+                      state,
+                      childAgentId,
+                      childSessionId,
+                      message,
+                      Objects.requireNonNull(state.currentRun()).runId()),
                   (result, error) ->
                       new StartChildCompletedCommand(
                           childSessionId,
@@ -729,7 +737,8 @@ public final class SessionActor
       final SessionActorState state,
       final String childAgentId,
       final String childSessionId,
-      final UserMessage message) {
+      final UserMessage message,
+      final String parentRunId) {
     final EntityRef<SessionCommand> childRef = refSupplier.apply(childSessionId);
     return initializeChild(state, childAgentId, childSessionId)
         .thenCompose(
@@ -737,7 +746,7 @@ public final class SessionActor
               final UniqueRecord<UserMessage> uniqueMessage = new UniqueRecord<>(message);
               return childRef.ask(
                   (Function<ActorRef<StartSessionResult>, SessionCommand>)
-                      startReplyTo -> new StartCommand(uniqueMessage, startReplyTo),
+                      startReplyTo -> new StartCommand(uniqueMessage, parentRunId, startReplyTo),
                   ASK_TIMEOUT);
             });
   }
@@ -801,6 +810,7 @@ public final class SessionActor
     }
 
     final EntityRef<SessionCommand> childRef = refSupplier.apply(childSessionId);
+    final String parentRunId = state.currentRun() == null ? null : state.currentRun().runId();
     return thenRun(
         Effect().none(),
         (_ ->
@@ -809,7 +819,9 @@ public final class SessionActor
                     (Function<ActorRef<StartSessionResult>, SessionCommand>)
                         replyTo ->
                             new StartCommand(
-                                new UniqueRecord<>(command.message().getRecord()), replyTo),
+                                new UniqueRecord<>(command.message().getRecord()),
+                                parentRunId,
+                                replyTo),
                     ASK_TIMEOUT)
                 .whenComplete(
                     (result, error) -> {
@@ -858,18 +870,15 @@ public final class SessionActor
           Objects.requireNonNull(getValueFromMap(args, ORIGINAL_FUNCTION_CALL));
 
       final String functionName = originalFunctionCall.name().orElse(null);
-      if (Constants.ToolNames.isAgentRoutingTool(functionName)) {
-        final ToolConfirmation toolConfirmation =
-            getValueFromMap(args, Constants.ToolArgs.TOOL_CONFIRMATION);
-        if (toolConfirmation != null) {
-          //noinspection unchecked
-          final String childSessionId =
-              getValueFromMap(
-                  (Map<String, Object>) toolConfirmation.payload(),
-                  AbstractAgentTool.CHILD_SESSION_ID);
-          pauseFacts.add(
-              PausedFact.internalSelfPause(childSessionId, interruptId, currentRunId, turnId));
-        }
+      final ToolConfirmation toolConfirmation =
+          getValueFromMap(args, Constants.ToolArgs.TOOL_CONFIRMATION);
+      final Object payload = toolConfirmation == null ? null : toolConfirmation.payload();
+      if (ToolUtils.waitsOnChild(functionName, payload)) {
+        //noinspection unchecked
+        final String childSessionId =
+            getValueFromMap((Map<String, Object>) payload, Constants.ToolArgs.CHILD_SESSION_ID);
+        pauseFacts.add(
+            PausedFact.internalSelfPause(childSessionId, interruptId, currentRunId, turnId));
       } else {
         pauseFacts.add(PausedFact.externalSelfPaused(interruptId, currentRunId, turnId));
         externalInterruptIds.add(interruptId);
@@ -891,6 +900,8 @@ public final class SessionActor
             rootSessionId,
             topology.parentSessionId(),
             topology.sessionId(),
+            currentRunId,
+            Objects.requireNonNull(state.currentRun()).parentRunId(),
             String.valueOf(turnId),
             event,
             eventSequence);
@@ -930,7 +941,6 @@ public final class SessionActor
         final ArrayList<Event> events = new ArrayList<>();
         final boolean isFirstTurn = state.isFirstTurnOfCurrentRun();
         final RunState currentRun = Objects.requireNonNull(state.currentRun());
-        final String invocationId = currentRun.runId();
 
         if (isFirstTurn && currentRun.message() != null) {
           final UniqueRecord<EnqueuedMessage> userMessage = currentRun.message();
@@ -939,12 +949,12 @@ public final class SessionActor
           final UserMessage message = userMessage.getRecord().message();
           events.add(
               EventUtils.buildUserEvent(
-                  message, invocationId, currentRun.messagePickedTimestamp(), author));
+                  message, currentRunId, currentRun.messagePickedTimestamp(), author));
           LOG.debug(
-              "[USER_MESSAGE_TRACE][{}] Run's opening turn - prepended user message event: '{}' with invocationId: {}",
+              "[USER_MESSAGE_TRACE][{}] Run's opening turn - prepended user message event: '{}' with runId: {}",
               topology.sessionId(),
               message,
-              invocationId);
+              currentRunId);
         }
 
         if (!state.getAllReceivedResumes().isEmpty()) {
@@ -955,12 +965,12 @@ public final class SessionActor
                   .orElse(topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId());
 
           events.add(
-              EventUtils.buildResumeEvent(state.getAllReceivedResumes(), invocationId, author));
+              EventUtils.buildResumeEvent(state.getAllReceivedResumes(), currentRunId, author));
           LOG.debug(
-              "[USER_MESSAGE_TRACE][{}] Turn after resume - prepended {} resume answer(s) with invocationId: {}",
+              "[USER_MESSAGE_TRACE][{}] Turn after resume - prepended {} resume answer(s) with runId: {}",
               topology.sessionId(),
               state.getAllReceivedResumes().size(),
-              invocationId);
+              currentRunId);
         }
 
         events.addAll(turnEvents);
@@ -971,10 +981,12 @@ public final class SessionActor
                     rootSessionId,
                     topology.parentSessionId(),
                     topology.sessionId(),
+                    currentRunId,
+                    currentRun.parentRunId(),
                     String.valueOf(turnId),
                     events,
                     state.nextSequence()),
-                invocationId);
+                currentRunId);
 
         turnEvents.clear();
         turnId = null;
@@ -1110,11 +1122,14 @@ public final class SessionActor
             command.replyTo(),
             newState -> {
               final SessionTopology topology = newState.topology();
+              RunState runState = newState.currentRun();
               final List<SessionEvent> events =
                   SessionEventUtils.toSessionEvents(
                       topology.rootSessionId(),
                       topology.parentSessionId(),
                       topology.sessionId(),
+                      runState == null ? null : runState.runId(),
+                      runState == null ? null : runState.parentRunId(),
                       Objects.toString(turnId, null),
                       new ArrayList<>(turnEvents),
                       newState.nextSequence());
@@ -1319,6 +1334,7 @@ public final class SessionActor
     if (isFailed) {
       LOG.warn("Run failed for session {}: {}", state.topology().sessionId(), error);
       final SessionTopology topology = state.topology();
+      final String runId = Objects.requireNonNull(state.currentRun()).runId();
       if (turnId == null) {
         turnId = state.nextSequence();
       }
@@ -1330,6 +1346,8 @@ public final class SessionActor
                 topology.rootSessionId(),
                 topology.parentSessionId(),
                 topology.sessionId(),
+                runId,
+                Objects.requireNonNull(state.currentRun()).parentRunId(),
                 turnIdStr,
                 turnEvents,
                 state.nextSequence()));
@@ -1338,11 +1356,13 @@ public final class SessionActor
           SessionEvent.error(
               topology.rootSessionId(),
               topology.sessionId(),
+              runId,
+              topology.agentId(),
               error,
               state.nextSequence() + sessionEvents.size(),
               turnIdStr);
       sessionEvents.add(errorEvent);
-      facts.add(commitTurn(sessionEvents, Objects.requireNonNull(state.currentRun()).runId()));
+      facts.add(commitTurn(sessionEvents, runId));
       turnEvents.clear();
       turnId = null;
     }
@@ -1392,6 +1412,8 @@ public final class SessionActor
           SessionEvent.error(
               rootSessionId,
               sessionId,
+              runId,
+              topology.agentId(),
               runResult.failureMessage(),
               lastCommittedTurn.startSequence() + lastCommittedTurn.count() - 1,
               String.valueOf(lastCommittedTurn.turnId())));

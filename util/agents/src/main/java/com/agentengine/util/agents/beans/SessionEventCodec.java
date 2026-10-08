@@ -55,6 +55,8 @@ public final class SessionEventCodec implements Codec<SessionEvent> {
     writeString(writer, SessionEvent.FIELD_ROOT_SESSION_ID, value.getRootSessionId());
     writeString(writer, SessionEvent.FIELD_PARENT_SESSION_ID, value.getParentSessionId());
     writeString(writer, SessionEvent.FIELD_SESSION_ID, value.getSessionId());
+    writeString(writer, SessionEvent.FIELD_RUN_ID, value.getRunId());
+    writeString(writer, SessionEvent.FIELD_PARENT_RUN_ID, value.getParentRunId());
     writer.writeInt64(SessionEvent.FIELD_SEQUENCE, value.getSequence());
     writeString(
         writer, SessionEvent.FIELD_TYPE, value.getType() == null ? null : value.getType().name());
@@ -80,6 +82,9 @@ public final class SessionEventCodec implements Codec<SessionEvent> {
         case SessionEvent.FIELD_PARENT_SESSION_ID ->
             event.setParentSessionId(readNullableString(reader));
         case SessionEvent.FIELD_SESSION_ID -> event.setSessionId(readNullableString(reader));
+        case SessionEvent.FIELD_RUN_ID -> event.setRunId(readNullableString(reader));
+        case SessionEvent.FIELD_PARENT_RUN_ID ->
+            event.setParentRunId(readNullableString(reader));
         case SessionEvent.FIELD_SEQUENCE -> event.setSequence(reader.readInt64());
         case SessionEvent.FIELD_TYPE ->
             event.setType(SessionEvent.Type.valueOfOrDefault(readNullableString(reader)));
