@@ -2,6 +2,8 @@ plugins {
     id 'com.agentengine.java-library-conventions'
 }
 
+group = 'com.agentengine.util'
+
 dependencies {
     // Annotation-only APIs: compile-time markers, runtime provided by Quarkus
     compileOnly libs.jakarta.inject.api

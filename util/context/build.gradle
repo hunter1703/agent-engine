@@ -2,6 +2,8 @@ plugins {
     id 'com.agentengine.java-library-conventions'
 }
 
+group = 'com.agentengine.util'
+
 dependencies {
     // Exposed in public API (ForwardingExecutorService in ContextualExecutor)
     api libs.guava

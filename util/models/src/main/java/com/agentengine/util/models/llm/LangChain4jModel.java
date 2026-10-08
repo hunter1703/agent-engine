@@ -486,8 +486,27 @@ public final class LangChain4jModel extends BaseLlm {
     final List<ChatMessage> messages =
         new ArrayList<>(
             llmRequest.getSystemInstructions().stream().map(SystemMessage::from).toList());
-    llmRequest.contents().forEach(content -> messages.addAll(toChatMessage(content)));
+    llmRequest.contents().stream()
+        .flatMap(content -> toChatMessage(content).stream())
+        .forEach(
+            message -> {
+              if (!messages.isEmpty()
+                  && messages.getLast() instanceof UserMessage previous
+                  && message instanceof UserMessage next) {
+                messages.removeLast();
+                messages.add(mergeUserMessages(previous, next));
+              } else {
+                messages.add(message);
+              }
+            });
     return messages;
+  }
+
+  // Some providers reject consecutive user messages, so adjacent ones are sent as one.
+  private static UserMessage mergeUserMessages(final UserMessage first, final UserMessage second) {
+    final List<dev.langchain4j.data.message.Content> contents = new ArrayList<>(first.contents());
+    contents.addAll(second.contents());
+    return UserMessage.from(mergeTextContents(contents));
   }
 
   private static List<ChatMessage> toChatMessage(final Content content) {

@@ -3,6 +3,7 @@ package com.agentengine.util.common.utils;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class CollectionUtils {
 
@@ -149,6 +150,17 @@ public final class CollectionUtils {
       return null;
     }
     return list.getLast();
+  }
+
+  /** Index of the last element after {@code afterIndex} that matches, or -1 if none does. */
+  public static <T> int findLastIndexAfter(
+      final List<T> list, final int afterIndex, final Predicate<? super T> matches) {
+    for (int i = list.size() - 1; i > afterIndex; i--) {
+      if (matches.test(list.get(i))) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   public static int getIntValueFromMap(

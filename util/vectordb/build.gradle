@@ -3,6 +3,8 @@ plugins {
     id 'com.agentengine.repackaged-jars'
 }
 
+group = 'com.agentengine.util'
+
 // The Qdrant client jar bundles its own, older copy of grpc.health.v1. It shadows the one
 // Quarkus's gRPC server is generated against and breaks the server at startup, so the client is
 // used without its grpc/ classes and its own dependencies are declared explicitly.

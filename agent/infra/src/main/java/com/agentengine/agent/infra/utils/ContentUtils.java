@@ -59,15 +59,15 @@ public final class ContentUtils {
     return "";
   }
 
-  public static int findLatestUserContentIndex(final List<Content> contents) {
+  /**
+   * Index of the latest user-role content that is not a tool result. Tool results are user-role
+   * too, so this is the message a run started from.
+   */
+  public static int findLatestUserMessageIndex(final List<Content> contents) {
     final List<Content> safeContents = CollectionUtils.nullSafeList(contents);
     for (int i = safeContents.size() - 1; i >= 0; i--) {
       final Content content = safeContents.get(i);
-      if (content == null) {
-        continue;
-      }
-      final Optional<String> role = content.role();
-      if (role.isEmpty() || Constants.AUTHOR_USER.equalsIgnoreCase(role.get())) {
+      if (content != null && isUserRole(content) && getToolResponseParts(content).isEmpty()) {
         return i;
       }
     }
@@ -110,6 +110,20 @@ public final class ContentUtils {
         .flatMap(Optional::stream)
         .filter(response -> toolName.equals(response.name().orElse("")))
         .toList();
+  }
+
+  public static boolean isFunctionCall(final Part part, final String toolName) {
+    return part.functionCall()
+        .flatMap(FunctionCall::name)
+        .filter(name -> name.equals(toolName))
+        .isPresent();
+  }
+
+  public static boolean isFunctionResponse(final Part part, final String toolName) {
+    return part.functionResponse()
+        .flatMap(FunctionResponse::name)
+        .filter(name -> name.equals(toolName))
+        .isPresent();
   }
 
   public static boolean hasVisibleText(final Content content) {
@@ -220,5 +234,10 @@ public final class ContentUtils {
     final List<Part> parts = new ArrayList<>(content.parts().orElse(List.of()));
     parts.add(Part.fromText(text.toString()));
     return content.toBuilder().parts(parts).build();
+  }
+
+  private static boolean isUserRole(final Content content) {
+    final Optional<String> role = content.role();
+    return role.isEmpty() || Constants.AUTHOR_USER.equalsIgnoreCase(role.get());
   }
 }

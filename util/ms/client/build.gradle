@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.protobuf)
 }
 
+group = 'com.agentengine.util.ms'
+
 dependencies {
     implementation project(':util:common')
     implementation project(':util:context')

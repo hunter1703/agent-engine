@@ -21,10 +21,16 @@ import java.util.function.Function;
  *
  * <p>This plugin reads whatever reminders are currently registered in {@link SessionState}, groups
  * them by group, and renders each group as a titled section inside a structured brief appended to
- * the most recent user-role {@link Content} — so the brief reads as context accompanying the
+ * the latest user message (not a tool result) — so the brief reads as context accompanying the
  * current request rather than as a standing rule in the system instruction.
+ *
+ * <p>Once the current run holds a {@code refresh_reminders} result, that result carries the
+ * reminders, so the brief is left out and every older result is expired.
  */
 public final class ReminderPlugin extends BasePlugin {
+
+  private static final String EXPIRED_RESULT_MESSAGE =
+      "Outdated reminders snapshot, superseded by newer reminders.";
 
   public ReminderPlugin() {
     super("reminder_plugin");
@@ -43,103 +49,79 @@ public final class ReminderPlugin extends BasePlugin {
       return Maybe.empty();
     }
 
-    String brief = buildBrief(initialReminders);
-    if (!initialReminders.equals(currentReminders) && StringUtils.isNotBlank(brief)) {
-      brief =
-          "> [!WARNING]\n"
-              + "> **Historical Snapshot:** These reminders were captured at the start of the current run. "
-              + "They have been superseded by subsequent `refresh_reminders` tool calls. Check the tool outputs for the current state.\n\n"
-              + brief;
+    final List<Content> contents = llmRequestBuilder.build().contents();
+    final int runStartIndex = ContentUtils.findLatestUserMessageIndex(contents);
+    if (runStartIndex < 0) {
+      return Maybe.empty();
     }
 
-    final List<Content> contents = llmRequestBuilder.build().contents();
-    final List<Content> updatedContents =
-        scrubRefreshReminders(appendToLatestUserTurn(contents, brief));
-    llmRequestBuilder.contents(updatedContents);
+    final int latestResultIndex =
+        CollectionUtils.findLastIndexAfter(
+            contents, runStartIndex, ReminderPlugin::isRefreshRemindersResult);
+    final List<Content> withBrief =
+        latestResultIndex < 0
+            ? appendToUserMessage(contents, runStartIndex, buildBrief(initialReminders))
+            : contents;
+    llmRequestBuilder.contents(expireRefreshResultsExcept(withBrief, latestResultIndex));
     return Maybe.empty();
   }
 
-  private static List<Content> scrubRefreshReminders(final List<Content> contents) {
-    final int lastUserIndex = ContentUtils.findLatestUserContentIndex(contents);
-    if (lastUserIndex < 0) {
-      return contents;
-    }
-
-    // Find the LAST refresh_reminders response in the current run
-    int lastRefreshResponseIndex = -1;
-    for (int i = contents.size() - 1; i > lastUserIndex; i--) {
-      final Content content = contents.get(i);
-      if (isRefreshRemindersResponse(content)) {
-        lastRefreshResponseIndex = i;
-        break;
-      }
-    }
-
-    final List<Content> scrubbed = new ArrayList<>();
+  /**
+   * Expires every {@code refresh_reminders} result except the one at {@code latestResultIndex}.
+   * Calls are kept, so the history still shows what the model did; an expired result no longer
+   * carries the reminders it once returned.
+   */
+  private static List<Content> expireRefreshResultsExcept(
+      final List<Content> contents, final int latestResultIndex) {
+    final List<Content> expired = new ArrayList<>();
     for (int i = 0; i < contents.size(); i++) {
       final Content content = contents.get(i);
-      final boolean isRefreshCall = isRefreshRemindersCall(content);
-      final boolean isRefreshResponse = isRefreshRemindersResponse(content);
-
-      if (isRefreshCall || isRefreshResponse) {
-        if (i < lastUserIndex) {
-          // Drop entirely if from a previous run
-          continue;
-        } else if (isRefreshResponse && i != lastRefreshResponseIndex) {
-          // Replace payload with expired message if it's an older one in the current run
-          scrubbed.add(expireRefreshResponse(content));
-          continue;
-        }
-      }
-      scrubbed.add(content);
+      expired.add(
+          i != latestResultIndex && isRefreshRemindersResult(content)
+              ? withExpiredRefreshResults(content)
+              : content);
     }
-    return scrubbed;
+    return expired;
   }
 
-  private static boolean isRefreshRemindersCall(final Content content) {
-    return !ContentUtils.getFunctionCalls(content, Constants.ToolNames.REFRESH_REMINDERS).isEmpty();
-  }
-
-  private static boolean isRefreshRemindersResponse(final Content content) {
+  private static boolean isRefreshRemindersResult(final Content content) {
     return !ContentUtils.getFunctionResponses(content, Constants.ToolNames.REFRESH_REMINDERS)
         .isEmpty();
   }
 
-  private static Content expireRefreshResponse(final Content content) {
-    final List<Part> updatedParts = new ArrayList<>();
-    for (final Part part : content.parts().orElse(List.of())) {
-      final FunctionResponse functionResponse = part.functionResponse().orElse(null);
-      if (functionResponse != null
-          && Constants.ToolNames.REFRESH_REMINDERS.equals(functionResponse.name().orElse(""))) {
-        final Map<String, Object> newPayload =
-            new HashMap<>(functionResponse.response().orElse(Map.of()));
-        newPayload.put("status", "expired");
-        newPayload.put(
-            "message",
-            "This historical snapshot is expired. See the latest refresh_reminders result.");
-        final FunctionResponse expiredResponse =
-            functionResponse.toBuilder().response(newPayload).build();
-        updatedParts.add(Part.builder().functionResponse(expiredResponse).build());
-      } else {
-        updatedParts.add(part);
-      }
-    }
-    return content.toBuilder().parts(updatedParts).build();
+  private static Content withExpiredRefreshResults(final Content content) {
+    final List<Part> parts =
+        content.parts().orElse(List.of()).stream()
+            .map(
+                part ->
+                    ContentUtils.isFunctionResponse(part, Constants.ToolNames.REFRESH_REMINDERS)
+                        ? expiredResultPart(part)
+                        : part)
+            .toList();
+    return content.toBuilder().parts(parts).build();
   }
 
-  private static List<Content> appendToLatestUserTurn(
-      final List<Content> contents, final String brief) {
-    final int lastUserIndex = ContentUtils.findLatestUserContentIndex(contents);
-    if (lastUserIndex < 0) {
+  private static Part expiredResultPart(final Part part) {
+    final FunctionResponse result = part.functionResponse().orElseThrow();
+    final Map<String, Object> expiredPayload =
+        Map.of("status", "expired", "message", EXPIRED_RESULT_MESSAGE);
+    return Part.builder()
+        .functionResponse(result.toBuilder().response(expiredPayload).build())
+        .build();
+  }
+
+  private static List<Content> appendToUserMessage(
+      final List<Content> contents, final int userMessageIndex, final String brief) {
+    if (StringUtils.isBlank(brief)) {
       return contents;
     }
 
-    final Content userContent = contents.get(lastUserIndex);
+    final Content userContent = contents.get(userMessageIndex);
     final List<Part> parts = new ArrayList<>(userContent.parts().orElse(List.of()));
     parts.add(Part.fromText(brief));
 
     final List<Content> updated = new ArrayList<>(contents);
-    updated.set(lastUserIndex, userContent.toBuilder().parts(parts).build());
+    updated.set(userMessageIndex, userContent.toBuilder().parts(parts).build());
     return updated;
   }
 

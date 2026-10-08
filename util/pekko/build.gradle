@@ -2,6 +2,8 @@ plugins {
     id 'com.agentengine.java-library-conventions'
 }
 
+group = 'com.agentengine.util'
+
 dependencies {
     // Pekko types appear in public class hierarchy and interface signatures
     api platform(libs.pekko.bom)

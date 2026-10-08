@@ -3,6 +3,8 @@ plugins {
     id 'java-test-fixtures'
 }
 
+group = 'com.agentengine.util'
+
 dependencies {
     implementation project(':util:context')
     // Annotation-only APIs: compile-time markers, runtime provided by Quarkus

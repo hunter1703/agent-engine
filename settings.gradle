@@ -47,6 +47,7 @@ include 'knowledge:api'
 include 'knowledge:core'
 include 'knowledge:jobs'
 
+include 'chaos'
 include 'chaos:api'
 include 'chaos:core'
 

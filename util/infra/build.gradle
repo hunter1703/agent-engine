@@ -2,6 +2,8 @@ plugins {
     id 'com.agentengine.java-library-conventions'
 }
 
+group = 'com.agentengine.util'
+
 dependencies {
     api project(':util:common')
     implementation project(':util:distributed')
