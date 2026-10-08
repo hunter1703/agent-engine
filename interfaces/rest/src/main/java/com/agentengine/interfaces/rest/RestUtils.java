@@ -48,7 +48,7 @@ public final class RestUtils {
         .buffer(
             Defaults.STREAMING_BATCH_FLUSH_INTERVAL_MS,
             TimeUnit.MILLISECONDS,
-            FlowableUtils.streamingScheduler(),
+            FlowableUtils.STREAMING_SCHEDULER,
             Defaults.STREAMING_BATCH_SIZE)
         .filter(batch -> !batch.isEmpty())
         .map(batch -> encodeBatch(batch, jsonCodec))

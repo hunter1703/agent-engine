@@ -198,6 +198,13 @@ the reader and the runtime equally.
   abstraction's design, nomenclature and, scope to match the reproducing case when the general form is equally simple.
 - **Minimal surface, maximum cohesion**: each class and method should do one thing well. If you cannot describe
   a class's responsibility in one sentence, split it.
+- **Handle a failure at the lowest layer that can resolve it**: a failure belongs to the layer
+  that meets it. A gRPC client waits for a callee that is restarting and retries; a model client
+  retries a dropped connection. That layer surfaces the failure only when it cannot resolve it,
+  for example once its retries are exhausted. The layer above then chooses to handle it or to pass
+  it on to the one above it. A higher layer does not re-implement a lower layer's recovery, and a
+  failure that passes through a layer is not turned into the end of a session or a request just
+  because it passed through.
 - **Less code is usually better code**: prefer a shorter, clearer implementation. If a helper method is used
   once and adds no clarity, inline it.
 - **Extensibility by design**: structure code so new behaviour is added by adding new types, not by modifying

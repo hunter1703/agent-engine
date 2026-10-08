@@ -8,14 +8,10 @@ import java.util.function.Supplier;
 
 public final class FlowableUtils {
 
-  private static final Scheduler STREAMING_SCHEDULER =
+  public static final Scheduler STREAMING_SCHEDULER =
       Schedulers.from(ThreadUtils.newFixedThreadExecutor("streaming-batch-", 4));
 
   private FlowableUtils() {}
-
-  public static Scheduler streamingScheduler() {
-    return STREAMING_SCHEDULER;
-  }
 
   public static <T> Flowable<T> withScheduled(
       final Flowable<T> source, final long intervalMillis, final Supplier<T> scheduledProducer) {

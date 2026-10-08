@@ -10,6 +10,7 @@ dependencies {
     implementation project(':util:context')
     implementation project(':util:infra')
     implementation project(':util:distributed')
+    implementation project(':util:scripts')
 
     implementation libs.grpc.stub
     implementation libs.grpc.protobuf

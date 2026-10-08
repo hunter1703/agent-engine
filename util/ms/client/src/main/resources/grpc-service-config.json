@@ -1,0 +1,14 @@
+{
+  "methodConfig": [
+    {
+      "name": [{}],
+      "retryPolicy": {
+        "maxAttempts": "{{ server.maxRetryAttempts.doubleValue() }}",
+        "initialBackoff": "1s",
+        "maxBackoff": "10s",
+        "backoffMultiplier": 2.0,
+        "retryableStatusCodes": ["UNAVAILABLE"]
+      }
+    }
+  ]
+}

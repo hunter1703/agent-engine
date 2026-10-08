@@ -141,7 +141,7 @@ public final class SessionEventUtils {
   public static Flowable<SessionEvent> compactEventStream(
       final Flowable<SessionEvent> events, final long windowMillis) {
     return events
-        .buffer(windowMillis, TimeUnit.MILLISECONDS, FlowableUtils.streamingScheduler())
+        .buffer(windowMillis, TimeUnit.MILLISECONDS, FlowableUtils.STREAMING_SCHEDULER)
         .filter(batch -> !batch.isEmpty())
         .concatMapIterable(SessionEventUtils::compactEventStream);
   }

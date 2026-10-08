@@ -2,7 +2,6 @@ package com.agentengine.util.ms.client;
 
 import com.agentengine.util.common.codec.JsonCodec;
 import com.agentengine.util.context.Context;
-import com.agentengine.util.infra.InfraConfigService;
 import io.grpc.ManagedChannel;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.ArcContainer;
@@ -22,17 +21,14 @@ import java.util.function.Supplier;
 public class MicroServiceClientProviderImpl implements MicroServiceClientProvider {
 
   private final MicroServiceChannelProvider channelProvider;
-  private final InfraConfigService infraConfigService;
-  private final JsonCodec jsonCodec;
+    private final JsonCodec jsonCodec;
 
   @Inject
   public MicroServiceClientProviderImpl(
       final MicroServiceChannelProvider channelProvider,
-      final InfraConfigService infraConfigService,
       final JsonCodec jsonCodec) {
     this.channelProvider = channelProvider;
-    this.infraConfigService = infraConfigService;
-    this.jsonCodec = jsonCodec;
+      this.jsonCodec = jsonCodec;
   }
 
   @Override

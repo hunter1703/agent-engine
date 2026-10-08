@@ -1,8 +1,11 @@
 package com.agentengine.agent.infra.tools.notebook;
 
+import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.Constants;
+import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.tools.ToolArg;
@@ -16,9 +19,9 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
           """
           Creates or overwrites a note in a notebook. Use it for content meant to be read from the notebook — longer text, deliverables, anything another agent might need to consult — instead of relaying that text through your replies.
 
-          The note body arrives in two steps: this call begins the note, and your very next reply supplies the content in full — no preamble, no sign-off, nothing else. Once the reply lands, the note is saved and you'll resume your task automatically.
+          The note body arrives in two steps: this call begins the note, and the message that follows asks for its content. Your reply to that message supplies the content in full — no preamble, no sign-off, nothing else. Once the reply lands, the note is saved and you'll resume your task automatically.
 
-          Returns: { status: "awaiting_body", message } — the note is not yet saved; your next reply supplies its body. Or { error } if you can't write notes in the notebook.
+          Returns: { status: "pending", message } — the note is not yet saved; the next message asks for its body. Or { error } if you can't write notes in the notebook.
           """,
           Map.of());
 
@@ -50,12 +53,21 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
               "You don't have access to write note '%s' in notebook '%s'."
                   .formatted(noteTitle, notebookId)));
     }
-    RunUtils.getRunState(toolContext.invocationContext()).startNote(notebookId, noteTitle);
+    final RunState runState = RunUtils.getRunState(toolContext.invocationContext());
+    runState.startNote(notebookId, noteTitle);
+    runState.addSignal(
+        toolContext,
+        new Signal<>(
+            "note_body_" + NotebookUtils.noteId(notebookId, noteTitle),
+            ("Write the body of note '%s' now. Your next reply becomes the full note content:"
+                    + " no preamble, no sign-off, nothing else.")
+                .formatted(noteTitle),
+            true));
     return ToolOutput.direct(
         Map.of(
             Constants.ToolStatus.STATUS,
             Constants.ToolStatus.PENDING,
             "message",
-            "Write the note body now. Your next reply becomes the full note content — no preamble, no sign-off, nothing else. You'll resume your task once it's saved."));
+            "The note's body is requested in the next message."));
   }
 }

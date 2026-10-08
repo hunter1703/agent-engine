@@ -11,6 +11,9 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.UnknownHostException;
 
 public final class MicroServiceUtils {
   private static final Logger log = LoggerFactory.getLogger(MicroServiceUtils.class);
@@ -51,6 +54,11 @@ public final class MicroServiceUtils {
           case UnauthorizedException _ -> Status.PERMISSION_DENIED;
           case ConfigurationException _ -> Status.FAILED_PRECONDITION;
           case IllegalArgumentException _ -> Status.INVALID_ARGUMENT;
+          case UnknownHostException _, ConnectException _, NoRouteToHostException _ ->
+              Status.UNAVAILABLE;
+          case StatusRuntimeException exception
+              when exception.getStatus().getCode() == Status.Code.UNAVAILABLE ->
+              Status.UNAVAILABLE;
           default -> Status.INTERNAL;
         };
 

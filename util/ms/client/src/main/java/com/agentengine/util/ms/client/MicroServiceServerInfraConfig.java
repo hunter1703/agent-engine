@@ -12,6 +12,7 @@ public class MicroServiceServerInfraConfig extends InfraConfig {
 
   private String host;
   private int port;
+  private int maxRetryAttempts = 15;
 
   public MicroServiceServerInfraConfig() {
     setType(ServerType.MICROSERVICE_SERVER.name());
@@ -36,5 +37,14 @@ public class MicroServiceServerInfraConfig extends InfraConfig {
 
   public void setPort(final int port) {
     this.port = port;
+  }
+
+  /** How many times in all a call to this server is tried while it fails with UNAVAILABLE. */
+  public int getMaxRetryAttempts() {
+    return maxRetryAttempts;
+  }
+
+  public void setMaxRetryAttempts(final int maxRetryAttempts) {
+    this.maxRetryAttempts = maxRetryAttempts;
   }
 }

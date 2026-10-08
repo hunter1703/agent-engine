@@ -189,7 +189,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
                 .buffer(
                     serviceMethod.streamingBatchFlushIntervalMs(),
                     TimeUnit.MILLISECONDS,
-                    FlowableUtils.streamingScheduler(),
+                    FlowableUtils.STREAMING_SCHEDULER,
                     serviceMethod.streamingBatchSize())
                 .filter(batch -> !batch.isEmpty())
                 .subscribe(

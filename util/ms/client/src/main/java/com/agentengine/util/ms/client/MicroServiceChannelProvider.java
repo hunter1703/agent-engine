@@ -1,21 +1,37 @@
 package com.agentengine.util.ms.client;
 
+import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.utils.ResourceUtils;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.infra.ClientFactory;
 import com.agentengine.util.infra.InfraConfigService;
 import com.agentengine.util.infra.ServerType;
+import com.agentengine.util.scripts.TemplateUtils;
+import com.agentengine.util.scripts.templated.Template;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.grpc.ManagedChannelBuilder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.Map;
 
 @Singleton
 public class MicroServiceChannelProvider
     extends ClientFactory<MicroServiceClientInfraConfig, MicroServiceServerInfraConfig, Channel> {
 
   private static final Logger LOG = LoggerFactory.getLogger(MicroServiceChannelProvider.class);
+
+  // Applies to every method of every service: a call that fails with UNAVAILABLE, the server being
+  // down or restarting, is made again with growing pauses before the failure reaches the caller.
+  // Evaluated per server with that server's config as {@code server}. gRPC reads the numeric fields
+  // as doubles, so the file writes them as doubles.
+  private static final Template<Map<String, Object>> SERVICE_CONFIG =
+      TemplateUtils.buildTemplate(
+          JsonUtils.fromJson(
+              ResourceUtils.loadResourceAsString("grpc-service-config.json"),
+              new TypeReference<Map<String, Object>>() {}));
 
   @Inject
   public MicroServiceChannelProvider(
@@ -48,6 +64,10 @@ public class MicroServiceChannelProvider
             // TODO: check
             .usePlaintext()
             .defaultLoadBalancingPolicy("round_robin")
+            .enableRetry()
+            .maxRetryAttempts(serverConfig.getMaxRetryAttempts())
+            .defaultServiceConfig(
+                SERVICE_CONFIG.getValue(Map.of("server", JsonUtils.toMap(serverConfig))))
             .maxInboundMessageSize(MicroServiceServerInfraConfig.MAX_INBOUND_MESSAGE_SIZE)
             .keepAliveTime(30, TimeUnit.SECONDS)
             .keepAliveTimeout(10, TimeUnit.SECONDS)
