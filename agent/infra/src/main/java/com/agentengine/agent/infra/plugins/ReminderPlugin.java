@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.plugins;
 
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.agent.infra.utils.*;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.utils.CollectionUtils;
@@ -17,12 +18,12 @@ import java.util.Map.Entry;
 import java.util.function.Function;
 
 /**
- * Injects the agent's reminder map into the latest user turn as a working-memory brief.
+ * Injects the agent's reminder map into the user's message as a working-memory brief.
  *
  * <p>This plugin reads whatever reminders are currently registered in {@link SessionState}, groups
- * them by group, and renders each group as a titled section inside a structured brief appended to
- * the latest user message (not a tool result) — so the brief reads as context accompanying the
- * current request rather than as a standing rule in the system instruction.
+ * them by group, and renders each group as a titled section inside a brief placed ahead of the
+ * message that started the latest invocation started by one, each in its own tag, so the brief
+ * reads as context for the request rather than as a standing rule in the system instruction.
  *
  * <p>Once the current run holds a {@code refresh_reminders} result, that result carries the
  * reminders, so the brief is left out and every older result is expired.
@@ -50,17 +51,25 @@ public final class ReminderPlugin extends BasePlugin {
     }
 
     final List<Content> contents = llmRequestBuilder.build().contents();
-    final int runStartIndex = ContentUtils.findLatestUserMessageIndex(contents);
-    if (runStartIndex < 0) {
+    // A start message missing from the request was compacted, and ADK's tail compactor always
+    // summarizes from the beginning, so the summary that replaced it is the request's first message.
+    final int startMessageIndex =
+        contents.indexOf(
+            EventUtils.findLatestUserMessage(
+                callbackContext.invocationContext().session().events()));
+    final boolean summaryFirst =
+        !contents.isEmpty() && ContentUtils.isUserMessage(contents.getFirst());
+    final int userMessageIndex = startMessageIndex < 0 && summaryFirst ? 0 : startMessageIndex;
+    if (userMessageIndex < 0) {
       return Maybe.empty();
     }
 
     final int latestResultIndex =
         CollectionUtils.findLastIndexAfter(
-            contents, runStartIndex, ReminderPlugin::isRefreshRemindersResult);
+            contents, userMessageIndex, ReminderPlugin::isRefreshRemindersResult);
     final List<Content> withBrief =
         latestResultIndex < 0
-            ? appendToUserMessage(contents, runStartIndex, buildBrief(initialReminders))
+            ? withRemindersBrief(contents, userMessageIndex, buildBrief(initialReminders))
             : contents;
     llmRequestBuilder.contents(expireRefreshResultsExcept(withBrief, latestResultIndex));
     return Maybe.empty();
@@ -110,35 +119,35 @@ public final class ReminderPlugin extends BasePlugin {
         .build();
   }
 
-  private static List<Content> appendToUserMessage(
+  private static List<Content> withRemindersBrief(
       final List<Content> contents, final int userMessageIndex, final String brief) {
     if (StringUtils.isBlank(brief)) {
       return contents;
     }
 
     final Content userContent = contents.get(userMessageIndex);
-    final List<Part> parts = new ArrayList<>(userContent.parts().orElse(List.of()));
-    parts.add(Part.fromText(brief));
+    final List<Part> parts = new ArrayList<>();
+    parts.add(
+        Part.fromText(
+            """
+            <reference_material>
+            Use what applies, skip the rest.
+
+            %s
+            </reference_material>
+
+            <user_message>
+            """
+                .formatted(brief)));
+    parts.addAll(userContent.parts().orElse(List.of()));
+    parts.add(Part.fromText("\n</user_message>"));
 
     final List<Content> updated = new ArrayList<>(contents);
     updated.set(userMessageIndex, userContent.toBuilder().parts(parts).build());
     return updated;
   }
 
-  private static String buildBrief(final List<Reminder> reminders) {
-    final String formatted = formatReminders(reminders);
-    if (formatted == null) {
-      return null;
-    }
-    return """
-
-            ---
-            [Reference material for this request, not part of the user's message. Use what applies, skip the rest.]
-            """
-        + formatted;
-  }
-
-  public static String formatReminders(final List<Reminder> reminders) {
+  public static String buildBrief(final List<Reminder> reminders) {
     final StringBuilder sb = new StringBuilder();
     boolean hasContent = false;
     final Map<String, List<Reminder>> reminderGroups =

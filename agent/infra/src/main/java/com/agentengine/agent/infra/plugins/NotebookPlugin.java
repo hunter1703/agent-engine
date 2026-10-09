@@ -4,6 +4,7 @@ import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.tools.notebook.CreateOrUpdateNoteTool;
 import com.agentengine.agent.infra.utils.*;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.agents.BaseAgent;
@@ -24,9 +25,10 @@ import org.slf4j.LoggerFactory;
  * option is to write the note's content as plain text; {@link #afterModelCallback} then persists
  * it.
  *
- * <p>Once the note is persisted, {@link #afterModelCallback} always queues a signal that requires
- * continuation, so the run loop issues another request with tools re-enabled, letting the model
- * write further notes or keep working.
+ * <p>Once the note is persisted, {@link #afterModelCallback} adds a {@code refresh_reminders} call to
+ * the response, so the model sees the notebook as it now is through that call's result, and queues a
+ * signal confirming the save. The run loop then issues another request with tools re-enabled,
+ * letting the model write further notes or keep working.
  */
 public final class NotebookPlugin extends BasePlugin {
   private static final Logger LOG = LoggerFactory.getLogger(NotebookPlugin.class);
@@ -103,7 +105,6 @@ public final class NotebookPlugin extends BasePlugin {
 
     final String notebookId = pending.notebookId();
     notebookService.saveNote(notebookId, noteTitle, text);
-    sessionState.syncNotebookReminder(notebookService);
     LOG.info("Created or updated note notebook={} title={}", notebookId, noteTitle);
     final String message =
         """
@@ -113,6 +114,7 @@ public final class NotebookPlugin extends BasePlugin {
     runState.addSignal(
         callbackContext,
         new Signal<>("note_saved_" + NotebookUtils.noteId(notebookId, noteTitle), message, true));
-    return Maybe.empty();
+    return Maybe.just(
+        ResponseUtils.withFunctionCall(response, Constants.ToolNames.REFRESH_REMINDERS));
   }
 }

@@ -5,6 +5,7 @@ import com.agentengine.agent.infra.agents.DelegatedAgent;
 import com.agentengine.agent.infra.agents.LLMAgent;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.adk.agents.LlmAgent;
+import com.google.adk.summarizer.EventCompactor;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, Dele
   private final List<BaseTool> tools = new ArrayList<>();
   private final List<BaseToolset> toolSets = new ArrayList<>();
   private final LlmAgent.Builder llmAgentBuilder;
+  private EventCompactor compactor;
 
   public BaseLlmAgentBuilder(final LlmAgent.Builder llmAgentBuilder) {
     this.llmAgentBuilder = llmAgentBuilder;
@@ -22,6 +24,11 @@ public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, Dele
 
   public BaseLlmAgentBuilder systemInstructions(final String systemInstructions) {
     this.systemInstructions = systemInstructions;
+    return this;
+  }
+
+  public BaseLlmAgentBuilder compactor(final EventCompactor compactor) {
+    this.compactor = compactor;
     return this;
   }
 
@@ -63,7 +70,7 @@ public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, Dele
             .subAgents(subAgents())
             .instruction(systemInstructions)
             .tools(toolsAndToolsets);
-    final LlmAgent llmAgent = new LLMAgent(builder, closeHook());
+    final LlmAgent llmAgent = new LLMAgent(builder, closeHook(), compactor);
     return new DelegatedAgent(llmAgent, agentConfig());
   }
 }

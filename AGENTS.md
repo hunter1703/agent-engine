@@ -205,6 +205,14 @@ the reader and the runtime equally.
   it on to the one above it. A higher layer does not re-implement a lower layer's recovery, and a
   failure that passes through a layer is not turned into the end of a session or a request just
   because it passed through.
+- **Reason from responsibility, not from consequences**: decide where something belongs by
+  asking what makes sense and which layer owns the responsibility, then check the consequences.
+  Never justify a design by what currently depends on it — "the plugin must not remove the tools,
+  because ADK looks a call's tool up in the request" argues for an arrangement from its own side
+  effects, and the same argument would defend any arrangement. Start from ownership — the agent
+  decides whether tools may be called; the provider adapter decides how a provider is told — and
+  treat a dependency that conflicts with that as something to fix or to accept explicitly, never
+  as the reason for the design.
 - **Less code is usually better code**: prefer a shorter, clearer implementation. If a helper method is used
   once and adds no clarity, inline it.
 - **Extensibility by design**: structure code so new behaviour is added by adding new types, not by modifying

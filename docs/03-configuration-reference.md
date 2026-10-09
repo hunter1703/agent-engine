@@ -51,22 +51,21 @@ Validation rules enforced by `ConfigValidationService` + custom validators:
 
 ## 3.4 Context Strategy Configs
 
-The strategy type is selected by the config subtype; presence of the strategy is its enablement.
+The strategy type is selected by the config subtype. An agent without one uses `compaction` with
+its defaults. It runs ADK's `TailRetentionEventCompactor`: once the history since the last
+compaction passes `tokenThreshold` estimated tokens, everything but the last `keepLastEvents` events
+is replaced, and the replacement is stored as a compaction event in the session, so it is never
+recomputed on resume or restart.
 
 ### `compaction` (`CompactionContextStrategyConfig`)
 
-- `tokenThreshold` (default `4096`)
-- `recencyThreshold` (default `1024`)
+Replaces older events with a model-written summary, sent as a user message.
+
+- `tokenThreshold` (default `12000`)
+- `keepLastEvents` (default `20`)
 - `modelId` (optional override for the compaction model)
-- `promptTemplate` (optional)
-
-### `last_n` (`LastNContextStrategyConfig`)
-
-- `keepLastTokens` (default `1024`)
-
-### `none`
-
-- no fields beyond the type
+- `promptTemplate` (optional; ADK's `LlmEventSummarizer` template, with `{conversation_history}`
+  standing for the events being summarized)
 
 ## 3.5 Agent Runtime Config
 

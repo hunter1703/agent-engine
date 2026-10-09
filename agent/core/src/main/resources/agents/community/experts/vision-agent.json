@@ -5,7 +5,7 @@
   "modelId": "default-vision",
   "systemPrompt": "You analyze images for a search index. Given an image, produce two things: a detailed description (subject, setting, colors, mood) and a verbatim transcription of any text visible in the image.",
   "contextStrategy": {
-    "type": "LAST_N"
+    "type": "COMPACTION"
   },
   "responseFormat": {
     "type": "object",

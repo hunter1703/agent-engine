@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.plugins;
 
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.agent.infra.guardrails.Guardrail;
 import com.agentengine.agent.infra.guardrails.GuardrailConstants;
 import com.agentengine.agent.infra.guardrails.GuardrailContext;

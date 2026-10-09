@@ -14,11 +14,11 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 public class CompactionContextStrategyConfig extends ContextStrategyConfig {
   @UiField(label = "Token Threshold", step = "model", section = "context", order = 30)
   @UiNumber
-  private int tokenThreshold = 4096;
+  private int tokenThreshold = 12000;
 
-  @UiField(label = "Recency Threshold", step = "model", section = "context", order = 40)
+  @UiField(label = "Keep Last Events", step = "model", section = "context", order = 40)
   @UiNumber
-  private int recencyThreshold = 1024;
+  private int keepLastEvents = 20;
 
   @UiField(label = "Compaction Model ID", step = "model", section = "context", order = 50)
   @UiLookup(assetType = AssetClass.MODEL)
@@ -40,12 +40,13 @@ public class CompactionContextStrategyConfig extends ContextStrategyConfig {
     this.tokenThreshold = tokenThreshold;
   }
 
-  public int getRecencyThreshold() {
-    return recencyThreshold;
+  /** How many of the latest events are kept as they are when the history is compacted. */
+  public int getKeepLastEvents() {
+    return keepLastEvents;
   }
 
-  public void setRecencyThreshold(final int recencyThreshold) {
-    this.recencyThreshold = recencyThreshold;
+  public void setKeepLastEvents(final int keepLastEvents) {
+    this.keepLastEvents = keepLastEvents;
   }
 
   public String getModelId() {

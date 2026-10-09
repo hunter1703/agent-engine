@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.agents.flow;
 
+import com.agentengine.agent.infra.agents.processors.request.CompactionProcessor;
 import com.agentengine.agent.infra.agents.processors.request.SignalProcessor;
 import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
@@ -10,6 +11,7 @@ import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.*;
+import com.google.adk.summarizer.EventCompactor;
 import com.google.common.collect.ImmutableList;
 import com.google.genai.types.Content;
 import com.google.genai.types.FinishReason;
@@ -48,21 +50,10 @@ import org.slf4j.LoggerFactory;
  */
 public final class BaseFlow extends SingleFlow {
   private static final Logger LOG = LoggerFactory.getLogger(BaseFlow.class);
-  private static final ImmutableList<RequestProcessor> REQUEST_PROCESSORS =
-      ImmutableList.<RequestProcessor>builder()
-          .add(
-              new Basic(),
-              new RequestConfirmationLlmRequestProcessor(),
-              new Instructions(),
-              new Contents(),
-              new AgentTransfer(),
-              SignalProcessor.INSTANCE)
-          .build();
-
   private final int maxSteps;
 
-  public BaseFlow(final Integer maxSteps) {
-    super(REQUEST_PROCESSORS, RESPONSE_PROCESSORS, Optional.of(1));
+  public BaseFlow(final Integer maxSteps, final EventCompactor compactor) {
+    super(requestProcessors(compactor), RESPONSE_PROCESSORS, Optional.of(1));
     this.maxSteps = maxSteps == null ? Integer.MAX_VALUE : maxSteps;
   }
 
@@ -190,5 +181,20 @@ public final class BaseFlow extends SingleFlow {
     CONTINUE,
     TERMINAL,
     PAUSED
+  }
+
+  // Compaction runs before Contents, so the compaction event it adds already shapes this request.
+  private static List<RequestProcessor> requestProcessors(final EventCompactor compactor) {
+    final ImmutableList.Builder<RequestProcessor> processors =
+        ImmutableList.<RequestProcessor>builder()
+            .add(
+                new Basic(),
+                new RequestConfirmationLlmRequestProcessor(),
+                new Instructions(),
+                new AgentTransfer());
+    if (compactor != null) {
+      processors.add(new CompactionProcessor(compactor));
+    }
+    return processors.add(new Contents(), SignalProcessor.INSTANCE).build();
   }
 }

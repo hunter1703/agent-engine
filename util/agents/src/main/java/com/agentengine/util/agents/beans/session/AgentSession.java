@@ -14,7 +14,6 @@ import java.util.Map;
 @Permissioned(assetClass = AssetClass.AGENT_SESSION)
 public class AgentSession extends NamedEntity {
   public static final String FIELD_STATE = "state";
-  public static final String FIELD_SUMMARY = "summary";
   public static final String FIELD_STATUS = "status";
   public static final String FIELD_PARENT_SESSION_ID = "parentSessionId";
   public static final String FIELD_ROOT_SESSION_ID = "rootSessionId";
@@ -29,7 +28,6 @@ public class AgentSession extends NamedEntity {
   private String parentSessionId;
   private int depth;
   private String spawnedByAgentId;
-  private String summary;
   private SessionStatus status;
 
   public AgentSession() {}
@@ -111,14 +109,6 @@ public class AgentSession extends NamedEntity {
 
   public void setSpawnedByAgentId(final String spawnedByAgentId) {
     this.spawnedByAgentId = spawnedByAgentId;
-  }
-
-  public String getSummary() {
-    return summary;
-  }
-
-  public void setSummary(final String summary) {
-    this.summary = summary;
   }
 
   public SessionStatus getStatus() {

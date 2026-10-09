@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.utils;
 
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.agent.infra.tools.HumanInTheLoopTool;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.InterruptKind;
@@ -38,8 +39,20 @@ public final class ResponseUtils {
     if (response == null || response.content().isEmpty()) {
       return false;
     }
-    return com.agentengine.agent.infra.utils.ContentUtils.hasVisibleText(
+    return ContentUtils.hasVisibleText(
         response.content().orElse(null));
+  }
+
+  /** {@code response} with a call to {@code toolName}, without arguments, added after its parts. */
+  public static LlmResponse withFunctionCall(final LlmResponse response, final String toolName) {
+    final Content content =
+        response.content().orElseGet(() -> Content.builder().role("model").build());
+    final List<Part> parts = new ArrayList<>(content.parts().orElse(List.of()));
+    parts.add(
+        Part.builder()
+            .functionCall(FunctionCall.builder().name(toolName).args(Map.of()).build())
+            .build());
+    return response.toBuilder().content(content.toBuilder().parts(parts).build()).build();
   }
 
   public static ToolConfirmation buildToolConfirmation(

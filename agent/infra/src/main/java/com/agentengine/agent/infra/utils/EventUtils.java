@@ -13,6 +13,7 @@ import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.events.EventActions;
+import com.google.adk.events.EventCompaction;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.sessions.State;
@@ -21,8 +22,10 @@ import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Utilities for working with runtime {@link Event} objects. */
@@ -103,6 +106,33 @@ public final class EventUtils {
       }
       final Object value = delta.get(key);
       return State.REMOVED.equals(value) ? null : value;
+    }
+    return null;
+  }
+
+  /**
+   * The message that started the latest invocation started by one: going back invocation by
+   * invocation, the first event of an invocation that is a user's message rather than a tool result
+   * (e.g. a resume). Runtime instructions are delivered after an invocation's first event, so they
+   * are never it. Compaction events carry an invocation id of their own and are not part of any.
+   */
+  public static Content findLatestUserMessage(final List<Event> events) {
+    final List<Event> invocationEvents =
+        CollectionUtils.nullSafeList(events).stream().filter(event -> !isCompactionEvent(event)).toList();
+    int index = invocationEvents.size() - 1;
+    while (index >= 0) {
+      final Event event = invocationEvents.get(index);
+      final boolean startsInvocation =
+          index == 0
+              || !Objects.equals(
+                  invocationEvents.get(index - 1).invocationId(), event.invocationId());
+      if (startsInvocation
+          && Constants.AUTHOR_USER.equals(event.author())
+          && event.functionResponses().isEmpty()
+          && event.content().isPresent()) {
+        return event.content().get();
+      }
+      index--;
     }
     return null;
   }
@@ -249,7 +279,67 @@ public final class EventUtils {
       return event;
     }
     return event.toBuilder()
-        .content(ContentUtils.addAttachmentsToContent(event.content().get(), attachments))
+        .content(com.agentengine.util.agents.ContentUtils.addAttachmentsToContent(event.content().get(), attachments))
         .build();
+  }
+
+  /**
+   * {@code compactionEvent} with its range ended before the earliest call it covers whose result
+   * comes after the range, so a call and its result are never split across it; null when no events
+   * remain in the range.
+   */
+  public static Event keepCallsWithResults(final Event compactionEvent, final List<Event> events) {
+    final EventCompaction compaction = compactionEvent.actions().compaction().orElseThrow();
+    final Map<String, Long> callIdVsTimestamp = new HashMap<>();
+    long earliestSplitCall = Long.MAX_VALUE;
+    for (final Event event : events) {
+      if (isCompactionEvent(event) || event.timestamp() < compaction.startTimestamp()) {
+        continue;
+      }
+      if (event.timestamp() <= compaction.endTimestamp()) {
+        event
+            .functionCalls()
+            .forEach(
+                call -> call.id().ifPresent(id -> callIdVsTimestamp.put(id, event.timestamp())));
+        continue;
+      }
+      for (final FunctionResponse response : event.functionResponses()) {
+        final Long callTimestamp = response.id().map(callIdVsTimestamp::get).orElse(null);
+        if (callTimestamp != null) {
+          earliestSplitCall = Math.min(earliestSplitCall, callTimestamp);
+        }
+      }
+    }
+    if (earliestSplitCall == Long.MAX_VALUE) {
+      return compactionEvent;
+    }
+    final long endTimestamp = earliestSplitCall - 1;
+    if (endTimestamp < compaction.startTimestamp()) {
+      return null;
+    }
+    return withCompaction(
+        compactionEvent, compaction.startTimestamp(), endTimestamp, compaction.compactedContent());
+  }
+
+  public static Event withCompactedContent(final Event compactedEvent, final Content content) {
+    final EventCompaction compaction = compactedEvent.actions().compaction().orElseThrow();
+    return withCompaction(
+        compactedEvent, compaction.startTimestamp(), compaction.endTimestamp(), content);
+  }
+
+  public static boolean isCompactionEvent(final Event event) {
+    return event.actions() != null && event.actions().compaction().isPresent();
+  }
+
+  private static Event withCompaction(
+      final Event event, final long startTimestamp, final long endTimestamp, final Content content) {
+    final EventActions actions = event.actions() == null ? new EventActions() : event.actions();
+    final EventCompaction compaction =
+        EventCompaction.builder()
+            .startTimestamp(startTimestamp)
+            .endTimestamp(endTimestamp)
+            .compactedContent(content)
+            .build();
+    return event.toBuilder().actions(actions.toBuilder().compaction(compaction).build()).build();
   }
 }

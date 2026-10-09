@@ -10,11 +10,10 @@ import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Schema(
-    oneOf = {CompactionContextStrategyConfig.class, LastNContextStrategyConfig.class},
+    oneOf = {CompactionContextStrategyConfig.class},
     discriminatorProperty = "type",
     discriminatorMapping = {
-      @DiscriminatorMapping(value = "COMPACTION", schema = CompactionContextStrategyConfig.class),
-      @DiscriminatorMapping(value = "LAST_N", schema = LastNContextStrategyConfig.class)
+      @DiscriminatorMapping(value = "COMPACTION", schema = CompactionContextStrategyConfig.class)
     })
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
@@ -22,8 +21,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
     property = "type",
     visible = true)
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = CompactionContextStrategyConfig.class, name = "COMPACTION"),
-  @JsonSubTypes.Type(value = LastNContextStrategyConfig.class, name = "LAST_N")
+  @JsonSubTypes.Type(value = CompactionContextStrategyConfig.class, name = "COMPACTION")
 })
 @BsonDiscriminator
 public abstract class ContextStrategyConfig {
@@ -47,8 +45,7 @@ public abstract class ContextStrategyConfig {
 
   public enum ContextStrategyType {
     UNKNOWN,
-    COMPACTION,
-    LAST_N;
+    COMPACTION;
 
     public String type() {
       return name();

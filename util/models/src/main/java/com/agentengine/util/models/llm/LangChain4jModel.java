@@ -1,5 +1,6 @@
 package com.agentengine.util.models.llm;
 
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
@@ -14,6 +15,7 @@ import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
+import com.google.genai.types.FunctionCallingConfig;
 import com.google.genai.types.FunctionCallingConfigMode;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.FunctionResponse;
@@ -235,7 +237,14 @@ public final class LangChain4jModel extends BaseLlm {
     final List<ToolSpecification> toolSpecifications = toToolSpecifications(llmRequest);
     builder.toolSpecifications(toolSpecifications);
     llmRequest.config().ifPresent(config -> applyConfig(builder, config, toolSpecifications));
-    final ChatRequest chatRequest = builder.messages(toMessages(llmRequest)).build();
+    // A model whose tool definitions are left out still sees its earlier calls in the history and
+    // tends to write a new one out as text, so those calls are shown as plain messages describing what was done.
+    final List<Content> contents =
+        removesToolDefinitions(llmRequest)
+            ? ContentUtils.withToolCallsAsMessages(llmRequest.contents())
+            : llmRequest.contents();
+    final ChatRequest chatRequest =
+        builder.messages(toMessages(llmRequest.getSystemInstructions(), contents)).build();
     LOGGER.info("Converted llmRequest : {}", JsonUtils.toJson(llmRequest));
     return chatRequest;
   }
@@ -519,11 +528,22 @@ public final class LangChain4jModel extends BaseLlm {
                         }));
   }
 
-  private static List<ChatMessage> toMessages(final LlmRequest llmRequest) {
+  private boolean removesToolDefinitions(final LlmRequest llmRequest) {
+    return toolsOffMode == ToolsOffMode.REMOVE_TOOL_DEFINITIONS
+        && llmRequest
+            .config()
+            .flatMap(GenerateContentConfig::toolConfig)
+            .flatMap(ToolConfig::functionCallingConfig)
+            .flatMap(FunctionCallingConfig::mode)
+            .map(mode -> FunctionCallingConfigMode.Known.NONE.equals(mode.knownEnum()))
+            .orElse(false);
+  }
+
+  private static List<ChatMessage> toMessages(
+      final List<String> systemInstructions, final List<Content> contents) {
     final List<ChatMessage> messages =
-        new ArrayList<>(
-            llmRequest.getSystemInstructions().stream().map(SystemMessage::from).toList());
-    llmRequest.contents().stream()
+        new ArrayList<>(systemInstructions.stream().map(SystemMessage::from).toList());
+    contents.stream()
         .flatMap(content -> toChatMessage(content).stream())
         .forEach(
             message -> {
@@ -653,6 +673,7 @@ public final class LangChain4jModel extends BaseLlm {
   }
 
   private static AiMessage toAiMessage(final Content content) {
+    final List<String> thoughts = new ArrayList<>();
     final List<String> texts = new ArrayList<>();
     final List<ToolExecutionRequest> toolCalls = new ArrayList<>();
     content
@@ -660,7 +681,9 @@ public final class LangChain4jModel extends BaseLlm {
         .orElse(List.of())
         .forEach(
             part -> {
-              if (part.text().isPresent()) {
+              if (part.thought().orElse(false)) {
+                part.text().ifPresent(thoughts::add);
+              } else if (part.text().isPresent()) {
                 texts.add(part.text().get());
               } else if (part.functionCall().isPresent()) {
                 final FunctionCall fc = part.functionCall().get();
@@ -676,14 +699,16 @@ public final class LangChain4jModel extends BaseLlm {
               }
             });
 
+    // Whether the thinking is sent back is the provider client's choice (its sendThinking).
+    final AiMessage.Builder builder =
+        AiMessage.builder().thinking(thoughts.isEmpty() ? null : String.join("\n", thoughts));
     if (!toolCalls.isEmpty()) {
-      // Drop text when tool calls are present: OpenAI-compatible APIs reject
-      // AssistantMessage with
-      // both content and tool_calls. Text is preserved in session Content parts for
-      // observability.
-      return AiMessage.builder().toolExecutionRequests(toolCalls).build();
+      builder.toolExecutionRequests(toolCalls);
     }
-    return AiMessage.builder().text(String.join("\n", texts)).build();
+    if (!texts.isEmpty()) {
+      builder.text(String.join("\n", texts));
+    }
+    return builder.build();
   }
 
   // Ordered: thinking → text → tool calls, matching natural model output order.

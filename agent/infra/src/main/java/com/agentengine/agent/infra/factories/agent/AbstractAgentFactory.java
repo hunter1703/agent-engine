@@ -1,6 +1,7 @@
 package com.agentengine.agent.infra.factories.agent;
 
 import com.agentengine.agent.infra.agents.Agent;
+import com.agentengine.agent.infra.factories.context.CompactorProvider;
 import com.agentengine.agent.infra.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.agent.infra.utils.PromptUtils;
@@ -22,10 +23,15 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
     implements AgentFactory<C, A> {
   protected final ModelProvider modelProvider;
   protected final ToolFactory toolFactory;
+  protected final CompactorProvider compactorProvider;
 
-  protected AbstractAgentFactory(final ModelProvider modelProvider, final ToolFactory toolFactory) {
+  protected AbstractAgentFactory(
+      final ModelProvider modelProvider,
+      final ToolFactory toolFactory,
+      final CompactorProvider compactorProvider) {
     this.modelProvider = modelProvider;
     this.toolFactory = toolFactory;
+    this.compactorProvider = compactorProvider;
   }
 
   protected BaseLlmAgentBuilder createLlmAgentBuilder(final BaseAgentConfig config) {
@@ -64,6 +70,7 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
                 config.getSystemPrompt(), config.getName(), config.getResponseFormat()))
         .appendTools(tools)
         .appendToolSets(toolFactory.buildToolsets(config.getTools()))
+        .compactor(compactorProvider.create(config))
         .agentConfig(config)
         .closeHook(refCounted::close);
   }

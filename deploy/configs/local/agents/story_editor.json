@@ -12,8 +12,8 @@
     "story_writer"
   ],
   "contextStrategy": {
-    "type": "LAST_N",
-    "keepLastTokens": 2000000
+    "type": "COMPACTION",
+    "tokenThreshold": 200000
   },
   "tools": [
     {

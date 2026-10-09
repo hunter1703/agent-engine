@@ -53,7 +53,7 @@ A single agent request follows this shape:
 
 - Default and orchestrator agents
 - Orchestrator modes: `TRANSFER`, `SEQUENTIAL`, `PARALLEL`
-- Context strategies: `compaction`, `last_n`, `none`
+- Context strategy: `compaction`
 - Guardrail stages: `INPUT`, `TOOL`, `OUTPUT`
 - Tool registry with globally visible tools and toolset suites
 - Session pause/resume for interrupt-driven and human-in-the-loop flows

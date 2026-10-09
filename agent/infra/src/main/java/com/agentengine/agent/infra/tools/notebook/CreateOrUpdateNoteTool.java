@@ -19,9 +19,9 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
           """
           Creates or overwrites a note in a notebook. Use it for content meant to be read from the notebook — longer text, deliverables, anything another agent might need to consult — instead of relaying that text through your replies.
 
-          The note body arrives in two steps: this call begins the note, and the message that follows asks for its content. Your reply to that message supplies the content in full — no preamble, no sign-off, nothing else. Once the reply lands, the note is saved and you'll resume your task automatically.
+          The note's content comes in two steps: this call opens the note, and the message that follows asks you to write its content. Write that content as your reply, in plain text. The whole reply is saved as the note, so it holds the note and nothing else. After that, you continue your task.
 
-          Returns: { status: "pending", message } — the note is not yet saved; the next message asks for its body. Or { error } if you can't write notes in the notebook.
+          Returns: { status: "pending", message } — the note is open but not yet saved; the next message asks for its content. Or { error } if you can't write notes in the notebook.
           """,
           Map.of());
 
@@ -59,8 +59,9 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
         toolContext,
         new Signal<>(
             "note_body_" + NotebookUtils.noteId(notebookId, noteTitle),
-            ("Write the body of note '%s' now. Your next reply becomes the full note content:"
-                    + " no preamble, no sign-off, nothing else.")
+            ("Write the content of note '%s' as your reply, in plain text. Your whole reply is"
+                    + " saved as the note exactly as you write it, so it contains only the note"
+                    + " itself: no tool call, no introduction, no closing remark.")
                 .formatted(noteTitle),
             true));
     return ToolOutput.direct(
@@ -68,6 +69,7 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
             Constants.ToolStatus.STATUS,
             Constants.ToolStatus.PENDING,
             "message",
-            "The note's body is requested in the next message."));
+            "Note '%s' is open. Its content is your next reply, which the next message asks for."
+                .formatted(noteTitle)));
   }
 }

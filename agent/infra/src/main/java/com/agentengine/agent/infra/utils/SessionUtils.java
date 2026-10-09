@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.utils;
 
+import com.agentengine.util.agents.ContentUtils;
 import static com.agentengine.agent.infra.utils.AgentUtils.getAgentIdFromContext;
 
 import com.agentengine.util.agents.beans.session.AgentSession;

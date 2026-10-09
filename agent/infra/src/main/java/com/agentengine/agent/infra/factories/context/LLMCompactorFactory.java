@@ -1,51 +1,47 @@
 package com.agentengine.agent.infra.factories.context;
 
-import com.agentengine.agent.infra.context.CompactionContextManager;
-import com.agentengine.agent.infra.context.ContextManager;
-import com.agentengine.catalog.api.services.SessionService;
+import com.agentengine.agent.infra.compaction.LLMSummarizer;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.CompactionContextStrategyConfig;
 import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
-import com.agentengine.util.agents.beans.config.DefaultAgentConfig;
 import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.factories.ModelProvider;
+import com.google.adk.summarizer.EventCompactor;
+import com.google.adk.summarizer.TailRetentionEventCompactor;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
+/**
+ * Builds ADK's {@link TailRetentionEventCompactor} with a {@link LLMSummarizer}: once the history
+ * passes the token threshold, everything but the last events is summarized by a model.
+ */
 @Singleton
-public class CompactionContextManagerFactory
-    implements ContextManagerFactory<CompactionContextStrategyConfig, ContextManager> {
+public class LLMCompactorFactory implements CompactorFactory<CompactionContextStrategyConfig> {
 
   private final ModelProvider modelProvider;
-  private final SessionService sessionService;
   private final DefaultModelsRepository defaultModelsRepository;
 
   @Inject
-  public CompactionContextManagerFactory(
-      final ModelProvider modelProvider,
-      final SessionService sessionService,
-      final DefaultModelsRepository defaultModelsRepository) {
+  public LLMCompactorFactory(
+      final ModelProvider modelProvider, final DefaultModelsRepository defaultModelsRepository) {
     this.modelProvider = modelProvider;
-    this.sessionService = sessionService;
     this.defaultModelsRepository = defaultModelsRepository;
   }
 
   @Override
-  public ContextManager build(
+  public EventCompactor build(
       final CompactionContextStrategyConfig config, final BaseAgentConfig agentConfig) {
-    return new CompactionContextManager(
-        config.getTokenThreshold(),
-        config.getRecencyThreshold(),
-        resolveModelId(config, agentConfig),
-        config.getPromptTemplate(),
-        modelProvider,
-        sessionService);
+    return new TailRetentionEventCompactor(
+        new LLMSummarizer(
+            modelProvider, resolveModelId(config, agentConfig), config.getPromptTemplate()),
+        config.getKeepLastEvents(),
+        config.getTokenThreshold());
   }
 
   @Override
-  public ContextManager build(final CompactionContextStrategyConfig config) {
-    return build(config, new DefaultAgentConfig());
+  public String type() {
+    return ContextStrategyConfig.ContextStrategyType.COMPACTION.type();
   }
 
   private String resolveModelId(
@@ -58,10 +54,5 @@ public class CompactionContextManagerFactory
       return defaultModelId;
     }
     return agentConfig.getModelId();
-  }
-
-  @Override
-  public String type() {
-    return ContextStrategyConfig.ContextStrategyType.COMPACTION.type();
   }
 }

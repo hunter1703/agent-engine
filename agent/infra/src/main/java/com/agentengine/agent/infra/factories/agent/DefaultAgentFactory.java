@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.factories.agent;
 
+import com.agentengine.agent.infra.factories.context.CompactorProvider;
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.agents.DelegatedAgent;
 import com.agentengine.agent.infra.tools.ToolFactory;
@@ -14,8 +15,11 @@ import jakarta.inject.Singleton;
 public class DefaultAgentFactory extends AbstractAgentFactory<BaseAgentConfig, Agent> {
 
   @Inject
-  public DefaultAgentFactory(final ModelProvider modelProvider, final ToolFactory toolFactory) {
-    super(modelProvider, toolFactory);
+  public DefaultAgentFactory(
+      final ModelProvider modelProvider,
+      final ToolFactory toolFactory,
+      final CompactorProvider compactorProvider) {
+    super(modelProvider, toolFactory, compactorProvider);
   }
 
   @Override

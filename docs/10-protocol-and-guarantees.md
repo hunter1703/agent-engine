@@ -4,7 +4,7 @@ This document defines the runtime protocol enforced by the current codebase.
 It is normative for behavior implemented in:
 
 - the agent runtime request/response processors (`agent:infra`)
-- `BaseFlow`, `ContextManagementPlugin`, and `GuardrailPlugin`
+- `BaseFlow`, `CompactionProcessor`, and `GuardrailPlugin`
 - `ParallelOrchestratorAgent`
 - REST event mapper `AGUIEventMapper`
 

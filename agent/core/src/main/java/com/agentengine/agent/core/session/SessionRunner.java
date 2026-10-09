@@ -1,10 +1,10 @@
 package com.agentengine.agent.core.session;
 
+import com.agentengine.agent.infra.utils.ContentUtils;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.commands.SelfCommand.CompleteRunCommand;
 import com.agentengine.agent.core.session.commands.SelfCommand.PublishEventCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
-import com.agentengine.agent.infra.utils.ContentUtils;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.utils.ExceptionUtils;
 import com.google.adk.agents.RunConfig;

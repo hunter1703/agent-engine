@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.factories.agent;
 
+import com.agentengine.agent.infra.factories.context.CompactorProvider;
 import com.agentengine.agent.core.tools.agent.AwaitAgentTool;
 import com.agentengine.agent.core.tools.agent.SendMessageTool;
 import com.agentengine.agent.core.tools.agent.SpawnAgentTool;
@@ -45,6 +46,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
   public OrchestratorAgentFactory(
       final ModelProvider modelProvider,
       final ToolFactory toolFactory,
+      final CompactorProvider compactorProvider,
       @WithCaching final Instance<AgentProvider> agentProviderInstance,
       final AgentService agentService,
       final ActorSystemProvider actorSystemProvider,
@@ -52,7 +54,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
       final KnowledgeService knowledgeService,
       final AccessControlService accessControlService,
       ReminderSyncService reminderSyncService) {
-    super(modelProvider, toolFactory);
+    super(modelProvider, toolFactory, compactorProvider);
     this.agentService = agentService;
     this.agentProviderInstance = agentProviderInstance;
     this.actorSystemProvider = actorSystemProvider;

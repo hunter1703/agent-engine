@@ -95,3 +95,23 @@ orchestrator — and their tool calls run as the orchestrator's session principa
 shared with the orchestrator instead of what was shared with each sub-agent. Decide how a parallel
 sub-agent acts (its own child session, as MANAGER-mode sub-agents get, or the transferred-agent model)
 and make the build and the runtime context follow it.
+
+## Compaction: keep the latest history by tokens, not by event count
+
+The `COMPACTION` strategy uses ADK's `TailRetentionEventCompactor`, which keeps the last
+`keepLastEvents` events as they are and summarizes the rest. A count does not bound size: when the
+kept events alone exceed `tokenThreshold` (e.g. a few long notes), nothing older is left to
+summarize, or every request compacts again without the prompt ever getting under the threshold.
+Write an `EventCompactor` that keeps the latest events up to a `keepLastTokens` smaller than
+`tokenThreshold`, never cutting between a tool call and its result, and reuses ADK's summarizer and
+`EventCompaction` handling; `EventUtils.keepCallsWithResults` then goes away.
+
+## Models: carry thinking signatures through `LangChain4jModel`
+
+`LangChain4jModel` maps a model turn's thought parts to `AiMessage.thinking()` and back, but drops a
+part's `thoughtSignature`. That is safe for the providers it serves today (`OPEN_AI`, `OLLAMA`,
+`Z_AI`), whose OpenAI-compatible APIs have no signatures; Gemini goes through ADK's own adapter,
+which keeps them. A provider that signs its reasoning and needs it back unchanged in tool-calling
+turns (e.g. Anthropic, whose LangChain4j module keeps the signature in `AiMessage.attributes()`)
+would lose it. When such a provider is added through LangChain4j, map `Part.thoughtSignature` to
+and from the attributes its LangChain4j module uses.

@@ -52,7 +52,7 @@ The result is a runtime where the interesting work lives in configuration and sm
 
 - **Declarative agents** — agents, models, tools, context, and guardrails are flat JSON/YAML configs resolved and validated at runtime.
 - **Multi-agent orchestration** — `TRANSFER`, `SEQUENTIAL`, and `PARALLEL` modes, with configurable stopping and aggregation policies and deterministic fallback for parallel fan-out.
-- **Context management** — pluggable `compaction`, `last_n`, and `none` strategies applied transparently before each model call.
+- **Context management** — pluggable context strategies, built on ADK event compaction and stored with the session.
 - **Multi-stage guardrails** — `INPUT`, `TOOL`, and `OUTPUT` stages with `allow / warn / block / escalate` semantics and configurable fail-open or fail-closed behavior.
 - **Pluggable tools** — tools and toolsets discovered via CDI and annotations, globally visible to every agent, with parallel or sequential execution per turn.
 - **Persistent memory and knowledge** — cross-session per-user memory and document semantic search, both backed by Qdrant.

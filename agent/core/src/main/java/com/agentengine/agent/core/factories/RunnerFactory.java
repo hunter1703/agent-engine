@@ -7,9 +7,7 @@ import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.SessionRunner;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.infra.agents.Agent;
-import com.agentengine.agent.infra.context.ContextManager;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
-import com.agentengine.agent.infra.factories.context.ContextManagerProvider;
 import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
 import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.plugins.*;
@@ -45,7 +43,6 @@ public class RunnerFactory {
 
   private final AgentService agentService;
   private final AgentProvider agentProvider;
-  private final ContextManagerProvider contextManagerProvider;
   private final GuardrailPolicyFactory guardrailPolicyFactory;
   private final SessionService sessionService;
   private final SessionEventsRepository sessionEventsRepository;
@@ -58,7 +55,6 @@ public class RunnerFactory {
   public RunnerFactory(
       AgentService agentService,
       AgentProvider agentProvider,
-      ContextManagerProvider contextManagerProvider,
       GuardrailPolicyFactory guardrailPolicyFactory,
       SessionService sessionService,
       final SessionEventsRepository sessionEventsRepository,
@@ -68,7 +64,6 @@ public class RunnerFactory {
       final DistributedCacheManager cacheManager) {
     this.agentService = agentService;
     this.agentProvider = agentProvider;
-    this.contextManagerProvider = contextManagerProvider;
     this.guardrailPolicyFactory = guardrailPolicyFactory;
     this.sessionService = sessionService;
     this.sessionEventsRepository = sessionEventsRepository;
@@ -161,7 +156,6 @@ public class RunnerFactory {
     queue.add(rootAgent);
     final Set<String> visited = new HashSet<>();
     final Map<String, GuardrailPolicyFactory.GuardrailPolicy> policies = new LinkedHashMap<>();
-    final Map<String, ContextManager> contextManagers = new LinkedHashMap<>();
     final Set<String> agentsWithNotebook = new HashSet<>();
 
     while (!queue.isEmpty()) {
@@ -169,7 +163,6 @@ public class RunnerFactory {
       if (!visited.add(agent.name())) {
         continue;
       }
-      contextManagers.put(agent.name(), contextManagerProvider.create(agent.getAgentConfig()));
       final GuardrailPolicyFactory.GuardrailPolicy policy =
           guardrailPolicyFactory.build(agent.getAgentConfig().getGuardrails());
       if (policy.enabled()) {
@@ -191,7 +184,6 @@ public class RunnerFactory {
             new InitPlugin(),
             new KnowledgePlugin(knowledgeService),
             new GuardrailPlugin(policies),
-            new ContextManagementPlugin(contextManagers),
             new ReminderPlugin(),
             new PlanningPlugin(),
             new ResponseValidationPlugin(),

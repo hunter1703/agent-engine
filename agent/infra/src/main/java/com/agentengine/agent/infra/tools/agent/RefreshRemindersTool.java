@@ -19,11 +19,10 @@ public class RefreshRemindersTool extends Tool {
     super(
         new ToolDescriptor(
             Constants.ToolNames.REFRESH_REMINDERS,
-            "Refreshes your working memory reminders regarding shared resources (notebooks, knowledge, etc.). "
-                + "Call this tool if you suspect the environment has changed in the background or if you "
-                + "encounter access errors (e.g., RBAC errors) for resources that you believe you should have access to. "
-                + "Note: Calling this tool multiple times will automatically mark previous refresh results as 'expired'. "
-                + "Always rely on the most recent successful tool response as the definitive, up-to-date state of your access."));
+            "Returns your current reminders: the notebooks, knowledge and anything else they list"
+                + " that you can work with. Call it if you suspect they changed in the background, or"
+                + " if access to something you should be able to reach fails. Each result replaces"
+                + " the reminders shown earlier, and earlier results are marked expired."));
     this.reminderSyncService = reminderSyncService;
   }
 
@@ -32,14 +31,14 @@ public class RefreshRemindersTool extends Tool {
 
     reminderSyncService.syncAll(sessionState);
 
-    final String formattedReminders = ReminderPlugin.formatReminders(sessionState.reminders());
+    final String formattedReminders = ReminderPlugin.buildBrief(sessionState.reminders());
 
     return ToolOutput.direct(
         Map.of(
             "status", "success",
             "message",
-                "Reminders have been successfully synchronized with the latest database state.",
-            "reminders_brief",
-                formattedReminders == null ? "No reminders active." : formattedReminders));
+            "Your current reminders. They replace any shown earlier.",
+            "reminders",
+            formattedReminders == null ? "You have no reminders right now." : formattedReminders));
   }
 }

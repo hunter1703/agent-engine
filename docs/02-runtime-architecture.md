@@ -100,13 +100,12 @@ Terminal step/run semantics follow ADK event semantics directly:
 
 ## 2.7 Context Management
 
-Context manager selection is strategy-driven:
-
-- `compaction`
-- `last_n`
-- `none`
-
-The context manager is applied in `ContextManagementPlugin.beforeModelCallback`, replacing request content with a rebuilt prompt sequence.
+Each agent's context strategy (`compaction`) is built by `CompactorProvider` into an
+ADK `EventCompactor`. `CompactionProcessor`, a request processor placed before ADK's `Contents`,
+runs it before every model request and returns the compaction event it produces, so the event is
+stored with the session's other events. ADK's `Contents` then replaces the events a compaction
+covers with its content when it builds the request. A compaction never ends between a tool call and
+its result, and one rolled back with its turn is removed with it.
 
 ## 2.8 Session Persistence
 
