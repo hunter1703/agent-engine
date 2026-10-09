@@ -14,6 +14,9 @@ import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
+import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionCallingConfig;
 import com.google.genai.types.FunctionCallingConfigMode;
@@ -132,8 +135,9 @@ public final class LangChain4jModel extends BaseLlm {
     if (chatModel == null) {
       return Flowable.error(new IllegalStateException("ChatModel is not configured"));
     }
+    final ChatResponse chatResponse = chatModel.chat(chatRequest);
     return Flowable.just(
-        finalResponse(toParts(chatModel.chat(chatRequest).aiMessage(), chatRequest)));
+        finalResponse(toParts(chatResponse.aiMessage(), chatRequest), chatResponse.tokenUsage()));
   }
 
   @Override
@@ -201,7 +205,7 @@ public final class LangChain4jModel extends BaseLlm {
               LOGGER.debug("Raw ChatResponse (onComplete): {}", chatResponse);
               final List<Part> parts = toParts(chatResponse.aiMessage(), chatRequest);
               if (CollectionUtils.isNotEmpty(parts)) {
-                emitter.onNext(finalResponse(parts));
+                emitter.onNext(finalResponse(parts, chatResponse.tokenUsage()));
               }
               emitter.onComplete();
             });
@@ -225,12 +229,45 @@ public final class LangChain4jModel extends BaseLlm {
         .build();
   }
 
-  private static LlmResponse finalResponse(final List<Part> parts) {
-    return LlmResponse.builder()
-        .content(Content.builder().role("model").parts(parts).build())
-        .partial(false)
-        .build();
+  private static LlmResponse finalResponse(final List<Part> parts, final TokenUsage tokenUsage) {
+    final LlmResponse.Builder builder =
+        LlmResponse.builder()
+            .content(Content.builder().role("model").parts(parts).build())
+            .partial(false);
+    if (tokenUsage != null) {
+      builder.usageMetadata(toUsageMetadata(tokenUsage));
+    }
+    return builder.build();
   }
+  // ADK counts thinking tokens apart from the output, where OpenAI-compatible APIs include them in
+  // it, so they are taken out of the output count.
+  private static GenerateContentResponseUsageMetadata toUsageMetadata(final TokenUsage tokenUsage) {
+    final GenerateContentResponseUsageMetadata.Builder builder =
+        GenerateContentResponseUsageMetadata.builder();
+    int thinkingTokens = 0;
+    if (tokenUsage instanceof OpenAiTokenUsage openAiTokenUsage) {
+      if (openAiTokenUsage.outputTokensDetails() != null
+          && openAiTokenUsage.outputTokensDetails().reasoningTokens() != null) {
+        thinkingTokens = openAiTokenUsage.outputTokensDetails().reasoningTokens();
+        builder.thoughtsTokenCount(thinkingTokens);
+      }
+      if (openAiTokenUsage.inputTokensDetails() != null
+          && openAiTokenUsage.inputTokensDetails().cachedTokens() != null) {
+        builder.cachedContentTokenCount(openAiTokenUsage.inputTokensDetails().cachedTokens());
+      }
+    }
+    if (tokenUsage.inputTokenCount() != null) {
+      builder.promptTokenCount(tokenUsage.inputTokenCount());
+    }
+    if (tokenUsage.outputTokenCount() != null) {
+      builder.candidatesTokenCount(tokenUsage.outputTokenCount() - thinkingTokens);
+    }
+    if (tokenUsage.totalTokenCount() != null) {
+      builder.totalTokenCount(tokenUsage.totalTokenCount());
+    }
+    return builder.build();
+  }
+
 
   private ChatRequest toChatRequest(final LlmRequest llmRequest) {
     final ChatRequest.Builder builder = ChatRequest.builder();

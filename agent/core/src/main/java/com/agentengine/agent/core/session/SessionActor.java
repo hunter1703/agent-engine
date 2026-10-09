@@ -24,6 +24,8 @@ import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
+import com.google.genai.types.GenerateContentResponseUsageMetadata;
+import com.agentengine.util.agents.beans.session.TokenUsage;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
@@ -999,6 +1001,7 @@ public final class SessionActor
                     events,
                     state.nextSequence()),
                 currentRunId);
+        recordTokenUsage(topology.sessionId(), turnEvents);
 
         turnEvents.clear();
         turnId = null;
@@ -1369,6 +1372,7 @@ public final class SessionActor
               turnIdStr);
       sessionEvents.add(errorEvent);
       facts.add(commitTurn(sessionEvents, runId));
+      recordTokenUsage(topology.sessionId(), turnEvents);
       turnEvents.clear();
       turnId = null;
     }
@@ -1512,6 +1516,47 @@ public final class SessionActor
       }
     }
     return null;
+  }
+
+  /**
+   * Adds the tokens a committed turn's model calls used to the session's totals. Atomic increments
+   * rather than a versioned read and write: each turn only adds its own counts, so concurrent
+   * writes cannot overwrite one another. A failed write is logged, not retried: the totals are a
+   * record of use, not state the run depends on.
+   */
+  private void recordTokenUsage(final String sessionId, final List<Event> events) {
+    long inputTokens = 0;
+    long outputTokens = 0;
+    long thinkingTokens = 0;
+    long cachedTokens = 0;
+    long totalTokens = 0;
+    for (final Event event : events) {
+      if (event.partial().orElse(false) || event.usageMetadata().isEmpty()) {
+        continue;
+      }
+      final GenerateContentResponseUsageMetadata usage = event.usageMetadata().get();
+      inputTokens += usage.promptTokenCount().orElse(0);
+      outputTokens += usage.candidatesTokenCount().orElse(0);
+      thinkingTokens += usage.thoughtsTokenCount().orElse(0);
+      cachedTokens += usage.cachedContentTokenCount().orElse(0);
+      totalTokens += usage.totalTokenCount().orElse(0);
+    }
+    if (totalTokens == 0 && inputTokens == 0 && outputTokens == 0) {
+      return;
+    }
+    final String usageField = AgentSession.FIELD_TOKEN_USAGE + ".";
+    try {
+      sessionService.updateSession(
+          sessionId,
+          Update.of(
+              Operation.inc(usageField + TokenUsage.FIELD_INPUT_TOKENS, inputTokens),
+              Operation.inc(usageField + TokenUsage.FIELD_OUTPUT_TOKENS, outputTokens),
+              Operation.inc(usageField + TokenUsage.FIELD_THINKING_TOKENS, thinkingTokens),
+              Operation.inc(usageField + TokenUsage.FIELD_CACHED_TOKENS, cachedTokens),
+              Operation.inc(usageField + TokenUsage.FIELD_TOTAL_TOKENS, totalTokens)));
+    } catch (final Exception e) {
+      LOG.warn("Failed to record token usage for session {}", sessionId, e);
+    }
   }
 
   private void updateSessionStatus(final SessionActorState state, final SessionStatus status) {

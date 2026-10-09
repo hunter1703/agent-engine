@@ -3,6 +3,8 @@ package com.agentengine.util.infra.provisioning;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.infra.ServerType;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,12 +12,27 @@ import java.util.Map;
 public class ProvisioningRequest {
   private Map<String, Server> typeVsServer = new HashMap<>();
 
+  // What a downstream ProvisioningService needs beyond typeVsServer, keyed by whatever name it
+  // chooses — captured here instead of a named field so this class never has to know what any
+  // of its own implementations need.
+  private final Map<String, Object> additional = new HashMap<>();
+
   public Map<String, Server> getTypeVsServer() {
     return typeVsServer;
   }
 
   public void setTypeVsServer(Map<String, Server> typeVsServer) {
     this.typeVsServer = typeVsServer;
+  }
+
+  @JsonAnyGetter
+  public Map<String, Object> getAdditional() {
+    return additional;
+  }
+
+  @JsonAnySetter
+  public void putAdditional(final String key, final Object value) {
+    additional.put(key, value);
   }
 
   @JsonIgnore

@@ -20,6 +20,7 @@ public class AgentSession extends NamedEntity {
   public static final String FIELD_ROOT_AGENT_ID = "rootAgentId";
   public static final String FIELD_DEPTH = "depth";
   public static final String FIELD_AGENT_ID = "agentId";
+  public static final String FIELD_TOKEN_USAGE = "tokenUsage";
 
   private String agentId;
   private Map<String, Object> state = new HashMap<>();
@@ -29,6 +30,7 @@ public class AgentSession extends NamedEntity {
   private int depth;
   private String spawnedByAgentId;
   private SessionStatus status;
+  private TokenUsage tokenUsage = new TokenUsage();
 
   public AgentSession() {}
 
@@ -117,5 +119,13 @@ public class AgentSession extends NamedEntity {
 
   public void setStatus(final SessionStatus status) {
     this.status = status;
+  }
+
+  public TokenUsage getTokenUsage() {
+    return tokenUsage;
+  }
+
+  public void setTokenUsage(final TokenUsage tokenUsage) {
+    this.tokenUsage = tokenUsage;
   }
 }
