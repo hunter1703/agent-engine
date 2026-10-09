@@ -1,5 +1,7 @@
 package com.agentengine.util.agents.agui;
 
+import com.google.genai.types.GenerateContentResponseUsageMetadata;
+import com.agui.community.core.event.MetaEvent;
 import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
@@ -24,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 /** Maps runtime SessionEvent to AGUI events */
 public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
+  public static final String TOKEN_USAGE_META_TYPE = "token_usage";
   private static final Logger LOG = LoggerFactory.getLogger(AGUIEventMapper.class);
 
   private final AGUIMapperState state;
@@ -120,7 +123,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
       flowable = flowable.concatWith(textMapper.mapAttachment(fileDetails.toFileDetails()));
     }
 
-    return flowable.concatWith(finishStepIfNeeded(event));
+    return flowable.concatWith(mapTokenUsage(event)).concatWith(finishStepIfNeeded(event));
   }
 
   private Flowable<Event> mapPart(final Part part, final boolean partial) {
@@ -222,6 +225,24 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
     LOG.debug(
         "Generated output event - eventType=StepFinishedEvent, stepName={}", event.stepName());
     return textMapper.finalizeOpenContent().concatWith(Flowable.just(event));
+  }
+
+  // The tokens a model call used, as a side-band annotation on the call's final event: it
+  // describes the run without being part of it, which is what a MetaEvent is for.
+  private Flowable<Event> mapTokenUsage(final SessionEvent event) {
+    if (Boolean.TRUE.equals(event.isPartial()) || event.getRawEvent().usageMetadata().isEmpty()) {
+      return Flowable.empty();
+    }
+    final GenerateContentResponseUsageMetadata usage = event.getRawEvent().usageMetadata().get();
+    final Map<String, Object> payload = new HashMap<>();
+    payload.put("eventId", event.getId());
+    payload.put("sessionId", event.getSessionId());
+    payload.put("inputTokens", usage.promptTokenCount().orElse(0));
+    payload.put("outputTokens", usage.candidatesTokenCount().orElse(0));
+    payload.put("thinkingTokens", usage.thoughtsTokenCount().orElse(0));
+    payload.put("cachedTokens", usage.cachedContentTokenCount().orElse(0));
+    payload.put("totalTokens", usage.totalTokenCount().orElse(0));
+    return Flowable.just(new MetaEvent(TOKEN_USAGE_META_TYPE, payload, state.timestamp(), null));
   }
 
   private Flowable<Event> mapCorrectionEvent(final SessionEvent event) {
@@ -338,6 +359,8 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
       case CustomEvent customEvent ->
           new CustomEvent(
               customEvent.name(), customEvent.value(), customEvent.timestamp(), rawEvent);
+      case MetaEvent metaEvent ->
+          new MetaEvent(metaEvent.metaType(), metaEvent.payload(), metaEvent.timestamp(), rawEvent);
       // Every other Event subtype is never actually constructed by this mapper (or
       // AGUITextMapper/AGUIToolCallMapper/AGUIUtils) -- see AGUIEventCodec's javadoc for the exact
       // set and why. Keeping the two switches over Event's cases in sync is deliberate: this one

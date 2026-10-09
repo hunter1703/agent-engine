@@ -2,6 +2,7 @@ package com.agentengine.util.agents.serializers;
 
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agui.community.core.event.CustomEvent;
+import com.agui.community.core.event.MetaEvent;
 import com.agui.community.core.event.Event;
 import com.agui.community.core.event.ReasoningEndEvent;
 import com.agui.community.core.event.ReasoningMessageChunkEvent;
@@ -75,6 +76,8 @@ public final class AGUIEventCodec extends JsonSerializer<Event> {
   private static final String FIELD_CONTENT = "content";
   private static final String FIELD_NAME = "name";
   private static final String FIELD_VALUE = "value";
+  private static final String FIELD_META_TYPE = "metaType";
+  private static final String FIELD_PAYLOAD = "payload";
   private static final ObjectMapper DEFAULT_MAPPER = JsonUtils.copyMapper();
 
   @Override
@@ -159,6 +162,10 @@ public final class AGUIEventCodec extends JsonSerializer<Event> {
       case CustomEvent event -> {
         writeString(gen, FIELD_NAME, event.name());
         writeMap(gen, FIELD_VALUE, event.value());
+      }
+      case MetaEvent event -> {
+        writeString(gen, FIELD_META_TYPE, event.metaType());
+        writeMap(gen, FIELD_PAYLOAD, event.payload());
       }
       // Not handling everything right now
       default ->
