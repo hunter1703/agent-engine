@@ -5,6 +5,7 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.VersionCatalog;
 import org.gradle.api.artifacts.VersionCatalogsExtension;
+import org.gradle.api.publish.tasks.GenerateModuleMetadata;
 
 public class JavaApplicationConventionsPlugin extends BaseJavaConventionsPlugin implements Plugin<Project> {
   @Override
@@ -14,6 +15,7 @@ public class JavaApplicationConventionsPlugin extends BaseJavaConventionsPlugin 
     configureCommonFunctionality(project);
     configureJacksonDependency(project);
     configureNettyVersion(project);
+    suppressEnforcedPlatformValidation(project);
 
     project.getConfigurations().configureEach(configuration -> {
       configuration.exclude(Map.of("group", "org.springframework.boot", "module", "spring-boot-starter-logging"));
@@ -55,5 +57,18 @@ public class JavaApplicationConventionsPlugin extends BaseJavaConventionsPlugin 
   private void configureNettyVersion(final Project project) {
     project.getDependencies()
         .add("implementation", project.getDependencies().enforcedPlatform("io.netty:netty-bom:4.1.130.Final"));
+  }
+
+  /**
+   * Gradle Module Metadata validation rejects a published enforced platform (it can't express
+   * "always wins" to a consumer) — every application module adds one (see
+   * {@link #configureNettyVersion}), so every application module needs this, not just the
+   * modules that happen to add their own.
+   */
+  private void suppressEnforcedPlatformValidation(final Project project) {
+    project
+        .getTasks()
+        .withType(GenerateModuleMetadata.class)
+        .configureEach(task -> task.getSuppressedValidationErrors().add("enforced-platform"));
   }
 }

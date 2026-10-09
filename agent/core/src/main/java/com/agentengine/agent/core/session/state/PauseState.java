@@ -81,6 +81,16 @@ public record PauseState(
         updatedPending);
   }
 
+  public PauseState clearReceivedSelfResumes(final Collection<String> interruptIds) {
+    final Map<String, ResumeRequest> updatedReceived = new HashMap<>(receivedSelfResumes);
+    CollectionUtils.nullSafeList(interruptIds).forEach(updatedReceived::remove);
+    return new PauseState(
+        pendingExternalSelfInterrupts,
+        updatedReceived,
+        pendingInterruptIdVsChildSessionId,
+        childSessionIdVsPendingInternalInterrupt);
+  }
+
   public PauseState withChildResumed(final String interruptId) {
     final Map<String, String> updated = new HashMap<>(pendingInterruptIdVsChildSessionId);
     updated.remove(interruptId);

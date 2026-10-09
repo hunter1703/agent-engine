@@ -406,6 +406,20 @@ public record SessionActorState(
         lastRollback);
   }
 
+  /** Drops the received resumes with these interrupt ids, once a committed turn delivered them. */
+  public SessionActorState clearReceivedResumes(final Collection<String> interruptIds) {
+    return new SessionActorState(
+        sessionState,
+        queue,
+        childRegistry,
+        startingChildren,
+        topology,
+        context,
+        pauseState.clearReceivedSelfResumes(interruptIds),
+        runs,
+        lastRollback);
+  }
+
   public SessionActorState childResume(final ResumeRequest resumeRequest) {
     return new SessionActorState(
         sessionState,
@@ -436,23 +450,6 @@ public record SessionActorState(
   /** Whether the current run has not committed any turn of its own yet. */
   public boolean isFirstTurnOfCurrentRun() {
     return lastCommittedTurn() == null;
-  }
-
-  public SessionActorState clearSelfInterruptStates() {
-    return new SessionActorState(
-        sessionState,
-        queue,
-        childRegistry,
-        startingChildren,
-        topology,
-        context,
-        new PauseState(
-            new HashMap<>(),
-            new HashMap<>(),
-            pauseState.pendingInterruptIdVsChildSessionId(),
-            new HashMap<>()),
-        runs,
-        lastRollback);
   }
 
   /**

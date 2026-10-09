@@ -10,7 +10,7 @@
   },
   "contextStrategy": {
     "type": "COMPACTION",
-    "tokenThreshold": 200000
+    "tokenThreshold": 100000
   },
   "tools": [
     {

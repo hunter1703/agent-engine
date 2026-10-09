@@ -957,19 +957,31 @@ public final class SessionActor
               currentRunId);
         }
 
-        if (!state.getAllReceivedResumes().isEmpty()) {
-          final String author =
-              state.getAllReceivedResumes().stream()
-                  .findFirst()
-                  .map(ResumeRequest::getAuthor)
-                  .orElse(topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId());
-
-          events.add(
-              EventUtils.buildResumeEvent(state.getAllReceivedResumes(), currentRunId, author));
+        // Only the resumes handed to the runner belong to this turn; one received meanwhile, while
+        // other interrupts are still pending, waits for the turn that delivers it.
+        final List<ResumeRequest> deliveredResumes =
+            state.getAllReceivedResumes().stream()
+                .filter(resumeRequest -> resumedInterruptIds.contains(resumeRequest.getInterruptId()))
+                .toList();
+        if (!deliveredResumes.isEmpty()) {
+          // One resume event per resume, in the order they arrived, so each is attributed to who
+          // gave it: a child's result to the child, a user's answer to the user.
+          final String defaultAuthor =
+              topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
+          deliveredResumes.stream()
+              .sorted(Comparator.comparingLong(ResumeRequest::getTimestamp))
+              .forEach(
+                  resumeRequest ->
+                      events.add(
+                          EventUtils.buildResumeEvent(
+                              List.of(resumeRequest),
+                              currentRunId,
+                              Objects.requireNonNullElse(
+                                  resumeRequest.getAuthor(), defaultAuthor))));
           LOG.debug(
               "[USER_MESSAGE_TRACE][{}] Turn after resume - prepended {} resume answer(s) with runId: {}",
               topology.sessionId(),
-              state.getAllReceivedResumes().size(),
+              deliveredResumes.size(),
               currentRunId);
         }
 
@@ -1298,7 +1310,8 @@ public final class SessionActor
   private TurnCommittedFact commitTurn(final List<SessionEvent> events, final String runId) {
     sessionEventsRepository.insertMany(SessionEventUtils.compactEventStream(events));
     final String lastEventId = events.isEmpty() ? null : events.getLast().getId();
-    return new TurnCommittedFact(runId, turnId, lastEventId, events.size());
+    return new TurnCommittedFact(
+        runId, turnId, lastEventId, events.size(), List.copyOf(resumedInterruptIds));
   }
 
   private static SessionActorState applyCommittedTurn(
@@ -1310,14 +1323,7 @@ public final class SessionActor
       newState = newState.withSessionState(SessionState.RUNNING);
     }
 
-    if (state.allInterruptsAnswered()) {
-      LOG.debug(
-          "Applying committed turn for topology : {} and clearing interrupt state : {}",
-          JsonUtils.toJson(newState.topology()),
-          JsonUtils.toJson(newState.getAllReceivedResumes()));
-      newState = newState.clearSelfInterruptStates();
-    }
-    return newState;
+    return newState.clearReceivedResumes(fact.getDeliveredResumeIds());
   }
 
   private Effect<SessionFact, SessionActorState> completeRun(

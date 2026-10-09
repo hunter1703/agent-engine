@@ -1,31 +1,8 @@
 plugins {
     id 'com.agentengine.java-application-conventions'
-    id 'maven-publish'
 }
 
 group = 'com.agentengine.agent'
-
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-        }
-    }
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/hunter1703/agent-engine")
-            credentials {
-                username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR") ?: "dummy_user"
-                password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN") ?: "dummy_token"
-            }
-        }
-    }
-}
-
-tasks.withType(GenerateModuleMetadata).configureEach {
-    suppressedValidationErrors.add('enforced-platform')
-}
 
 dependencies {
     implementation project(':agent:api')

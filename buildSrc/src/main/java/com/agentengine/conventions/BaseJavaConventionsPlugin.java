@@ -7,6 +7,8 @@ import org.gradle.api.artifacts.VersionCatalog;
 import org.gradle.api.artifacts.VersionCatalogsExtension;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.publish.PublishingExtension;
+import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -23,6 +25,7 @@ public abstract class BaseJavaConventionsPlugin {
   protected void configureCommonFunctionality(final Project project) {
     project.getPluginManager().apply("com.diffplug.spotless");
     project.getPluginManager().apply("org.kordamp.gradle.jandex");
+    project.getPluginManager().apply("maven-publish");
 
     project
         .getExtensions()
@@ -38,6 +41,48 @@ public abstract class BaseJavaConventionsPlugin {
     configureCommonTestRuntimeDependencies(project);
     configureJavaExecTasks(project);
     configureJandexOrdering(project);
+    configurePublishing(project);
+  }
+
+  /**
+   * Every module — application or library — is publishable: a downstream product extends an
+   * agent-engine service by depending on its {@code *:core}/{@code interfaces:rest} artifact
+   * directly, not only on its {@code *:api} contract.
+   */
+  private static void configurePublishing(final Project project) {
+    project
+        .getExtensions()
+        .configure(
+            PublishingExtension.class,
+            publishing -> {
+              publishing
+                  .getPublications()
+                  .create(
+                      "mavenJava",
+                      MavenPublication.class,
+                      mavenPublication -> mavenPublication.from(project.getComponents().getByName("java")));
+              publishing
+                  .getRepositories()
+                  .maven(
+                      mavenArtifactRepository -> {
+                        mavenArtifactRepository.setName("GitHubPackages");
+                        mavenArtifactRepository.setUrl(
+                            project.uri("https://maven.pkg.github.com/hunter1703/agent-engine"));
+                        mavenArtifactRepository.credentials(
+                            credentials -> {
+                              credentials.setUsername(
+                                  (String)
+                                      (project.hasProperty("gpr.user")
+                                          ? project.property("gpr.user")
+                                          : System.getenv("GITHUB_ACTOR")));
+                              credentials.setPassword(
+                                  (String)
+                                      (project.hasProperty("gpr.key")
+                                          ? project.property("gpr.key")
+                                          : System.getenv("GITHUB_TOKEN")));
+                            });
+                      });
+            });
   }
 
   private static Action<SpotlessExtension> configureSpotless(final Project project) {
