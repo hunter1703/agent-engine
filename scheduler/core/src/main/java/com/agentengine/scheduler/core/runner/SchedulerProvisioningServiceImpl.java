@@ -1,11 +1,10 @@
 package com.agentengine.scheduler.core.runner;
 
 import com.agentengine.scheduler.api.models.JobDefinition;
+import com.agentengine.scheduler.api.runner.CustomerJobsProvider;
 import com.agentengine.scheduler.api.runner.SchedulerProvisioningService;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.scheduler.core.store.SchedulerDocumentStoreClientType;
-import com.agentengine.util.common.codec.JsonUtils;
-import com.agentengine.util.common.utils.ResourceUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.infra.ServerType;
 import com.agentengine.util.infra.provisioning.ProvisioningRequest;
@@ -13,38 +12,30 @@ import com.agentengine.util.infra.provisioning.ProvisioningResult;
 import com.agentengine.util.infra.provisioning.ProvisioningRun;
 import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
 import com.agentengine.util.ms.client.MicroServiceProvisioner;
-import com.agentengine.util.scripts.TemplateUtils;
-import com.agentengine.util.scripts.templated.Template;
 import io.quarkus.arc.Unremovable;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.List;
-import java.util.Map;
 
 @Singleton
 @Unremovable
 public class SchedulerProvisioningServiceImpl implements SchedulerProvisioningService {
 
-  // The jobs every customer gets, as templates of their definitions rendered with the customer id.
-  private static final String JOBS_RESOURCE = "jobs.json";
-  private static final String CUSTOMER_ID_PARAMETER = "customerId";
-
   private final MongoClientProvisioner mongoClientProvisioner;
   private final MicroServiceProvisioner microServiceProvisioner;
   private final SchedulerService schedulerService;
-  private final Template<List<Map<String, Object>>> jobTemplates;
+  private final Instance<CustomerJobsProvider> jobsProviders;
 
   @Inject
   public SchedulerProvisioningServiceImpl(
       final MongoClientProvisioner mongoClientProvisioner,
       final MicroServiceProvisioner microServiceProvisioner,
-      final SchedulerService schedulerService) {
+      final SchedulerService schedulerService,
+      final Instance<CustomerJobsProvider> jobsProviders) {
     this.mongoClientProvisioner = mongoClientProvisioner;
     this.microServiceProvisioner = microServiceProvisioner;
     this.schedulerService = schedulerService;
-    this.jobTemplates =
-        TemplateUtils.buildTemplate(
-            JsonUtils.fromJson(ResourceUtils.loadResourceAsString(JOBS_RESOURCE), List.class));
+    this.jobsProviders = jobsProviders;
   }
 
   @Override
@@ -84,13 +75,14 @@ public class SchedulerProvisioningServiceImpl implements SchedulerProvisioningSe
   }
 
   /**
-   * Schedules the customer's jobs as {@value #JOBS_RESOURCE} defines them. A job's id is stable per
+   * Schedules every {@link CustomerJobsProvider}'s jobs for the customer. A job's id is stable per
    * customer, so provisioning again sets a stored job to its template, whatever it was.
    */
   private void scheduleCustomerJobs(final String customerId) {
-    for (final Map<String, Object> definition :
-        jobTemplates.getValue(Map.of(CUSTOMER_ID_PARAMETER, customerId))) {
-      schedulerService.scheduleIgnoringVersion(JsonUtils.fromMap(definition, JobDefinition.class));
+    for (final CustomerJobsProvider provider : jobsProviders) {
+      for (final JobDefinition definition : provider.jobDefinitionsFor(customerId)) {
+        schedulerService.scheduleIgnoringVersion(definition);
+      }
     }
   }
 }

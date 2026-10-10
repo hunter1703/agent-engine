@@ -8,10 +8,5 @@
     "id": "{{ customerId }}:ResubmitStaleRoles",
     "jobClassName": "com.agentengine.tenancy.jobs.ResubmitStaleRolesJob",
     "cronSchedule": "0 * * * * ?"
-  },
-  {
-    "id": "{{ customerId }}:ReconcileAgentSchedules",
-    "jobClassName": "com.agentengine.agent.jobs.ReconcileAgentSchedulesJob",
-    "cronSchedule": "0 */5 * * * ?"
   }
 ]

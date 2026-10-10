@@ -8,4 +8,6 @@ dependencies {
     implementation project(':scheduler:api')
     implementation project(':agent:api')
     implementation project(':util:common')
+    implementation project(':util:scripts')
+    implementation libs.jakarta.inject.api
 }

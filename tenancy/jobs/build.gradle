@@ -7,7 +7,9 @@ group = 'com.agentengine.tenancy'
 dependencies {
     implementation project(':scheduler:api')
     implementation project(':tenancy:api')
+    implementation project(':util:common')
     implementation project(':util:ms:client')
+    implementation project(':util:scripts')
 
     implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.arc
