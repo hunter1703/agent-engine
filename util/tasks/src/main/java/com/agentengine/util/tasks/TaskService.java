@@ -1,5 +1,6 @@
 package com.agentengine.util.tasks;
 
+import com.agentengine.util.common.beans.Task;
 import java.time.Duration;
 import java.util.Collection;
 

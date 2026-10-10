@@ -12,6 +12,7 @@ import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
 import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.plugins.*;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
+import com.agentengine.agent.infra.session.UserContextSessionService;
 import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
@@ -31,6 +32,7 @@ import com.google.adk.apps.App;
 import com.google.adk.events.Event;
 import com.google.adk.plugins.BasePlugin;
 import com.google.adk.runner.Runner;
+import com.google.adk.sessions.BaseSessionService;
 import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.sessions.Session;
 import jakarta.inject.Singleton;
@@ -107,20 +109,21 @@ public class RunnerFactory {
             .name(AgentUtils.appName(agentId))
             .build();
     final AgentSession agentSession = sessionService.getSession(sessionId);
-    final InMemorySessionService inMemorySessionService =
-        buildInMemorySessionService(app.name(), sessionId, agentSession);
+    final BaseSessionService adkSessionService =
+        buildAdkSessionService(app.name(), sessionId, agentSession);
     final Runner runner =
         Runner.builder()
             .app(app)
-            .sessionService(inMemorySessionService)
+            .sessionService(adkSessionService)
             .memoryService(memoryService)
             .build();
     return new SessionRunner(agentId, sessionId, actor, runner, agentSession.getCreatedBy());
   }
 
-  private InMemorySessionService buildInMemorySessionService(
+  private BaseSessionService buildAdkSessionService(
       final String appId, final String sessionId, final AgentSession agentSession) {
-    final InMemorySessionService inMemorySessionService = new InMemorySessionService();
+    final BaseSessionService adkSessionService =
+        new UserContextSessionService(new InMemorySessionService());
     final Session persistedSession = SessionUtils.toSession(agentSession, getEvents(sessionId));
 
     final ConcurrentHashMap<String, Object> initialState =
@@ -129,19 +132,19 @@ public class RunnerFactory {
             : new ConcurrentHashMap<>(
                 persistedSession.state() == null ? Map.of() : persistedSession.state());
     final Session session =
-        inMemorySessionService
+        adkSessionService
             .createSession(appId, agentSession.getCreatedBy(), initialState, sessionId)
             .blockingGet();
 
     if (persistedSession != null) {
 
       for (final Event event : CollectionUtils.nullSafeList(persistedSession.events())) {
-        inMemorySessionService
+        adkSessionService
             .appendEvent(session, EventUtils.enrichWithAttachments(event))
             .blockingGet();
       }
     }
-    return inMemorySessionService;
+    return adkSessionService;
   }
 
   private List<Event> getEvents(final String sessionId) {
@@ -185,7 +188,6 @@ public class RunnerFactory {
             new KnowledgePlugin(knowledgeService),
             new GuardrailPlugin(policies),
             new ReminderPlugin(),
-            new UserContextPlugin(),
             new ToolTimingPlugin(),
             new PlanningPlugin(),
             new ResponseValidationPlugin(),

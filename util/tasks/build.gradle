@@ -3,3 +3,7 @@ plugins {
 }
 
 group = 'com.agentengine.util'
+
+dependencies {
+    api project(':util:common')
+}

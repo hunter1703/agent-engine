@@ -122,33 +122,6 @@ public final class EventUtils {
     return null;
   }
 
-  /**
-   * The message that started the latest invocation started by one: going back invocation by
-   * invocation, the first event of an invocation that is a user's message rather than a tool result
-   * (e.g. a resume). Runtime instructions are delivered after an invocation's first event, so they
-   * are never it. Compaction events carry an invocation id of their own and are not part of any.
-   */
-  public static Content findLatestUserMessage(final List<Event> events) {
-    final List<Event> invocationEvents =
-        CollectionUtils.nullSafeList(events).stream().filter(event -> !isCompactionEvent(event)).toList();
-    int index = invocationEvents.size() - 1;
-    while (index >= 0) {
-      final Event event = invocationEvents.get(index);
-      final boolean startsInvocation =
-          index == 0
-              || !Objects.equals(
-                  invocationEvents.get(index - 1).invocationId(), event.invocationId());
-      if (startsInvocation
-          && Constants.AUTHOR_USER.equals(event.author())
-          && event.functionResponses().isEmpty()
-          && event.content().isPresent()) {
-        return event.content().get();
-      }
-      index--;
-    }
-    return null;
-  }
-
   public static String recentUser(final List<Event> events, final int max) {
     if (events == null || events.isEmpty()) {
       return "";
@@ -159,7 +132,7 @@ public final class EventUtils {
       if (content == null || !Constants.AUTHOR_USER.equals(content.role().orElse(""))) {
         continue;
       }
-      final String text = content.text();
+      final String text = com.agentengine.util.agents.ContentUtils.textWithoutCurrentTime(content);
       if (StringUtils.isNotBlank(text)) {
         intents.add(text);
       }
@@ -216,6 +189,11 @@ public final class EventUtils {
     return kept == null ? null : ZonedDateTime.parse(kept);
   }
 
+  /** What is kept with a message's event, and handed to the runner, for when it was sent. */
+  public static Map<String, Object> sentAtDelta(final ZonedDateTime sentAt) {
+    return Map.of(SENT_AT_KEY, sentAt.toString(), TIME_ZONE_KEY, sentAt.getZone().getId());
+  }
+
   /** Keeps when {@code event} was sent with it. */
   public static void addSentAt(final Event event, final ZonedDateTime sentAt) {
     final EventActions actions = event.actions() == null ? new EventActions() : event.actions();
@@ -223,8 +201,7 @@ public final class EventUtils {
     if (actions.stateDelta() != null) {
       delta.putAll(actions.stateDelta());
     }
-    delta.put(SENT_AT_KEY, sentAt.toString());
-    delta.put(TIME_ZONE_KEY, sentAt.getZone().getId());
+    delta.putAll(sentAtDelta(sentAt));
     event.setActions(actions.toBuilder().stateDelta(delta).build());
   }
 

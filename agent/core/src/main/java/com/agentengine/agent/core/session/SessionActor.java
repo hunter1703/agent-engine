@@ -222,8 +222,10 @@ public final class SessionActor
       case TRIGGERED_RUN -> {
         // The crash-landed before the first turn committed, so restart from the original message.
         final RunState run = Objects.requireNonNull(state.currentRun());
-        final UniqueRecord<EnqueuedMessage> message = run.message();
-        startRun(state, message, () -> runner.start(message.getRecord().message(), run.sentAt()));
+        startRun(
+            state,
+            run.message(),
+            () -> runner.start(run, authorOf(state.topology())));
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case CONTINUING -> {
@@ -295,11 +297,21 @@ public final class SessionActor
       self.tell(new StartChildCommand(child.agentId(), child.message(), null));
     }
     final UniqueRecord<EnqueuedMessage> runMessage = currentRunMessage(state);
+    final RunState run = Objects.requireNonNull(state.currentRun());
     final ZonedDateTime continuedAt = ZonedDateTime.now(timeZoneOf(contextOf(state, runMessage)));
+    // A run whose first turn never committed has no stored message yet, and the model has not been
+    // given it, so it starts again from its message.
+    final boolean startsFromMessage = run.message() != null && state.isFirstTurnOfCurrentRun();
     startRun(
         state,
         runMessage,
-        () -> runner(topology).start(UserMessage.ofText("continue"), continuedAt));
+        () -> {
+          if (startsFromMessage) {
+            runner(topology).start(run, authorOf(topology));
+          } else {
+            runner(topology).continueRun(continuedAt);
+          }
+        });
     updateSessionStatus(state, SessionStatus.RUNNING);
   }
 
@@ -950,26 +962,7 @@ public final class SessionActor
         turnId = null;
       } else {
         final ArrayList<Event> events = new ArrayList<>();
-        final boolean isFirstTurn = state.isFirstTurnOfCurrentRun();
         final RunState currentRun = Objects.requireNonNull(state.currentRun());
-
-        if (isFirstTurn && currentRun.message() != null) {
-          final UniqueRecord<EnqueuedMessage> userMessage = currentRun.message();
-          final String author =
-              topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
-          // can we move this user message creation to agent framework only instead of actor halding this?
-          final UserMessage message = userMessage.getRecord().message();
-          final Event userEvent =
-              EventUtils.buildUserEvent(
-                  message, currentRunId, currentRun.messagePickedTimestamp(), author);
-          EventUtils.addSentAt(userEvent, currentRun.sentAt());
-          events.add(userEvent);
-          LOG.debug(
-              "[USER_MESSAGE_TRACE][{}] Run's opening turn - prepended user message event: '{}' with runId: {}",
-              topology.sessionId(),
-              message,
-              currentRunId);
-        }
 
         // Only the resumes handed to the runner belong to this turn; one received meanwhile, while
         // other interrupts are still pending, waits for the turn that delivers it.
@@ -980,8 +973,7 @@ public final class SessionActor
         if (!deliveredResumes.isEmpty()) {
           // One resume event per resume, in the order they arrived, so each is attributed to who
           // gave it: a child's result to the child, a user's answer to the user.
-          final String defaultAuthor =
-              topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
+          final String defaultAuthor = authorOf(topology);
           deliveredResumes.stream()
               .sorted(Comparator.comparingLong(ResumeRequest::getTimestamp))
               .forEach(
@@ -1215,10 +1207,13 @@ public final class SessionActor
               nextMessage,
               () ->
                   runner(newState.topology())
-                      .start(
-                          nextMessage.getRecord().message(),
-                          newState.currentRun().sentAt()));
+                      .start(newState.currentRun(), authorOf(newState.topology())));
         }));
+  }
+
+  /** Who a run's message comes from: the user for a root session, else the parent agent. */
+  private static String authorOf(final SessionTopology topology) {
+    return topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
   }
 
   private static Context contextOf(

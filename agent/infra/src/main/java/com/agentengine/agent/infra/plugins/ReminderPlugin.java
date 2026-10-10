@@ -51,12 +51,11 @@ public final class ReminderPlugin extends BasePlugin {
     }
 
     final List<Content> contents = llmRequestBuilder.build().contents();
-    // A start message missing from the request was compacted, and ADK's tail compactor always
-    // summarizes from the beginning, so the summary that replaced it is the request's first message.
+    // A run's start message is the one a current time leads; one missing from the request was
+    // compacted, and ADK's tail compactor always summarizes from the beginning, so the summary that
+    // replaced it is the request's first message.
     final int startMessageIndex =
-        contents.indexOf(
-            EventUtils.findLatestUserMessage(
-                callbackContext.invocationContext().session().events()));
+        CollectionUtils.findLastIndexAfter(contents, -1, ContentUtils::startsWithCurrentTime);
     final boolean summaryFirst =
         !contents.isEmpty() && ContentUtils.isUserMessage(contents.getFirst());
     final int userMessageIndex = startMessageIndex < 0 && summaryFirst ? 0 : startMessageIndex;
@@ -136,11 +135,9 @@ public final class ReminderPlugin extends BasePlugin {
             %s
             </reference_material>
 
-            <user_message>
             """
                 .formatted(brief)));
     parts.addAll(userContent.parts().orElse(List.of()));
-    parts.add(Part.fromText("\n</user_message>"));
 
     final List<Content> updated = new ArrayList<>(contents);
     updated.set(userMessageIndex, userContent.toBuilder().parts(parts).build());

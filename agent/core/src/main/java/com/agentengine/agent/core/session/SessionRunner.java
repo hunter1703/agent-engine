@@ -1,5 +1,8 @@
 package com.agentengine.agent.core.session;
 
+import com.agentengine.agent.core.session.state.RunState;
+import com.google.adk.events.Event;
+import io.reactivex.rxjava3.core.Flowable;
 import java.time.ZonedDateTime;
 import java.util.Map;
 import com.agentengine.agent.infra.utils.EventUtils;
@@ -48,8 +51,29 @@ public final class SessionRunner {
 
   private volatile boolean stopRequested = false;
 
-  /** Starts a run for {@code userMessage}; {@code sentAt} is kept with the message's event. */
-  public synchronized void start(final UserMessage userMessage, final ZonedDateTime sentAt) {
+  /**
+   * Starts {@code run} from its message. ADK does not emit the message it appends to the session,
+   * so the stream opens with it, as {@code author}'s event kept with when it was sent.
+   */
+  public synchronized void start(final RunState run, final String author) {
+    final UserMessage userMessage = run.message().getRecord().message();
+    final Event userEvent =
+        EventUtils.buildUserEvent(
+            userMessage, run.runId(), run.messagePickedTimestamp(), author);
+    EventUtils.addSentAt(userEvent, run.sentAt());
+    startStream(userMessage, run.sentAt(), Flowable.just(userEvent));
+  }
+
+  /**
+   * Continues a run whose history already holds its message; {@code continuedAt} is when it
+   * continued. The model is told to continue, which is not kept.
+   */
+  public synchronized void continueRun(final ZonedDateTime continuedAt) {
+    startStream(UserMessage.ofText("continue"), continuedAt, Flowable.empty());
+  }
+
+  private void startStream(
+      final UserMessage userMessage, final ZonedDateTime sentAt, final Flowable<Event> leading) {
     LOG.debug("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called", sessionId);
     stopRequested = false;
 
@@ -57,14 +81,16 @@ public final class SessionRunner {
         ContentUtils.buildUserContent(
             ContentUtils.textParts(userMessage.parts()), userMessage.attachments());
 
-    final Map<String, Object> stateDelta =
-        Map.of(
-            EventUtils.SENT_AT_KEY, sentAt.toString(),
-            EventUtils.TIME_ZONE_KEY, sentAt.getZone().getId());
+    // ADK appends its own user event to the session without emitting it, and the stream's leading
+    // event is what is stored. The delta puts when it was sent on ADK's event, which is what
+    // UserContextSessionService stamps the model's view from.
+    final Map<String, Object> stateDelta = EventUtils.sentAtDelta(sentAt);
 
-    runner
-        .runAsync(createdBy, sessionId, userContent, RUN_CONFIG, stateDelta)
-        .takeUntil(event -> stopRequested && event.turnComplete().orElse(false))
+    leading
+        .concatWith(
+            runner
+                .runAsync(createdBy, sessionId, userContent, RUN_CONFIG, stateDelta)
+                .takeUntil(event -> stopRequested && event.turnComplete().orElse(false)))
         .doOnNext(
             event -> {
               LOG.debug(
