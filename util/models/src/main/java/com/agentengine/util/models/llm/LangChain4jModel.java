@@ -778,7 +778,8 @@ public final class LangChain4jModel extends BaseLlm {
                         .name(request.name())
                         .args(
                             CollectionUtils.nullSafeMap(
-                                JsonUtils.fromJson(request.arguments(), new TypeReference<>() {})))
+                                JsonUtils.fromLenientJson(
+                                    request.arguments(), new TypeReference<>() {})))
                         .build())
                 .build());
       }

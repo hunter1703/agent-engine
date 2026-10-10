@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -28,6 +29,13 @@ public final class JsonUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(JsonUtils.class);
 
   private static final JsonMapper JSON_MAPPER = createJsonMapper(JsonMapper.builder());
+
+  private static final JsonMapper LENIENT_JSON_MAPPER =
+      createJsonMapper(
+          JsonMapper.builder(
+              JsonFactory.builder()
+                  .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+                  .build()));
 
   private JsonUtils() {}
 
@@ -99,6 +107,21 @@ public final class JsonUtils {
     }
     try {
       return JSON_MAPPER.readValue(json, typeReference);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
+    }
+  }
+
+  /**
+   * Like {@link #fromJson(String, TypeReference)}, but also accepts raw control characters, such as
+   * a newline, inside string values.
+   */
+  public static <T> T fromLenientJson(final String json, final TypeReference<T> typeReference) {
+    if (json == null || json.isBlank()) {
+      return null;
+    }
+    try {
+      return LENIENT_JSON_MAPPER.readValue(json, typeReference);
     } catch (IOException exception) {
       throw new RuntimeException(exception);
     }
