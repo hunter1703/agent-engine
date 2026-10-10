@@ -5,20 +5,20 @@ import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaPlugin;
-import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.Jar;
-import org.gradle.plugins.ide.idea.model.IdeaModel;
-import org.jetbrains.gradle.ext.ProjectSettings;
-import org.jetbrains.gradle.ext.TaskTriggersConfig;
 
 /**
- * Repackages dependency jars. Each {@code repackagedJars { register('name') { ... } }} entry builds
- * a copy of the dependency's jar with the entries it excludes removed, adds that copy to {@code
- * implementation}, and makes this project's {@code jar} depend on building it, so anything that uses
- * the project builds the copy first. The dependency's own transitive dependencies are not taken,
- * so the project declares those itself.
+ * Repackages dependency jars. Each {@code repackagedJars { register('name') { ... } }} entry adds
+ * the dependency's classes, minus the entries it excludes, directly into this project's own {@code
+ * jar} output (shaded in, not a separate artifact) and onto its {@code compileOnly} classpath so
+ * the project's own sources compile against them. Shading into the project's own jar — rather than
+ * adding the stripped copy as a separate {@code implementation project.files(...)} classpath entry
+ * — is what makes this survive Maven publishing: a consumer that depends on this project's
+ * published artifact from a separate build (as opposed to a sibling Gradle project in the same
+ * build) only ever resolves the published jar's own contents, never a same-build file-collection
+ * dependency, so the stripped classes must physically be inside that jar. The dependency's own
+ * transitive dependencies are not taken, so the project declares those itself.
  */
 public class RepackagedJarsPlugin implements Plugin<Project> {
 
@@ -43,39 +43,24 @@ public class RepackagedJarsPlugin implements Plugin<Project> {
                 });
     original.getDependencies().addLater(repackagedJar.getDependency());
 
-    final TaskProvider<Jar> jar =
-        project
-            .getTasks()
-            .register(
-                repackagedJar.getName() + "Repackaged",
-                Jar.class,
-                task -> {
-                  task.getArchiveBaseName().set(repackagedJar.getName() + "-repackaged");
-                  task.from(
-                      (Callable<Object>) () -> project.zipTree(original.getSingleFile()),
-                      copy -> {
-                        if (!repackagedJar.getIncludes().get().isEmpty()) {
-                          copy.include(repackagedJar.getIncludes().get());
-                        }
-                        copy.exclude(repackagedJar.getExcludes().get());
-                      });
-                });
+    // Compile-time only: the project's own sources see the dependency's classes, but it is never
+    // a real dependency of the published artifact — its (stripped) classes are shaded into this
+    // project's own jar below instead.
+    project.getConfigurations().getByName("compileOnly").getDependencies().addLater(
+        repackagedJar.getDependency());
 
-    project.getDependencies().add("implementation", project.files(jar));
-    project.getTasks().named("jar").configure(task -> task.dependsOn(jar));
-    runBeforeIdeSync(project, jar);
-  }
-
-  /** IntelliJ resolves the repackaged jar during Gradle sync, so it is built before each sync. */
-  private static void runBeforeIdeSync(final Project project, final TaskProvider<Jar> jar) {
-    final Project root = project.getRootProject();
-    root.getPluginManager().apply("idea");
-    root.getPluginManager().apply("org.jetbrains.gradle.plugin.idea-ext");
-    final IdeaModel idea = root.getExtensions().getByType(IdeaModel.class);
-    final ProjectSettings settings =
-        ((ExtensionAware) idea.getProject()).getExtensions().getByType(ProjectSettings.class);
-    final TaskTriggersConfig triggers =
-        ((ExtensionAware) settings).getExtensions().getByType(TaskTriggersConfig.class);
-    triggers.beforeSync(jar);
+    project
+        .getTasks()
+        .named("jar", Jar.class)
+        .configure(
+            task ->
+                task.from(
+                    (Callable<Object>) () -> project.zipTree(original.getSingleFile()),
+                    copy -> {
+                      if (!repackagedJar.getIncludes().get().isEmpty()) {
+                        copy.include(repackagedJar.getIncludes().get());
+                      }
+                      copy.exclude(repackagedJar.getExcludes().get());
+                    }));
   }
 }
