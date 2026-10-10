@@ -1,7 +1,7 @@
 """The Stage/run_graph orchestration engine and every concrete stage type."""
 
 from deployae.stages.base import Stage, run_graph
-from deployae.stages.build import BuildDockerImageStage, BuildGradleStage
+from deployae.stages.build import BuildDockerImageStage, BuildGradleStage, EnsureDepsBaseImageStage
 from deployae.stages.chart import (
     DeployChartStage,
     EnsureEnvSecretStage,
@@ -28,6 +28,7 @@ __all__ = [
     "DeleteNamespaceStage",
     "DeletePvcsStage",
     "DeployChartStage",
+    "EnsureDepsBaseImageStage",
     "ProvisionStage",
     "SeedInfraConfigStage",
     "SeedAppConfigStage",

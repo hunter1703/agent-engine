@@ -12,6 +12,7 @@ bin/
 /.settings/
 **/build/
 !buildSrc/src/main/java/com/agentengine/build/**
+deploy/docker/.deps-base-context/
 **/out/
 **/target/
 *.log

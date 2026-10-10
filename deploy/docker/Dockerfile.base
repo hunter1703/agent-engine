@@ -1,0 +1,13 @@
+FROM bellsoft/liberica-runtime-container:jre-25-musl
+
+ENV TZ=UTC
+
+RUN addgroup -S quarkus && adduser -S -G quarkus quarkus
+
+# The union of every service's build/quarkus-app/lib/{boot,main} — assembled by
+# EnsureDepsBaseImageStage into this build's context before invoking `docker build`. Shared
+# across every service's own image (see Dockerfile), so the (large, mostly-identical-by-name)
+# dependency jar set is stored once per node instead of once per service.
+COPY --chown=quarkus lib/ /deployments/lib/
+
+USER quarkus

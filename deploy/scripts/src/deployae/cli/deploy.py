@@ -23,6 +23,7 @@ from deployae.stages import (
     BuildGradleStage,
     CleanDockerCacheStage,
     DeployChartStage,
+    EnsureDepsBaseImageStage,
     EnsureEnvSecretStage,
     EnsureIngressControllerStage,
     EnsureLocalTlsCertStage,
@@ -356,12 +357,22 @@ def build_stages(
         name="build-gradle", components=enabled_components, enabled=not dry_run
     )
     stages.append(gradle_stage)
+    deps_base_stage = EnsureDepsBaseImageStage(
+        name="ensure-deps-base-image",
+        depends_on=(gradle_stage,),
+        components=enabled_components,
+        registry_prefix=ctx.image_registry,
+        push=bool(ctx.image_registry),
+        enabled=not dry_run,
+    )
+    stages.append(deps_base_stage)
     image_stage_by_component = {
         component: BuildDockerImageStage(
             name=f"build-image-{component}",
-            depends_on=(gradle_stage, clean_docker_stage),
+            depends_on=(gradle_stage, clean_docker_stage, deps_base_stage),
             component=component,
             tag=ctx.image_tag or "dev",
+            deps_base_image=deps_base_stage.image,
             registry_prefix=ctx.image_registry,
             push=bool(ctx.image_registry),
             enabled=not dry_run and component in enabled_components,
@@ -526,5 +537,19 @@ def build_stages(
         enabled=not dry_run
     )
     stages.append(seed_app)
+
+    # --- Post-deploy image cleanup: only now is the PREVIOUS tag's image genuinely unused —
+    # every deploy_app_chart stage above waits (--atomic/--wait) for its new pods to be up, which
+    # is also when Kubernetes has rolled the old ones away. The pre-build clean_docker_stage runs
+    # before that rollout even starts, so it can only ever clean up what became stale two deploys
+    # ago, never the deploy that's finishing now — left unaddressed, every deploy permanently
+    # strands one full image generation. This stage closes that gap.
+    stages.append(
+        CleanDockerCacheStage(
+            name="clean-docker-images-post-deploy",
+            depends_on=tuple(app_chart_stages),
+            enabled=clean_docker_cache and not dry_run,
+        )
+    )
 
     return stages
