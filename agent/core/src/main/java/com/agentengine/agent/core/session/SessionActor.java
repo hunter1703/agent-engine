@@ -957,6 +957,7 @@ public final class SessionActor
           final UniqueRecord<EnqueuedMessage> userMessage = currentRun.message();
           final String author =
               topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
+          // can we move this user message creation to agent framework only instead of actor halding this?
           final UserMessage message = userMessage.getRecord().message();
           final Event userEvent =
               EventUtils.buildUserEvent(

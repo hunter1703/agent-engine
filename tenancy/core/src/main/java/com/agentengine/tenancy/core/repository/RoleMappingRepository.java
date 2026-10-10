@@ -15,7 +15,7 @@ import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.validation.ValidationService;
-import com.agentengine.util.tasks.Task;
+import com.agentengine.util.common.beans.Task;
 import com.agentengine.util.tasks.TaskStatus;
 import io.quarkus.runtime.Startup;
 import jakarta.inject.Inject;
@@ -43,6 +43,10 @@ public class RoleMappingRepository extends AbstractRepository<RoleMapping> {
 
   public List<RoleMapping> findForRoles(final Collection<String> roleIds) {
     return findAll(Filters.in(RoleMapping.FIELD_ROLE_IDS, List.copyOf(roleIds)));
+  }
+
+  public List<RoleMapping> findForPrincipal(final String principal) {
+    return findAll(Filters.eq(RoleMapping.FIELD_PRINCIPAL, principal));
   }
 
   public RoleMapping addRoles(

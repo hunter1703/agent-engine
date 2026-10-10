@@ -7,7 +7,7 @@ import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.HashUtils;
 import com.agentengine.util.common.utils.StringUtils;
-import com.agentengine.util.tasks.Task;
+import com.agentengine.util.common.beans.Task;
 import java.util.List;
 
 /**

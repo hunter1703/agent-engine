@@ -65,6 +65,14 @@ public class AccessControlServiceImpl implements AccessControlService {
   }
 
   @Override
+  public List<String> getRolesForUser(final String userId) {
+    return roleMappingRepository.findForPrincipal(Principal.ofUser(userId).toString()).stream()
+        .flatMap(mapping -> mapping.getRoleIds().stream())
+        .distinct()
+        .toList();
+  }
+
+  @Override
   public void resubmitStaleRoleMappings() {
     roleMappingTaskService
         .findStale(System.currentTimeMillis() - roleMappingTaskService.staleAfter().toMillis())

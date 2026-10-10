@@ -3,7 +3,7 @@ package com.agentengine.util.pekko.tasks;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.actor.ShardedEntityDefinition;
-import com.agentengine.util.tasks.Task;
+import com.agentengine.util.common.beans.Task;
 import com.agentengine.util.tasks.TaskService;
 import org.apache.pekko.actor.typed.ActorSystem;
 import org.apache.pekko.cluster.sharding.typed.javadsl.Entity;

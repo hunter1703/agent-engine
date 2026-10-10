@@ -1,4 +1,4 @@
-package com.agentengine.util.tasks;
+package com.agentengine.util.common.beans;
 
 /**
  * A stored entity that is also a unit of work: written {@link TaskStatus#PENDING} together with the

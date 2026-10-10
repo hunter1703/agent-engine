@@ -3,6 +3,8 @@ package com.agentengine.tenancy.core.rbac;
 import com.agentengine.tenancy.RoleService;
 import com.agentengine.tenancy.beans.Role;
 import com.agentengine.tenancy.core.repository.RoleRepository;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
@@ -53,6 +55,11 @@ public class RoleServiceImpl implements RoleService {
     return CollectionUtils.isEmpty(ids)
         ? Map.of()
         : roleCache.getAll(ids, roleRepository::findByIds);
+  }
+
+  @Override
+  public PaginatedResult<Role> findRoles(final Query query) {
+    return roleRepository.findByQuery(query);
   }
 
   @Override

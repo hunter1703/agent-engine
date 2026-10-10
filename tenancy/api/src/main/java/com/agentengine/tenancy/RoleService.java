@@ -1,6 +1,8 @@
 package com.agentengine.tenancy;
 
 import com.agentengine.tenancy.beans.Role;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
 import com.agentengine.util.ms.client.MicroService;
 import java.util.Collection;
 import java.util.Map;
@@ -14,6 +16,8 @@ public interface RoleService {
   Role getRole(String id);
 
   Map<String, Role> getRoles(Collection<String> ids);
+
+  PaginatedResult<Role> findRoles(Query query);
 
   Role updateRole(String id, Role role);
 

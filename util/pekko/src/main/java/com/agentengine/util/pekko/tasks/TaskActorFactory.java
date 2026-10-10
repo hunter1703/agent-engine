@@ -6,7 +6,7 @@ import com.agentengine.util.common.utils.ThreadUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.actor.AutoPassivableShardedEntityFactory;
-import com.agentengine.util.tasks.Task;
+import com.agentengine.util.common.beans.Task;
 import com.agentengine.util.tasks.TaskService;
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;

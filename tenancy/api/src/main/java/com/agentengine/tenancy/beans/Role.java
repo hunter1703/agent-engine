@@ -3,7 +3,7 @@ package com.agentengine.tenancy.beans;
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.utils.CollectionUtils;
-import com.agentengine.util.tasks.Task;
+import com.agentengine.util.common.beans.Task;
 import com.agentengine.util.tasks.TaskStatus;
 import java.util.Map;
 import java.util.Set;
