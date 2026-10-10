@@ -79,6 +79,8 @@ spec:
             {{- if include "agent-engine.app-base.pekkoEnabled" . }}
             - name: PEKKO_CLUSTER
               value: {{ .Values.pekko.cluster | quote }}
+            - name: PEKKO_CLUSTER_LABEL_KEY
+              value: {{ include "agent-engine.app-base.pekkoClusterLabelKey" . | trim | quote }}
             {{- end }}
             {{- $java := .Values.java | default dict }}
             {{- if $java.opts }}

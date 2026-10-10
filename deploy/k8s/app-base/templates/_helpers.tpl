@@ -116,6 +116,15 @@ true{{- end -}}
 true{{- end -}}
 
 {{/*
+The label key pod discovery searches on — its own constant, read by the running pod (see
+PEKKO_CLUSTER_LABEL_KEY below) so ActorSystemProvider never has to hardcode a value that only
+this chart actually controls.
+*/}}
+{{- define "agent-engine.app-base.pekkoClusterLabelKey" -}}
+agent-engine.io/pekko-cluster
+{{- end -}}
+
+{{/*
 Which Pekko cluster this deployment joins. Distinct from service.name — that identifies the
 Kubernetes Deployment/Service, this identifies cluster membership, so pod discovery only ever
 finds peers meant to be in the same cluster instead of every pekko-enabled service in the
@@ -123,6 +132,6 @@ namespace.
 */}}
 {{- define "agent-engine.app-base.pekkoClusterLabel" -}}
 {{- if include "agent-engine.app-base.pekkoEnabled" . -}}
-agent-engine.io/pekko-cluster: {{ .Values.pekko.cluster | quote }}
+{{ include "agent-engine.app-base.pekkoClusterLabelKey" . }}: {{ .Values.pekko.cluster | quote }}
 {{- end -}}
 {{- end -}}

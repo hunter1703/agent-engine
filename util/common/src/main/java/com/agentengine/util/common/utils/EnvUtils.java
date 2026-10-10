@@ -8,6 +8,7 @@ public final class EnvUtils {
   private static final String HOSTNAME_ENV = "HOSTNAME";
   private static final String POD_IP_ENV = "POD_IP";
   private static final String PEKKO_CLUSTER_ENV = "PEKKO_CLUSTER";
+  private static final String PEKKO_CLUSTER_LABEL_KEY_ENV = "PEKKO_CLUSTER_LABEL_KEY";
   private static final String ENVIRONMENT_ENV = "ENVIRONMENT";
   private static final String TIER_ENV = "TIER";
   private static final String INFRA_MONGODB_URI_ENV = "INFRA_MONGODB_URI";
@@ -34,6 +35,16 @@ public final class EnvUtils {
    */
   public static String getPekkoCluster() {
     return System.getenv(PEKKO_CLUSTER_ENV);
+  }
+
+  /**
+   * Returns the Kubernetes pod-label key that identifies membership in this pod's Pekko cluster,
+   * read from the {@code PEKKO_CLUSTER_LABEL_KEY} environment variable — set by the chart to
+   * whatever label key it actually applies to its own pods, so cluster-bootstrap discovery never
+   * has to hardcode a value owned by the chart. Returns {@code null} if not set.
+   */
+  public static String getPekkoClusterLabelKey() {
+    return System.getenv(PEKKO_CLUSTER_LABEL_KEY_ENV);
   }
 
   /**

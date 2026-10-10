@@ -41,7 +41,9 @@ public class ActorSystemProvider {
   private static final Logger LOG = LoggerFactory.getLogger(ActorSystemProvider.class);
   private static final int PEKKO_PORT = 2552;
   private static final String PEKKO_BASE_CONF_PATH = "/config/pekko-base.conf";
-  private static final String PEKKO_CLUSTER_LABEL_KEY = "agent-engine.io/pekko-cluster";
+  // Fallback only for a pod running an older chart that doesn't yet set PEKKO_CLUSTER_LABEL_KEY —
+  // the chart is always the source of truth for the label key it actually applies to its pods.
+  private static final String DEFAULT_PEKKO_CLUSTER_LABEL_KEY = "agent-engine.io/pekko-cluster";
 
   /** Observers that spawn actors must order themselves after this. */
   public static final int ACTOR_SYSTEM_STARTUP_PRIORITY = 100;
@@ -157,7 +159,7 @@ public class ActorSystemProvider {
                 "pekko.discovery.kubernetes-api.pod-label-selector",
                 // A node's role is its Pekko cluster identity (pekko.cluster in the chart), so this
                 // scopes bootstrap discovery to peers of that same cluster.
-                ConfigValueFactory.fromAnyRef(PEKKO_CLUSTER_LABEL_KEY + "=" + pekkoCluster));
+                ConfigValueFactory.fromAnyRef(pekkoClusterLabelKey() + "=" + pekkoCluster));
     final SQLClientInfraConfig systemClient =
         PekkoUtils.sqlClient(infraSetup.infraConfigService(), Context.SYSTEM_CUSTOMER_ID);
     if (systemClient == null) {
@@ -180,5 +182,10 @@ public class ActorSystemProvider {
             ConfigValueFactory.fromAnyRef(PekkoSlickDatabaseProvider.class.getName()))
         .withFallback(ConfigFactory.load())
         .resolve();
+  }
+
+  private static String pekkoClusterLabelKey() {
+    final String labelKey = EnvUtils.getPekkoClusterLabelKey();
+    return StringUtils.isNotBlank(labelKey) ? labelKey : DEFAULT_PEKKO_CLUSTER_LABEL_KEY;
   }
 }
