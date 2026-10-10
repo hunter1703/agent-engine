@@ -21,6 +21,8 @@ import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
+import com.agentengine.tenancy.UserCache;
+import com.agentengine.tenancy.beans.User;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -50,6 +52,8 @@ import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import java.time.Duration;
 import java.util.*;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
@@ -107,6 +111,7 @@ public final class SessionActor
   private final SessionTitleGenerator sessionTitleGenerator;
   private final MemoryService memoryService;
   private final SessionEventsRepository sessionEventsRepository;
+  private final UserCache userCache;
 
   public SessionActor(
       final ActorContext<SessionCommand> actorContext,
@@ -119,7 +124,8 @@ public final class SessionActor
       final PermissionedCache<AgentSession> sessionCache,
       final SessionTitleGenerator sessionTitleGenerator,
       final MemoryService memoryService,
-      final SessionEventsRepository sessionEventsRepository) {
+      final SessionEventsRepository sessionEventsRepository,
+      final UserCache userCache) {
     super(TYPE_KEY.name(), entityId, plugin, actorContext);
     this.self = actorContext.getSelf();
     this.customerId = SessionActorFactory.customerId(entityId);
@@ -131,6 +137,7 @@ public final class SessionActor
     this.sessionTitleGenerator = sessionTitleGenerator;
     this.memoryService = memoryService;
     this.sessionEventsRepository = sessionEventsRepository;
+    this.userCache = userCache;
   }
 
   @Override
@@ -214,9 +221,9 @@ public final class SessionActor
     switch (sessionState) {
       case TRIGGERED_RUN -> {
         // The crash-landed before the first turn committed, so restart from the original message.
-        final UniqueRecord<EnqueuedMessage> message =
-            Objects.requireNonNull(state.currentRun()).message();
-        startRun(state, message, () -> runner.start(message.getRecord().message()));
+        final RunState run = Objects.requireNonNull(state.currentRun());
+        final UniqueRecord<EnqueuedMessage> message = run.message();
+        startRun(state, message, () -> runner.start(message.getRecord().message(), run.sentAt()));
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case CONTINUING -> {
@@ -287,10 +294,12 @@ public final class SessionActor
     for (final StartingChild child : state.startingChildren()) {
       self.tell(new StartChildCommand(child.agentId(), child.message(), null));
     }
+    final UniqueRecord<EnqueuedMessage> runMessage = currentRunMessage(state);
+    final ZonedDateTime continuedAt = ZonedDateTime.now(timeZoneOf(contextOf(state, runMessage)));
     startRun(
         state,
-        currentRunMessage(state),
-        () -> runner(topology).start(UserMessage.ofText("continue")));
+        runMessage,
+        () -> runner(topology).start(UserMessage.ofText("continue"), continuedAt));
     updateSessionStatus(state, SessionStatus.RUNNING);
   }
 
@@ -949,9 +958,11 @@ public final class SessionActor
           final String author =
               topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
           final UserMessage message = userMessage.getRecord().message();
-          events.add(
+          final Event userEvent =
               EventUtils.buildUserEvent(
-                  message, currentRunId, currentRun.messagePickedTimestamp(), author));
+                  message, currentRunId, currentRun.messagePickedTimestamp(), author);
+          EventUtils.addSentAt(userEvent, currentRun.sentAt());
+          events.add(userEvent);
           LOG.debug(
               "[USER_MESSAGE_TRACE][{}] Run's opening turn - prepended user message event: '{}' with runId: {}",
               topology.sessionId(),
@@ -1188,8 +1199,10 @@ public final class SessionActor
     }
 
     final UniqueRecord<EnqueuedMessage> nextMessage = state.queue().peek();
+    final StartedFact startedFact = new StartedFact(nextMessage);
+    startedFact.setTimeZone(timeZoneOf(contextOf(state, nextMessage)));
     return thenRun(
-        Effect().persist(new StartedFact(nextMessage)),
+        Effect().persist(startedFact),
         (newState -> {
           LOG.debug(
               "[USER_MESSAGE_TRACE][{}] Starting message: '{}'",
@@ -1199,8 +1212,18 @@ public final class SessionActor
           startRun(
               newState,
               nextMessage,
-              () -> runner(newState.topology()).start(nextMessage.getRecord().message()));
+              () ->
+                  runner(newState.topology())
+                      .start(
+                          nextMessage.getRecord().message(),
+                          newState.currentRun().sentAt()));
         }));
+  }
+
+  private static Context contextOf(
+      final SessionActorState state, final UniqueRecord<EnqueuedMessage> message) {
+    final Context messageContext = message == null ? null : message.getRecord().context();
+    return messageContext == null ? state.context() : messageContext;
   }
 
   private Effect<SessionFact, SessionActorState> runSettled(
@@ -1237,7 +1260,8 @@ public final class SessionActor
                 state
                     .dequeue()
                     .withSessionState(SessionState.TRIGGERED_RUN)
-                    .withNewRun(fact.getMessage(), fact.getTimestamp().toEpochMilli()))
+                    .withNewRun(
+                        fact.getMessage(), fact.getTimestamp().toEpochMilli(), fact.getTimeZone()))
         .onEvent(
             ResumedFact.class,
             (state, fact) -> {
@@ -1388,6 +1412,24 @@ public final class SessionActor
   private static UniqueRecord<EnqueuedMessage> currentRunMessage(final SessionActorState state) {
     final RunState currentRun = state.currentRun();
     return currentRun == null ? null : currentRun.message();
+  }
+
+  /**
+   * The time zone of the user {@code context} acts as; UTC when no user does or the user cannot be
+   * read. The customer is the one {@code context} is for, so it is bound while the user is read.
+   */
+  private ZoneId timeZoneOf(final Context context) {
+    final String userId = context.userCaller().map(UserCaller::userId).orElse(null);
+    if (userId == null) {
+      return Utils.UTC;
+    }
+    try {
+      final User user = context.get(() -> userCache.get(userId));
+      return user == null ? Utils.UTC : Utils.zoneOf(user.getTimeZone());
+    } catch (final RuntimeException e) {
+      LOG.warn("Could not read the time zone of user {}; using UTC", userId, e);
+      return Utils.UTC;
+    }
   }
 
   private static void startRun(

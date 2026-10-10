@@ -12,14 +12,26 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public final class Utils {
+  public static final ZoneId UTC = ZoneId.of("UTC");
+
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private Utils() {}
+
+  /** The zone {@code zoneId} names, or UTC when it is blank or not a zone. */
+  public static ZoneId zoneOf(final String zoneId) {
+    try {
+      return zoneId == null || zoneId.isBlank() ? UTC : ZoneId.of(zoneId.trim());
+    } catch (final RuntimeException exception) {
+      return UTC;
+    }
+  }
 
   /** Builds a {@code List<elementType>} {@link Type}, e.g. for a single list-typed deserialize. */
   public static Type listOf(final Type elementType) {

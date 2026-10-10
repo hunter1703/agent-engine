@@ -15,9 +15,14 @@ public class User extends BaseEntity {
 
   public static final String FIELD_USERNAME = "username";
   public static final String FIELD_PASSWORD_HASH = "passwordHash";
+  public static final String FIELD_TIME_ZONE = "timeZone";
+  public static final String DEFAULT_TIME_ZONE = "UTC";
 
   private String username;
   private String status = UserStatus.ACTIVE.name();
+
+  /** An IANA time zone id, e.g. {@code Asia/Kolkata}: the zone times are shown to this user in. */
+  private String timeZone = DEFAULT_TIME_ZONE;
 
   /** The bcrypt hash of the user's password. Never read back, except to check a password. */
   @JsonIgnore @NotBlank private String passwordHash;
@@ -38,6 +43,14 @@ public class User extends BaseEntity {
 
   public void setStatus(final String status) {
     this.status = status;
+  }
+
+  public String getTimeZone() {
+    return timeZone;
+  }
+
+  public void setTimeZone(final String timeZone) {
+    this.timeZone = timeZone;
   }
 
   public String getPasswordHash() {

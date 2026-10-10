@@ -10,6 +10,7 @@ import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.common.utils.Utils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.events.EventActions;
@@ -20,6 +21,7 @@ import com.google.adk.sessions.State;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -32,6 +34,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class EventUtils {
 
   public static final String VIOLATION_KEY = State.TEMP_PREFIX + SessionEventUtils.VIOLATION;
+
+  /** The state delta key holding when a message was sent, as an ISO-8601 zoned time. */
+  public static final String SENT_AT_KEY = State.TEMP_PREFIX + "sent_at";
+
+  /**
+   * The session state key holding the id of the time zone of the latest message sent, so a run's
+   * zone is read from the state and not looked for in the events. Not a {@code temp:} key, so it
+   * stays in the session state.
+   */
+  public static final String TIME_ZONE_KEY = "time_zone";
 
   /**
    * Marks the event carrying this stateDelta key as the one a {@link Signal} was raised against —
@@ -191,6 +203,29 @@ public final class EventUtils {
       addMetadata(event, SessionEventUtils.ATTACHMENTS, attachments);
     }
     return event;
+  }
+
+  /** When {@code event} was sent, as kept with it, or null if it holds none. */
+  public static ZonedDateTime sentAtOf(final Event event) {
+    if (event == null || event.actions() == null) {
+      return null;
+    }
+    final String kept =
+        CollectionUtils.getStringValueFromMap(
+            event.actions().stateDelta(), SENT_AT_KEY);
+    return kept == null ? null : ZonedDateTime.parse(kept);
+  }
+
+  /** Keeps when {@code event} was sent with it. */
+  public static void addSentAt(final Event event, final ZonedDateTime sentAt) {
+    final EventActions actions = event.actions() == null ? new EventActions() : event.actions();
+    final Map<String, Object> delta = new ConcurrentHashMap<>();
+    if (actions.stateDelta() != null) {
+      delta.putAll(actions.stateDelta());
+    }
+    delta.put(SENT_AT_KEY, sentAt.toString());
+    delta.put(TIME_ZONE_KEY, sentAt.getZone().getId());
+    event.setActions(actions.toBuilder().stateDelta(delta).build());
   }
 
   public static Event buildResumeEvent(

@@ -157,6 +157,24 @@ public final class ContentUtils {
     return Content.builder().role(Constants.AUTHOR_USER).parts(parts).build();
   }
 
+  /**
+   * The position of the first message of {@code contents}, from {@code from} on, that holds {@code
+   * message}: the same role, and its parts one after another, possibly with parts around them a
+   * plugin added. -1 when none does.
+   */
+  public static int indexOfMessage(
+      final List<Content> contents, final Content message, final int from) {
+    final List<Part> parts = message.parts().orElse(List.of());
+    for (int i = Math.max(0, from); i < contents.size(); i++) {
+      final Content candidate = contents.get(i);
+      if (Objects.equals(candidate.role(), message.role())
+          && Collections.indexOfSubList(candidate.parts().orElse(List.of()), parts) >= 0) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   /** Whether {@code content} is a user-role message rather than a tool result. */
   public static boolean isUserMessage(final Content content) {
     return content != null && isUserRole(content) && getToolResponseParts(content).isEmpty();

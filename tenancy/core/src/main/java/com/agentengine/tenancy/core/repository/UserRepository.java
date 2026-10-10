@@ -66,6 +66,13 @@ public class UserRepository extends AbstractPermissionedRepository<User> {
   public User update(final String id, final User user) {
     if (StringUtils.isNotBlank(user.getPassword())) {
       user.setPasswordHash(BcryptUtil.bcryptHash(user.getPassword()));
+    } else {
+      // The hash is never sent to a client, so an update carries none; it is written whole over
+      // the stored user, and would otherwise wipe the stored hash.
+      final User stored = readStored(id);
+      if (stored != null) {
+        user.setPasswordHash(stored.getPasswordHash());
+      }
     }
     final User updated = super.update(id, user);
     if (updated != null) {

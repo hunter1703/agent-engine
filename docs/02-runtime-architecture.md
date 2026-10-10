@@ -107,6 +107,27 @@ stored with the session's other events. ADK's `Contents` then replaces the event
 covers with its content when it builds the request. A compaction never ends between a tool call and
 its result, and one rolled back with its turn is removed with it.
 
+### Time awareness
+
+A model has no clock, so the runtime tells it the time:
+
+- **When a message was sent.** When a run's message is accepted, the session actor records the
+  time and the sending user's time zone with it, and the model is told e.g. `Saturday, 10 October
+  2026, 20:02:11 (Asia/Kolkata, UTC+05:30)`. The zone is the sender's `User.timeZone` (an IANA id,
+  `UTC` by default, updated through the user API), read through the tenancy's user cache
+  (`UserCache`), which holds only what is needed of a user, is not permission-checked, and expires
+  an entry after ten minutes or when the user is written. If the message before it was sent in
+  another zone, whether the sender or the sender's zone changed, the text says so.
+- **The time and zone are stored, and the text is made from them.** The zone is persisted with the
+  run's start fact and the zoned time kept in the message event's state delta (`temp:sent_at`), so
+  it reads the same after a restart or passivation and is unaffected by later zone changes.
+  `ReminderPlugin` leads every user message that has one with `<current_time>`, outside the
+  reminders brief.
+- **When a tool call completed.** `ToolTimingPlugin` adds `completedAt` (ISO-8601 in the zone of the
+  message's zone), `timeZone` (the id of that zone, so each result names its zone) and `timeTaken`
+  (from the model making the call to the result, pauses included) to every non-empty tool result,
+  unless the tool set a field of that name itself.
+
 ## 2.8 Session Persistence
 
 Session state is **event-sourced through the `SessionActor`** rather than a separate repository. The actor appends `SessionFact` entries (its event journal) and rebuilds `SessionActorState` by replaying them on recovery.

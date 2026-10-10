@@ -1,5 +1,8 @@
 package com.agentengine.agent.core.session;
 
+import java.time.ZonedDateTime;
+import java.util.Map;
+import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.ContentUtils;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.commands.SelfCommand.CompleteRunCommand;
@@ -45,7 +48,8 @@ public final class SessionRunner {
 
   private volatile boolean stopRequested = false;
 
-  public synchronized void start(final UserMessage userMessage) {
+  /** Starts a run for {@code userMessage}; {@code sentAt} is kept with the message's event. */
+  public synchronized void start(final UserMessage userMessage, final ZonedDateTime sentAt) {
     LOG.debug("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called", sessionId);
     stopRequested = false;
 
@@ -53,8 +57,13 @@ public final class SessionRunner {
         ContentUtils.buildUserContent(
             ContentUtils.textParts(userMessage.parts()), userMessage.attachments());
 
+    final Map<String, Object> stateDelta =
+        Map.of(
+            EventUtils.SENT_AT_KEY, sentAt.toString(),
+            EventUtils.TIME_ZONE_KEY, sentAt.getZone().getId());
+
     runner
-        .runAsync(createdBy, sessionId, userContent, RUN_CONFIG)
+        .runAsync(createdBy, sessionId, userContent, RUN_CONFIG, stateDelta)
         .takeUntil(event -> stopRequested && event.turnComplete().orElse(false))
         .doOnNext(
             event -> {

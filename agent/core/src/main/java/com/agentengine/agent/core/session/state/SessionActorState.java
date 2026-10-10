@@ -12,6 +12,7 @@ import com.agentengine.util.context.Principal;
 import com.agentengine.util.context.UserCaller;
 import com.agentengine.util.pekko.PekkoSerializable;
 import com.google.adk.events.Event;
+import java.time.ZoneId;
 import java.util.*;
 
 /**
@@ -122,14 +123,24 @@ public record SessionActorState(
   }
 
   public SessionActorState withNewRun(
-      final UniqueRecord<EnqueuedMessage> message, final long messagePickedTimestamp) {
+      final UniqueRecord<EnqueuedMessage> message,
+      final long messagePickedTimestamp,
+      final ZoneId timeZone) {
     final String runId = message != null ? message.getId() : null;
     if (!runs.isEmpty()) {
       runs.set(runs.size() - 1, runs.getLast().finished());
     }
     runs.add(
         new RunState(
-            runId, message, messagePickedTimestamp, nextSequence(), null, Set.of(), null, false));
+            runId,
+            message,
+            messagePickedTimestamp,
+            timeZone,
+            nextSequence(),
+            null,
+            Set.of(),
+            null,
+            false));
     return new SessionActorState(
         sessionState,
         queue,

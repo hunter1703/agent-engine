@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.session;
 
+import com.agentengine.tenancy.UserCache;
 import static com.agentengine.util.common.Constants.ID_SEPARATOR;
 
 import com.agentengine.agent.core.factories.RunnerFactory;
@@ -47,6 +48,7 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
   private final MemoryService memoryService;
   private final ChaosMailboxRegistry chaosMailboxRegistry;
   private final SessionEventsRepository sessionEventsRepository;
+  private final UserCache userCache;
 
   @Inject
   public SessionActorFactory(
@@ -60,6 +62,7 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
       final MemoryService memoryService,
       final ChaosMailboxRegistry chaosMailboxRegistry,
       final SessionEventsRepository sessionEventsRepository,
+      final UserCache userCache,
       final ApplicationConfig applicationConfig) {
     super(
         actorSystemProvider,
@@ -78,6 +81,7 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
     this.memoryService = memoryService;
     this.chaosMailboxRegistry = chaosMailboxRegistry;
     this.sessionEventsRepository = sessionEventsRepository;
+    this.userCache = userCache;
   }
 
   @Override
@@ -99,7 +103,8 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
                     sessionCache,
                     sessionTitleGenerator,
                     memoryService,
-                    sessionEventsRepository)));
+                    sessionEventsRepository,
+                    userCache)));
   }
 
   public static String entityId(final String sessionId) {

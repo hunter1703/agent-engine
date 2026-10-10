@@ -2,6 +2,9 @@ package com.agentengine.agent.core.session.state;
 
 import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.util.common.beans.UniqueRecord;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -9,6 +12,7 @@ public record RunState(
     String runId,
     UniqueRecord<EnqueuedMessage> message,
     long messagePickedTimestamp,
+    ZoneId timeZone,
     int startSequence,
     CommittedTurn lastCommittedTurn,
     Set<Integer> committedTurnIds,
@@ -20,6 +24,11 @@ public record RunState(
     return message == null ? null : message.getRecord().parentRunId();
   }
 
+  /** When the run's message was picked, in the zone of the user who sent it. */
+  public ZonedDateTime sentAt() {
+    return ZonedDateTime.ofInstant(Instant.ofEpochMilli(messagePickedTimestamp), timeZone);
+  }
+
   public RunState withCommittedTurn(final CommittedTurn turn) {
     final Set<Integer> updatedCommittedTurnIds = new HashSet<>(committedTurnIds);
     updatedCommittedTurnIds.add(turn.turnId());
@@ -27,6 +36,7 @@ public record RunState(
         runId,
         message,
         messagePickedTimestamp,
+        timeZone,
         startSequence,
         turn,
         updatedCommittedTurnIds,
@@ -39,6 +49,7 @@ public record RunState(
         runId,
         message,
         messagePickedTimestamp,
+        timeZone,
         startSequence,
         lastCommittedTurn,
         committedTurnIds,
@@ -58,6 +69,7 @@ public record RunState(
         runId,
         message,
         messagePickedTimestamp,
+        timeZone,
         startSequence,
         lastCommittedTurn,
         committedTurnIds,
@@ -67,6 +79,6 @@ public record RunState(
 
   public RunState finished() {
     return new RunState(
-        runId, null, -1L, startSequence, lastCommittedTurn, Set.of(), null, settled);
+        runId, null, -1L, timeZone, startSequence, lastCommittedTurn, Set.of(), null, settled);
   }
 }

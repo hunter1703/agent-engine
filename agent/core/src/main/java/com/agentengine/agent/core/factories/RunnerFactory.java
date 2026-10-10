@@ -185,6 +185,8 @@ public class RunnerFactory {
             new KnowledgePlugin(knowledgeService),
             new GuardrailPlugin(policies),
             new ReminderPlugin(),
+            new UserContextPlugin(),
+            new ToolTimingPlugin(),
             new PlanningPlugin(),
             new ResponseValidationPlugin(),
             new NotebookPlugin(notebookService, agentsWithNotebook));

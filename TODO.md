@@ -115,3 +115,18 @@ which keeps them. A provider that signs its reasoning and needs it back unchange
 turns (e.g. Anthropic, whose LangChain4j module keeps the signature in `AiMessage.attributes()`)
 would lose it. When such a provider is added through LangChain4j, map `Part.thoughtSignature` to
 and from the attributes its LangChain4j module uses.
+
+## Time zone: re-resolve it when a paused run resumes
+
+A user's time zone is resolved once, when a run starts (`SessionActor.startNextQueuedMessage`), and
+stamped with the run's message. A run that resumes after a pause keeps that zone: tool results after
+the resume still use it (`ToolTimingPlugin`) even if the user's `timeZone` changed while the run
+was parked, and the model is not told, until the next run starts.
+
+The zone may change only when a run starts or resumes, never within a segment of a run. At a resume
+(`continueRun`, and recovery of a `CONTINUING` session): resolve the zone of the user the turn runs
+as through the user cache (`SessionActor.timeZoneOf`); persist it in `ContinuingFact`, replacing the run's zone in the
+state; record the zoned time with the stored resume events as with user messages, so `latestZone` finds it
+after a rebuild; and, only when the zone changed, deliver a stored runtime message to the model
+("The user's time zone is now X (it was Y)"). A resume's events are confirmation responses, which
+ADK leaves out of the model's request, so that message cannot ride on them.

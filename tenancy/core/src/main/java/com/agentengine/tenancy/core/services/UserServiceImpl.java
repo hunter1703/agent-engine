@@ -1,5 +1,6 @@
 package com.agentengine.tenancy.core.services;
 
+import java.util.List;
 import com.agentengine.tenancy.UserService;
 import com.agentengine.tenancy.beans.User;
 import com.agentengine.tenancy.core.repository.UserRepository;
@@ -26,6 +27,11 @@ public class UserServiceImpl implements UserService {
   @Override
   public User get(final String id) {
     return userRepository.findById(id);
+  }
+
+  @Override
+  public User get(final String id, final List<String> includeFields) {
+    return userRepository.findById(id, includeFields, null);
   }
 
   @Override

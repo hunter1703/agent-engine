@@ -2,11 +2,15 @@ package com.agentengine.tenancy;
 
 import com.agentengine.tenancy.beans.User;
 import com.agentengine.util.ms.client.MicroService;
+import java.util.List;
 
 @MicroService("tenancy")
 public interface UserService {
 
   User get(String id);
+
+  /** The user with only {@code includeFields} loaded, besides its id. */
+  User get(String id, List<String> includeFields);
 
   boolean isActive(String userId);
 
