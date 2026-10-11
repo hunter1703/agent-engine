@@ -30,6 +30,7 @@ import jakarta.ws.rs.ext.Provider;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -109,7 +110,12 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
                         requestId,
                         session.getCustomerId(),
                         UserCaller.of(Principal.ofUser(session.getUserId()))))
-            .orElseGet(() -> new Context(requestId, customerId, Caller.ANONYMOUS)));
+            .orElseGet(() -> {
+              if (Objects.equals(sessionCookie == null ? null : sessionCookie.getValue(), "systemSession")) {
+                return new Context(requestId, customerId, Caller.SYSTEM);
+              }
+              return new Context(requestId, customerId, Caller.ANONYMOUS);
+            }));
     if (LOGOUT_PATH.equals(path)) {
       // Clearing the cookie needs no identity, so an expired or foreign session can still log out.
       return;
