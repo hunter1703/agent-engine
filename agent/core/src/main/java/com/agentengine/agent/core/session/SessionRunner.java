@@ -17,6 +17,9 @@ import com.google.adk.agents.RunConfig;
 import com.google.adk.runner.Runner;
 import com.google.genai.types.Content;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,9 +77,6 @@ public final class SessionRunner {
 
   private void startStream(
       final UserMessage userMessage, final ZonedDateTime sentAt, final Flowable<Event> leading) {
-    LOG.debug("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called", sessionId);
-    stopRequested = false;
-
     final Content userContent =
         ContentUtils.buildUserContent(
             ContentUtils.textParts(userMessage.parts()), userMessage.attachments());
@@ -86,59 +86,59 @@ public final class SessionRunner {
     // UserContextSessionService stamps the model's view from.
     final Map<String, Object> stateDelta = EventUtils.sentAtDelta(sentAt);
 
-    leading
-        .concatWith(
-            runner
-                .runAsync(createdBy, sessionId, userContent, RUN_CONFIG, stateDelta)
-                .takeUntil(event -> stopRequested && event.turnComplete().orElse(false)))
-        .doOnNext(
-            event -> {
-              LOG.debug(
-                  "[USER_MESSAGE_TRACE][{}] ADK runAsync emitted event: author={} turnComplete={} finalResponse={} content={}",
-                  sessionId,
-                  event.author(),
-                  event.turnComplete().orElse(false),
-                  event.finalResponse(),
-                  event.content().map(Content::text).orElse("<no-content>"));
-            })
-        .doOnError(
-            error ->
-                LOG.error("[USER_MESSAGE_TRACE][{}] ADK runAsync stream error", sessionId, error))
-        .subscribe(
-            event -> {
-              LOG.debug(
-                  "[USER_MESSAGE_TRACE][{}] Sending PublishEventCommand to SessionActor",
-                  sessionId);
-              sessionActor.tell(new PublishEventCommand(event));
-            },
-            error ->
-                sessionActor.tell(new CompleteRunCommand(ExceptionUtils.getErrorSummary(error))),
-            () -> {
-              LOG.debug("[USER_MESSAGE_TRACE][{}] ADK runAsync stream completed", sessionId);
-              sessionActor.tell(new CompleteRunCommand());
-            });
+    publish(
+        leading, runner.runAsync(createdBy, sessionId, userContent, RUN_CONFIG, stateDelta));
   }
 
-  public synchronized void resume(final Collection<ResumeRequest> resumeRequests) {
+  /**
+   * Continues the run of {@code runId} with {@code resumeRequests}. As with a message, ADK does not
+   * emit what it appends, so the stream opens with one event per resume, in the order they
+   * arrived, each attributed to who gave it: a child's result to the child, a user's answer to the
+   * user, and {@code defaultAuthor} when none is named.
+   */
+  public synchronized void resume(
+      final String runId,
+      final String defaultAuthor,
+      final Collection<ResumeRequest> resumeRequests) {
+    final List<Event> resumeEvents =
+        resumeRequests.stream()
+            .sorted(Comparator.comparingLong(ResumeRequest::getTimestamp))
+            .map(
+                resumeRequest ->
+                    EventUtils.buildResumeEvent(
+                        List.of(resumeRequest),
+                        runId,
+                        Objects.requireNonNullElse(resumeRequest.getAuthor(), defaultAuthor)))
+            .toList();
+    publish(
+        Flowable.fromIterable(resumeEvents),
+        runner.runAsync(
+            createdBy, sessionId, ContentUtils.buildResumeContent(resumeRequests), RUN_CONFIG));
+  }
+
+  private void publish(final Flowable<Event> leading, final Flowable<Event> runnerEvents) {
+    LOG.debug("[USER_MESSAGE_TRACE][{}] SessionRunner starting a stream", sessionId);
     stopRequested = false;
-    runner
-        .runAsync(createdBy, sessionId, ContentUtils.buildResumeContent(resumeRequests), RUN_CONFIG)
-        .takeUntil(event -> stopRequested && event.turnComplete().orElse(false))
+
+    leading
+        .concatWith(
+            runnerEvents.takeUntil(event -> stopRequested && event.turnComplete().orElse(false)))
         .doOnNext(
             event ->
                 LOG.debug(
-                    "[{}] resume onNext: author={} turnComplete={} finalResponse={}",
+                    "[USER_MESSAGE_TRACE][{}] emitted event: author={} turnComplete={} finalResponse={} content={}",
                     sessionId,
                     event.author(),
                     event.turnComplete().orElse(false),
-                    event.finalResponse()))
-        .doOnError(error -> LOG.error("[{}] resume onError", sessionId, error))
+                    event.finalResponse(),
+                    event.content().map(Content::text).orElse("<no-content>")))
+        .doOnError(error -> LOG.error("[{}] stream error", sessionId, error))
         .subscribe(
             event -> sessionActor.tell(new PublishEventCommand(event)),
             error ->
                 sessionActor.tell(new CompleteRunCommand(ExceptionUtils.getErrorSummary(error))),
             () -> {
-              LOG.debug("[{}] resume onComplete", sessionId);
+              LOG.debug("[{}] stream completed", sessionId);
               sessionActor.tell(new CompleteRunCommand());
             });
   }

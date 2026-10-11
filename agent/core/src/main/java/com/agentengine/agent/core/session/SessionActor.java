@@ -232,7 +232,11 @@ public final class SessionActor
         final Collection<ResumeRequest> resumeRequests = state.getAllReceivedResumes();
         resumeRequests.forEach(
             resumeRequest -> resumedInterruptIds.add(resumeRequest.getInterruptId()));
-        startRun(state, currentRunMessage(state), () -> runner.resume(resumeRequests));
+        final RunState run = Objects.requireNonNull(state.currentRun());
+        startRun(
+            state,
+            currentRunMessage(state),
+            () -> runner.resume(run.runId(), authorOf(state.topology()), resumeRequests));
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case RUNNING -> reRunFromLastCommittedTurn(state);
@@ -621,7 +625,12 @@ public final class SessionActor
           startRun(
               newState,
               currentRunMessage(newState),
-              () -> runner(newState.topology()).resume(resumeRequests));
+              () ->
+                  runner(newState.topology())
+                      .resume(
+                          newState.currentRun().runId(),
+                          authorOf(newState.topology()),
+                          resumeRequests));
           LOG.debug(
               "Continued run with resumes : {} for topology : {}",
               JsonUtils.toJson(resumeRequests),
@@ -961,37 +970,8 @@ public final class SessionActor
         turnEvents.clear();
         turnId = null;
       } else {
-        final ArrayList<Event> events = new ArrayList<>();
-        final RunState currentRun = Objects.requireNonNull(state.currentRun());
-
-        // Only the resumes handed to the runner belong to this turn; one received meanwhile, while
-        // other interrupts are still pending, waits for the turn that delivers it.
-        final List<ResumeRequest> deliveredResumes =
-            state.getAllReceivedResumes().stream()
-                .filter(resumeRequest -> resumedInterruptIds.contains(resumeRequest.getInterruptId()))
-                .toList();
-        if (!deliveredResumes.isEmpty()) {
-          // One resume event per resume, in the order they arrived, so each is attributed to who
-          // gave it: a child's result to the child, a user's answer to the user.
-          final String defaultAuthor = authorOf(topology);
-          deliveredResumes.stream()
-              .sorted(Comparator.comparingLong(ResumeRequest::getTimestamp))
-              .forEach(
-                  resumeRequest ->
-                      events.add(
-                          EventUtils.buildResumeEvent(
-                              List.of(resumeRequest),
-                              currentRunId,
-                              Objects.requireNonNullElse(
-                                  resumeRequest.getAuthor(), defaultAuthor))));
-          LOG.debug(
-              "[USER_MESSAGE_TRACE][{}] Turn after resume - prepended {} resume answer(s) with runId: {}",
-              topology.sessionId(),
-              deliveredResumes.size(),
-              currentRunId);
-        }
-
-        events.addAll(turnEvents);
+          final RunState currentRun = Objects.requireNonNull(state.currentRun());
+          final List<Event> events = new ArrayList<>(turnEvents);
 
         final TurnCommittedFact turnFact =
             commitTurn(
