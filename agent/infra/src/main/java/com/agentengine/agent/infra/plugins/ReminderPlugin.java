@@ -55,7 +55,7 @@ public final class ReminderPlugin extends BasePlugin {
     // compacted, and ADK's tail compactor always summarizes from the beginning, so the summary that
     // replaced it is the request's first message.
     final int startMessageIndex =
-        CollectionUtils.findLastIndexAfter(contents, -1, ContentUtils::startsWithCurrentTime);
+        CollectionUtils.findLastIndexAfter(contents, -1, ContentUtils::startsWithUserContext);
     final boolean summaryFirst =
         !contents.isEmpty() && ContentUtils.isUserMessage(contents.getFirst());
     final int userMessageIndex = startMessageIndex < 0 && summaryFirst ? 0 : startMessageIndex;

@@ -15,6 +15,7 @@ import com.agentengine.util.common.utils.ExceptionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
+import com.google.adk.agents.RunConfig;
 import com.google.adk.apps.App;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.InMemorySessionService;
@@ -84,9 +85,6 @@ public final class CommunityExpertsServiceImpl implements CommunityExpertsServic
       final String sessionId = UUID.randomUUID().toString();
       final String appName = AgentUtils.appName(config.getId());
       final String userId = Context.currentUserId().orElse(Caller.SYSTEM_NAME);
-      sessionService
-          .createSession(appName, userId, new ConcurrentHashMap<>(), sessionId)
-          .blockingGet();
       final Runner runner =
           Runner.builder()
               .app(
@@ -100,12 +98,9 @@ public final class CommunityExpertsServiceImpl implements CommunityExpertsServic
       final Content prompt = Content.fromParts(toParts(userMessage));
       final String responseText =
           runner
-              .runAsync(userId, sessionId, prompt)
-              .filter(event -> !userId.equalsIgnoreCase(event.author()))
-              .filter(event -> !event.partial().orElse(false))
+              .runAsync(userId, sessionId, prompt, RunConfig.builder().autoCreateSession(true).build())
               .filter(event -> event.content().isPresent())
               .map(event -> event.content().orElseThrow().text())
-              .filter(StringUtils::isNotBlank)
               .lastElement()
               .blockingGet();
       agent.close();

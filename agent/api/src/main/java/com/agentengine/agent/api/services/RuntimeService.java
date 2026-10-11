@@ -16,6 +16,7 @@ import org.reactivestreams.Publisher;
 public interface RuntimeService {
 
   String RUNNER_CACHE = "session-runner-cache";
+  String TEMP_RUNNER_CACHE = "temp-session-runner-cache";
 
   /**
    * Initialises the session actor and enqueues the message. Returns immediately with the resolved
@@ -29,6 +30,8 @@ public interface RuntimeService {
 
   /** Like {@link #startSession}, for a caller with no interest in the event stream. */
   String invoke(String agentId, String sessionId, UserMessage userMessage);
+
+  Map<String, Object> sendTemp(String agentId, UserMessage userMessage);
 
   /**
    * Answers a pending interrupt on the session actor. Returns immediately; the run's continuation

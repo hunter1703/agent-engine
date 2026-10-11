@@ -180,6 +180,26 @@ public class AgentRestAPI {
   }
 
   @POST
+  @Path("/{agentId}/send-temp")
+  @Operation(summary = "Send a message to an agent and get a json response")
+  @APIResponse(
+          responseCode = "200",
+          description = "SSE stream of AG-UI events",
+          content =
+          @Content(mediaType = APPLICATION_JSON, schema = @Schema(implementation = Map.class)))
+  @APIResponse(responseCode = "400", description = "Invalid request parameters")
+  @APIResponse(responseCode = "404", description = "Agent not found")
+  @RunOnVirtualThread
+  public Map<String, Object> sendTemp(
+          @NotBlank @PathParam("agentId") final String agentId,
+          @Valid final RunAgentInput request) {
+    if (agentCache.get(agentId) == null) {
+      throw new AssetNotFoundException(AssetClass.AGENT, agentId);
+    }
+    return runtimeService.sendTemp(agentId, extractUserMessage(request));
+  }
+
+  @POST
   @Path("/{agentId}/schedule")
   @Operation(summary = "Schedule a recurring invocation of an agent")
   @APIResponse(

@@ -5,7 +5,7 @@ import static com.agentengine.util.common.Defaults.STREAMING_BATCH_SIZE;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.CommunityExpertsService;
 import com.agentengine.agent.api.services.RuntimeService;
-import com.agentengine.agent.core.memory.MemoryRepository;
+import com.agentengine.agent.core.factories.RunnerFactory;
 import com.agentengine.agent.core.schedule.AgentScheduleRepository;
 import com.agentengine.agent.core.session.CurrentTurnEvents;
 import com.agentengine.agent.core.session.ResumeResult;
@@ -21,8 +21,9 @@ import com.agentengine.agent.core.session.commands.ExternalCommand.StopCommand;
 import com.agentengine.agent.core.session.commands.ParentCommand.InitializeCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.state.SessionTopology;
-import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
+import com.agentengine.agent.infra.utils.ContentUtils;
+import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.knowledge.api.beans.IndexRequest;
@@ -44,6 +45,7 @@ import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.beans.UniqueRecord;
+import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.UnauthorizedException;
@@ -55,10 +57,13 @@ import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.common.utils.StructuredConcurrencyUtils;
+import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.tenancy.Permission;
 import com.agentengine.util.tenancy.PermissionedCache;
 import com.agui.community.core.event.Event;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.adk.agents.RunConfig;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
@@ -68,12 +73,9 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.flowables.ConnectableFlowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+
+import java.time.ZonedDateTime;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.StructuredTaskScope.Subtask;
@@ -112,25 +114,22 @@ public class RuntimeServiceImpl implements RuntimeService {
   private final CloudStorageService cloudStorageService;
   private final CommunityExpertsService communityExpertsService;
   private final AgentScheduleRepository agentScheduleRepository;
-  private final MemoryRepository memoryRepository;
-  private final NotebookRepository notebookRepository;
-  private final SchedulerService schedulerService;
+    private final SchedulerService schedulerService;
+    private final RunnerFactory runnerFactory;
 
   @Inject
   public RuntimeServiceImpl(
-      final SessionActorFactory sessionActorFactory,
-      final SessionEventChannel eventChannel,
-      final SessionService sessionService,
-      final PermissionedCache<AgentSession> sessionCache,
-      final PermissionedCache<BaseAgentConfig> agentCache,
-      final SessionEventsRepository sessionEventsRepository,
-      final KnowledgeService knowledgeService,
-      final CloudStorageService cloudStorageService,
-      final CommunityExpertsService communityExpertsService,
-      final AgentScheduleRepository agentScheduleRepository,
-      final MemoryRepository memoryRepository,
-      final NotebookRepository notebookRepository,
-      final SchedulerService schedulerService) {
+          final SessionActorFactory sessionActorFactory,
+          final SessionEventChannel eventChannel,
+          final SessionService sessionService,
+          final PermissionedCache<AgentSession> sessionCache,
+          final PermissionedCache<BaseAgentConfig> agentCache,
+          final SessionEventsRepository sessionEventsRepository,
+          final KnowledgeService knowledgeService,
+          final CloudStorageService cloudStorageService,
+          final CommunityExpertsService communityExpertsService,
+          final AgentScheduleRepository agentScheduleRepository,
+          final SchedulerService schedulerService, RunnerFactory runnerFactory) {
     this.sessionActorFactory = sessionActorFactory;
     this.eventChannel = eventChannel;
     this.sessionService = sessionService;
@@ -141,9 +140,8 @@ public class RuntimeServiceImpl implements RuntimeService {
     this.cloudStorageService = cloudStorageService;
     this.communityExpertsService = communityExpertsService;
     this.agentScheduleRepository = agentScheduleRepository;
-    this.memoryRepository = memoryRepository;
-    this.notebookRepository = notebookRepository;
-    this.schedulerService = schedulerService;
+      this.schedulerService = schedulerService;
+      this.runnerFactory = runnerFactory;
   }
 
   @Override
@@ -186,6 +184,27 @@ public class RuntimeServiceImpl implements RuntimeService {
     final String initializedSessionId = initializeSession(agentId, sessionId);
     startTurn(agentId, initializedSessionId, message);
     return initializedSessionId;
+  }
+
+  @Override
+  public Map<String, Object> sendTemp(String agentId, UserMessage userMessage) {
+    final Content userContent =
+            ContentUtils.buildUserContent(
+                    ContentUtils.textParts(userMessage.parts()), userMessage.attachments());
+    final Map<String, Object> stateDelta = EventUtils.sentAtDelta(ZonedDateTime.now());
+    final String userId = Context.currentUserId().orElse(Caller.SYSTEM_NAME);
+    final String responseText =
+            runnerFactory.getOrBuildTemp(agentId).runAsync(userId, UUID.randomUUID().toString(), userContent, RunConfig.builder().autoCreateSession(true).build(), stateDelta)
+                    .filter(event -> event.content().isPresent())
+                    .map(event -> event.content().orElseThrow().text())
+                    .lastElement()
+                    .blockingGet();
+    try {
+      return JsonUtils.fromLenientJson(responseText, new TypeReference<>() {
+      });
+    } catch (Exception e) {
+      return Map.of("response", Objects.requireNonNull(responseText));
+    }
   }
 
   /**

@@ -146,6 +146,7 @@ public class AgentServiceImpl implements AgentService {
 
   private void invalidateCachedRunners(final String agentId) {
     cacheManager.invalidateByPrefix(RuntimeService.RUNNER_CACHE, agentId + ID_SEPARATOR);
+    cacheManager.invalidate(RuntimeService.TEMP_RUNNER_CACHE, agentId);
   }
 
   private static Set<String> subAgentIds(final BaseAgentConfig config) {

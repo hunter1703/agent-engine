@@ -14,7 +14,8 @@ import java.util.stream.Collectors;
 /** Utilities for generic content/message extraction and indexing. */
 public final class ContentUtils {
 
-  private static final String CURRENT_TIME_OPEN = "<current_time>";
+  private static final String CURRENT_USER_CONTEXT_OPEN = "<current_user_context>";
+  private static final String CURRENT_USER_CONTEXT_CLOSE = "</current_user_context>";
   private static final String USER_MESSAGE_OPEN = "<user_message>\n";
   private static final String USER_MESSAGE_CLOSE = "\n</user_message>";
 
@@ -166,26 +167,26 @@ public final class ContentUtils {
    * A run's start message as the model reads it: its parts between {@code <user_message>} tags,
    * led by {@code currentTime}, when it was sent.
    */
-  public static Content withCurrentTime(final Content content, final String currentTime) {
+  public static Content withUserContext(final Content content, final String currentTime) {
     final List<Part> parts = new ArrayList<>();
-    parts.add(Part.fromText(CURRENT_TIME_OPEN + "\n" + currentTime + "\n</current_time>\n\n"));
+    parts.add(Part.fromText(CURRENT_USER_CONTEXT_OPEN + "\n" + currentTime + "\n" + CURRENT_USER_CONTEXT_CLOSE + "\n\n"));
     parts.add(Part.fromText(USER_MESSAGE_OPEN));
     parts.addAll(content.parts().orElse(List.of()));
     parts.add(Part.fromText(USER_MESSAGE_CLOSE));
     return content.toBuilder().parts(parts).build();
   }
 
-  /** Whether {@code content} is a message {@link #withCurrentTime} made. */
-  public static boolean startsWithCurrentTime(final Content content) {
+  /** Whether {@code content} is a message {@link #withUserContext} made. */
+  public static boolean startsWithUserContext(final Content content) {
     return content.parts().flatMap(parts -> parts.stream().findFirst())
         .flatMap(Part::text)
-        .filter(text -> text.startsWith(CURRENT_TIME_OPEN))
+        .filter(text -> text.startsWith(CURRENT_USER_CONTEXT_OPEN))
         .isPresent();
   }
 
-  /** The text of {@code content}, without what {@link #withCurrentTime} adds around a message. */
+  /** The text of {@code content}, without what {@link #withUserContext} adds around a message. */
   public static String textWithoutCurrentTime(final Content content) {
-    final boolean framed = startsWithCurrentTime(content);
+    final boolean framed = startsWithUserContext(content);
     final List<Part> parts = content.parts().orElse(List.of());
     // The time, the opening tag, then the message, then the closing tag.
     return parts.subList(framed ? 2 : 0, framed ? parts.size() - 1 : parts.size()).stream()

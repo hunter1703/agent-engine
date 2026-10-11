@@ -28,6 +28,7 @@ import com.agentengine.util.context.Context;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.adk.agents.BaseAgent;
+import com.google.adk.agents.RunConfig;
 import com.google.adk.apps.App;
 import com.google.adk.events.Event;
 import com.google.adk.plugins.BasePlugin;
@@ -42,7 +43,6 @@ import org.apache.pekko.actor.typed.ActorRef;
 
 @Singleton
 public class RunnerFactory {
-
   private final AgentService agentService;
   private final AgentProvider agentProvider;
   private final GuardrailPolicyFactory guardrailPolicyFactory;
@@ -52,7 +52,8 @@ public class RunnerFactory {
   private final KnowledgeService knowledgeService;
   private final MemoryService memoryService;
   private final NotebookService notebookService;
-  private final DistributedCache<SessionRunner> cache;
+  private final DistributedCache<SessionRunner> runnersCache;
+  private final DistributedCache<Runner> tempRunnersCache;
 
   public RunnerFactory(
       AgentService agentService,
@@ -72,10 +73,12 @@ public class RunnerFactory {
     this.knowledgeService = knowledgeService;
     this.memoryService = memoryService;
     this.notebookService = notebookService;
-    this.cache =
+    this.runnersCache =
         new DistributedCache.Builder<SessionRunner>(RuntimeService.RUNNER_CACHE, cacheManager)
             .removalListener(SessionRunner::stop)
             .build();
+    this.tempRunnersCache =
+        new DistributedCache.Builder<Runner>(RuntimeService.TEMP_RUNNER_CACHE, cacheManager).build();
   }
 
   /**
@@ -85,13 +88,31 @@ public class RunnerFactory {
    */
   public SessionRunner getOrBuild(
       final String agentId, final String sessionId, final ActorRef<SessionCommand> actor) {
-    return cache.get(
+    return runnersCache.get(
         cacheKey(agentId, sessionId),
         key -> Context.require().asSystemCaller().get(() -> build(agentId, sessionId, actor)));
   }
 
+  public Runner getOrBuildTemp(final String agentId) {
+    return tempRunnersCache.get(agentId, _ -> Context.require().asSystemCaller().get(() -> {
+      final BaseAgentConfig config = agentService.getAgent(agentId);
+      final Agent agent = agentProvider.create(config);
+      final App app =
+              App.builder()
+                      .plugins(buildPlugins(agent))
+                      .rootAgent(agent)
+                      .name(AgentUtils.appName(agentId))
+                      .build();
+      return Runner.builder()
+                      .app(app)
+                      .sessionService(new UserContextSessionService(new InMemorySessionService()))
+                      .memoryService(memoryService)
+                      .build();
+    }));
+  }
+
   public void stopped(final SessionRunner runner) {
-    cache.invalidateLocally(cacheKey(runner.getAgentId(), runner.getSessionId()));
+    runnersCache.invalidateLocally(cacheKey(runner.getAgentId(), runner.getSessionId()));
   }
 
   private static String cacheKey(final String agentId, final String sessionId) {
@@ -126,7 +147,7 @@ public class RunnerFactory {
         new UserContextSessionService(new InMemorySessionService());
     final Session persistedSession = SessionUtils.toSession(agentSession, getEvents(sessionId));
 
-    final ConcurrentHashMap<String, Object> initialState =
+    final Map<String, Object> initialState =
         persistedSession == null
             ? new ConcurrentHashMap<>()
             : new ConcurrentHashMap<>(
