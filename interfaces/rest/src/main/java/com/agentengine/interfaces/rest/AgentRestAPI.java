@@ -60,6 +60,7 @@ public class AgentRestAPI {
   private final AgentService agentService;
   private final PermissionedCache<BaseAgentConfig> agentCache;
   private final RuntimeService runtimeService;
+  private final RuntimeService runtimeServiceRaw;
   private final JsonCodec jsonCodec;
 
   @Inject
@@ -69,7 +70,8 @@ public class AgentRestAPI {
       final SimpleJsonCodec jsonCodec) {
     this.agentService = microServiceClientProvider.getRaw(AgentService.class);
     this.agentCache = agentCache;
-    this.runtimeService = microServiceClientProvider.getRaw(RuntimeService.class);
+    this.runtimeService = microServiceClientProvider.get(RuntimeService.class);
+    this.runtimeServiceRaw = microServiceClientProvider.getRaw(RuntimeService.class);
     this.jsonCodec = jsonCodec;
   }
 
@@ -173,7 +175,7 @@ public class AgentRestAPI {
     final Flowable<?> events =
         FlowableUtils.withScheduled(
             Flowable.fromPublisher(
-                runtimeService.startSessionAgui(agentId, threadId, extractUserMessage(request))),
+                runtimeServiceRaw.startSessionAgui(agentId, threadId, extractUserMessage(request))),
             TimeUnit.SECONDS.toMillis(15),
             () -> new CustomEvent("keep_alive", Map.of("timestamp", System.currentTimeMillis())));
     return RestUtils.writeBatchedSSE(response, events, jsonCodec);
@@ -212,7 +214,7 @@ public class AgentRestAPI {
   public Response schedule(
       @NotBlank @PathParam("agentId") final String agentId, @Valid final AgentSchedule request) {
     request.setAgentId(agentId);
-    final AgentSchedule schedule = runtimeService.saveSchedule(request);
+    final AgentSchedule schedule = runtimeServiceRaw.saveSchedule(request);
     return Response.status(Response.Status.CREATED).entity(schedule).build();
   }
 
@@ -233,12 +235,12 @@ public class AgentRestAPI {
       @NotBlank @PathParam("agentId") final String agentId,
       @NotBlank @PathParam("scheduleId") final String scheduleId,
       @Valid final AgentSchedule request) {
-    if (runtimeService.getSchedule(scheduleId) == null) {
+    if (runtimeServiceRaw.getSchedule(scheduleId) == null) {
       throw new AssetNotFoundException(AssetClass.AGENT_SCHEDULE, scheduleId);
     }
     request.setId(scheduleId);
     request.setAgentId(agentId);
-    return runtimeService.saveSchedule(request);
+    return runtimeServiceRaw.saveSchedule(request);
   }
 
   @DELETE
@@ -248,7 +250,7 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "404", description = "Schedule not found")
   @RunOnVirtualThread
   public void cancelSchedule(@NotBlank @PathParam("scheduleId") final String scheduleId) {
-    if (!runtimeService.deleteSchedule(scheduleId)) {
+    if (!runtimeServiceRaw.deleteSchedule(scheduleId)) {
       throw new AssetNotFoundException(AssetClass.AGENT_SCHEDULE, scheduleId);
     }
   }
