@@ -79,7 +79,7 @@ public final class SessionRunner {
       final UserMessage userMessage, final ZonedDateTime sentAt, final Flowable<Event> leading) {
     final Content userContent =
         ContentUtils.buildUserContent(
-            ContentUtils.textParts(userMessage.parts()), userMessage.attachments());
+            ContentUtils.textParts(userMessage.parts()), userMessage.attachments(), null);
 
     // ADK appends its own user event to the session without emitting it, and the stream's leading
     // event is what is stored. The delta puts when it was sent on ADK's event, which is what

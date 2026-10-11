@@ -27,6 +27,9 @@ import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
@@ -46,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 @PreMatching
 @Priority(Priorities.AUTHENTICATION)
 public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilter {
-
+  private static final Logger LOG = LoggerFactory.getLogger(AuthFilter.class);
   static final String SESSION_COOKIE = "session";
   private static final String REQUEST_ID_HEADER = "X-Request-Id";
   private static final String ORIGIN_HEADER = "Origin";
@@ -102,6 +105,8 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
         sessionCookie == null
             ? Optional.empty()
             : identityProvider.authenticate(sessionCookie.getValue());
+    LOG.info("Processing request with cookie {} for customer {} and origin {}", sessionCookie == null ? null : sessionCookie.getValue(), customerId, origin);
+    boolean isSystemRequest = Objects.equals(sessionCookie == null ? null : sessionCookie.getValue(), "systemSession");
     requestContextProvider.set(
         loggedIn
             .map(
@@ -111,11 +116,12 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
                         session.getCustomerId(),
                         UserCaller.of(Principal.ofUser(session.getUserId()))))
             .orElseGet(() -> {
-              if (Objects.equals(sessionCookie == null ? null : sessionCookie.getValue(), "systemSession")) {
+              if (isSystemRequest) {
                 return new Context(requestId, customerId, Caller.SYSTEM);
               }
               return new Context(requestId, customerId, Caller.ANONYMOUS);
             }));
+    LOG.info("[After] Processing request with cookie {} for customer {} and origin {}", sessionCookie == null ? null : sessionCookie.getValue(), customerId, origin);
     if (LOGOUT_PATH.equals(path)) {
       // Clearing the cookie needs no identity, so an expired or foreign session can still log out.
       return;
@@ -133,6 +139,8 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
       if (origin != null && !session.getCustomerId().equals(customerId)) {
         requestContext.abortWith(Response.status(Response.Status.FORBIDDEN).build());
       }
+      return;
+    } else if (isSystemRequest) {
       return;
     }
     if (customerId == null) {

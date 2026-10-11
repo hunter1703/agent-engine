@@ -4,6 +4,8 @@ import com.agentengine.agent.api.model.MessagePart;
 import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.ResumeRequest;
+import com.agentengine.util.cloudstorage.CloudStorageService;
+import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
@@ -24,7 +26,7 @@ public final class ContentUtils {
   }
 
   public static Content buildUserContent(
-      final List<MessagePart.TextPart> textParts, final List<AgentFileDetails> knowledges) {
+          final List<MessagePart.TextPart> textParts, final List<AgentFileDetails> knowledges, final FileService fileService) {
     final StringBuilder text = new StringBuilder();
     for (final MessagePart.TextPart textPart : textParts) {
       if (!text.isEmpty()) {
@@ -38,7 +40,7 @@ public final class ContentUtils {
             .role(Constants.AUTHOR_USER)
             .parts(List.of(Part.fromText(text.toString())))
             .build();
-    return com.agentengine.util.agents.ContentUtils.addAttachmentsToContent(content, knowledges);
+    return com.agentengine.util.agents.ContentUtils.addAttachmentsToContent(content, knowledges, fileService);
   }
 
   public static Content buildResumeContent(final Collection<ResumeRequest> resumeRequests) {

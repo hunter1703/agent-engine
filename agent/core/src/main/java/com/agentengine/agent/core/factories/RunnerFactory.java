@@ -23,6 +23,8 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.util.cloudstorage.CloudStorageService;
+import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.distributed.DistributedCache;
@@ -54,17 +56,18 @@ public class RunnerFactory {
   private final NotebookService notebookService;
   private final DistributedCache<SessionRunner> runnersCache;
   private final DistributedCache<Runner> tempRunnersCache;
+  private final FileService fileService;
 
   public RunnerFactory(
-      AgentService agentService,
-      AgentProvider agentProvider,
-      GuardrailPolicyFactory guardrailPolicyFactory,
-      SessionService sessionService,
-      final SessionEventsRepository sessionEventsRepository,
-      final KnowledgeService knowledgeService,
-      final MemoryService memoryService,
-      final NotebookService notebookService,
-      final DistributedCacheManager cacheManager) {
+          AgentService agentService,
+          AgentProvider agentProvider,
+          GuardrailPolicyFactory guardrailPolicyFactory,
+          SessionService sessionService,
+          final SessionEventsRepository sessionEventsRepository,
+          final KnowledgeService knowledgeService,
+          final MemoryService memoryService,
+          final NotebookService notebookService,
+          final DistributedCacheManager cacheManager, FileService fileService) {
     this.agentService = agentService;
     this.agentProvider = agentProvider;
     this.guardrailPolicyFactory = guardrailPolicyFactory;
@@ -79,6 +82,7 @@ public class RunnerFactory {
             .build();
     this.tempRunnersCache =
         new DistributedCache.Builder<Runner>(RuntimeService.TEMP_RUNNER_CACHE, cacheManager).build();
+      this.fileService = fileService;
   }
 
   /**
@@ -161,7 +165,7 @@ public class RunnerFactory {
 
       for (final Event event : CollectionUtils.nullSafeList(persistedSession.events())) {
         adkSessionService
-            .appendEvent(session, EventUtils.enrichWithAttachments(event))
+            .appendEvent(session, EventUtils.enrichWithAttachments(event, fileService))
             .blockingGet();
       }
     }

@@ -6,6 +6,8 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.Signal;
+import com.agentengine.util.cloudstorage.CloudStorageService;
+import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
@@ -168,7 +170,7 @@ public final class EventUtils {
     final Event event =
         _buildUserEvent(
             invocationId,
-            ContentUtils.buildUserContent(ContentUtils.textParts(userMessage.parts()), null),
+            ContentUtils.buildUserContent(ContentUtils.textParts(userMessage.parts()), null, null),
             timestamp,
             author);
     final List<AgentFileDetails> attachments = userMessage.attachments();
@@ -281,7 +283,7 @@ public final class EventUtils {
         .build();
   }
 
-  public static Event enrichWithAttachments(final Event event) {
+  public static Event enrichWithAttachments(final Event event, final FileService fileService) {
     final Map<String, Object> stateDelta =
         event.actions() == null ? null : event.actions().stateDelta();
     final List<AgentFileDetails> attachments =
@@ -291,7 +293,7 @@ public final class EventUtils {
       return event;
     }
     return event.toBuilder()
-        .content(com.agentengine.util.agents.ContentUtils.addAttachmentsToContent(event.content().get(), attachments))
+        .content(com.agentengine.util.agents.ContentUtils.addAttachmentsToContent(event.content().get(), attachments, fileService))
         .build();
   }
 

@@ -41,6 +41,7 @@ import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.cloudstorage.CloudStorageService;
+import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.FileDetails;
@@ -111,6 +112,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   private final PermissionedCache<BaseAgentConfig> agentCache;
   private final SessionEventsRepository sessionEventsRepository;
   private final KnowledgeService knowledgeService;
+  private final FileService fileService;
   private final CloudStorageService cloudStorageService;
   private final CommunityExpertsService communityExpertsService;
   private final AgentScheduleRepository agentScheduleRepository;
@@ -126,6 +128,7 @@ public class RuntimeServiceImpl implements RuntimeService {
           final PermissionedCache<BaseAgentConfig> agentCache,
           final SessionEventsRepository sessionEventsRepository,
           final KnowledgeService knowledgeService,
+          final FileService fileService,
           final CloudStorageService cloudStorageService,
           final CommunityExpertsService communityExpertsService,
           final AgentScheduleRepository agentScheduleRepository,
@@ -137,6 +140,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     this.agentCache = agentCache;
     this.sessionEventsRepository = sessionEventsRepository;
     this.knowledgeService = knowledgeService;
+    this.fileService = fileService;
     this.cloudStorageService = cloudStorageService;
     this.communityExpertsService = communityExpertsService;
     this.agentScheduleRepository = agentScheduleRepository;
@@ -190,7 +194,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   public Map<String, Object> sendTemp(String agentId, UserMessage userMessage) {
     final Content userContent =
             ContentUtils.buildUserContent(
-                    ContentUtils.textParts(userMessage.parts()), userMessage.attachments());
+                    ContentUtils.textParts(userMessage.parts()), userMessage.attachments(), fileService);
     final Map<String, Object> stateDelta = EventUtils.sentAtDelta(ZonedDateTime.now());
     final String userId = Context.currentUserId().orElse(Caller.SYSTEM_NAME);
     final String responseText =
@@ -339,10 +343,13 @@ public class RuntimeServiceImpl implements RuntimeService {
         && !FileUtils.isImageFile(fileDetails)) {
       return false;
     }
+    if (agentFileDetails.type() != FileDetails.StorageType.CLOUDSTORAGE) {
+      return true;
+    }
     final long size =
-        agentFileDetails.size() < 1
-            ? cloudStorageService.getSize(agentFileDetails.source())
-            : agentFileDetails.size();
+            agentFileDetails.size() < 1
+                ? cloudStorageService.getSize(agentFileDetails.source())
+                : agentFileDetails.size();
     return size > INDEXING_THRESHOLD_BYTES;
   }
 
