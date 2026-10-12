@@ -67,7 +67,7 @@ def seed():
         )
         for attempt in range(retries):
             try:
-                with urllib.request.urlopen(req, timeout=30) as f:
+                with urllib.request.urlopen(req, timeout=60) as f:
                     return f.read().decode("utf-8")
             except urllib.error.HTTPError as e:
                 raise RuntimeError(f"Failed to post to {url}: HTTP {e.code} {e.read().decode('utf-8', errors='replace')}")

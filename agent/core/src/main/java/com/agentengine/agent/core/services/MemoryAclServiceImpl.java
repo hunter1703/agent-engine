@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.services;
 
+import com.agentengine.agent.api.services.MemoryAclService;
 import com.agentengine.agent.core.memory.Memory;
 import com.agentengine.util.agents.repository.AgentDocumentStoreClientType;
 import com.agentengine.util.common.repository.DocumentBackend;
@@ -12,7 +13,7 @@ import jakarta.inject.Singleton;
 @Singleton
 @Unremovable
 public class MemoryAclServiceImpl extends AbstractAssetAclService<Memory>
-    implements com.agentengine.agent.api.services.MemoryAclService {
+    implements MemoryAclService {
 
   @Inject
   public MemoryAclServiceImpl(final DocumentBackend documentBackend) {

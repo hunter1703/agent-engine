@@ -15,4 +15,8 @@ dependencies {
     compileOnly libs.jakarta.inject.api
     compileOnly libs.jakarta.enterprise.cdi.api
     compileOnly libs.mongodb.bson
+
+    implementation platform(libs.quarkus.bom)
+    compileOnly libs.quarkus.arc
 }
+

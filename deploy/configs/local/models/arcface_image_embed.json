@@ -1,0 +1,10 @@
+{
+  "id": "arcface-image-embed",
+  "model": "arcface",
+  "name": "ArcFace Image Embedding",
+  "baseUrl": "http://host.docker.internal:8081/v1",
+  "provider": "IMAGE_EMBEDDING",
+  "type": "EMBEDDING",
+  "dimensions": 768,
+  "maxBatchSize": 32
+}

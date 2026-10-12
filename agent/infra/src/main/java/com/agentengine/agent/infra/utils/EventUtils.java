@@ -3,12 +3,13 @@ package com.agentengine.agent.infra.utils;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.Constants;
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.Signal;
-import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.Violation;
+import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
@@ -39,6 +40,9 @@ public final class EventUtils {
 
   /** The state delta key holding when a message was sent, as an ISO-8601 zoned time. */
   public static final String SENT_AT_KEY = State.TEMP_PREFIX + "sent_at";
+
+  /** The state delta key holding attachments of the message sent. */
+  public static final String ATTACHMENTS_KEY = State.TEMP_PREFIX + SessionEventUtils.ATTACHMENTS;
 
   /**
    * The session state key holding the id of the time zone of the latest message sent, so a run's
@@ -134,7 +138,7 @@ public final class EventUtils {
       if (content == null || !Constants.AUTHOR_USER.equals(content.role().orElse(""))) {
         continue;
       }
-      final String text = com.agentengine.util.agents.ContentUtils.textWithoutCurrentTime(content);
+      final String text = ContentUtils.textWithoutCurrentTime(content);
       if (StringUtils.isNotBlank(text)) {
         intents.add(text);
       }
@@ -166,16 +170,18 @@ public final class EventUtils {
       final UserMessage userMessage,
       final String invocationId,
       final long timestamp,
-      final String author) {
+      final String author,
+      final Map<String, Object> stateDelta) {
     final Event event =
         _buildUserEvent(
             invocationId,
-            ContentUtils.buildUserContent(ContentUtils.textParts(userMessage.parts()), null, null),
+            RequestContentUtils.buildUserContent(
+                RequestContentUtils.textParts(userMessage.parts()), null, null),
             timestamp,
             author);
-    final List<AgentFileDetails> attachments = userMessage.attachments();
-    if (CollectionUtils.isNotEmpty(attachments)) {
-      addMetadata(event, SessionEventUtils.ATTACHMENTS, attachments);
+    if (CollectionUtils.isNotEmpty(stateDelta)) {
+      event.setActions(
+          EventActions.builder().stateDelta(new ConcurrentHashMap<>(stateDelta)).build());
     }
     return event;
   }
@@ -186,8 +192,7 @@ public final class EventUtils {
       return null;
     }
     final String kept =
-        CollectionUtils.getStringValueFromMap(
-            event.actions().stateDelta(), SENT_AT_KEY);
+        CollectionUtils.getStringValueFromMap(event.actions().stateDelta(), SENT_AT_KEY);
     return kept == null ? null : ZonedDateTime.parse(kept);
   }
 
@@ -196,22 +201,24 @@ public final class EventUtils {
     return Map.of(SENT_AT_KEY, sentAt.toString(), TIME_ZONE_KEY, sentAt.getZone().getId());
   }
 
-  /** Keeps when {@code event} was sent with it. */
-  public static void addSentAt(final Event event, final ZonedDateTime sentAt) {
-    final EventActions actions = event.actions() == null ? new EventActions() : event.actions();
-    final Map<String, Object> delta = new ConcurrentHashMap<>();
-    if (actions.stateDelta() != null) {
-      delta.putAll(actions.stateDelta());
+  /**
+   * What is kept with a message's event, and handed to the runner, for when it was sent and its
+   * attachments.
+   */
+  public static Map<String, Object> userStateDelta(
+      final ZonedDateTime sentAt, final List<AgentFileDetails> attachments) {
+    final Map<String, Object> delta = CollectionUtils.nullSafeMutableMap(sentAtDelta(sentAt));
+    if (CollectionUtils.isNotEmpty(attachments)) {
+      delta.put(ATTACHMENTS_KEY, attachments);
     }
-    delta.putAll(sentAtDelta(sentAt));
-    event.setActions(actions.toBuilder().stateDelta(delta).build());
+    return delta;
   }
 
   public static Event buildResumeEvent(
       final Collection<ResumeRequest> resumeRequests,
       final String invocationId,
       final String author) {
-    final Content resumeContent = ContentUtils.buildResumeContent(resumeRequests);
+    final Content resumeContent = RequestContentUtils.buildResumeContent(resumeRequests);
     final long resumeTimestamp =
         resumeRequests.stream()
             .mapToLong(ResumeRequest::getTimestamp)
@@ -283,17 +290,39 @@ public final class EventUtils {
         .build();
   }
 
+  public static List<AgentFileDetails> getAttachments(final Event event) {
+    if (event == null || event.actions() == null) {
+      return List.of();
+    }
+    final Map<String, Object> stateDelta = event.actions().stateDelta();
+    if (CollectionUtils.isEmpty(stateDelta)) {
+      return List.of();
+    }
+    final List<?> raw = CollectionUtils.getValueFromMap(stateDelta, ATTACHMENTS_KEY);
+    return CollectionUtils.nullSafeList(raw).stream()
+        .filter(Objects::nonNull)
+        .map(
+            item -> {
+              if (item instanceof AgentFileDetails agentFileDetails) {
+                return agentFileDetails;
+              }
+              if (item instanceof FileDetails fileDetails) {
+                return new AgentFileDetails(fileDetails);
+              }
+              return Utils.convertValue(item, AgentFileDetails.class);
+            })
+        .filter(Objects::nonNull)
+        .toList();
+  }
+
   public static Event enrichWithAttachments(final Event event, final FileService fileService) {
-    final Map<String, Object> stateDelta =
-        event.actions() == null ? null : event.actions().stateDelta();
-    final List<AgentFileDetails> attachments =
-        CollectionUtils.getListFromMap(
-            stateDelta, State.TEMP_PREFIX + SessionEventUtils.ATTACHMENTS);
+    final List<AgentFileDetails> attachments = getAttachments(event);
     if (attachments.isEmpty() || event.content().isEmpty()) {
       return event;
     }
     return event.toBuilder()
-        .content(com.agentengine.util.agents.ContentUtils.addAttachmentsToContent(event.content().get(), attachments, fileService))
+        .content(
+            ContentUtils.addAttachmentsToContent(event.content().get(), attachments, fileService))
         .build();
   }
 
@@ -346,7 +375,10 @@ public final class EventUtils {
   }
 
   private static Event withCompaction(
-      final Event event, final long startTimestamp, final long endTimestamp, final Content content) {
+      final Event event,
+      final long startTimestamp,
+      final long endTimestamp,
+      final Content content) {
     final EventActions actions = event.actions() == null ? new EventActions() : event.actions();
     final EventCompaction compaction =
         EventCompaction.builder()

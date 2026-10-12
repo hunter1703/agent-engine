@@ -3,6 +3,7 @@ package com.agentengine.util.common.query;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public class Filters {
 
@@ -10,8 +11,23 @@ public class Filters {
     return new Filter().withField(field).addValue(value).withOp(Operator.EQ);
   }
 
+  /** The key of the lowest similarity a semantic search matches, in the filter's options. */
+  public static final String MIN_SIMILARITY = "minScore";
+
+  /**
+   * The key of the id of the embedding model that embeds the value of a semantic search, in the
+   * filter's options; the customer's default model of the value's modality when absent.
+   */
+  public static final String EMBEDDING_MODEL_ID = "embeddingModelId";
+
   public static Filter semanticSearch(String field, Object value) {
     return new Filter().withField(field).addValue(value).withOp(Operator.SEMANTIC_SEARCH);
+  }
+
+  /** A semantic search that only matches entities at least {@code minSimilarity} similar. */
+  public static Filter semanticSearch(String field, Object value, double minSimilarity) {
+    return semanticSearch(field, value)
+        .withAdditional(Map.of(MIN_SIMILARITY, minSimilarity));
   }
 
   public static Filter ne(String field, Object value) {

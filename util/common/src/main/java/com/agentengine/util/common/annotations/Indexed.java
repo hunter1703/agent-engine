@@ -9,6 +9,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Indexed {
 
+  // if the field is a complex object, and type is FileDetails, then the file's content would be
+  // vectorized
+  // all other complex types would be ignored
   boolean vector() default false;
 
   String name() default "";

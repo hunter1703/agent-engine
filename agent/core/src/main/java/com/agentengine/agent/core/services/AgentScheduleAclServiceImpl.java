@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.services;
 
+import com.agentengine.agent.api.services.AgentScheduleAclService;
 import com.agentengine.util.agents.beans.AgentSchedule;
 import com.agentengine.util.agents.repository.AgentDocumentStoreClientType;
 import com.agentengine.util.common.repository.DocumentBackend;
@@ -12,7 +13,7 @@ import jakarta.inject.Singleton;
 @Singleton
 @Unremovable
 public class AgentScheduleAclServiceImpl extends AbstractAssetAclService<AgentSchedule>
-    implements com.agentengine.agent.api.services.AgentScheduleAclService {
+    implements AgentScheduleAclService {
 
   @Inject
   public AgentScheduleAclServiceImpl(final DocumentBackend documentBackend) {

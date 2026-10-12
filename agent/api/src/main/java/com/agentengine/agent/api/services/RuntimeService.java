@@ -57,8 +57,6 @@ public interface RuntimeService {
    */
   void stopSession(String sessionId);
 
-  String invokeExpert(String expertId, String modelId, UserMessage userMessage);
-
   /** Creates or replaces an agent schedule, and the scheduler job that fires it. */
   AgentSchedule saveSchedule(AgentSchedule schedule);
 

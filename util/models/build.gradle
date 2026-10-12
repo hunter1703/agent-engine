@@ -9,10 +9,7 @@ dependencies {
     implementation project(':util:context')
     implementation project(':util:distributed')
     implementation project(':util:infra')
-    implementation project(':util:agents')
     implementation project(':util:scripts')
-    implementation project(':catalog:api')
-
     // BaseLlm, LlmResponse, Content appear in the public API
     api libs.google.adk
     api libs.google.genai
@@ -28,4 +25,9 @@ dependencies {
     // Annotation-only APIs: compile-time markers, runtime provided by Quarkus
     compileOnly libs.jakarta.inject.api
     compileOnly libs.jakarta.enterprise.cdi.api
+    compileOnly libs.jakarta.validation.api
+    compileOnly libs.microprofile.openapi.api
+    compileOnly libs.mongodb.bson
+    compileOnly platform(libs.quarkus.bom)
+    compileOnly libs.quarkus.arc
 }

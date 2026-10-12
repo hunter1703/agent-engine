@@ -1,11 +1,11 @@
 package com.agentengine.interfaces.rest.services;
 
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.agents.builder.BuilderDefinition;
 import com.agentengine.util.agents.builder.BuilderDefinitionUtils;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.models.config.ModelConfig;
 import com.google.common.cache.CacheBuilder;
 import jakarta.inject.Singleton;
 

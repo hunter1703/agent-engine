@@ -1,6 +1,6 @@
 package com.agentengine.util.agents.builder;
 
-import com.agentengine.util.agents.builder.annotations.UiAccessLevel;
+import com.agentengine.util.common.builder.annotations.UiAccessLevel;
 
 public record LayoutAccessPolicy(UiAccessLevel create, UiAccessLevel edit, UiAccessLevel view) {
 

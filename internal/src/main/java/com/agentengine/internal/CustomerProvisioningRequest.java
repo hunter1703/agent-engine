@@ -2,8 +2,8 @@ package com.agentengine.internal;
 
 import com.agentengine.tenancy.beans.Role;
 import com.agentengine.tenancy.beans.User;
-import com.agentengine.util.agents.beans.config.DefaultModels;
 import com.agentengine.util.infra.provisioning.ProvisioningRequest;
+import com.agentengine.util.models.config.DefaultModels;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;

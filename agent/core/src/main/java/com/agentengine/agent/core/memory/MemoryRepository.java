@@ -1,13 +1,10 @@
 package com.agentengine.agent.core.memory;
 
 import com.agentengine.tenancy.AccessControlService;
-import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.validation.ValidationService;
 import com.agentengine.util.context.Context;
-import com.agentengine.util.models.factories.Model;
-import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.tenancy.AbstractPermissionedRepository;
 import com.agentengine.util.tenancy.PermissionChecker;
 import com.agentengine.util.tenancy.SharingChange;
@@ -33,7 +30,6 @@ public class MemoryRepository extends AbstractPermissionedRepository<Memory> {
   @Inject
   public MemoryRepository(
       final VectorBackend vectorBackend,
-      final ModelProvider modelProvider,
       final ValidationService validationService,
       final PermissionChecker permissionChecker,
       final AccessControlService accessControlService) {
@@ -44,13 +40,7 @@ public class MemoryRepository extends AbstractPermissionedRepository<Memory> {
                 Memory.class,
                 AgentVectorStoreClientType.MEMORY,
                 MemoryRepository::toPayload,
-                MemoryRepository::fromPayload,
-                (modelId, query) -> {
-                  try (RefCounted<Model.EmbeddingModel> refCounted =
-                      modelProvider.getEmbeddingModel(modelId)) {
-                    return refCounted.value().model().embed(query).content().vector();
-                  }
-                })),
+                MemoryRepository::fromPayload)),
         validationService,
         permissionChecker,
         accessControlService);

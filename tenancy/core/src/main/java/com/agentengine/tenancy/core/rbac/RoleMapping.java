@@ -4,10 +4,10 @@ import static com.agentengine.util.common.Constants.ID_SEPARATOR;
 
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.beans.Task;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.HashUtils;
 import com.agentengine.util.common.utils.StringUtils;
-import com.agentengine.util.common.beans.Task;
 import java.util.List;
 
 /**

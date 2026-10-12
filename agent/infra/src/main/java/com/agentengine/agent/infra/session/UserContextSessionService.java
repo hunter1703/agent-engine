@@ -45,7 +45,10 @@ public final class UserContextSessionService extends DelegatingSessionService {
     lastZone = sentAt.getZone();
     final String currentTime = currentTimeText(sentAt, previousZone);
     return super.appendEvent(
-        session, event.toBuilder().content(ContentUtils.withUserContext(event.content().get(), currentTime)).build());
+        session,
+        event.toBuilder()
+            .content(ContentUtils.withUserContext(event.content().get(), currentTime))
+            .build());
   }
 
   private static ZoneId zoneOfLastStamped(final List<Event> events) {

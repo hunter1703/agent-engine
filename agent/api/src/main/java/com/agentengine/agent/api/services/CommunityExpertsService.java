@@ -2,8 +2,10 @@ package com.agentengine.agent.api.services;
 
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.ms.client.MicroService;
 import java.util.List;
 
+@MicroService("agent")
 public interface CommunityExpertsService {
 
   String MEMORY_AGENT = "memory-agent";

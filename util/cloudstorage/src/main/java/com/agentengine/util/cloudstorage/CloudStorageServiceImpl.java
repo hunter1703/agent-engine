@@ -28,7 +28,7 @@ public class CloudStorageServiceImpl implements CloudStorageService {
       final String key,
       final String name,
       final InputStream inputStream,
-      final long contentLength,
+      final Long contentLength,
       final String mediaType,
       final Map<String, String> metadata) {
     return runWithErrorHandling(

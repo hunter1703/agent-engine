@@ -12,7 +12,9 @@ import io.reactivex.rxjava3.core.Single;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentMap;
 
-/** A session service that hands every call to {@code delegate}; subclasses override what differs. */
+/**
+ * A session service that hands every call to {@code delegate}; subclasses override what differs.
+ */
 public class DelegatingSessionService implements BaseSessionService {
   private final BaseSessionService delegate;
 

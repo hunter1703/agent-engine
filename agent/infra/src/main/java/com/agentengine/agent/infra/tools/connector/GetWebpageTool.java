@@ -54,17 +54,15 @@ public final class GetWebpageTool extends Tool {
     if (!url.startsWith("http")) {
       url = "https://" + url;
     }
-    return indexUrl(url, toolContext);
+    return indexUrl(url);
   }
 
-  private ToolOutput<?> indexUrl(final String url, final ToolContext toolContext) {
-    final String agentName = toolContext.invocationContext().agent().name();
+  private ToolOutput<?> indexUrl(final String url) {
     final IndexRequest request = new IndexRequest();
-    request.setAgentId(agentName);
     request.setFileDetails(FileDetails.fromUrl(url));
     request.setTitle(url);
     request.setWaitForCompletion(true);
-    final Knowledge knowledge = knowledgeService.create(request);
+    final Knowledge knowledge = knowledgeService.index(request);
     return ToolOutput.knowledge(knowledge.getId(), "Webpage '%s' indexed.".formatted(url));
   }
 }

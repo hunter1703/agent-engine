@@ -1,24 +1,23 @@
 package com.agentengine.util.models.factories;
 
-import com.agentengine.catalog.api.services.ModelService;
-import com.agentengine.util.agents.beans.config.DefaultModels;
-import com.agentengine.util.agents.beans.config.EmbeddingModelConfig;
-import com.agentengine.util.agents.beans.config.ModelConfig;
-import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.distributed.RefCountedDistributedCache;
-import com.agentengine.util.models.factories.Model.LLMModel;
+import com.agentengine.util.models.ConfiguredModel;
+import com.agentengine.util.models.ModelLookup;
+import com.agentengine.util.models.config.DefaultModels;
+import com.agentengine.util.models.config.EmbeddingModelConfig;
+import com.agentengine.util.models.config.ModelConfig;
+import com.agentengine.util.models.embedding.ConfiguredEmbeddingModel;
+import com.agentengine.util.models.repository.DefaultModelsRepository;
 import com.google.adk.models.BaseLlm;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import com.google.genai.types.Modality;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -29,26 +28,33 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class ModelProvider {
   private static final Logger LOG = LoggerFactory.getLogger(ModelProvider.class);
-  private static final Duration DEFAULT_EMBEDDING_TIMEOUT = Duration.ofMinutes(2);
+  public static final String MODEL_CACHE = "model-cache";
 
   private final Map<String, ModelFactory<?>> typeVsFactory;
-  private final ModelService modelService;
+  private final Map<String, EmbeddingModelFactory> typeVsEmbeddingFactory;
+  private final ModelLookup modelLookup;
   private final DefaultModelsRepository defaultModelsRepository;
-  private final RefCountedDistributedCache<Model<?>> cache;
+  private final RefCountedDistributedCache<ConfiguredModel<?>> cache;
 
   @Inject
   public ModelProvider(
       final Instance<ModelFactory<?>> allFactories,
-      final ModelService modelService,
+      final Instance<EmbeddingModelFactory> allEmbeddingFactories,
+      final ModelLookup modelLookup,
       final DefaultModelsRepository defaultModelsRepository,
       final DistributedCacheManager cacheManager) {
     this.typeVsFactory =
         CollectionUtils.transformToMap(
             allFactories.stream().toList(), ModelFactory::type, Function.identity());
-    this.modelService = modelService;
+    this.typeVsEmbeddingFactory =
+        CollectionUtils.transformToMap(
+            allEmbeddingFactories.stream().toList(),
+            EmbeddingModelFactory::type,
+            Function.identity());
+    this.modelLookup = modelLookup;
     this.defaultModelsRepository = defaultModelsRepository;
-    final RefCountedDistributedCache.Builder<Model<?>> cacheBuilder =
-        new RefCountedDistributedCache.Builder<Model<?>>(ModelService.MODEL_CACHE, cacheManager)
+    final RefCountedDistributedCache.Builder<ConfiguredModel<?>> cacheBuilder =
+        new RefCountedDistributedCache.Builder<ConfiguredModel<?>>(MODEL_CACHE, cacheManager)
             .idleTimeout(15, TimeUnit.MINUTES)
             .cleanupInterval(60, TimeUnit.SECONDS)
             .onEvict(ModelProvider::tryClose);
@@ -56,35 +62,81 @@ public class ModelProvider {
   }
 
   /**
-   * {@code modelId} may be a real model id, or one of the sentinels {@link DefaultModels#CHAT_ID} /
-   * {@link DefaultModels#VISION_ID} — resolved here to the customer's configured default chat or
-   * vision model respectively, since a shared agent config (e.g. a community expert) can't hardcode
-   * a real, deployment-specific model id.
+   * {@code modelId} may be a real model id, or one of the sentinels {@link DefaultModels#SMART_ID},
+   * {@link DefaultModels#VISION_ID} or {@link DefaultModels#FAST_ID} — resolved here, on every
+   * call, to the customer's configured default smart, vision or fast model respectively, since a
+   * shared agent config (e.g. a community expert) can't hardcode a real, deployment-specific model
+   * id, and a holder of the sentinel always gets the model that is the default now.
    */
-  public RefCounted<LLMModel> get(final String modelId) {
-    final Supplier<String> defaultModelId =
-        DefaultModels.VISION_ID.equalsIgnoreCase(modelId)
-            ? defaultModelsRepository::getVisionModelId
-            : defaultModelsRepository::getChatModelId;
-    final String resolvedId = resolveModelId(modelId, defaultModelId);
+  public RefCounted<ConfiguredModel<BaseLlm>> get(final String modelId) {
+    final String resolvedId = resolveModelId(modelId, defaultModelIdSupplier(modelId));
     return cache
         .getOrLoad(
             resolvedId,
-            id -> Context.require().asSystemCaller().get(() -> new LLMModel(buildChatModel(id))))
+            id ->
+                Context.require()
+                    .asSystemCaller()
+                    .get(() -> new ConfiguredModel<>(buildChatModel(id)) {}))
         .acquire();
   }
 
-  public RefCounted<Model.EmbeddingModel> getEmbeddingModel(final String modelId) {
-    final String resolvedId = resolveModelId(modelId, defaultModelsRepository::getEmbeddingModelId);
+  public RefCounted<ConfiguredEmbeddingModel> getDefaultEmbeddingModel(
+      final Modality.Known modality) {
+    final String modelId =
+        switch (modality) {
+          case TEXT -> DefaultModels.TEXT_EMBEDDING_ID;
+          case IMAGE -> DefaultModels.IMAGE_EMBEDDING_ID;
+          default ->
+              throw new IllegalArgumentException(
+                  "Unsupported modality for default embedding: " + modality);
+        };
+    return getEmbeddingModel(modelId);
+  }
+
+  /**
+   * {@code modelId} may be a real model id, or one of the sentinels {@link
+   * DefaultModels#TEXT_EMBEDDING_ID} / {@link DefaultModels#IMAGE_EMBEDDING_ID}.
+   */
+  public RefCounted<ConfiguredEmbeddingModel> getEmbeddingModel(final String modelId) {
+    final String resolvedId = resolveEmbeddingModelId(modelId);
     return cache
         .getOrLoad(
             resolvedId, id -> Context.require().asSystemCaller().get(() -> loadEmbeddingModel(id)))
         .acquire();
   }
 
+  /**
+   * The real id of {@code modelId}, which may be one of the sentinels {@link
+   * DefaultModels#TEXT_EMBEDDING_ID} / {@link DefaultModels#IMAGE_EMBEDDING_ID}, resolved against
+   * the customer's defaults now.
+   */
+  public String resolveEmbeddingModelId(final String modelId) {
+    if (StringUtils.isNotBlank(modelId) && isNotDefaultSentinel(modelId)) {
+      return modelId;
+    }
+    final String resolved =
+        DefaultModels.IMAGE_EMBEDDING_ID.equalsIgnoreCase(modelId)
+            ? defaultModelsRepository.getEmbeddingModelId(Modality.Known.IMAGE)
+            : defaultModelsRepository.getEmbeddingModelId(Modality.Known.TEXT);
+    if (StringUtils.isBlank(resolved)) {
+      throw new IllegalStateException("Default embedding model not configured for customer");
+    }
+    return resolved;
+  }
+
+  private Supplier<String> defaultModelIdSupplier(final String sentinel) {
+    if (DefaultModels.VISION_ID.equalsIgnoreCase(sentinel)) {
+      return defaultModelsRepository::getVisionModelId;
+    }
+    if (DefaultModels.FAST_ID.equalsIgnoreCase(sentinel)) {
+      return defaultModelsRepository::getFastModelId;
+    }
+    return defaultModelsRepository::getSmartModelId;
+  }
+
   private static String resolveModelId(
       final String modelId, final Supplier<String> defaultModelId) {
-    if (StringUtils.isNotBlank(modelId) && !isDefaultSentinel(modelId)) {
+    if (StringUtils.isNotBlank(modelId) && isNotDefaultSentinel(modelId)) {
       return modelId;
     }
     final String resolved = defaultModelId.get();
@@ -94,13 +146,16 @@ public class ModelProvider {
     return resolved;
   }
 
-  private static boolean isDefaultSentinel(final String modelId) {
-    return DefaultModels.CHAT_ID.equalsIgnoreCase(modelId)
-        || DefaultModels.VISION_ID.equalsIgnoreCase(modelId);
+  private static boolean isNotDefaultSentinel(final String modelId) {
+    return !DefaultModels.SMART_ID.equalsIgnoreCase(modelId)
+        && !DefaultModels.VISION_ID.equalsIgnoreCase(modelId)
+        && !DefaultModels.FAST_ID.equalsIgnoreCase(modelId)
+        && !DefaultModels.TEXT_EMBEDDING_ID.equalsIgnoreCase(modelId)
+        && !DefaultModels.IMAGE_EMBEDDING_ID.equalsIgnoreCase(modelId);
   }
 
   private BaseLlm buildChatModel(final String modelId) {
-    final ModelConfig config = modelService.getModel(modelId);
+    final ModelConfig config = modelLookup.getModel(modelId);
     if (config == null) {
       throw new IllegalStateException("Model config missing for model_id=" + modelId);
     }
@@ -111,33 +166,23 @@ public class ModelProvider {
     return factory.build(config);
   }
 
-  private Model.EmbeddingModel loadEmbeddingModel(final String modelId) {
-    final EmbeddingModelConfig config = (EmbeddingModelConfig) modelService.getModel(modelId);
-    if (config == null) {
+  private ConfiguredEmbeddingModel loadEmbeddingModel(final String modelId) {
+    final ModelConfig rawConfig = modelLookup.getModel(modelId);
+    if (rawConfig == null) {
       throw new IllegalStateException("Embedding model config missing for model_id=" + modelId);
     }
-    return new Model.EmbeddingModel(buildEmbeddingModel(config), config.getMaxBatchSize());
+    if (!(rawConfig instanceof EmbeddingModelConfig config)) {
+      throw new IllegalStateException("Model is not an embedding model for model_id=" + modelId);
+    }
+    final EmbeddingModelFactory factory = typeVsEmbeddingFactory.get(config.getProvider());
+    if (factory == null) {
+      throw new IllegalArgumentException(
+          "Unsupported embedding model provider: " + config.getProvider());
+    }
+    return new ConfiguredEmbeddingModel(modelId, factory.build(config), config.getMaxBatchSize());
   }
 
-  private EmbeddingModel buildEmbeddingModel(final ModelConfig config) {
-    final ModelConfig.Provider provider = ModelConfig.Provider.fromType(config.getProvider());
-    final String baseUrl = config.getBaseUrl();
-    final String model = config.getModel();
-    return switch (provider) {
-      case OPEN_AI, OLLAMA, Z_AI ->
-          OpenAiEmbeddingModel.builder()
-              .httpClientBuilder(LangchainUtils.httpClientBuilder())
-              .baseUrl(baseUrl)
-              .apiKey(config.getApiKey())
-              .modelName(model)
-              .timeout(DEFAULT_EMBEDDING_TIMEOUT)
-              .build();
-      default ->
-          throw new IllegalArgumentException("Unsupported embedding model provider: " + provider);
-    };
-  }
-
-  private static void tryClose(final Model<?> model) {
+  private static void tryClose(final ConfiguredModel<?> model) {
     if (model instanceof AutoCloseable closeable) {
       try {
         closeable.close();

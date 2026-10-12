@@ -1,7 +1,7 @@
 package com.agentengine.agent.infra.compaction;
 
-import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.agent.infra.utils.EventUtils;
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.factories.ModelProvider;

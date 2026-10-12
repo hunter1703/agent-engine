@@ -3,10 +3,13 @@ package com.agentengine.knowledge.core.pipeline;
 import com.agentengine.agent.api.model.MessagePart;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.CommunityExpertsService;
-import com.agentengine.agent.api.services.RuntimeService;
-import com.agentengine.knowledge.api.beans.Knowledge;
-import com.agentengine.util.agents.beans.config.KnowledgeSettings;
+import com.agentengine.knowledge.api.beans.MediaDescription;
+import com.agentengine.knowledge.api.services.MediaService;
+import com.agentengine.util.cloudstorage.FileService;
+import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.utils.ExceptionUtils;
+import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.inject.Inject;
@@ -15,9 +18,9 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Iterator;
 import java.util.List;
@@ -50,49 +53,58 @@ public class MediaServiceImpl implements MediaService {
   private static final String NORMALIZED_MIME_TYPE = "image/jpeg";
   private static final float NORMALIZED_QUALITY = 0.85f;
 
-  private final RuntimeService runtimeService;
+  private final CommunityExpertsService communityExpertsService;
+  private final FileService fileService;
 
   @Inject
-  public MediaServiceImpl(final RuntimeService runtimeService) {
-    this.runtimeService = runtimeService;
+  public MediaServiceImpl(
+      final CommunityExpertsService communityExpertsService, final FileService fileService) {
+    this.communityExpertsService = communityExpertsService;
+    this.fileService = fileService;
   }
 
   @Override
-  public ImageDescription describeImage(final Knowledge knowledge, final byte[] imageBytes) {
-    final KnowledgeSettings settings = knowledge.getSettings();
-    final String visionModelId =
-        settings != null && StringUtils.isNotBlank(settings.getVisionModelId())
-            ? settings.getVisionModelId()
-            : null;
-
-    final byte[] normalized = normalize(imageBytes);
-    final UserMessage userMessage =
-        new UserMessage(
-            List.of(
-                new MessagePart.TextPart(ANALYZE_PROMPT),
-                new MessagePart.BinaryPart(normalized, NORMALIZED_MIME_TYPE)));
-    final String responseText =
-        runtimeService.invokeExpert(
-            CommunityExpertsService.VISION_AGENT, visionModelId, userMessage);
-    return parseResponse(responseText);
+  public MediaDescription describe(final FileDetails fileDetails) {
+    if (fileDetails == null) {
+      return new MediaDescription("", "");
+    }
+    if (!FileUtils.isImageFile(fileDetails)) {
+      throw new UnsupportedOperationException(
+          "Unsupported media type for description: " + fileDetails.mimeType());
+    }
+    final FileDetails downloaded = fileService.download(fileDetails);
+    try (final InputStream inputStream = downloaded.downloaded()) {
+      final byte[] normalized = normalize(inputStream);
+      final UserMessage userMessage =
+          new UserMessage(
+              List.of(
+                  new MessagePart.TextPart(ANALYZE_PROMPT),
+                  new MessagePart.BinaryPart(normalized, NORMALIZED_MIME_TYPE)));
+      final String responseText =
+          communityExpertsService.invokeExpert(
+              CommunityExpertsService.VISION_AGENT, null, userMessage);
+      return parseResponse(responseText);
+    } catch (final IOException exception) {
+      throw ExceptionUtils.wrapInRuntimeException(exception);
+    }
   }
 
-  private static ImageDescription parseResponse(final String responseText) {
+  private static MediaDescription parseResponse(final String responseText) {
     if (StringUtils.isBlank(responseText)) {
-      return new ImageDescription("", "");
+      return new MediaDescription("", "");
     }
     try {
       final Map<String, String> parsed =
           JsonUtils.parseJsonPayload(responseText, new TypeReference<>() {});
-      return new ImageDescription(
+      return new MediaDescription(
           StringUtils.getOrDefault(parsed.get("description"), ""),
-          StringUtils.getOrDefault(parsed.get("ocrText"), ""));
+          StringUtils.getOrDefault(parsed.get("transcript"), ""));
     } catch (final Exception e) {
       LOG.warn(
           "Failed to parse vision agent response as JSON, using raw text as description: {}",
           responseText,
           e);
-      return new ImageDescription(responseText.trim(), "");
+      return new MediaDescription(responseText.trim(), "");
     }
   }
 
@@ -101,9 +113,9 @@ public class MediaServiceImpl implements MediaService {
    * flattens it onto an opaque white background (JPEG has no alpha channel), and re-encodes it as
    * JPEG at {@link #NORMALIZED_QUALITY}.
    */
-  private static byte[] normalize(final byte[] imageBytes) {
+  private static byte[] normalize(final InputStream inputStream) {
     try {
-      final BufferedImage source = ImageIO.read(new ByteArrayInputStream(imageBytes));
+      final BufferedImage source = ImageIO.read(inputStream);
       if (source == null) {
         throw new IllegalArgumentException("No ImageIO reader found for the given image bytes");
       }

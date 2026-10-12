@@ -26,7 +26,9 @@ dependencies {
     implementation project(':util:common')
     implementation project(':util:context')
     api project(':util:infra')
+    implementation project(':util:cloudstorage')
     implementation project(':util:distributed')
+    implementation project(':util:models')
 
     implementation libs.guava
     implementation libs.slf4j.api

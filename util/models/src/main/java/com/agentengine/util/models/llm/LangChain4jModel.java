@@ -1,7 +1,5 @@
 package com.agentengine.util.models.llm;
 
-import com.agentengine.util.agents.ContentUtils;
-import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.ExceptionUtils;
@@ -14,15 +12,13 @@ import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
-import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.openai.OpenAiTokenUsage;
-import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionCallingConfig;
 import com.google.genai.types.FunctionCallingConfigMode;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.Part;
 import com.google.genai.types.Schema;
 import com.google.genai.types.ToolConfig;
@@ -52,6 +48,8 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
+import dev.langchain4j.model.output.TokenUsage;
 import io.reactivex.rxjava3.core.BackpressureStrategy;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.FlowableEmitter;
@@ -239,6 +237,7 @@ public final class LangChain4jModel extends BaseLlm {
     }
     return builder.build();
   }
+
   // ADK counts thinking tokens apart from the output, where OpenAI-compatible APIs include them in
   // it, so they are taken out of the output count.
   private static GenerateContentResponseUsageMetadata toUsageMetadata(final TokenUsage tokenUsage) {
@@ -268,17 +267,17 @@ public final class LangChain4jModel extends BaseLlm {
     return builder.build();
   }
 
-
   private ChatRequest toChatRequest(final LlmRequest llmRequest) {
     final ChatRequest.Builder builder = ChatRequest.builder();
     final List<ToolSpecification> toolSpecifications = toToolSpecifications(llmRequest);
     builder.toolSpecifications(toolSpecifications);
     llmRequest.config().ifPresent(config -> applyConfig(builder, config, toolSpecifications));
     // A model whose tool definitions are left out still sees its earlier calls in the history and
-    // tends to write a new one out as text, so those calls are shown as plain messages describing what was done.
+    // tends to write a new one out as text, so those calls are shown as plain messages describing
+    // what was done.
     final List<Content> contents =
         removesToolDefinitions(llmRequest)
-            ? ContentUtils.withToolCallsAsMessages(llmRequest.contents())
+            ? withToolCallsAsMessages(llmRequest.contents())
             : llmRequest.contents();
     final ChatRequest chatRequest =
         builder.messages(toMessages(llmRequest.getSystemInstructions(), contents)).build();
@@ -605,7 +604,7 @@ public final class LangChain4jModel extends BaseLlm {
 
   private static List<ChatMessage> toChatMessage(final Content content) {
     return switch (content.role().orElseThrow().toLowerCase()) {
-      case Constants.AUTHOR_USER -> toUserOrToolResultMessages(content);
+      case "user" -> toUserOrToolResultMessages(content);
       case "model", "assistant" -> List.of(toAiMessage(content));
       default -> throw new IllegalStateException("Unexpected role: " + content.role());
     };
@@ -860,5 +859,94 @@ public final class LangChain4jModel extends BaseLlm {
     final String choices = enumValues.stream().collect(Collectors.joining("', '", "['", "']"));
     final String suffix = "Choose from either of " + choices;
     return StringUtils.isBlank(description) ? suffix : description + " " + suffix;
+  }
+
+  private static List<Content> withToolCallsAsMessages(final List<Content> contents) {
+    final Map<String, FunctionCall> idVsCall = new HashMap<>();
+    final Set<String> answeredIds = new HashSet<>();
+    for (final Content content : contents) {
+      for (final Part part : content.parts().orElse(List.of())) {
+        part.functionCall().ifPresent(call -> call.id().ifPresent(id -> idVsCall.put(id, call)));
+        part.functionResponse().flatMap(FunctionResponse::id).ifPresent(answeredIds::add);
+      }
+    }
+
+    final List<Content> rewritten = new ArrayList<>();
+    for (final Content content : contents) {
+      final List<Part> textParts = new ArrayList<>();
+      final List<String> toolMessages = new ArrayList<>();
+      final List<String> unansweredToolMessages = new ArrayList<>();
+      for (final Part part : content.parts().orElse(List.of())) {
+        if (part.functionCall().isPresent()) {
+          final FunctionCall call = part.functionCall().get();
+          if (call.id().map(answeredIds::contains).orElse(false)) {
+            continue;
+          }
+          unansweredToolMessages.add(
+              toolMessage(call.name().orElse(""), call.args().orElse(Map.of()), null));
+        } else if (part.functionResponse().isPresent()) {
+          final FunctionResponse response = part.functionResponse().get();
+          final FunctionCall call =
+              response
+                  .id()
+                  .map(idVsCall::get)
+                  .orElseThrow(
+                      () -> new IllegalStateException("Tool result has no call: " + response));
+          toolMessages.add(
+              toolMessage(
+                  response.name().orElse(""),
+                  call.args().orElse(Map.of()),
+                  response.response().orElse(Map.of())));
+        } else {
+          textParts.add(part);
+        }
+      }
+
+      if (!toolMessages.isEmpty()) {
+        textParts.addAll(toolMessages.stream().map(Part::fromText).toList());
+        rewritten.add(Content.builder().role("user").parts(textParts).build());
+        continue;
+      }
+      if (!textParts.isEmpty()) {
+        rewritten.add(content.toBuilder().parts(textParts).build());
+      }
+      if (!unansweredToolMessages.isEmpty()) {
+        rewritten.add(
+            Content.builder()
+                .role("user")
+                .parts(unansweredToolMessages.stream().map(Part::fromText).toList())
+                .build());
+      }
+    }
+    return rewritten;
+  }
+
+  private static String toolMessage(
+      final String name, final Map<String, Object> inputs, final Map<String, Object> result) {
+    final StringBuilder toolMessage =
+        new StringBuilder("Completed action\nAction: ")
+            .append(name)
+            .append("\nInputs:")
+            .append(keyValueLines(inputs));
+    if (result != null) {
+      toolMessage.append("\nResult:").append(keyValueLines(result));
+    }
+    return toolMessage.toString();
+  }
+
+  // One "- key: value" line per entry; a string value is shown as is, any other value as JSON.
+  private static String keyValueLines(final Map<String, Object> values) {
+    if (values.isEmpty()) {
+      return " none";
+    }
+    final StringBuilder lines = new StringBuilder();
+    values.forEach(
+        (key, value) ->
+            lines
+                .append("\n- ")
+                .append(key)
+                .append(": ")
+                .append(value instanceof String text ? text : JsonUtils.toJson(value)));
+    return lines.toString();
   }
 }

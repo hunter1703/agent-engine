@@ -3,12 +3,12 @@ package com.agentengine.util.common;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.agentengine.util.agents.beans.config.ChatModelConfig;
-import com.agentengine.util.agents.beans.config.EmbeddingModelConfig;
-import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.codec.SimpleJsonCodec;
 import com.agentengine.util.common.testfixtures.Child1;
 import com.agentengine.util.common.testfixtures.Parent;
+import com.agentengine.util.models.config.ChatModelConfig;
+import com.agentengine.util.models.config.EmbeddingModelConfig;
+import com.agentengine.util.models.config.ModelConfig;
 import java.lang.reflect.Type;
 import java.util.List;
 import org.junit.jupiter.api.Test;

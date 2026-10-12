@@ -23,7 +23,7 @@ public final class AgentUtils {
     return "_%s".formatted(agentId.replaceAll("[^a-zA-Z0-9_]", "_"));
   }
 
-  static String getAgentIdFromContext(final InvocationContext context) {
+  public static String getAgentIdFromContext(final InvocationContext context) {
     if (context == null) {
       return "unknown";
     }

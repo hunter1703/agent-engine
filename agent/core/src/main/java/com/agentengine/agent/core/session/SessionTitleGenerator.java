@@ -3,16 +3,15 @@ package com.agentengine.agent.core.session;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.agents.repository.DefaultModelsRepository;
-import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.utils.StringUtils;
-import com.agentengine.util.models.factories.Model;
+import com.agentengine.util.models.ConfiguredModel;
+import com.agentengine.util.models.config.DefaultModels;
 import com.agentengine.util.models.factories.ModelProvider;
+import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
-import com.google.common.cache.CacheBuilder;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import jakarta.inject.Singleton;
@@ -29,25 +28,12 @@ public class SessionTitleGenerator {
   private static final int MAX_RUNS_TO_GENERATE_TITLE_ON = 10;
   private static final int EVENTS_PAGE_SIZE = 50;
   private final SessionEventsRepository sessionEventsRepository;
-  private final Cache<String, String> titleGeneratorModelCache;
   private final ModelProvider modelProvider;
 
   public SessionTitleGenerator(
       final SessionEventsRepository sessionEventsRepository,
-      final DefaultModelsRepository defaultModelsRepository,
       final ModelProvider modelProvider) {
     this.sessionEventsRepository = sessionEventsRepository;
-    this.titleGeneratorModelCache =
-        new Cache<>(
-            CacheBuilder.newBuilder().maximumSize(1000),
-            _ -> {
-              final String fastModelId = defaultModelsRepository.getFastModelId();
-              if (fastModelId == null) {
-                throw new IllegalStateException(
-                    "Default fast model not configured. Ensure infra configs are seeded before starting the runtime.");
-              }
-              return fastModelId;
-            });
     this.modelProvider = modelProvider;
   }
 
@@ -95,8 +81,8 @@ public class SessionTitleGenerator {
     final Content content = Content.fromParts(Part.fromText(sb.toString()));
     final LlmRequest request =
         LlmRequest.builder().contents(List.of(INSTRUCTIONS, content)).build();
-    try (RefCounted<Model.LLMModel> refCounted =
-        modelProvider.get(titleGeneratorModelCache.get("model"))) {
+    try (RefCounted<ConfiguredModel<BaseLlm>> refCounted =
+        modelProvider.get(DefaultModels.FAST_ID)) {
       final LlmResponse response =
           refCounted.value().model().generateContent(request, false).blockingSingle();
       final Content responseContent = response.content().orElse(null);

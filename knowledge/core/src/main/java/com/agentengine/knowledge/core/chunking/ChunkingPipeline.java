@@ -1,19 +1,11 @@
 package com.agentengine.knowledge.core.chunking;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
-import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
-import com.agentengine.util.cloudstorage.FileService;
-import com.agentengine.util.common.utils.ExceptionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.common.utils.ThreadUtils;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.schedulers.Schedulers;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,17 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * An ordered sequence of {@link ChunkingStage}s.
- *
- * <p>The pipeline streams {@link KnowledgeChunk} instances throughout, rather than materializing a
- * full list between stages: the first stage produces the initial stream directly from the
- * document's source {@link InputStream} — reading it incrementally, or parsing a non-text format
- * directly, if it implements {@link StreamingChunkingStage}, or decoding it fully as UTF-8 text
- * into one seed chunk otherwise — and each later stage transforms that stream further — splitting,
- * merging, or enriching it (e.g. adding vectors) — so a downstream consumer can start acting on
- * early results (e.g. persisting them) before the whole document has finished processing.
- */
+/** An ordered sequence of {@link IndexingStage}s. */
 public final class ChunkingPipeline {
 
   private static final Logger LOG = LoggerFactory.getLogger(ChunkingPipeline.class);
@@ -48,56 +30,29 @@ public final class ChunkingPipeline {
   private static final Scheduler IO_SCHEDULER = Schedulers.from(IO_EXECUTOR);
   private static final Scheduler CPU_SCHEDULER = Schedulers.from(CPU_EXECUTOR);
 
-  private final List<ChunkingStage> stages;
-  private final Knowledge knowledge;
-  private final FileService fileService;
+  private final RootIndexingStage rootStage;
+  private final List<IndexingStage> stages;
 
-  private ChunkingPipeline(
-      final List<ChunkingStage> stages, final Knowledge knowledge, final FileService fileService) {
+  public ChunkingPipeline(RootIndexingStage rootStage, final List<IndexingStage> stages) {
+    this.rootStage = rootStage;
     this.stages = stages;
-    this.knowledge = knowledge;
-    this.fileService = fileService;
   }
 
   public Flowable<KnowledgeChunk> run() {
-    return Flowable.using(
-        () -> fileService.getContent(knowledge.getFileDetails()), this::run, InputStream::close);
-  }
-
-  /**
-   * Every stage runs on a thread this pipeline owns: CPU-bound stages on a dedicated platform pool,
-   * all others (which wait on model calls or blocking reads) on virtual threads.
-   */
-  private Flowable<KnowledgeChunk> run(final InputStream content) {
-    final ChunkingStage firstStage = stages.getFirst();
-    Flowable<KnowledgeChunk> firstOutput;
-    Scheduler scheduler;
-    if (firstStage instanceof StreamingChunkingStage streamingChunkingStage) {
-      firstOutput = Flowable.defer(() -> streamingChunkingStage.apply(content));
-      scheduler = IO_SCHEDULER;
-    } else {
-      firstOutput = Flowable.defer(() -> firstStage.apply(Flowable.just(toRootChunk(content))));
-      scheduler = firstStage.cpuBound() ? CPU_SCHEDULER : IO_SCHEDULER;
-    }
+    final Scheduler rootScheduler = rootStage.cpuBound() ? CPU_SCHEDULER : IO_SCHEDULER;
     Flowable<KnowledgeChunk> current =
-        withInstrumentation(firstStage, firstOutput.subscribeOn(scheduler));
-    for (final ChunkingStage stage : stages.subList(1, stages.size())) {
+        withInstrumentation(rootStage, rootStage.apply().subscribeOn(rootScheduler));
+    for (final IndexingStage stage : stages) {
+      final Scheduler scheduler = stage.cpuBound() ? CPU_SCHEDULER : IO_SCHEDULER;
       current =
           withInstrumentation(
-              stage,
-              stage.apply(current.observeOn(stage.cpuBound() ? CPU_SCHEDULER : IO_SCHEDULER)));
+              stage, stage.apply(current.observeOn(scheduler)).subscribeOn(scheduler));
     }
-    return current
-        .filter(chunk -> StringUtils.isNotBlank(chunk.getText()))
-        .doOnNext(
-            chunk -> {
-              chunk.setKnowledgeId(knowledge.getId());
-              chunk.setAgentId(knowledge.getAgentId());
-            });
+    return current;
   }
 
   private Flowable<KnowledgeChunk> withInstrumentation(
-      final ChunkingStage stage, final Flowable<KnowledgeChunk> stageOutput) {
+      final IndexingStage stage, final Flowable<KnowledgeChunk> stageOutput) {
     final AtomicLong startNanos = new AtomicLong();
     final AtomicInteger count = new AtomicInteger();
     return stageOutput
@@ -111,42 +66,5 @@ public final class ChunkingPipeline {
                     stage.getClass().getSimpleName(),
                     (System.nanoTime() - startNanos.get()) / 1_000_000,
                     count.get()));
-  }
-
-  private static KnowledgeChunk toRootChunk(final InputStream content) {
-    try {
-      final KnowledgeChunk seed = new KnowledgeChunk();
-      seed.setText(new String(content.readAllBytes(), UTF_8));
-      return seed;
-    } catch (IOException ex) {
-      throw ExceptionUtils.wrapInRuntimeException(ex);
-    }
-  }
-
-  public static Builder builder(final Knowledge knowledge, final FileService fileService) {
-    return new Builder(knowledge, fileService);
-  }
-
-  public static final class Builder {
-    private final List<ChunkingStage> stages = new ArrayList<>();
-    private final Knowledge knowledge;
-    private final FileService fileService;
-
-    private Builder(final Knowledge knowledge, final FileService fileService) {
-      this.knowledge = knowledge;
-      this.fileService = fileService;
-    }
-
-    public Builder then(final ChunkingStage stage) {
-      stages.add(stage);
-      return this;
-    }
-
-    public ChunkingPipeline build() {
-      if (stages.isEmpty()) {
-        throw new IllegalStateException("Pipeline must have at least one stage");
-      }
-      return new ChunkingPipeline(List.copyOf(stages), knowledge, fileService);
-    }
   }
 }

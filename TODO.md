@@ -1,15 +1,14 @@
 # TODO
 
 
+## Access control: seeding does not share anything
 
-## Access control: no authenticated surface for seeding, users, roles or sharing
-
-`deploy/scripts/ci/seed_app.py` seeds connections, models and agents through the REST API without
-logging in, which the REST `AuthFilter` now rejects. There is also no REST endpoint for creating
-users, assigning global roles or sharing an asset, so `AclService.updateSharing` is only
-reachable from agent tools. Until one exists, nothing shares tenant-wide connections such as
-`default_brave_connection` (used by `WebSearchTool`) with the `Agent` principal, so agents can't read
-them. Needed: an admin identity for seeding, and user/role/sharing endpoints.
+`deploy/scripts/ci/seed_app.py` logs in and creates connections, models and agents, and the REST
+API has the user (`/v1/user`) and role and sharing (`/v1/governance`) endpoints, but no step
+shares what it seeds. Provisioning only creates roles. So nothing shares tenant-wide connections
+such as `default_brave_connection` (used by `WebSearchTool`) with the `Agent` principal, and agents
+may not be able to read them. Needed: a seed step that shares the seeded connections and models
+through `/v1/governance/share`, and a check that an agent can then use them.
 
 
 ## Provisioning: Docs Out of Date
@@ -66,6 +65,13 @@ simultaneous full-image decodes of the same file. Results are correct but CPU an
 are extreme. Fix: decode once into a shared `BufferedImage`, distribute tiles from the in-memory
 buffer. Trades memory for CPU. Track as a known limitation until 100MP use cases are confirmed.
 
+## Access control: remove the `systemSession` cookie
+
+`AuthFilter` treats a request carrying the literal cookie `session=systemSession` as `Caller.SYSTEM`
+for the customer of its origin, and logs the cookie value. It is a stopgap so
+`python/ingest_knowledge.py` and `python/pinterest_mitm.py` can call the REST API. Remove it, and
+the logging of cookie values with it, once those scripts log in the way
+`deploy/scripts/ci/seed_app.py` does (`/v1/auth/login` with a seed user).
 
 ## Database: Migrate from Qdrant to Vespa
 

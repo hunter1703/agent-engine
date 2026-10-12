@@ -25,10 +25,10 @@ import org.slf4j.LoggerFactory;
  * option is to write the note's content as plain text; {@link #afterModelCallback} then persists
  * it.
  *
- * <p>Once the note is persisted, {@link #afterModelCallback} adds a {@code refresh_reminders} call to
- * the response, so the model sees the notebook as it now is through that call's result, and queues a
- * signal confirming the save. The run loop then issues another request with tools re-enabled,
- * letting the model write further notes or keep working.
+ * <p>Once the note is persisted, {@link #afterModelCallback} adds a {@code refresh_reminders} call
+ * to the response, so the model sees the notebook as it now is through that call's result, and
+ * queues a signal confirming the save. The run loop then issues another request with tools
+ * re-enabled, letting the model write further notes or keep working.
  */
 public final class NotebookPlugin extends BasePlugin {
   private static final Logger LOG = LoggerFactory.getLogger(NotebookPlugin.class);

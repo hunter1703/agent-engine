@@ -71,7 +71,7 @@ public class OracleCloudStorage extends AbstractCloudStorageService {
       final String key,
       final String name,
       final InputStream inputStream,
-      final long contentLength,
+      final Long contentLength,
       String mediaType,
       final Map<String, String> metadata) {
     mediaType = StringUtils.isBlank(mediaType) ? DEFAULT_MEDIA_TYPE : mediaType;
@@ -83,7 +83,7 @@ public class OracleCloudStorage extends AbstractCloudStorageService {
             .contentType(mediaType)
             .opcMeta(CollectionUtils.nullSafeMap(metadata))
             .putObjectBody(inputStream);
-    if (contentLength >= 0) {
+    if (contentLength != null && contentLength >= 0) {
       requestBuilder.contentLength(contentLength);
     }
     try {
@@ -97,7 +97,11 @@ public class OracleCloudStorage extends AbstractCloudStorageService {
       throw ex;
     }
     return new FileDetails(
-        name, bucket() + "/" + key, FileDetails.StorageType.CLOUDSTORAGE, mediaType, contentLength);
+        name,
+        bucket() + "/" + key,
+        FileDetails.StorageType.CLOUDSTORAGE,
+        mediaType,
+        contentLength == null ? -1 : contentLength);
   }
 
   @Override

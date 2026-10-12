@@ -2,7 +2,6 @@ package com.agentengine.catalog.core.services;
 
 import com.agentengine.catalog.api.services.ModelService;
 import com.agentengine.catalog.core.repository.ModelRepository;
-import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.agents.builder.BuilderDefinition;
 import com.agentengine.util.agents.builder.BuilderDefinitionUtils;
 import com.agentengine.util.agents.builder.BuilderMode;
@@ -11,6 +10,8 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.distributed.DistributedCacheManager;
+import com.agentengine.util.models.config.ModelConfig;
+import com.agentengine.util.models.factories.ModelProvider;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
@@ -105,7 +106,7 @@ public class ModelServiceImpl implements ModelService {
   }
 
   private void invalidateCached(final String id) {
-    cacheManager.invalidate(MODEL_CACHE, id);
+    cacheManager.invalidate(ModelProvider.MODEL_CACHE, id);
   }
 
   private static ModelConfig sanitize(final ModelConfig config, final BuilderMode mode) {

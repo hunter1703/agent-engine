@@ -30,12 +30,11 @@ Core fields:
 - `runtime` (`AgentRuntimeConfig`)
 - `toolExecutionMode` (`PARALLEL` default, or `SEQUENTIAL`)
 - `responseFormat` — JSON Schema object the framework enforces on model output; the runtime validates the response and applies a correction loop if the schema is violated. Used by community experts such as `memory-agent` to guarantee structured output.
-- `knowledgeSettings` — see §3.10
 
 Validation rules enforced by `ConfigValidationService` + custom validators:
 
-- `modelId` is required for default agents, unknown type, and orchestrators in `TRANSFER` (or unknown) mode
-- `subAgentIds` must be empty unless `type=orchestrator`
+- `modelId` is required for `default` agents and for orchestrators in `MANAGER` (or unknown) mode; an `image_classification` agent needs `modelId` or `subAgentIds`
+- `subAgentIds` must be empty unless `type=orchestrator` or `type=image_classification`
 - `SEQUENTIAL`/`PARALLEL` orchestrator modes require non-empty `subAgentIds`
 - `PARALLEL + QUORUM` requires `quorum <= subAgentIds.size`
 
@@ -48,6 +47,18 @@ Validation rules enforced by `ConfigValidationService` + custom validators:
   - `aggregationPolicy`
   - `stoppingPolicy`
   - `quorum`
+
+### Image classification agents (`IMAGE_CLASSIFICATION`)
+
+An `IMAGE_CLASSIFICATION` agent tells which tags of the indexed knowledge the attached image belongs with. It runs no model besides the embedding model named by `modelId`, and it only counts knowledge indexed with that model (see `modalityVsEmbeddingModelIds` in §3.10). Its answer is `{"labels": [{"label", "probability", "score"}, ...]}`, most probable first.
+
+- `closestChunksPerTag`: how many of a tag's closest indexed images its similarity is the mean of (default 3)
+- `matchThreshold`: the similarity an indexed image needs to the input to count towards a tag
+- `sharpness`: how fast a tag's probability rises with its similarity above `matchThreshold`
+
+For each vector found in the input, the store groups the indexed images at least `matchThreshold` similar by tag, and a tag's similarity is the mean of its `closestChunksPerTag` closest. A tag's `probability` is a logistic function of that similarity, and its `score` is the similarity. A tag listed has a probability of at least one half.
+
+`subAgentIds` are other image classification agents, each comparing by its own embedding model. The agent asks them at the same time as it classifies with its own model, which it may leave out (no `modelId`), and merges the answers: a tag matches with the probability that at least one of them is right.
 
 ## 3.4 Context Strategy Configs
 
@@ -149,23 +160,24 @@ Each configured tool entry:
 
 `ToolCatalog` exposes visible tool metadata, and `ToolFactory` builds configured `BaseTool` and `BaseToolset` runtime instances without expanding toolsets into individual tools.
 
-## 3.9 Infra Config (`DefaultModelsConfig`)
+## 3.9 Default Models (`DefaultModels`)
 
-Stored in `INFRA.InfraConfig` with type `DEFAULT_MODELS`:
+Configured per customer in `DefaultModels`:
 
-- `titleModelId` — model used to generate session titles
-- `compactionModelId` — fallback compaction model when not set on the agent's context strategy
-- `evaluatorModelId` — model used by the guardrail relevance scorer
-- `embeddingModelId` — embedding model for Qdrant-backed memory and knowledge search (e.g. `nomic-embed-text`)
-- `chatModelId` — general-purpose chat model
+- `smartModelId` — the capable model agents run on by default (the `default-smart` model id)
+- `visionModelId` — vision-capable model that describes images while indexing (the `default-vision` model id)
+- `fastModelId` — fast utility model (the `default-fast` model id) used for lightweight tasks (session titles, compaction fallback, guardrail relevance evaluation fallback, knowledge summaries, HyDE query expansion)
+- `modalityVsEmbeddingModelId` — embedding model per modality, keyed by the modality name, `TEXT` or `IMAGE` (e.g. `{"TEXT": "nomic-embed-text", "IMAGE": "arcface-image-embed"}`); used for Qdrant-backed memory and knowledge indexing and search
 
-## 3.10 Knowledge Settings (`knowledgeSettings`)
+## 3.10 Knowledge Settings (`settings`)
 
-Optional field on `BaseAgentConfig`. Controls text-file indexing and search behavior for this agent:
+Optional field on `Knowledge` bases. Controls chunking and indexing stages:
 
-- `embeddingModelId` — overrides `InfraConfig.embeddingModelId` for this agent's knowledge search
-- `chatModelId` — model used for the LLM-boundary chunking stage
 - `chunkingStrategy` (`List<ChunkingStrategy>`) — explicit ordered pipeline of chunking stages; each entry has a `type` plus stage-specific parameters
+- `describeMedia` (`boolean`, default `true`) — whether media is described to text while indexing
+- `modalityVsEmbeddingModelIds` (`Map<String, List<String>>`) — the embedding models that embed each modality (`TEXT`, `IMAGE`) in addition to the customer's default of that modality, which always embeds. Each model's vectors are chunks of their own that name the model (one per face for a face model); `search_knowledge` only matches those of the default models
+
+*(Embedding models and chat models for LLM chunking/analysis are managed customer-wide via `DefaultModels`.)*
 
 Available chunking stage types:
 
@@ -181,8 +193,7 @@ Available chunking stage types:
 Example pipeline (LLM coarse + cosine refinement):
 
 ```json
-"knowledgeSettings": {
-  "embeddingModelId": "nomic-embed-text",
+"settings": {
   "chunkingStrategy": [
     { "type": "PARAGRAPH" },
     { "type": "TOKEN_CAP", "maxTokensPerSegment": 1024 },

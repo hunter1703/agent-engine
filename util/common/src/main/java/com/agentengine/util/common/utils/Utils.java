@@ -243,4 +243,35 @@ public final class Utils {
   public static BeanDescription getBeanDescription(final JavaType javaType) {
     return OBJECT_MAPPER.getSerializationConfig().introspect(javaType);
   }
+
+  /** Closes {@code closeable}, ignoring nulls and any thrown exceptions. */
+  public static void close(final AutoCloseable closeable) {
+    if (closeable == null) {
+      return;
+    }
+    try {
+      closeable.close();
+    } catch (final Exception ignored) {
+    }
+  }
+
+  /** Closes all {@code toClose}, ignoring nulls and any thrown exceptions. */
+  public static void close(final AutoCloseable... toClose) {
+    if (toClose == null) {
+      return;
+    }
+    for (final AutoCloseable closeable : toClose) {
+      close(closeable);
+    }
+  }
+
+  /** Closes all {@code toClose}, ignoring nulls and any thrown exceptions. */
+  public static void close(final Iterable<? extends AutoCloseable> toClose) {
+    if (toClose == null) {
+      return;
+    }
+    for (final AutoCloseable closeable : toClose) {
+      close(closeable);
+    }
+  }
 }

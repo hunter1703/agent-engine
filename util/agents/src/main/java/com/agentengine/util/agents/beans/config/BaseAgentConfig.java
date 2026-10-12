@@ -1,21 +1,21 @@
 package com.agentengine.util.agents.beans.config;
 
-import com.agentengine.util.agents.builder.annotations.*;
-import com.agentengine.util.agents.builder.annotations.UiAccess;
-import com.agentengine.util.agents.builder.annotations.UiAccessLevel;
-import com.agentengine.util.agents.builder.annotations.UiConditionOperator;
-import com.agentengine.util.agents.builder.annotations.UiField;
-import com.agentengine.util.agents.builder.annotations.UiLookup;
-import com.agentengine.util.agents.builder.annotations.UiRule;
-import com.agentengine.util.agents.builder.annotations.UiRuleEffect;
-import com.agentengine.util.agents.builder.annotations.UiSection;
-import com.agentengine.util.agents.builder.annotations.UiSelect;
-import com.agentengine.util.agents.builder.annotations.UiStep;
-import com.agentengine.util.agents.builder.annotations.UiSteps;
-import com.agentengine.util.agents.builder.annotations.UiText;
 import com.agentengine.util.common.annotations.Permissioned;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.NamedEntity;
+import com.agentengine.util.common.builder.annotations.*;
+import com.agentengine.util.common.builder.annotations.UiAccess;
+import com.agentengine.util.common.builder.annotations.UiAccessLevel;
+import com.agentengine.util.common.builder.annotations.UiConditionOperator;
+import com.agentengine.util.common.builder.annotations.UiField;
+import com.agentengine.util.common.builder.annotations.UiLookup;
+import com.agentengine.util.common.builder.annotations.UiRule;
+import com.agentengine.util.common.builder.annotations.UiRuleEffect;
+import com.agentengine.util.common.builder.annotations.UiSection;
+import com.agentengine.util.common.builder.annotations.UiSelect;
+import com.agentengine.util.common.builder.annotations.UiStep;
+import com.agentengine.util.common.builder.annotations.UiSteps;
+import com.agentengine.util.common.builder.annotations.UiText;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.Valid;
@@ -30,11 +30,18 @@ import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Schema(
-    oneOf = {DefaultAgentConfig.class, OrchestratorAgentConfig.class},
+    oneOf = {
+      DefaultAgentConfig.class,
+      OrchestratorAgentConfig.class,
+      ImageClassificationAgentConfig.class
+    },
     discriminatorProperty = "type",
     discriminatorMapping = {
       @DiscriminatorMapping(value = "DEFAULT", schema = DefaultAgentConfig.class),
-      @DiscriminatorMapping(value = "ORCHESTRATOR", schema = OrchestratorAgentConfig.class)
+      @DiscriminatorMapping(value = "ORCHESTRATOR", schema = OrchestratorAgentConfig.class),
+      @DiscriminatorMapping(
+          value = "IMAGE_CLASSIFICATION",
+          schema = ImageClassificationAgentConfig.class)
     })
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
@@ -43,7 +50,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
     visible = true)
 @JsonSubTypes({
   @JsonSubTypes.Type(value = DefaultAgentConfig.class, name = "DEFAULT"),
-  @JsonSubTypes.Type(value = OrchestratorAgentConfig.class, name = "ORCHESTRATOR")
+  @JsonSubTypes.Type(value = OrchestratorAgentConfig.class, name = "ORCHESTRATOR"),
+  @JsonSubTypes.Type(value = ImageClassificationAgentConfig.class, name = "IMAGE_CLASSIFICATION")
 })
 @BsonDiscriminator
 @UiSteps(
@@ -83,12 +91,10 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
   @UiField(label = "Model ID", step = "model", section = "model", order = 10)
   @UiLookup(assetType = AssetClass.MODEL)
-  @NotBlank
   private String modelId;
 
   @UiField(label = "System Prompt", step = "model", section = "model", order = 20)
   @UiText(multiline = true, rows = 6)
-  @NotBlank
   private String systemPrompt;
 
   @UiField(label = "Context Strategy", step = "model", section = "context", order = 30)
@@ -128,8 +134,6 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
   private String toolExecutionMode = ToolExecutionMode.PARALLEL.name();
 
   private Map<String, Object> responseFormat;
-
-  private KnowledgeSettings knowledgeSettings;
 
   protected BaseAgentConfig(final AgentType agentType) {
     this.type = agentType.type();
@@ -286,18 +290,11 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
     this.responseFormat = responseFormat;
   }
 
-  public KnowledgeSettings getKnowledgeSettings() {
-    return knowledgeSettings;
-  }
-
-  public void setKnowledgeSettings(final KnowledgeSettings knowledgeSettings) {
-    this.knowledgeSettings = knowledgeSettings;
-  }
-
   public enum AgentType {
     UNKNOWN,
     DEFAULT,
-    ORCHESTRATOR;
+    ORCHESTRATOR,
+    IMAGE_CLASSIFICATION;
 
     public String type() {
       return name();

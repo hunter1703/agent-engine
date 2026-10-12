@@ -88,7 +88,11 @@ docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
 ## Key Gotchas
 
 - **llama.cpp chat template bug**: Some `.gguf` models (e.g. `qwen3-coder-30b`) cause `500` errors on nested JSON schemas. Fix: pass `--chat-template-file` pointing to the safe template in `configs/models/templates/`.
-- **Compaction model resolution order**: `contextStrategy.modelId` → the customer's `DefaultModels.compactionModelId` → agent `modelId`.
+- **Default models are passed as sentinels**: code that needs the customer's smart, vision or fast model
+  hands `ModelProvider` `DefaultModels.SMART_ID`, `VISION_ID` or `FAST_ID`, which it resolves on every
+  call, so a changed default is picked up without rebuilding anything. Never read an id from
+  `DefaultModelsRepository` and keep it.
+- **Compaction model resolution order**: `contextStrategy.modelId` → the customer's `DefaultModels.fastModelId`, as the `default-fast` sentinel, so it is resolved on every call.
 - **Session history source**: committed session events live in a dedicated Mongo collection
   (`SessionEventsRepository`), written once per turn at commit time and read back from there by
   most history paths (memory, title generation, the REST history API). Postgres is still the
@@ -187,7 +191,9 @@ the reader and the runtime equally.
   should understand what it does and why.
 - **Earn every abstraction**: introduce an abstraction only when it has a clear name, a single responsibility,
   and clarifies ownership — and only when it removes genuine duplication or hides genuine complexity. An
-  abstraction that requires explanation is not yet the right abstraction.
+  abstraction that requires explanation is not yet the right abstraction. An interface with one
+  implementation, a wrapper that only forwards, a record or class used once, or a layer that adds no
+  behaviour has not earned its place: use the concrete type until a second implementation exists.
 - **Don't let the bug that motivated a fix narrow its shape**: when a specific failure prompts a new method
   or abstraction, check whether the general version costs nothing extra over the narrow one — if it doesn't,
   build the general version now rather than the narrow one now and a rename later. E.g. a missing reminder
@@ -213,8 +219,9 @@ the reader and the runtime equally.
   decides whether tools may be called; the provider adapter decides how a provider is told — and
   treat a dependency that conflicts with that as something to fix or to accept explicitly, never
   as the reason for the design.
-- **Less code is usually better code**: prefer a shorter, clearer implementation. If a helper method is used
-  once and adds no clarity, inline it.
+- **Less code is usually better code**: write as little code as possible without sacrificing readability
+  or performance much — more code is never better in itself. If a helper method is used once and adds no
+  clarity, inline it.
 - **Extensibility by design**: structure code so new behaviour is added by adding new types, not by modifying
   existing ones. Favour composition and plugin points over switch-on-type logic.
 - **No accidental complexity**: do not build infrastructure for hypothetical future needs. Solve the problem

@@ -9,11 +9,11 @@ import com.google.common.base.Throwables;
 import io.grpc.Metadata;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.net.ConnectException;
 import java.net.NoRouteToHostException;
 import java.net.UnknownHostException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class MicroServiceUtils {
   private static final Logger log = LoggerFactory.getLogger(MicroServiceUtils.class);

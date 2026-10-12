@@ -1,5 +1,6 @@
 package com.agentengine.catalog.core.services;
 
+import com.agentengine.catalog.api.services.AgentSessionAclService;
 import com.agentengine.catalog.core.repository.CatalogDocumentStoreClientType;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.repository.DocumentBackend;
@@ -12,7 +13,7 @@ import jakarta.inject.Singleton;
 @Singleton
 @Unremovable
 public class AgentSessionAclServiceImpl extends AbstractAssetAclService<AgentSession>
-    implements com.agentengine.catalog.api.services.AgentSessionAclService {
+    implements AgentSessionAclService {
 
   @Inject
   public AgentSessionAclServiceImpl(final DocumentBackend documentBackend) {

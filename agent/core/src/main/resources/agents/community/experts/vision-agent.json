@@ -14,12 +14,12 @@
         "type": "string",
         "description": "A detailed description of the image: subject, setting, colors, and mood. Does not include transcribed text."
       },
-      "ocrText": {
+      "transcript": {
         "type": "string",
         "description": "Verbatim transcription of all text visible in the image, in reading order. Empty string if the image has no visible text."
       }
     },
-    "required": ["description", "ocrText"],
+    "required": ["description", "transcript"],
     "additionalProperties": false
   }
 }

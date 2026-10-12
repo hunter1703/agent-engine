@@ -1,8 +1,8 @@
 package com.agentengine.agent.core.session.events;
 
 import com.agentengine.agent.core.session.state.EnqueuedMessage;
-import java.time.ZoneId;
 import com.agentengine.util.common.beans.UniqueRecord;
+import java.time.ZoneId;
 
 public final class StartedFact extends SessionFact {
   private UniqueRecord<EnqueuedMessage> message;

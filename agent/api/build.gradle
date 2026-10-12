@@ -13,4 +13,10 @@ dependencies {
 
     api libs.reactive.streams
     api libs.jackson.databind
+
+    implementation platform(libs.quarkus.bom)
+    compileOnly libs.quarkus.arc
+    compileOnly libs.jakarta.inject.api
+    compileOnly libs.jakarta.enterprise.cdi.api
 }
+

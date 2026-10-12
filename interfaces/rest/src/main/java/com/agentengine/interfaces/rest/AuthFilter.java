@@ -27,9 +27,6 @@ import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
@@ -37,6 +34,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Binds every request to a context: the customer its origin belongs to, and the user its session
@@ -105,8 +104,13 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
         sessionCookie == null
             ? Optional.empty()
             : identityProvider.authenticate(sessionCookie.getValue());
-    LOG.info("Processing request with cookie {} for customer {} and origin {}", sessionCookie == null ? null : sessionCookie.getValue(), customerId, origin);
-    boolean isSystemRequest = Objects.equals(sessionCookie == null ? null : sessionCookie.getValue(), "systemSession");
+    LOG.info(
+        "Processing request with cookie {} for customer {} and origin {}",
+        sessionCookie == null ? null : sessionCookie.getValue(),
+        customerId,
+        origin);
+    boolean isSystemRequest =
+        Objects.equals(sessionCookie == null ? null : sessionCookie.getValue(), "systemSession");
     requestContextProvider.set(
         loggedIn
             .map(
@@ -115,13 +119,18 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
                         requestId,
                         session.getCustomerId(),
                         UserCaller.of(Principal.ofUser(session.getUserId()))))
-            .orElseGet(() -> {
-              if (isSystemRequest) {
-                return new Context(requestId, customerId, Caller.SYSTEM);
-              }
-              return new Context(requestId, customerId, Caller.ANONYMOUS);
-            }));
-    LOG.info("[After] Processing request with cookie {} for customer {} and origin {}", sessionCookie == null ? null : sessionCookie.getValue(), customerId, origin);
+            .orElseGet(
+                () -> {
+                  if (isSystemRequest) {
+                    return new Context(requestId, customerId, Caller.SYSTEM);
+                  }
+                  return new Context(requestId, customerId, Caller.ANONYMOUS);
+                }));
+    LOG.info(
+        "[After] Processing request with cookie {} for customer {} and origin {}",
+        sessionCookie == null ? null : sessionCookie.getValue(),
+        customerId,
+        origin);
     if (LOGOUT_PATH.equals(path)) {
       // Clearing the cookie needs no identity, so an expired or foreign session can still log out.
       return;

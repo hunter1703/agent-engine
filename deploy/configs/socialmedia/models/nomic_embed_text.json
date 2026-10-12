@@ -3,7 +3,7 @@
   "model": "nomic-embed-text:latest",
   "name": "Nomic Embed Text (Ollama)",
   "baseUrl": "https://afterlife-eating-energy.ngrok-free.dev/v1",
-  "provider": "OLLAMA",
+  "provider": "OPEN_AI",
   "type": "EMBEDDING",
   "maxBatchSize": 32
 }

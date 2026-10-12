@@ -34,41 +34,27 @@ public final class ChunkUtils {
   private ChunkUtils() {}
 
   /**
-   * Stamps {@code chunk} with {@code knowledge}'s id and agent id — the identity every chunk
-   * produced for one document shares, for a stage building chunks that have no parent of their own
-   * to inherit it from.
+   * Stamps {@code chunk} with {@code knowledge}'s id — the identity every chunk produced for one
+   * document shares, for a stage building chunks that have no parent of their own to inherit it
+   * from.
    */
   public static void addMetadata(final Knowledge knowledge, final KnowledgeChunk chunk) {
     chunk.setKnowledgeId(knowledge.getId());
-    chunk.setAgentId(knowledge.getAgentId());
   }
 
-  /**
-   * Whether {@code chunk} is sourced from plain text, per its {@link KnowledgeChunk#getMimeType()}
-   * — {@code true} for every chunk except one sourced from some other media (see {@link #isMedia}).
-   * {@code mimeType} names what the chunk is *about*, not the literal type of its {@code text}
-   * field (always a plain string): a chunk describing an image keeps an image mime type
-   * permanently, even once it holds a text description rather than raw bytes.
-   */
-  public static boolean isText(final KnowledgeChunk chunk) {
-    return chunk.getMimeType() == null || chunk.getMimeType().startsWith("text/");
-  }
-
-  /**
-   * Whether {@code chunk} is sourced from some non-text media (e.g. an image) rather than plain
-   * text — set by a source stage that extracts embedded media (e.g. {@code PdfSplitterStage}) and
-   * never cleared, including once {@code ImageChunkingStage} replaces its raw bytes with a text
-   * description (see {@link KnowledgeChunk#getBytes()} for the separate "still needs describing"
-   * signal). A splitting or merging stage checks this to leave such a chunk whole rather than
-   * treating its text as content to divide or fold in, whether or not it's been described yet.
-   */
+  /** Whether {@code chunk} is sourced from non-text media (e.g. an image). */
   public static boolean isMedia(final KnowledgeChunk chunk) {
-    return !isText(chunk);
+    return chunk != null && chunk.getMedia() != null;
   }
 
-  /** Whether {@code chunk}'s mime type is one of the raster image formats. */
+  /** Whether {@code chunk} is sourced from plain text. */
+  public static boolean isText(final KnowledgeChunk chunk) {
+    return chunk != null && !isMedia(chunk);
+  }
+
+  /** Whether {@code chunk} is an image. */
   public static boolean isImage(final KnowledgeChunk chunk) {
-    return FileUtils.IMAGE_MIME_TYPES.contains(chunk.getMimeType());
+    return chunk != null && chunk.getMedia() != null && FileUtils.isImageFile(chunk.getMedia());
   }
 
   /** {@code chunk}'s text length, or 0 if it has none. */
@@ -78,7 +64,7 @@ public final class ChunkUtils {
 
   /**
    * Splits each chunk in {@code parents} by applying {@code splitter} to its text, producing new
-   * chunks that inherit the parent's {@code knowledgeId} and {@code agentId}. {@code chunkIndex} is
+   * chunks that inherit the parent's {@code knowledgeId}. {@code chunkIndex} is
    * left unset — whatever ultimately consumes the full chunk stream assigns the real, sequential
    * index once it knows the final ordering, so there's nothing for an intermediate stage to
    * usefully assign here. Offsets are located by searching the parent chunk's text, always moving
@@ -109,7 +95,6 @@ public final class ChunkUtils {
     for (final String part : parts) {
       final KnowledgeChunk child = new KnowledgeChunk();
       child.setKnowledgeId(parent.getKnowledgeId());
-      child.setAgentId(parent.getAgentId());
       child.setText(part);
       final int start = locateStart(parentText, part, searchFrom);
       child.setChunkStart(parent.getChunkStart() + start);
@@ -163,8 +148,6 @@ public final class ChunkUtils {
   public static KnowledgeChunk mergeTexts(final List<KnowledgeChunk> sources) {
     final KnowledgeChunk merged = new KnowledgeChunk();
     if (!sources.isEmpty()) {
-      merged.setKnowledgeId(sources.getFirst().getKnowledgeId());
-      merged.setAgentId(sources.getFirst().getAgentId());
       merged.setChunkStart(sources.getFirst().getChunkStart());
       merged.setChunkEnd(sources.getLast().getChunkEnd());
     }

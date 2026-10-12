@@ -2,6 +2,7 @@ package com.agentengine.tenancy.core.repository;
 
 import com.agentengine.tenancy.beans.Role;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.beans.Task;
 import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
@@ -12,7 +13,6 @@ import com.agentengine.util.common.repository.DocumentRepositorySpec;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.validation.ValidationService;
-import com.agentengine.util.common.beans.Task;
 import com.agentengine.util.tasks.TaskStatus;
 import io.quarkus.runtime.Startup;
 import jakarta.inject.Inject;

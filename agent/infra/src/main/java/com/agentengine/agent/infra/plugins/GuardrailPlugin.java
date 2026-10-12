@@ -1,12 +1,12 @@
 package com.agentengine.agent.infra.plugins;
 
-import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.agent.infra.guardrails.Guardrail;
 import com.agentengine.agent.infra.guardrails.GuardrailConstants;
 import com.agentengine.agent.infra.guardrails.GuardrailContext;
 import com.agentengine.agent.infra.guardrails.GuardrailDecision;
 import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
 import com.agentengine.agent.infra.utils.*;
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.agents.beans.config.GuardrailAction;
 import com.agentengine.util.agents.beans.config.GuardrailStage;

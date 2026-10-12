@@ -10,5 +10,10 @@ ARG SERVICE_MODULE
 COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/*.jar /deployments/
 COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/app/ /deployments/app/
 COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/quarkus/ /deployments/quarkus/
+# Quarkus fast-jar places internal submodule dependencies (util:*, agent:infra, etc.) into lib/main/
+# as com.agentengine.*-SNAPSHOT.jar rather than app/. Because DEPS_BASE_IMAGE is keyed on the hash of
+# libs.versions.toml, internal submodule code changes do not invalidate the base image; copying them
+# here ensures the service container always runs fresh monorepo code without duplicating 3rd-party libs.
+COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/lib/main/com.agentengine.*.jar /deployments/lib/main/
 
 ENTRYPOINT [ "sh", "-c", "java $JAVA_OPTS $JAVA_ARGS -jar /deployments/quarkus-run.jar" ]

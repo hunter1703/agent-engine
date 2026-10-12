@@ -140,12 +140,17 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
     return sessionId;
   }
 
-  /** the logical run id that client see. a logical run will only have single runId even in the face of pause-resume cycle */
+  /**
+   * the logical run id that client see. a logical run will only have single runId even in the face
+   * of pause-resume cycle
+   */
   public String getRunId() {
     return runId;
   }
 
-  /** The run of the parent session in which this event's run was started, if a parent started it. */
+  /**
+   * The run of the parent session in which this event's run was started, if a parent started it.
+   */
   public String getParentRunId() {
     return parentRunId;
   }
@@ -333,7 +338,8 @@ public final class SessionEvent extends BaseEntity implements Copyable<SessionEv
   public static SessionEvent liveMarker(final String sessionId) {
     final String id = UUID.randomUUID().toString();
     final Event rawEvent = Event.builder().id(id).timestamp(System.currentTimeMillis()).build();
-    return new SessionEvent(id, null, null, sessionId, null, null, 0L, Type.LIVE_MARKER, null, rawEvent);
+    return new SessionEvent(
+        id, null, null, sessionId, null, null, 0L, Type.LIVE_MARKER, null, rawEvent);
   }
 
   public static SessionEvent terminal(final String sessionId) {

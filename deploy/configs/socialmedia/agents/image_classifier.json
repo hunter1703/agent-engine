@@ -1,0 +1,7 @@
+{
+  "type": "IMAGE_CLASSIFICATION",
+  "id": "image_classifier",
+  "name": "Image Classifier",
+  "description": "Tells which tags of the indexed knowledge an image belongs with, by its faces and by its scene.",
+  "subAgentIds": ["face_classifier", "scene_classifier"]
+}

@@ -1,195 +1,220 @@
 package com.agentengine.agent.infra.tools.knowledge;
 
-import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.knowledge.api.beans.IndexingStatus;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
+import com.agentengine.knowledge.api.beans.MediaDescription;
 import com.agentengine.knowledge.api.services.KnowledgeService;
+import com.agentengine.knowledge.api.services.MediaService;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.agents.tools.ToolConstructor;
-import com.agentengine.util.cloudstorage.CloudStorageService;
-import com.agentengine.util.common.RefCounted;
+import com.agentengine.util.cloudstorage.FileService;
+import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.common.utils.StringUtils;
-import com.agentengine.util.models.factories.Model;
+import com.agentengine.util.models.config.DefaultModels;
 import com.agentengine.util.models.factories.ModelProvider;
-import com.google.adk.models.LlmRequest;
-import com.google.adk.models.LlmResponse;
 import com.google.adk.tools.ToolContext;
-import com.google.genai.types.Content;
-import com.google.genai.types.Part;
+import com.google.genai.types.Modality;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Searches indexed knowledge chunks for content semantically similar to a natural-language query,
- * or, when {@code knowledgeId} names a non-indexed item, returns that item's full content instead.
+ * Searches indexed knowledge (text, images, audio) for content semantically relevant to natural
+ * language queries or media inputs. When a single non-indexed item is requested, returns its full
+ * content instead.
  */
 public final class SearchKnowledgeTool extends Tool {
 
   private static final Logger LOG = LoggerFactory.getLogger(SearchKnowledgeTool.class);
 
-  /** Embedding-model additional key expected by {@code VectorEntityStore}. */
-  private static final String EMBEDDING_MODEL_ID_KEY = "embeddingModelId";
-
-  private static final long HYPOTHETICAL_PASSAGE_TIMEOUT_SECONDS = 8L;
-
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.SEARCH_KNOWLEDGE,
           """
-                  Semantic search over the indexed knowledge you have access to — or, when knowledgeId names a
-                  non-indexed item (one with no searchable chunks), returns that item's full content
-                  instead and ignores query. See the query parameter's own description for exactly
-                  how to phrase it.
+          Searches indexed knowledge (text, images, audio) for content semantically relevant to your query.
+          When a single non-indexed item is specified, returns its full content instead.
 
-                  ONE IDEA PER CALL
-                  Each call retrieves chunks for one direction. For broad, comparative, or multi-part
-                  questions, issue MULTIPLE calls with different queries and merge the results,
-                  instead of cramming everything into one long query.
-                      "Is X better than Y?"  ->  call 1: "X strengths weaknesses trade-offs"
-                                                 call 2: "Y strengths weaknesses trade-offs"
+          MULTIMODAL QUERYING:
+          - Text Query: pass 'query' to search text passages, audio transcripts, and media descriptions.
+          - Media Query: pass 'media' (URL or knowledge ID) to find similar media or cross-reference content.
+          - Target Modality: pass 'target' (TEXT, IMAGE, AUDIO) to restrict returned modalities. Omit to search all.
+          - Multimodal Hybrid: pass both 'query' and 'media' for joint retrieval fused via Reciprocal Rank Fusion (RRF).
 
-                  SCOPING
-                  Pass knowledgeId when the user names a specific item; omit it to search all
-                  indexed knowledge you have access to.
-
-                  PAGINATION
-                  Returns { chunks, offset, limit, hasMore } when searching. When hasMore is true,
-                  call again with a larger offset to page through further matches.
-
-                  NON-INDEXED ITEMS
-                  When knowledgeId names a non-indexed item, query is ignored and the full content
-                  is returned instead: { status: "success", content, encoding, mime_type }.
-                  """);
+          SCOPING & PAGINATION:
+          - Pass 'knowledgeIds' to restrict retrieval to specific documents or knowledge collections.
+          - Pass 'offset' and 'limit' to page through results.
+          """);
 
   private final KnowledgeService knowledgeService;
-  private final CloudStorageService cloudStorageService;
-  private final DefaultModelsRepository defaultModelsRepository;
+  private final FileService fileService;
+  private final MediaService mediaService;
   private final ModelProvider modelProvider;
 
   @ToolConstructor
   public SearchKnowledgeTool(
       final KnowledgeService knowledgeService,
-      final CloudStorageService cloudStorageService,
-      final DefaultModelsRepository defaultModelsRepository,
+      final FileService fileService,
+      final MediaService mediaService,
       final ModelProvider modelProvider) {
     super(DESCRIPTOR);
     this.knowledgeService = knowledgeService;
-    this.cloudStorageService = cloudStorageService;
-    this.defaultModelsRepository = defaultModelsRepository;
+    this.fileService = fileService;
+    this.mediaService = mediaService;
     this.modelProvider = modelProvider;
   }
 
   public ToolOutput<Map<String, Object>> execute(
+      final ToolContext toolContext,
       @ToolArg(
               name = "query",
               description =
-                  """
-                  Content-shaped search phrase, NOT an instruction to this tool. The query is \
-                  matched against document text, so write it the way the content itself would \
-                  be phrased, not as a question or command.
-                      good: "refund policy eligibility window"
-                      bad:  "can you please find the refund policy?"
-
-                  Drop meta-language directed at this tool or the retrieval act itself \
-                  ("summarize", "find", "tell me", "please", "in the document", "from the \
-                  knowledge base") — including their noun forms used as a stand-in for the \
-                  topic ("summary", "overview"). A phrase naming the KIND of information you \
-                  want, rather than the information itself, rarely appears verbatim in any \
-                  source and matches poorly.
-
-                  Drop pronouns ("it", "this file") for the actual nouns. Avoid negation \
-                  ("not expensive") — query the positive concept instead ("low-cost budget \
-                  option"). Include synonyms, domain jargon, product/person names, dates, and \
-                  section hints — more relevant terms surface more relevant passages.
-
-                  Don't know the source's form yet (prose, dialogue, transcript, tabular, \
-                  legal clauses, etc.)? Don't guess — query the topic itself and treat the \
-                  first call as exploratory. The chunks that come back show you the source's \
-                  real phrasing; reuse that vocabulary and register in follow-up queries \
-                  rather than repeating a query shape that didn't match well.
-
-                  ~5-15 words, one topic per call. Required unless knowledgeId names a \
-                  non-indexed item, in which case it's ignored.
-                  """,
+                  "Text query to search for (e.g., questions, keywords, phrases said in an audio clip, or descriptions of visual figures).",
               optional = true)
-          String query,
+          final String query,
       @ToolArg(
-              name = Constants.ToolArgs.KNOWLEDGE_ID,
+              name = "media",
               description =
-                  "Restrict the search to a single knowledge item, or, if that item is "
-                      + "non-indexed, read it in full. Provide this ONLY when the user names a "
-                      + "specific item and a valid id for it is available in the conversation "
-                      + "(for example from a prior tool call that lists your knowledge). "
-                      + "Do NOT invent or guess an id - an unknown id returns no results and "
-                      + "looks like 'nothing found'. "
-                      + "Omit to search across all indexed knowledge you have access to.",
+                  "Media to search with (URL or knowledge ID). Used to find similar media or retrieve text matching a media sample.",
               optional = true)
-          String knowledgeId,
+          final String media,
       @ToolArg(
-              name = "offset",
+              name = "target",
               description =
-                  "Pagination offset. Leave unset for the first page; when a previous result had "
-                      + "hasMore=true, pass that call's offset + limit to fetch the next page.",
+                  "Target modality to filter results: TEXT (prose, articles, code), IMAGE (charts, diagrams, photos), or AUDIO (speech, recordings). Omit to search across all modalities.",
               optional = true)
-          Integer offset,
+          final Modality.Known target,
       @ToolArg(
-              name = "limit",
+              name = "knowledgeIds",
               description =
-                  "Max chunks to return (default 5). Increase for broad/comparative queries that "
-                      + "need coverage across many chunks; keep small for targeted factual lookups.",
+                  "Optional list of knowledge IDs to restrict search to. If a single non-indexed item is passed, its full content is returned.",
               optional = true)
-          Integer limit,
-      ToolContext toolContext) {
+          final List<String> knowledgeIds,
+      @ToolArg(name = "limit", description = "Max results to return (default 5).", optional = true)
+          final Integer limit,
+      @ToolArg(name = "offset", description = "Pagination offset (default 0).", optional = true)
+          final Integer offset) {
 
-    final Knowledge knowledge =
-        StringUtils.isNotBlank(knowledgeId) ? knowledgeService.findById(knowledgeId) : null;
-    if (StringUtils.isNotBlank(knowledgeId)) {
-      if (knowledge == null) {
-        return ToolOutput.direct(Map.of("error", "Not granted access to this knowledge item."));
+    final List<String> scopedKnowledgeIds =
+        CollectionUtils.nullSafeList(knowledgeIds).stream()
+            .filter(StringUtils::isNotBlank)
+            .toList();
+
+    if (scopedKnowledgeIds.size() == 1) {
+      final Knowledge singleKnowledge = knowledgeService.findById(scopedKnowledgeIds.getFirst());
+      if (singleKnowledge == null) {
+        return ToolOutput.direct(
+            Map.of(
+                "error", "Not granted access to knowledge item: " + scopedKnowledgeIds.getFirst()));
       }
-      if (IndexingStatus.NON_INDEXED.name().equals(knowledge.getIndexingStatus())) {
-        return readFullContent(knowledge);
+      if (IndexingStatus.NON_INDEXED.name().equals(singleKnowledge.getIndexingStatus())) {
+        return readFullContent(singleKnowledge);
       }
     }
-    if (StringUtils.isBlank(query)) {
-      return ToolOutput.direct(Map.of("error", "A query is required to search knowledge."));
+
+    final FileDetails queryMediaFile = resolveMedia(media);
+    if (StringUtils.isNotBlank(media)) {
+      if (queryMediaFile == null) {
+        return ToolOutput.direct(
+            Map.of(
+                "error",
+                "Could not resolve media (must be a valid URL or knowledge ID): " + media));
+      }
+      if (StringUtils.isBlank(queryMediaFile.mimeType())) {
+        return ToolOutput.direct(
+            Map.of("error", "Unable to determine MIME type for media: " + media));
+      }
+    }
+
+    if (StringUtils.isBlank(query) && queryMediaFile == null) {
+      return ToolOutput.direct(
+          Map.of("error", "At least one of 'query' or 'media' is required to search knowledge."));
     }
 
     final int resolvedOffset = offset != null ? offset : 0;
     final int resolvedLimit = limit != null ? limit : 5;
 
-    final String embeddingText = hypotheticalPassage(query, knowledge);
-    LOG.info("Hypothetical passage : {}", embeddingText);
+    final boolean targetAll = target == null || target == Modality.Known.MODALITY_UNSPECIFIED;
+    final boolean targetText = targetAll || target == Modality.Known.TEXT;
+    final boolean targetImage = targetAll || target == Modality.Known.IMAGE;
+    final boolean targetAudio = targetAll || target == Modality.Known.AUDIO;
+
+    final List<Filter> semanticSubFilters = new ArrayList<>();
+
+    if (StringUtils.isNotBlank(query)) {
+      if (targetText) {
+        semanticSubFilters.add(semanticFilter(KnowledgeChunk.FIELD_TEXT, query, DefaultModels.TEXT_EMBEDDING_ID));
+      }
+      if (targetImage || targetAudio) {
+        semanticSubFilters.add(semanticFilter(
+                KnowledgeChunk.FIELD_DESCRIPTION, query, DefaultModels.TEXT_EMBEDDING_ID));
+      }
+    }
+
+    if (queryMediaFile != null) {
+      final Modality.Known queryMediaModality = detectModality(queryMediaFile);
+      if (queryMediaModality == Modality.Known.TEXT) {
+        if ((targetAll || targetText) && StringUtils.isBlank(query)) {
+          final String textContent = readMediaAsText(queryMediaFile);
+          if (StringUtils.isNotBlank(textContent)) {
+            semanticSubFilters.add(semanticFilter(
+                    KnowledgeChunk.FIELD_TEXT, textContent, DefaultModels.TEXT_EMBEDDING_ID));
+          }
+        }
+      } else {
+        if (targetAll || target == queryMediaModality) {
+          semanticSubFilters.add(
+              semanticFilter(
+                  KnowledgeChunk.FIELD_MEDIA, queryMediaFile, DefaultModels.IMAGE_EMBEDDING_ID));
+        }
+        if (targetText && StringUtils.isBlank(query)) {
+          final String mediaDescription = describeMedia(queryMediaFile);
+          if (StringUtils.isNotBlank(mediaDescription)) {
+            semanticSubFilters.add(
+                semanticFilter(
+                    KnowledgeChunk.FIELD_TEXT, mediaDescription, DefaultModels.TEXT_EMBEDDING_ID));
+          }
+        }
+      }
+    }
+
+    if (semanticSubFilters.isEmpty()) {
+      return ToolOutput.direct(Map.of("error", "No valid search criteria provided."));
+    }
+
     final Filter semanticFilter =
-        Filters.semanticSearch("text", embeddingText)
-            .withAdditional(Map.of(EMBEDDING_MODEL_ID_KEY, resolveModelId(toolContext)));
+        semanticSubFilters.size() == 1
+            ? semanticSubFilters.getFirst()
+            : Filters.or(semanticSubFilters.toArray(new Filter[0]));
+    final Filter filter =
+        scopedKnowledgeIds.isEmpty()
+            ? semanticFilter
+            : Filters.and(
+                semanticFilter, Filters.in(KnowledgeChunk.FIELD_KNOWLEDGE_ID, scopedKnowledgeIds));
 
     final Query searchQuery =
-        new Query().withFilter(semanticFilter).withPage(new Page(resolvedOffset, resolvedLimit));
+        new Query().withFilter(filter).withPage(new Page(resolvedOffset, resolvedLimit));
 
-    final PaginatedResult<KnowledgeChunk> result =
-        knowledgeService.searchInKnowledge(
-            knowledge != null ? List.of(knowledgeId) : List.of(), searchQuery);
-    final List<KnowledgeChunk> chunks = result.getItems();
+    final List<KnowledgeChunk> chunks = knowledgeService.search(searchQuery).getItems();
     final Map<String, Object> output = new LinkedHashMap<>();
     output.put("chunks", chunks);
     output.put("offset", resolvedOffset);
@@ -198,11 +223,86 @@ public final class SearchKnowledgeTool extends Tool {
     return ToolOutput.direct(output);
   }
 
+  /**
+   * A semantic search of {@code field} for {@code value}, embedded by the model {@code
+   * defaultModelId} stands for now, that only matches the vectors of that model.
+   */
+  private Filter semanticFilter(
+      final String field, final Object value, final String defaultModelId) {
+    final String modelId = modelProvider.resolveEmbeddingModelId(defaultModelId);
+    return Filters.and(
+        Filters.semanticSearch(field, value)
+            .withAdditional(Map.of(Filters.EMBEDDING_MODEL_ID, modelId)),
+        Filters.eq(KnowledgeChunk.FIELD_EMBEDDER, modelId));
+  }
+
+  private FileDetails resolveMedia(final String mediaRef) {
+    if (StringUtils.isBlank(mediaRef)) {
+      return null;
+    }
+    if (mediaRef.startsWith("http://") || mediaRef.startsWith("https://")) {
+      return fileService.withDetectedMimeType(FileDetails.fromUrl(mediaRef));
+    }
+    final Knowledge knowledge = knowledgeService.findById(mediaRef);
+    return knowledge == null ? null : knowledge.getFileDetails();
+  }
+
+  private static Modality.Known detectModality(final FileDetails fileDetails) {
+    if (fileDetails == null || StringUtils.isBlank(fileDetails.mimeType())) {
+      return Modality.Known.TEXT;
+    }
+    final String lower = fileDetails.mimeType().toLowerCase();
+    if (lower.startsWith("audio/")) {
+      return Modality.Known.AUDIO;
+    }
+    if (lower.startsWith("image/")) {
+      return Modality.Known.IMAGE;
+    }
+    return Modality.Known.TEXT;
+  }
+
+  private String readMediaAsText(final FileDetails fileDetails) {
+    try (InputStream stream = fileService.getContent(fileDetails)) {
+      return new String(stream.readAllBytes(), StandardCharsets.UTF_8).trim();
+    } catch (final IOException | IllegalStateException exception) {
+      LOG.debug("Failed to read text media content", exception);
+      return null;
+    }
+  }
+
+  private String describeMedia(final FileDetails mediaFile) {
+    if (mediaFile == null || StringUtils.isBlank(mediaFile.mimeType())) {
+      return null;
+    }
+    try {
+      final MediaDescription mediaDescription = mediaService.describe(mediaFile);
+      if (mediaDescription == null) {
+        return null;
+      }
+      final String description = mediaDescription.description();
+      final String transcript = mediaDescription.transcript();
+      if (StringUtils.isNotBlank(description) && StringUtils.isNotBlank(transcript)) {
+        return description + " " + transcript;
+      }
+      return StringUtils.isNotBlank(description) ? description : transcript;
+    } catch (final Exception exception) {
+      LOG.debug("Failed to describe media for cross-modal search", exception);
+      return null;
+    }
+  }
+
   private ToolOutput<Map<String, Object>> readFullContent(final Knowledge knowledge) {
-    final String location = knowledge.getFileDetails().source();
-    final CloudStorageService.Content content = cloudStorageService.download(location);
-    final boolean isText = FileUtils.isTextFile(content.mimeType(), location);
-    try (InputStream stream = content.stream()) {
+    final FileDetails fileDetails = knowledge.getFileDetails();
+    if (fileDetails == null) {
+      return ToolOutput.direct(
+          Map.of(
+              Constants.ToolStatus.STATUS,
+              "failed",
+              "error",
+              "Knowledge has no associated file details"));
+    }
+    final boolean isText = FileUtils.isTextFile(fileDetails);
+    try (InputStream stream = fileService.getContent(fileDetails)) {
       final byte[] bytes = stream.readAllBytes();
       final String value =
           isText
@@ -217,78 +317,16 @@ public final class SearchKnowledgeTool extends Tool {
               "encoding",
               isText ? "utf-8" : "base64",
               "mime_type",
-              content.mimeType() == null ? "" : content.mimeType()));
+              fileDetails.mimeType() == null ? "" : fileDetails.mimeType()));
+    } catch (final IllegalStateException exception) {
+      return ToolOutput.direct(
+          Map.of(
+              Constants.ToolStatus.STATUS,
+              "failed",
+              "error",
+              "Failed to read content for knowledge file"));
     } catch (final IOException exception) {
       throw new UncheckedIOException(exception);
     }
-  }
-
-  /**
-   * HyDE (Hypothetical Document Embeddings): generates a short passage that plausibly matches
-   * {@code query} in the target source's own form, and embeds that instead of the raw query —
-   * closing the gap between a short query and the longer passages it's matched against. Grounded
-   * with the target knowledge's indexed content preview when the search is scoped to one, so the
-   * generated passage's register (prose, dialogue, tabular, etc.) has a real basis rather than a
-   * guess. Falls back to the raw query, unmodified, if no fast model is configured or generation
-   * fails for any reason — this is a retrieval quality improvement, never a hard dependency for
-   * search to work.
-   */
-  private String hypotheticalPassage(final String query, final Knowledge knowledge) {
-    final String fastModelId = defaultModelsRepository.getFastModelId();
-    try (RefCounted<Model.LLMModel> refCounted = modelProvider.get(fastModelId)) {
-      final String contentPreview = knowledge == null ? null : knowledge.getContentPreview();
-      final String prompt = hypotheticalPassagePrompt(query, contentPreview);
-      final LlmRequest request =
-          LlmRequest.builder()
-              .contents(
-                  List.of(
-                      Content.builder()
-                          .role(Constants.AUTHOR_USER)
-                          .parts(Part.fromText(prompt))
-                          .build()))
-              .build();
-      final LlmResponse response =
-          refCounted
-              .value()
-              .model()
-              .generateContent(request, false)
-              .timeout(HYPOTHETICAL_PASSAGE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-              .blockingSingle();
-      final String passage = response.content().map(Content::text).map(String::trim).orElse("");
-      return StringUtils.isNotBlank(passage) ? passage : query;
-    } catch (final Exception e) {
-      LOG.debug("Hypothetical passage generation failed; falling back to the raw query.", e);
-      return query;
-    }
-  }
-
-  private static String hypotheticalPassagePrompt(final String query, final String contentPreview) {
-    final StringBuilder prompt =
-        new StringBuilder()
-            .append(
-                "Write a short passage (2-4 sentences) that would plausibly appear in a document "
-                    + "and match this search topic: \"")
-            .append(query)
-            .append("\".\n");
-    if (StringUtils.isNotBlank(contentPreview)) {
-      prompt
-          .append(
-              "The document begins with the following excerpt — match its exact style, register "
-                  + "and format:\n\"")
-          .append(contentPreview)
-          .append("\"\n");
-    }
-    prompt.append("Output only the passage itself, with no preamble or explanation.");
-    return prompt.toString();
-  }
-
-  private String resolveModelId(final ToolContext toolContext) {
-    if (toolContext.invocationContext().agent() instanceof Agent agent) {
-      final KnowledgeSettings settings = agent.getAgentConfig().getKnowledgeSettings();
-      if (settings != null && StringUtils.isNotBlank(settings.getEmbeddingModelId())) {
-        return settings.getEmbeddingModelId();
-      }
-    }
-    return defaultModelsRepository.getEmbeddingModelId();
   }
 }

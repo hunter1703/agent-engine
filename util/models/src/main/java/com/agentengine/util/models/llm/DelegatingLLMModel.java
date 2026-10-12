@@ -9,12 +9,14 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class DelegatingLLMModel extends AbstractLLM {
+public final class DelegatingLLMModel extends BaseLlm {
   private static final Logger LOG = LoggerFactory.getLogger(DelegatingLLMModel.class);
+  private final Parser parser;
   private final BaseLlm delegate;
 
   public DelegatingLLMModel(final BaseLlm delegate, final Parser parser) {
-    super(Objects.requireNonNull(delegate, "delegate cannot be null").model(), parser);
+    super(Objects.requireNonNull(delegate, "delegate cannot be null").model());
+    this.parser = Objects.requireNonNull(parser, "parser cannot be null");
     this.delegate = delegate;
   }
 

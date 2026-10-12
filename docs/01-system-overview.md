@@ -76,7 +76,7 @@ Qdrant collections (vector store):
 - `Memory` (persistent per-user, per-agent memories; text field embedded for semantic retrieval)
 - `KnowledgeChunk` (indexed chunks of text files uploaded during sessions; searchable via `search_knowledge`)
 
-Qdrant is required for memory and knowledge features. Both collections use the embedding model configured in `InfraConfig.embeddingModelId` (or an agent-level override in `knowledgeSettings`).
+Qdrant is required for memory and knowledge features. Both collections use the customer-level embedding models configured in `DefaultModels`.
 
 ## 1.6 Why The API Modules Matter
 

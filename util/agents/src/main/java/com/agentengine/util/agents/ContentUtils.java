@@ -1,8 +1,6 @@
 package com.agentengine.util.agents;
 
-import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.cloudstorage.FileService;
-import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.flows.llmflows.Functions;
@@ -10,13 +8,12 @@ import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Utilities for generic content/message extraction and indexing. */
 public final class ContentUtils {
@@ -146,16 +143,18 @@ public final class ContentUtils {
   }
 
   public static Content addAttachmentsToContent(
-      final Content content, final List<AgentFileDetails> attachments, final FileService fileService) {
+      final Content content,
+      final List<AgentFileDetails> attachments,
+      final FileService fileService) {
     final StringBuilder text = new StringBuilder();
     final List<Part> binaryParts = new ArrayList<>();
     for (final AgentFileDetails attachment : CollectionUtils.nullSafeList(attachments)) {
       if (StringUtils.isNotBlank(attachment.knowledgeId())) {
         text.append("\n(The attached file \"")
-                .append(attachment.name())
-                .append("\" is indexed as knowledgeId \"")
-                .append(attachment.knowledgeId())
-                .append("\").");
+            .append(attachment.name())
+            .append("\" is indexed as knowledgeId \"")
+            .append(attachment.knowledgeId())
+            .append("\").");
       } else {
         try (InputStream stream = fileService.getContent(attachment.toFileDetails())) {
           byte[] bytes = stream.readAllBytes();
@@ -166,7 +165,6 @@ public final class ContentUtils {
           LOG.warn("Failed to read attachment file {}.", attachment.source(), ioException);
         }
       }
-
     }
     final List<Part> parts = new ArrayList<>(content.parts().orElse(List.of()));
     if (!text.isEmpty()) {
@@ -183,12 +181,19 @@ public final class ContentUtils {
   }
 
   /**
-   * A run's start message as the model reads it: its parts between {@code <user_message>} tags,
-   * led by {@code currentTime}, when it was sent.
+   * A run's start message as the model reads it: its parts between {@code <user_message>} tags, led
+   * by {@code currentTime}, when it was sent.
    */
   public static Content withUserContext(final Content content, final String currentTime) {
     final List<Part> parts = new ArrayList<>();
-    parts.add(Part.fromText(CURRENT_USER_CONTEXT_OPEN + "\n" + currentTime + "\n" + CURRENT_USER_CONTEXT_CLOSE + "\n\n"));
+    parts.add(
+        Part.fromText(
+            CURRENT_USER_CONTEXT_OPEN
+                + "\n"
+                + currentTime
+                + "\n"
+                + CURRENT_USER_CONTEXT_CLOSE
+                + "\n\n"));
     parts.add(Part.fromText(USER_MESSAGE_OPEN));
     parts.addAll(content.parts().orElse(List.of()));
     parts.add(Part.fromText(USER_MESSAGE_CLOSE));
@@ -197,7 +202,9 @@ public final class ContentUtils {
 
   /** Whether {@code content} is a message {@link #withUserContext} made. */
   public static boolean startsWithUserContext(final Content content) {
-    return content.parts().flatMap(parts -> parts.stream().findFirst())
+    return content
+        .parts()
+        .flatMap(parts -> parts.stream().findFirst())
         .flatMap(Part::text)
         .filter(text -> text.startsWith(CURRENT_USER_CONTEXT_OPEN))
         .isPresent();
@@ -218,102 +225,8 @@ public final class ContentUtils {
     return content != null && isUserRole(content) && getToolResponseParts(content).isEmpty();
   }
 
-  /**
-   * Rewrites the tool calls in a conversation as plain-text user messages describing completed
-   * actions.
-   *
-   * <p>Each call is taken out of the model's turn, which keeps only its text, and becomes one user
-   * message holding the action's name, its inputs and its result, in place of the result. A call
-   * with no result becomes a message without one, right after the turn that made it. The messages
-   * hold no call syntax, so a model that sees them has no call of its own to continue.
-   */
-  public static List<Content> withToolCallsAsMessages(final List<Content> contents) {
-    final Map<String, FunctionCall> idVsCall = new HashMap<>();
-    final Set<String> answeredIds = new HashSet<>();
-    for (final Content content : contents) {
-      for (final Part part : content.parts().orElse(List.of())) {
-        part.functionCall()
-            .ifPresent(call -> call.id().ifPresent(id -> idVsCall.put(id, call)));
-        part.functionResponse().flatMap(FunctionResponse::id).ifPresent(answeredIds::add);
-      }
-    }
-
-    final List<Content> rewritten = new ArrayList<>();
-    for (final Content content : contents) {
-      final List<Part> textParts = new ArrayList<>();
-      final List<String> toolMessages = new ArrayList<>();
-      final List<String> unansweredToolMessages = new ArrayList<>();
-      for (final Part part : content.parts().orElse(List.of())) {
-        if (part.functionCall().isPresent()) {
-          final FunctionCall call = part.functionCall().get();
-          if (call.id().map(answeredIds::contains).orElse(false)) {
-            continue;
-          }
-          unansweredToolMessages.add(toolMessage(call.name().orElse(""), call.args().orElse(Map.of()), null));
-        } else if (part.functionResponse().isPresent()) {
-          final FunctionResponse response = part.functionResponse().get();
-          final FunctionCall call =
-              response
-                  .id()
-                  .map(idVsCall::get)
-                  .orElseThrow(
-                      () -> new IllegalStateException("Tool result has no call: " + response));
-          toolMessages.add(
-              toolMessage(
-                  response.name().orElse(""),
-                  call.args().orElse(Map.of()),
-                  response.response().orElse(Map.of())));
-        } else {
-          textParts.add(part);
-        }
-      }
-
-      if (!toolMessages.isEmpty()) {
-        textParts.addAll(toolMessages.stream().map(Part::fromText).toList());
-        rewritten.add(userMessage(textParts));
-        continue;
-      }
-      if (!textParts.isEmpty()) {
-        rewritten.add(content.toBuilder().parts(textParts).build());
-      }
-      if (!unansweredToolMessages.isEmpty()) {
-        rewritten.add(userMessage(unansweredToolMessages.stream().map(Part::fromText).toList()));
-      }
-    }
-    return rewritten;
-  }
-
   private static boolean isUserRole(final Content content) {
     final Optional<String> role = content.role();
     return role.isEmpty() || Constants.AUTHOR_USER.equalsIgnoreCase(role.get());
-  }
-
-  private static String toolMessage(
-      final String name, final Map<String, Object> inputs, final Map<String, Object> result) {
-    final StringBuilder toolMessage =
-        new StringBuilder("Completed action\nAction: ")
-            .append(name)
-            .append("\nInputs:")
-            .append(keyValueLines(inputs));
-    if (result != null) {
-      toolMessage.append("\nResult:").append(keyValueLines(result));
-    }
-    return toolMessage.toString();
-  }
-
-  // One "- key: value" line per entry; a string value is shown as is, any other value as JSON.
-  private static String keyValueLines(final Map<String, Object> values) {
-    if (values.isEmpty()) {
-      return " none";
-    }
-    final StringBuilder lines = new StringBuilder();
-    values.forEach(
-        (key, value) ->
-            lines
-                .append("\n- ")
-                .append(key)
-                .append(": ")
-                .append(value instanceof String text ? text : JsonUtils.toJson(value)));
-    return lines.toString();
   }
 }

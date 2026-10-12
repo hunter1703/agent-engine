@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.services;
 
+import com.agentengine.agent.api.services.NotebookAclService;
 import com.agentengine.agent.infra.notebook.Notebook;
 import com.agentengine.util.agents.repository.AgentDocumentStoreClientType;
 import com.agentengine.util.common.repository.DocumentBackend;
@@ -12,7 +13,7 @@ import jakarta.inject.Singleton;
 @Singleton
 @Unremovable
 public class NotebookAclServiceImpl extends AbstractAssetAclService<Notebook>
-    implements com.agentengine.agent.api.services.NotebookAclService {
+    implements NotebookAclService {
 
   @Inject
   public NotebookAclServiceImpl(final DocumentBackend documentBackend) {

@@ -165,12 +165,12 @@ Memory extraction is skipped silently if:
 
 `SessionRunner` inspects each file attachment on an incoming `UserMessage`:
 
-- **Text files**: indexed synchronously into Qdrant via `KnowledgeService.create(IndexRequest)`. The knowledge item is scoped to the current session (`grants: ["S/<sessionId>"]`). On success a hint is appended to the user content instructing the model to use `search_knowledge` with the returned `knowledgeId`.
+- **Text files**: indexed synchronously into Qdrant via `KnowledgeService.index(IndexRequest)`. The knowledge item is scoped to the current session (`grants: ["S/<sessionId>"]`). On success a hint is appended to the user content instructing the model to use `search_knowledge` with the returned `knowledgeId`.
 - **Binary files**: copied to cloud storage via `CloudStorageArtifactService` and left as artifacts accessible through the standard ADK artifact API.
 
 The `search_knowledge` tool executes a semantic search over indexed chunks, filterable by `knowledgeIds` or scoped to all knowledge for the agent. Results include chunk text, pagination metadata, and total count.
 
-Embedding model resolution for knowledge search: `agent.knowledgeSettings.embeddingModelId` → `InfraConfig.embeddingModelId`.
+Embedding models for knowledge search and indexing are resolved from customer-level `DefaultModels`.
 
 ## 2.11 Session Rollback
 

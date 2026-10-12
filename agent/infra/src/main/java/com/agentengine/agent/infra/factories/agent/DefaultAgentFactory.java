@@ -1,8 +1,8 @@
 package com.agentengine.agent.infra.factories.agent;
 
-import com.agentengine.agent.infra.factories.context.CompactorProvider;
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.agents.DelegatedAgent;
+import com.agentengine.agent.infra.factories.context.CompactorProvider;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.models.factories.ModelProvider;

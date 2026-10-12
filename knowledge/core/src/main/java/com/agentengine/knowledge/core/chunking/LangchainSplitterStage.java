@@ -15,7 +15,7 @@ import io.reactivex.rxjava3.core.Flowable;
  * Wraps LangChain4j's built-in splitters for {@code RECURSIVE}, {@code SENTENCE}, and {@code
  * PARAGRAPH} chunking types. Each input chunk is split by its text.
  */
-public final class LangchainSplitterStage extends ChunkingStage {
+public final class LangchainSplitterStage extends IndexingStage {
 
   private final ChunkingType type;
   private final int maxSegmentSize;

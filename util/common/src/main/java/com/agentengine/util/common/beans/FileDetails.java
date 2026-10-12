@@ -1,5 +1,8 @@
 package com.agentengine.util.common.beans;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Objects;
 
 /**
@@ -8,48 +11,34 @@ import java.util.Objects;
  * <p>For {@link StorageType#CLOUDSTORAGE}, {@code source} is {@code <bucket>/<key>}.
  */
 public record FileDetails(
-    String name, String source, StorageType type, String mimeType, long size) {
+    String name,
+    String source,
+    StorageType type,
+    String mimeType,
+    long size,
+    @JsonIgnore InputStream downloaded) {
 
-  /** Original filename including extension, e.g. {@code photo.jpg}. */
-  @Override
-  public String name() {
-    return name;
+  /** The MIME type of a file whose type is not known. */
+  public static final String UNKNOWN_MIME_TYPE = "application/octet-stream";
+
+  public FileDetails(String name, String source, StorageType type, String mimeType, long size) {
+    this(name, source, type, mimeType, size, null);
   }
 
+  /** Two references are equal when they name the same file: the same type and source. */
   @Override
-  public String source() {
-    return source;
-  }
-
-  @Override
-  public StorageType type() {
-    return type;
-  }
-
-  /** Optional MIME type, e.g. {@code "image/jpeg"}. */
-  @Override
-  public String mimeType() {
-    return mimeType;
-  }
-
-  /** File size in bytes; {@code -1} if unknown. */
-  @Override
-  public long size() {
-    return size;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (o == null || getClass() != o.getClass()) {
-      return false;
+  public boolean equals(final Object other) {
+    if (this == other) {
+      return true;
     }
-    FileDetails that = (FileDetails) o;
-    return Objects.equals(source, that.source);
+    return other instanceof FileDetails that
+        && type == that.type
+        && Objects.equals(source, that.source);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(source);
+    return Objects.hash(type, source);
   }
 
   public enum StorageType {
@@ -68,8 +57,18 @@ public record FileDetails(
     }
   }
 
+  public void dispose() {
+    if (downloaded != null) {
+      try {
+        downloaded.close();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
   public static FileDetails fromUrl(final String url) {
     final String name = url.substring(url.lastIndexOf('/') + 1);
-    return new FileDetails(name, url, StorageType.URL, "application/image", -1L);
+    return new FileDetails(name, url, StorageType.URL, UNKNOWN_MIME_TYPE, -1L);
   }
 }

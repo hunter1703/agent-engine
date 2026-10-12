@@ -83,8 +83,7 @@ public final class SessionEventCodec implements Codec<SessionEvent> {
             event.setParentSessionId(readNullableString(reader));
         case SessionEvent.FIELD_SESSION_ID -> event.setSessionId(readNullableString(reader));
         case SessionEvent.FIELD_RUN_ID -> event.setRunId(readNullableString(reader));
-        case SessionEvent.FIELD_PARENT_RUN_ID ->
-            event.setParentRunId(readNullableString(reader));
+        case SessionEvent.FIELD_PARENT_RUN_ID -> event.setParentRunId(readNullableString(reader));
         case SessionEvent.FIELD_SEQUENCE -> event.setSequence(reader.readInt64());
         case SessionEvent.FIELD_TYPE ->
             event.setType(SessionEvent.Type.valueOfOrDefault(readNullableString(reader)));

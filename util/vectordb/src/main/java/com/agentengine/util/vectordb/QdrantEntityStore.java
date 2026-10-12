@@ -1,10 +1,13 @@
 package com.agentengine.util.vectordb;
 
+import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.LazyLoader;
+import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.annotations.Indexed;
 import com.agentengine.util.common.annotations.Permissioned;
 import com.agentengine.util.common.beans.Acl;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
@@ -19,10 +22,19 @@ import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.OperationType;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.common.utils.Utils;
 import com.agentengine.util.context.Context;
+import com.agentengine.util.models.config.DefaultModels;
+import com.agentengine.util.models.embedding.ConfiguredEmbeddingModel;
+import com.agentengine.util.models.factories.ModelProvider;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.genai.types.Modality;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.output.Response;
 import io.qdrant.client.ConditionFactory;
 import io.qdrant.client.PointIdFactory;
 import io.qdrant.client.QdrantClient;
@@ -35,17 +47,10 @@ import io.qdrant.client.grpc.Collections;
 import io.qdrant.client.grpc.Common;
 import io.qdrant.client.grpc.JsonWithInt;
 import io.qdrant.client.grpc.Points;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -64,8 +69,14 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
   private final VectorDbClientFactory clientFactory;
   private final LazyLoader<Map<String, String>> fieldVsVectorName;
   private final LazyLoader<Set<String>> indexedFields;
+  private final FileService fileService;
+  private final ModelProvider modelProvider;
 
-  QdrantEntityStore(final VectorRepositorySpec<T> spec, final VectorDbClientFactory clientFactory) {
+  QdrantEntityStore(
+      final VectorRepositorySpec<T> spec,
+      final VectorDbClientFactory clientFactory,
+      final FileService fileService,
+      final ModelProvider modelProvider) {
     this.spec = spec;
     this.clientFactory = clientFactory;
     this.fieldVsVectorName = new LazyLoader<>(() -> VectorDbUtils.vectorNames(spec.entityClass()));
@@ -76,6 +87,8 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
                     .filter(field -> !field.getAnnotation(Indexed.class).vector())
                     .map(Field::getName)
                     .collect(Collectors.toSet()));
+    this.fileService = fileService;
+    this.modelProvider = modelProvider;
   }
 
   public VectorRepositorySpec<T> spec() {
@@ -85,11 +98,6 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
   @Override
   public Class<T> entityClass() {
     return spec.entityClass();
-  }
-
-  @Override
-  public String vectorName(final String field) {
-    return fieldVsVectorName.get().get(field);
   }
 
   @Override
@@ -151,16 +159,49 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
   public PaginatedResult<T> findByQuery(final Query query) {
     final Query source = query == null ? new Query() : query;
     final Filter filter = source.getFilter();
-    final String embeddingModelId =
-        filter == null
-            ? null
-            : CollectionUtils.getStringValueFromMap(
-                filter.getAdditional(), FIELD_EMBEDDING_MODEL_ID);
-    final Query rewritten =
-        new Query(source).withFilter(rewriteSemanticFilter(filter, embeddingModelId));
+    final Query rewritten = new Query(source).withFilter(rewriteSemanticFilter(filter));
     return getSemanticFilters(rewritten.getFilter()).isEmpty()
         ? findByFilter(rewritten)
         : findBySemanticQuery(rewritten);
+  }
+
+  @Override
+  public Map<String, Double> findTagSimilarities(
+      final Query query, final int maxTags, final int closestChunksPerTag) {
+    final Filter rewritten = rewriteSemanticFilter(query.getFilter());
+    final List<Filter> semanticFilters = getSemanticFilters(rewritten);
+    if (semanticFilters.size() != 1) {
+      throw new IllegalArgumentException("A search by tags needs exactly one semantic filter");
+    }
+    final Filter semantic = semanticFilters.getFirst();
+    final float[] vector = (float[]) semantic.getValues().getFirst();
+    if (vector.length == 0) {
+      return Map.of();
+    }
+    final Common.Filter qdrantFilter = buildQdrantFilter(rewritten);
+    final Points.QueryPointGroups.Builder request =
+        Points.QueryPointGroups.newBuilder()
+            .setCollectionName(collectionName())
+            .setQuery(QueryFactory.nearest(vector))
+            .setUsing(semantic.getField())
+            .setGroupBy(BaseEntity.FIELD_TAGS)
+            .setLimit(maxTags)
+            .setGroupSize(closestChunksPerTag)
+            .setScoreThreshold((float) extractMinScore(semantic))
+            .setWithPayload(WithPayloadSelectorFactory.enable(false));
+    if (qdrantFilter != null) {
+      request.setFilter(qdrantFilter);
+    }
+    final Map<String, Double> tagVsSimilarity = new LinkedHashMap<>();
+    for (final Points.PointGroup group : await(client().queryGroupsAsync(request.build()))) {
+      tagVsSimilarity.put(
+          group.getId().getStringValue(),
+          group.getHitsList().stream()
+              .mapToDouble(Points.ScoredPoint::getScore)
+              .average()
+              .orElse(0.0));
+    }
+    return tagVsSimilarity;
   }
 
   /**
@@ -314,7 +355,18 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
     final int maxResults = page.getLimit() < 0 ? Integer.MAX_VALUE : page.getLimit();
     final Common.Filter qdrantFilter = buildQdrantFilter(query.getFilter());
 
-    final List<Filter> semanticFilters = getSemanticFilters(query.getFilter());
+    // A query vector with no components, from an embedding model that found nothing to embed,
+    // matches nothing.
+    final List<Filter> semanticFilters =
+        getSemanticFilters(query.getFilter()).stream()
+            .filter(semantic -> {
+              final float[] toSearchVector = CollectionUtils.getFirst(semantic.getValues());
+              return toSearchVector != null && toSearchVector.length > 0;
+            })
+            .toList();
+    if (semanticFilters.isEmpty()) {
+      return PaginatedResult.create(List.of(), page, null);
+    }
 
     final Points.QueryPoints.Builder request =
         Points.QueryPoints.newBuilder()
@@ -393,29 +445,67 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
     return PaginatedResult.create(results, page, total);
   }
 
-  private Filter rewriteSemanticFilter(final Filter filter, final String embeddingModelId) {
+  /** The model named in the options of {@code filter}, or {@code defaultModelId}. */
+  private static String embeddingModelIdOf(final Filter filter, final String defaultModelId) {
+    return CollectionUtils.getStringValueFromMap(
+        filter.getAdditional(), Filters.EMBEDDING_MODEL_ID, defaultModelId);
+  }
+
+  /** {@code rewritten}, which replaces the semantic filter {@code original}, with its options. */
+  private static Filter withAdditionalOf(final Filter original, final Filter rewritten) {
+    return original == null ? rewritten : rewritten.withAdditional(original.getAdditional());
+  }
+
+  private Filter rewriteSemanticFilter(final Filter filter) {
     if (filter == null) {
       return null;
     }
     final Operator op = filter.getOp();
     if (op == Operator.SEMANTIC_SEARCH) {
-      final String first =
-          Objects.requireNonNull(CollectionUtils.getFirst(filter.getValues())).toString();
+      final Object first = Objects.requireNonNull(CollectionUtils.getFirst(filter.getValues()));
       final String field = filter.getField();
-      // Per-filter embeddingModelId (in additional) takes precedence over the global fallback,
-      // allowing different semantic search fields to use different embedding models.
-      final String modelId =
-          CollectionUtils.getStringValueFromMap(filter.getAdditional(), FIELD_EMBEDDING_MODEL_ID);
-      final String resolvedModelId = StringUtils.isNotBlank(modelId) ? modelId : embeddingModelId;
-      if (StringUtils.isBlank(resolvedModelId)) {
-        return Filters.eq(field, first);
-      }
       final String vectorName = fieldVsVectorName.get().get(field);
       if (vectorName == null) {
         throw new IllegalArgumentException(
             spec.entityClass().getSimpleName() + "." + field + " is not a vector field");
       }
-      return Filters.semanticSearch(vectorName, spec.queryEmbedder().apply(resolvedModelId, first));
+      switch (first) {
+        case String str -> {
+          try (RefCounted<ConfiguredEmbeddingModel> refCounted =
+              modelProvider.getEmbeddingModel(
+                  embeddingModelIdOf(filter, DefaultModels.TEXT_EMBEDDING_ID))) {
+            final Response<Embedding> embeddings = refCounted.value().model().embed(str);
+            return withAdditionalOf(filter, Filters.semanticSearch(vectorName, embeddings.content().vector()));
+          }
+        }
+        case FileDetails fileDetails when FileUtils.isImageFile(fileDetails) -> {
+          try (RefCounted<ConfiguredEmbeddingModel> refCounted =
+                  modelProvider.getEmbeddingModel(
+                      embeddingModelIdOf(filter, DefaultModels.IMAGE_EMBEDDING_ID));
+              InputStream inputStream = fileService.getContent(fileDetails)) {
+            final ImageContent imageContent =
+                new ImageContent(
+                    Base64.getEncoder().encodeToString(inputStream.readAllBytes()),
+                    fileDetails.mimeType());
+            final List<Embedding> embeddings =
+                refCounted
+                    .value()
+                    .model()
+                    .embed(EmbeddingRequest.builder().input(imageContent).build())
+                    .embeddings();
+            return withAdditionalOf(filter, Filters.semanticSearch(
+                vectorName, embeddings.isEmpty() ? new float[0] : embeddings.getFirst().vector()));
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        }
+        case float[] vector -> {
+          return withAdditionalOf(filter, Filters.semanticSearch(vectorName, vector));
+        }
+        default ->
+            throw new IllegalArgumentException(
+                "Unsupported value type for semantic search on " + field + ": " + first);
+      }
     }
     if (!op.isCompound()) {
       return filter;
@@ -430,7 +520,7 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
         //noinspection unchecked
         subFilter = JsonUtils.fromMap((Map<String, Object>) subFilterObj, Filter.class);
       }
-      updatedSubFilters.add(rewriteSemanticFilter(subFilter, embeddingModelId));
+      updatedSubFilters.add(rewriteSemanticFilter(subFilter));
     }
     return new Filter().withOp(op).withValues(updatedSubFilters);
   }
@@ -816,7 +906,7 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
     if (semantic == null || semantic.getAdditional() == null) {
       return 0.0;
     }
-    return semantic.getAdditional().get("minScore") instanceof Number number
+    return semantic.getAdditional().get(Filters.MIN_SIMILARITY) instanceof Number number
         ? number.doubleValue()
         : 0.0;
   }

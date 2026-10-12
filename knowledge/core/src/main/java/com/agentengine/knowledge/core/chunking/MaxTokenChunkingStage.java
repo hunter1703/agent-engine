@@ -1,0 +1,69 @@
+package com.agentengine.knowledge.core.chunking;
+
+import com.agentengine.knowledge.api.beans.KnowledgeChunk;
+import com.agentengine.util.common.utils.StringUtils;
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.splitter.DocumentBySentenceSplitter;
+import io.reactivex.rxjava3.core.Flowable;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Caps each input chunk to a maximum estimated token count (approximated as chars / 3). Oversized
+ * chunks are split at sentence boundaries.
+ */
+public final class MaxTokenChunkingStage extends IndexingStage {
+
+  private final int approxCharsPerToken;
+  private final int maxTokensPerSegment;
+
+  public MaxTokenChunkingStage(final int approxCharsPerToken, final int maxTokensPerSegment) {
+    this.approxCharsPerToken = approxCharsPerToken;
+    this.maxTokensPerSegment = maxTokensPerSegment;
+  }
+
+  @Override
+  protected boolean cpuBound() {
+    return true;
+  }
+
+  @Override
+  public Flowable<KnowledgeChunk> apply(final Flowable<KnowledgeChunk> chunks) {
+    final int maxChars = maxTokensPerSegment * approxCharsPerToken;
+    return ChunkUtils.splitChunks(
+        chunks,
+        text -> {
+          if (text.length() <= maxChars) {
+            return List.of(text);
+          }
+          return splitBySentence(text, maxChars);
+        });
+  }
+
+  private static List<String> splitBySentence(final String text, final int maxChars) {
+    final DocumentBySentenceSplitter splitter =
+        new DocumentBySentenceSplitter(Integer.MAX_VALUE, 0);
+    final List<String> sentences =
+        splitter.split(Document.from(text)).stream()
+            .map(seg -> seg.text().trim())
+            .filter(StringUtils::isNotBlank)
+            .toList();
+
+    final List<String> result = new ArrayList<>();
+    final StringBuilder current = new StringBuilder();
+    for (final String sentence : sentences) {
+      if (!current.isEmpty() && current.length() + 1 + sentence.length() > maxChars) {
+        result.add(current.toString().trim());
+        current.setLength(0);
+      }
+      if (!current.isEmpty()) {
+        current.append(' ');
+      }
+      current.append(sentence);
+    }
+    if (!current.isEmpty()) {
+      result.add(current.toString().trim());
+    }
+    return result;
+  }
+}

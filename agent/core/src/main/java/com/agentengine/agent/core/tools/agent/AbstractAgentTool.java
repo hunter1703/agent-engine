@@ -15,6 +15,7 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.agents.tools.ToolUtils;
 import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.UnauthorizedException;
@@ -36,7 +37,6 @@ import java.util.Set;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.agentengine.util.agents.tools.ToolUtils;
 
 public class AbstractAgentTool extends Tool {
 
@@ -147,7 +147,8 @@ public class AbstractAgentTool extends Tool {
 
     if (!result.completedRun()) {
       toolContext.requestConfirmation(
-          "Waiting for child agent run to complete.", Map.of(Constants.ToolArgs.CHILD_SESSION_ID, childSessionId));
+          "Waiting for child agent run to complete.",
+          Map.of(Constants.ToolArgs.CHILD_SESSION_ID, childSessionId));
       LOGGER.debug("Awaiting child session {} to complete.", childSessionId);
       return ToolOutput.empty();
     } else {

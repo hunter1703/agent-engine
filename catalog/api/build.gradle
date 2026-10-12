@@ -13,8 +13,10 @@ dependencies {
     implementation project(':util:context')
     implementation project(':util:agents')
     implementation project(':util:distributed')
+    implementation project(':util:models')
 
+    implementation platform(libs.quarkus.bom)
+    compileOnly libs.quarkus.arc
     compileOnly libs.jakarta.inject.api
     compileOnly libs.jakarta.enterprise.cdi.api
-
 }

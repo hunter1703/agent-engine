@@ -23,14 +23,12 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
-import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.adk.agents.BaseAgent;
-import com.google.adk.agents.RunConfig;
 import com.google.adk.apps.App;
 import com.google.adk.events.Event;
 import com.google.adk.plugins.BasePlugin;
@@ -59,15 +57,16 @@ public class RunnerFactory {
   private final FileService fileService;
 
   public RunnerFactory(
-          AgentService agentService,
-          AgentProvider agentProvider,
-          GuardrailPolicyFactory guardrailPolicyFactory,
-          SessionService sessionService,
-          final SessionEventsRepository sessionEventsRepository,
-          final KnowledgeService knowledgeService,
-          final MemoryService memoryService,
-          final NotebookService notebookService,
-          final DistributedCacheManager cacheManager, FileService fileService) {
+      AgentService agentService,
+      AgentProvider agentProvider,
+      GuardrailPolicyFactory guardrailPolicyFactory,
+      SessionService sessionService,
+      final SessionEventsRepository sessionEventsRepository,
+      final KnowledgeService knowledgeService,
+      final MemoryService memoryService,
+      final NotebookService notebookService,
+      final DistributedCacheManager cacheManager,
+      FileService fileService) {
     this.agentService = agentService;
     this.agentProvider = agentProvider;
     this.guardrailPolicyFactory = guardrailPolicyFactory;
@@ -81,8 +80,9 @@ public class RunnerFactory {
             .removalListener(SessionRunner::stop)
             .build();
     this.tempRunnersCache =
-        new DistributedCache.Builder<Runner>(RuntimeService.TEMP_RUNNER_CACHE, cacheManager).build();
-      this.fileService = fileService;
+        new DistributedCache.Builder<Runner>(RuntimeService.TEMP_RUNNER_CACHE, cacheManager)
+            .build();
+    this.fileService = fileService;
   }
 
   /**
@@ -98,21 +98,28 @@ public class RunnerFactory {
   }
 
   public Runner getOrBuildTemp(final String agentId) {
-    return tempRunnersCache.get(agentId, _ -> Context.require().asSystemCaller().get(() -> {
-      final BaseAgentConfig config = agentService.getAgent(agentId);
-      final Agent agent = agentProvider.create(config);
-      final App app =
-              App.builder()
-                      .plugins(buildPlugins(agent))
-                      .rootAgent(agent)
-                      .name(AgentUtils.appName(agentId))
-                      .build();
-      return Runner.builder()
-                      .app(app)
-                      .sessionService(new UserContextSessionService(new InMemorySessionService()))
-                      .memoryService(memoryService)
-                      .build();
-    }));
+    return tempRunnersCache.get(
+        agentId,
+        _ ->
+            Context.require()
+                .asSystemCaller()
+                .get(
+                    () -> {
+                      final BaseAgentConfig config = agentService.getAgent(agentId);
+                      final Agent agent = agentProvider.create(config);
+                      final App app =
+                          App.builder()
+                              .plugins(buildPlugins(agent))
+                              .rootAgent(agent)
+                              .name(AgentUtils.appName(agentId))
+                              .build();
+                      return Runner.builder()
+                          .app(app)
+                          .sessionService(
+                              new UserContextSessionService(new InMemorySessionService()))
+                          .memoryService(memoryService)
+                          .build();
+                    }));
   }
 
   public void stopped(final SessionRunner runner) {
@@ -142,7 +149,14 @@ public class RunnerFactory {
             .sessionService(adkSessionService)
             .memoryService(memoryService)
             .build();
-    return new SessionRunner(agentId, sessionId, actor, runner, agentSession.getCreatedBy());
+    return new SessionRunner(
+        agentId,
+        sessionId,
+        actor,
+        runner,
+        agentSession.getCreatedBy(),
+        knowledgeService,
+        fileService);
   }
 
   private BaseSessionService buildAdkSessionService(

@@ -1,6 +1,7 @@
 package com.agentengine.connectors.core.services;
 
 import com.agentengine.connectors.api.beans.Connection;
+import com.agentengine.connectors.api.services.ConnectionAclService;
 import com.agentengine.connectors.core.ConnectorsDocumentStoreClientType;
 import com.agentengine.util.common.repository.DocumentBackend;
 import com.agentengine.util.common.repository.DocumentRepositorySpec;
@@ -12,7 +13,7 @@ import jakarta.inject.Singleton;
 @Singleton
 @Unremovable
 public class ConnectionAclServiceImpl extends AbstractAssetAclService<Connection>
-    implements com.agentengine.connectors.api.services.ConnectionAclService {
+    implements ConnectionAclService {
 
   @Inject
   public ConnectionAclServiceImpl(final DocumentBackend documentBackend) {

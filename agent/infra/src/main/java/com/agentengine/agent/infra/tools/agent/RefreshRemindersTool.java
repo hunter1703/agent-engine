@@ -35,7 +35,8 @@ public class RefreshRemindersTool extends Tool {
 
     return ToolOutput.direct(
         Map.of(
-            "status", "success",
+            "status",
+            "success",
             "message",
             "Your current reminders. They replace any shown earlier.",
             "reminders",

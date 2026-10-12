@@ -12,10 +12,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import io.grpc.ManagedChannelBuilder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.Map;
 
 @Singleton
 public class MicroServiceChannelProvider

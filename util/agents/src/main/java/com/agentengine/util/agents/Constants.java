@@ -34,6 +34,7 @@ public interface Constants {
     String ORIGINAL_FUNCTION_CALL = "originalFunctionCall";
     String TOOL_CONFIRMATION = "toolConfirmation";
     String KNOWLEDGE_ID = "knowledgeId";
+    String IMAGE_KNOWLEDGE_ID = "imageKnowledgeId";
     String CHILD_SESSION_ID = "child_session_id";
     String AGENT_ID = "agent_id";
     String AWAIT_COMPLETION = "await_completion";

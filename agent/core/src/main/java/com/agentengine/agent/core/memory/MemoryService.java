@@ -5,8 +5,6 @@ import com.agentengine.agent.api.services.CommunityExpertsService;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.agents.beans.config.DefaultModels;
-import com.agentengine.util.agents.repository.DefaultModelsRepository;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.query.Filter;
@@ -15,8 +13,9 @@ import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.models.config.DefaultModels;
+import com.agentengine.util.models.embedding.ConfiguredEmbeddingModel;
 import com.agentengine.util.models.factories.EmbeddingUtils;
-import com.agentengine.util.models.factories.Model;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.vectordb.VectorDbUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -25,6 +24,7 @@ import com.google.adk.memory.MemoryEntry;
 import com.google.adk.memory.SearchMemoryResponse;
 import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
+import com.google.genai.types.Modality;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Single;
@@ -57,26 +57,22 @@ public class MemoryService implements BaseMemoryService {
   private static final int MAX_EXISTING_MEMORIES = 15;
   private static final int MAX_CONVERSATION_CHARS = 8000;
   private static final int EVENTS_PAGE_SIZE = 50;
-  private static final String EMBEDDING_MODEL_ID_KEY = "embeddingModelId";
   private static final String TEXT_VECTOR =
       VectorDbUtils.vectorNames(Memory.class).get(Memory.FIELD_TEXT);
 
   private final CommunityExpertsService communityExpertsService;
   private final SessionEventsRepository sessionEventsRepository;
   private final MemoryRepository memoryRepository;
-  private final DefaultModelsRepository defaultModelsRepository;
   private final ModelProvider modelProvider;
 
   public MemoryService(
       final CommunityExpertsService communityExpertsService,
       final SessionEventsRepository sessionEventsRepository,
       final MemoryRepository memoryRepository,
-      final DefaultModelsRepository defaultModelsRepository,
       final ModelProvider modelProvider) {
     this.communityExpertsService = communityExpertsService;
     this.sessionEventsRepository = sessionEventsRepository;
     this.memoryRepository = memoryRepository;
-    this.defaultModelsRepository = defaultModelsRepository;
     this.modelProvider = modelProvider;
   }
 
@@ -129,13 +125,7 @@ public class MemoryService implements BaseMemoryService {
   }
 
   private List<Memory> semanticMemorySearch(final String queryText, final int limit) {
-    final String embeddingModelId = defaultModelsRepository.getEmbeddingModelId();
-    if (StringUtils.isBlank(embeddingModelId)) {
-      return List.of();
-    }
-    final Filter filter =
-        Filters.semanticSearch(Memory.FIELD_TEXT, queryText)
-            .withAdditional(Map.of(EMBEDDING_MODEL_ID_KEY, embeddingModelId));
+    final Filter filter = Filters.semanticSearch(Memory.FIELD_TEXT, queryText);
     final Query query = new Query().withFilter(filter).withPage(new Page(0, limit));
     return CollectionUtils.nullSafeList(memoryRepository.findByQuery(query).getItems());
   }
@@ -150,7 +140,7 @@ public class MemoryService implements BaseMemoryService {
     final String response =
         communityExpertsService.invokeExpert(
             CommunityExpertsService.MEMORY_AGENT,
-            DefaultModels.CHAT_ID,
+            DefaultModels.SMART_ID,
             UserMessage.ofText(buildPromptBody(conversation, existing)));
     return parseDecisions(response);
   }
@@ -228,11 +218,8 @@ public class MemoryService implements BaseMemoryService {
     if (memories.isEmpty()) {
       return;
     }
-    final String modelId = defaultModelsRepository.getEmbeddingModelId();
-    if (StringUtils.isBlank(modelId)) {
-      throw new IllegalStateException("No default embedding model configured");
-    }
-    try (RefCounted<Model.EmbeddingModel> refCounted = modelProvider.getEmbeddingModel(modelId)) {
+    try (RefCounted<ConfiguredEmbeddingModel> refCounted =
+        modelProvider.getDefaultEmbeddingModel(Modality.Known.TEXT)) {
       final List<float[]> vectors =
           EmbeddingUtils.embedAll(
               refCounted.value(), memories.stream().map(Memory::getText).toList());

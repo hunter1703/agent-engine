@@ -13,9 +13,9 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 /**
- * Also a {@link ProvisioningService} so {@code CustomerProvisioningService} discovers and calls
- * it the same generic way as every other provisioning step. Customer-only: there is no bucket
- * for the system pseudo-customer, so {@link #provisionEnvironment} is a no-op, unlike {@link
+ * Also a {@link ProvisioningService} so {@code CustomerProvisioningService} discovers and calls it
+ * the same generic way as every other provisioning step. Customer-only: there is no bucket for the
+ * system pseudo-customer, so {@link #provisionEnvironment} is a no-op, unlike {@link
  * com.agentengine.util.crypto.EncryptionClientProvisioner}, which genuinely needs both.
  */
 @Singleton
@@ -59,8 +59,8 @@ public class CloudStorageClientProvisioner extends InfraClientProvisioner
   private void provision(final String customerId, final String serverId) {
     final String bucket = CloudStorageUtils.defaultBucket(customerId);
     infraConfigService.save(
-            CloudStorageUtils.clientConfig(
-                    customerId, resolvedServerId(ServerType.CLOUDSTORAGE_SERVER, serverId), bucket));
+        CloudStorageUtils.clientConfig(
+            customerId, resolvedServerId(ServerType.CLOUDSTORAGE_SERVER, serverId), bucket));
     storageFactory.get(customerId).ensureBucket(bucket);
   }
 }

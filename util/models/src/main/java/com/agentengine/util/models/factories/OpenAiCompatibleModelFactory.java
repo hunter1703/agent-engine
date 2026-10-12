@@ -1,8 +1,8 @@
 package com.agentengine.util.models.factories;
 
-import com.agentengine.util.agents.beans.config.ChatModelConfig;
-import com.agentengine.util.agents.beans.config.KeyValuePair;
 import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.models.config.ChatModelConfig;
+import com.agentengine.util.models.config.KeyValuePair;
 import com.agentengine.util.models.llm.LangChain4jModel;
 import com.agentengine.util.models.llm.ToolsOffMode;
 import com.google.adk.models.BaseLlm;
@@ -40,8 +40,8 @@ public abstract class OpenAiCompatibleModelFactory extends DelegatingModelFactor
   }
 
   /**
-   * Request fields this provider always sends beyond the OpenAI standard; any the model config
-   * sets in its own additional params take precedence.
+   * Request fields this provider always sends beyond the OpenAI standard; any the model config sets
+   * in its own additional params take precedence.
    */
   protected Map<String, Object> additionalParams(final ChatModelConfig chatConfig) {
     return Map.of();

@@ -1,6 +1,6 @@
 package com.agentengine.util.agents.builder;
 
-import com.agentengine.util.agents.builder.annotations.UiAccessLevel;
+import com.agentengine.util.common.builder.annotations.UiAccessLevel;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.fasterxml.jackson.annotation.JsonInclude;

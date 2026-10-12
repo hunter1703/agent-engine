@@ -58,9 +58,9 @@ public class AuthRestAPI {
     final Context context = requestContextProvider.get();
     final User user =
         context.userCaller().map(UserCaller::userId).map(userService::get).orElse(null);
-    final List<String> roleIds = user == null ? List.of() : accessControlService.getRolesForUser(user.getId());
-    return Response.ok(new MeResponse(context.customerId(), user, roleIds))
-        .build();
+    final List<String> roleIds =
+        user == null ? List.of() : accessControlService.getRolesForUser(user.getId());
+    return Response.ok(new MeResponse(context.customerId(), user, roleIds)).build();
   }
 
   @POST

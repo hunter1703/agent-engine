@@ -29,7 +29,8 @@ public class CompactorProvider {
   }
 
   @SuppressWarnings("unchecked")
-  public <C extends ContextStrategyConfig> EventCompactor create(final BaseAgentConfig agentConfig) {
+  public <C extends ContextStrategyConfig> EventCompactor create(
+      final BaseAgentConfig agentConfig) {
     final C config = (C) AgentUtils.resolveContextStrategy(agentConfig);
     final CompactorFactory<C> factory =
         (CompactorFactory<C>) typeVsFactory.getOrDefault(config.getType(), defaultFactory);

@@ -1,18 +1,18 @@
 package com.agentengine.agent.infra.tools;
 
-import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.agent.infra.tools.agent.RefreshRemindersTool;
 import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
 import com.agentengine.knowledge.api.services.KnowledgeService;
+import com.agentengine.knowledge.api.services.MediaService;
 import com.agentengine.util.agents.beans.config.ToolsConfig;
-import com.agentengine.util.agents.repository.DefaultModelsRepository;
-import com.agentengine.util.cloudstorage.CloudStorageService;
+import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,29 +22,26 @@ import java.util.Map;
 public final class ToolFactory {
 
   private final ToolService toolService;
-  private final CloudStorageService cloudStorageService;
+  private final FileService fileService;
   private final KnowledgeService knowledgeService;
-  private final DefaultModelsRepository defaultModelsRepository;
-  private final ModelProvider modelProvider;
-  private final NotebookService notebookService;
+  private final Provider<MediaService> mediaServiceProvider;
   private final ReminderSyncService reminderSyncService;
+  private final ModelProvider modelProvider;
 
   @Inject
   public ToolFactory(
       final ToolService toolService,
-      final CloudStorageService cloudStorageService,
+      final FileService fileService,
       final KnowledgeService knowledgeService,
-      final DefaultModelsRepository defaultModelsRepository,
-      final ModelProvider modelProvider,
-      final NotebookService notebookService,
-      final ReminderSyncService reminderSyncService) {
+      final Provider<MediaService> mediaServiceProvider,
+      final ReminderSyncService reminderSyncService,
+      final ModelProvider modelProvider) {
     this.toolService = toolService;
-    this.cloudStorageService = cloudStorageService;
+    this.fileService = fileService;
     this.knowledgeService = knowledgeService;
-    this.defaultModelsRepository = defaultModelsRepository;
-    this.modelProvider = modelProvider;
-    this.notebookService = notebookService;
+    this.mediaServiceProvider = mediaServiceProvider;
     this.reminderSyncService = reminderSyncService;
+    this.modelProvider = modelProvider;
   }
 
   public HumanInTheLoopTool getHITLTool() {
@@ -53,7 +50,7 @@ public final class ToolFactory {
 
   public BaseTool getSearchKnowledgeTool() {
     return new SearchKnowledgeTool(
-        knowledgeService, cloudStorageService, defaultModelsRepository, modelProvider);
+        knowledgeService, fileService, mediaServiceProvider.get(), modelProvider);
   }
 
   public BaseTool getRefreshRemindersTool() {

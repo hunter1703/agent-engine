@@ -7,8 +7,9 @@ import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.common.utils.StructuredConcurrencyUtils;
-import com.agentengine.util.models.factories.Model;
+import com.agentengine.util.models.ConfiguredModel;
 import com.agentengine.util.models.factories.ModelProvider;
+import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
@@ -76,7 +77,7 @@ public final class RelevanceScorer {
                         .build()))
             .build();
     final LlmResponse response;
-    try (RefCounted<Model.LLMModel> refCounted = modelProvider.get(modelId)) {
+    try (RefCounted<ConfiguredModel<BaseLlm>> refCounted = modelProvider.get(modelId)) {
       response =
           refCounted
               .value()

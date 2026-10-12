@@ -1,7 +1,5 @@
 package com.agentengine.util.agents.agui;
 
-import com.google.genai.types.GenerateContentResponseUsageMetadata;
-import com.agui.community.core.event.MetaEvent;
 import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
@@ -10,10 +8,12 @@ import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.ExceptionUtils;
 import com.agui.community.core.event.*;
+import com.agui.community.core.event.MetaEvent;
 import com.agui.community.core.interrupt.SuccessOutcome;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
+import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.HashMap;
@@ -48,8 +48,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
   public Flowable<Event> onError(final Throwable throwable) {
     LOG.debug("Processing error mapping - throwable={}", ExceptionUtils.getErrorMessage(throwable));
     final RunErrorEvent errorEvent =
-        new RunErrorEvent(
-            ExceptionUtils.getErrorSummary(throwable), null, state.timestamp(), null);
+        new RunErrorEvent(ExceptionUtils.getErrorSummary(throwable), null, state.timestamp(), null);
     LOG.debug("Generated output event in onError - eventType=RunErrorEvent");
     return Flowable.just(errorEvent);
   }

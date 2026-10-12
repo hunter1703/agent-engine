@@ -33,9 +33,7 @@ public final class JsonUtils {
   private static final JsonMapper LENIENT_JSON_MAPPER =
       createJsonMapper(
           JsonMapper.builder(
-              JsonFactory.builder()
-                  .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
-                  .build()));
+              JsonFactory.builder().enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS).build()));
 
   private JsonUtils() {}
 
@@ -133,6 +131,18 @@ public final class JsonUtils {
     }
     try {
       return JSON_MAPPER.readValue(inputStream, clazz);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
+    }
+  }
+
+  public static <T> T fromStream(
+      final InputStream inputStream, final TypeReference<T> typeReference) {
+    if (inputStream == null) {
+      return null;
+    }
+    try {
+      return JSON_MAPPER.readValue(inputStream, typeReference);
     } catch (IOException exception) {
       throw new RuntimeException(exception);
     }

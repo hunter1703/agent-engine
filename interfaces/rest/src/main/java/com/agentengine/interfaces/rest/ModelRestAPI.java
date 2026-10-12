@@ -1,11 +1,11 @@
 package com.agentengine.interfaces.rest;
 
 import com.agentengine.catalog.api.services.ModelService;
-import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.ContextAware;
+import com.agentengine.util.models.config.ModelConfig;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;

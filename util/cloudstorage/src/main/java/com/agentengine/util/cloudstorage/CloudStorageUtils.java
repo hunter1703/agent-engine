@@ -2,13 +2,8 @@ package com.agentengine.util.cloudstorage;
 
 import static com.agentengine.util.common.Constants.ID_SEPARATOR;
 
-import com.agentengine.util.common.beans.FileDetails;
-import com.agentengine.util.common.utils.ExceptionUtils;
 import com.agentengine.util.infra.ClientType;
-
 import java.io.*;
-import java.net.URI;
-import java.net.URL;
 
 public final class CloudStorageUtils {
 

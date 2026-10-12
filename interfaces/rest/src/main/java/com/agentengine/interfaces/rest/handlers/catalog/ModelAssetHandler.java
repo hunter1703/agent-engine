@@ -2,9 +2,9 @@ package com.agentengine.interfaces.rest.handlers.catalog;
 
 import com.agentengine.catalog.api.services.ModelService;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
-import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.models.config.ModelConfig;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

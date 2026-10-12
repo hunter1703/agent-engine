@@ -25,10 +25,10 @@ import java.util.Optional;
  *
  * <p>A result gains {@code completedAt}, the time it was produced in the zone the user's message
  * was stamped in, {@code timeZone}, the id of that zone, so every result names its zone however far
- * back in the history it is, and {@code timeTaken}, the time from the model's event making the
- * call to the result, pauses included: a call that waited for a child session or a user answer
- * reports the whole wait. A result that already has a field of one of these names keeps it, and an
- * empty result stays empty, since an empty result is how a tool that raises an interrupt answers.
+ * back in the history it is, and {@code timeTaken}, the time from the model's event making the call
+ * to the result, pauses included: a call that waited for a child session or a user answer reports
+ * the whole wait. A result that already has a field of one of these names keeps it, and an empty
+ * result stays empty, since an empty result is how a tool that raises an interrupt answers.
  */
 public final class ToolTimingPlugin extends BasePlugin {
   public static final String COMPLETED_AT = "completedAt";

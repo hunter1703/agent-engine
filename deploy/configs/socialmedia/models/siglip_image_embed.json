@@ -1,0 +1,10 @@
+{
+  "id": "siglip-image-embed",
+  "model": "siglip",
+  "name": "SigLIP Image Embedding",
+  "baseUrl": "http://host.docker.internal:8081/v1",
+  "provider": "IMAGE_EMBEDDING",
+  "type": "EMBEDDING",
+  "dimensions": 768,
+  "maxBatchSize": 32
+}

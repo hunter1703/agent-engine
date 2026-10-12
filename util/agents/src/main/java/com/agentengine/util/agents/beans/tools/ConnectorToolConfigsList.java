@@ -1,6 +1,6 @@
 package com.agentengine.util.agents.beans.tools;
 
-import com.agentengine.util.agents.builder.annotations.UiField;
+import com.agentengine.util.common.builder.annotations.UiField;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;

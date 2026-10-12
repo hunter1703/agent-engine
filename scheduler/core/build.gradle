@@ -6,6 +6,7 @@ group = 'com.agentengine.scheduler'
 
 dependencies {
     implementation project(':scheduler:api')
+    implementation project(':catalog:api')
     implementation project(':util:ms:client')
     implementation project(':util:infra')
     implementation project(':tenancy:api')

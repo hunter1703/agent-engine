@@ -26,7 +26,6 @@ import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,7 +97,8 @@ public final class CommunityExpertsServiceImpl implements CommunityExpertsServic
       final Content prompt = Content.fromParts(toParts(userMessage));
       final String responseText =
           runner
-              .runAsync(userId, sessionId, prompt, RunConfig.builder().autoCreateSession(true).build())
+              .runAsync(
+                  userId, sessionId, prompt, RunConfig.builder().autoCreateSession(true).build())
               .filter(event -> event.content().isPresent())
               .map(event -> event.content().orElseThrow().text())
               .lastElement()

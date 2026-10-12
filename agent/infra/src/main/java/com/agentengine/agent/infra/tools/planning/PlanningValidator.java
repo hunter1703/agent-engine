@@ -486,7 +486,9 @@ public final class PlanningValidator {
     return inProgress;
   }
 
-  /** {@code actedOn} is the task being started or completed, or null when a whole plan is checked. */
+  /**
+   * {@code actedOn} is the task being started or completed, or null when a whole plan is checked.
+   */
   private static String validateSingleLineage(
       final List<Task> inProgressTasks, final Map<String, Task> tasksById, final Task actedOn) {
     if (inProgressTasks.size() <= 1) {

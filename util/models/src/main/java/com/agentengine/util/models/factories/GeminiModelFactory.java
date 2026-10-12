@@ -1,7 +1,7 @@
 package com.agentengine.util.models.factories;
 
-import com.agentengine.util.agents.beans.config.ChatModelConfig;
-import com.agentengine.util.agents.beans.config.ModelConfig;
+import com.agentengine.util.models.config.ChatModelConfig;
+import com.agentengine.util.models.config.ModelConfig;
 import com.google.adk.models.Gemini;
 import jakarta.inject.Singleton;
 

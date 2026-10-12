@@ -21,14 +21,13 @@ import java.util.function.Supplier;
 public class MicroServiceClientProviderImpl implements MicroServiceClientProvider {
 
   private final MicroServiceChannelProvider channelProvider;
-    private final JsonCodec jsonCodec;
+  private final JsonCodec jsonCodec;
 
   @Inject
   public MicroServiceClientProviderImpl(
-      final MicroServiceChannelProvider channelProvider,
-      final JsonCodec jsonCodec) {
+      final MicroServiceChannelProvider channelProvider, final JsonCodec jsonCodec) {
     this.channelProvider = channelProvider;
-      this.jsonCodec = jsonCodec;
+    this.jsonCodec = jsonCodec;
   }
 
   @Override

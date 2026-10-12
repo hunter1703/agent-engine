@@ -10,7 +10,7 @@ import java.util.UUID;
 public interface CloudStorageService extends AutoCloseable {
 
   default FileDetails upload(
-      String key, String name, InputStream inputStream, long contentLength, String mediaType) {
+      String key, String name, InputStream inputStream, Long contentLength, String mediaType) {
     return upload(key, name, inputStream, contentLength, mediaType, null);
   }
 
@@ -18,12 +18,12 @@ public interface CloudStorageService extends AutoCloseable {
       String key,
       String name,
       InputStream inputStream,
-      long contentLength,
+      Long contentLength,
       String mediaType,
       Map<String, String> metadata);
 
   default FileDetails upload(
-      String name, InputStream inputStream, long contentLength, String mediaType) {
+      String name, InputStream inputStream, Long contentLength, String mediaType) {
     return upload(
         UUID.randomUUID().toString().replace("-", ""), name, inputStream, contentLength, mediaType);
   }

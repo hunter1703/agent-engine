@@ -8,7 +8,6 @@ import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.FileDetails;
 
 @Index(name = "knowledge_updated_idx", def = "{'updatedTime': -1}")
-@Index(name = "knowledge_agent_updated_idx", def = "{'agentId': 1, 'updatedTime': -1}")
 @Index(name = "knowledge_status_updated_idx", def = "{'indexingStatus': 1, 'updatedTime': -1}")
 @Permissioned(assetClass = AssetClass.KNOWLEDGE)
 public class Knowledge extends BaseEntity {
@@ -19,7 +18,6 @@ public class Knowledge extends BaseEntity {
   public static final String FIELD_DESCRIPTION = "description";
   public static final String FIELD_ERROR = "error";
 
-  private String agentId;
   private FileDetails fileDetails;
   private String title;
   private String description;
@@ -29,14 +27,6 @@ public class Knowledge extends BaseEntity {
   private long indexedAt;
   private String contentPreview;
   private String error;
-
-  public String getAgentId() {
-    return agentId;
-  }
-
-  public void setAgentId(final String agentId) {
-    this.agentId = agentId;
-  }
 
   public String getTitle() {
     return title;

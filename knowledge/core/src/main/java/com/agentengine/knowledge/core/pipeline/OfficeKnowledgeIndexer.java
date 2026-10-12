@@ -2,24 +2,24 @@ package com.agentengine.knowledge.core.pipeline;
 
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.core.chunking.ChunkingPipelineFactory;
-import com.agentengine.knowledge.core.chunking.ChunkingStage;
-import com.agentengine.knowledge.core.chunking.OfficeTextExtractionStage;
+import com.agentengine.knowledge.core.chunking.IndexingStage;
+import com.agentengine.knowledge.core.chunking.OfficeChunkingStage;
+import com.agentengine.knowledge.core.chunking.RootIndexingStage;
 import com.agentengine.knowledge.core.repository.KnowledgeRepository;
-import com.agentengine.util.agents.repository.DefaultModelsRepository;
+import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Indexes Word, PowerPoint, and Excel knowledge (old or OOXML format): {@link
- * OfficeTextExtractionStage} extracts its text with Apache POI as the pipeline's first stage, then
- * the knowledge's configured chunking strategy runs on the result.
+ * Indexes Word, PowerPoint, and Excel knowledge (old or OOXML format): {@link OfficeChunkingStage}
+ * extracts its text with Apache POI as the pipeline's first stage, then the knowledge's configured
+ * chunking strategy runs on the result.
  */
 @Singleton
-public class OfficeKnowledgeIndexer extends AbstractTextKnowledgeIndexer {
+public class OfficeKnowledgeIndexer extends AbstractKnowledgeIndexer {
 
   private static final int PRIORITY = 100;
 
@@ -27,9 +27,13 @@ public class OfficeKnowledgeIndexer extends AbstractTextKnowledgeIndexer {
   public OfficeKnowledgeIndexer(
       final ChunkingPipelineFactory chunkingPipelineFactory,
       final KnowledgeRepository knowledgeRepository,
-      final DefaultModelsRepository defaultModelsRepository,
-      final ModelProvider modelProvider) {
-    super(chunkingPipelineFactory, knowledgeRepository, defaultModelsRepository, modelProvider);
+      final ModelProvider modelProvider,
+      final FileService fileService) {
+    super(
+        chunkingPipelineFactory,
+        knowledgeRepository,
+        modelProvider,
+        fileService);
   }
 
   @Override
@@ -38,11 +42,13 @@ public class OfficeKnowledgeIndexer extends AbstractTextKnowledgeIndexer {
   }
 
   @Override
-  protected List<ChunkingStage> stages(final Knowledge knowledge) {
-    final List<ChunkingStage> stages = new ArrayList<>();
-    stages.add(new OfficeTextExtractionStage());
-    stages.addAll(super.stages(knowledge));
-    return stages;
+  protected List<IndexingStage> stages(final Knowledge knowledge) {
+    return chunkingPipelineFactory.getConfiguredStages(knowledge);
+  }
+
+  @Override
+  protected RootIndexingStage rootStage(Knowledge knowledge) {
+    return new OfficeChunkingStage(fileService, knowledge);
   }
 
   @Override

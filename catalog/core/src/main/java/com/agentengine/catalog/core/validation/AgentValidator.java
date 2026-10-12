@@ -2,6 +2,7 @@ package com.agentengine.catalog.core.validation;
 
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.DefaultAgentConfig;
+import com.agentengine.util.agents.beans.config.ImageClassificationAgentConfig;
 import com.agentengine.util.agents.beans.config.OrchestrationMode;
 import com.agentengine.util.agents.beans.config.OrchestratorAgentConfig;
 import com.agentengine.util.agents.beans.config.OrchestratorParallelConfig;
@@ -47,18 +48,38 @@ public class AgentValidator implements Validator<BaseAgentConfig> {
     if (StringUtils.isBlank(config.getType())) {
       errors.add("Agent type is required");
     }
-    if (config instanceof DefaultAgentConfig && StringUtils.isBlank(config.getModelId())) {
-      errors.add("Agent type and modelId are required");
+    if (needsModel(config) && StringUtils.isBlank(config.getModelId())) {
+      errors.add("modelId: must not be blank");
     }
-    if (!(config instanceof OrchestratorAgentConfig)
-        && CollectionUtils.isNotEmpty(config.getSubAgentIds())) {
-      errors.add(
-          "subAgentIds are supported only for type=orchestrator; agent_id=" + config.getId());
+    if (config instanceof ImageClassificationAgentConfig
+        && StringUtils.isBlank(config.getModelId())
+        && CollectionUtils.isEmpty(config.getSubAgentIds())) {
+      errors.add("image classification agent requires modelId or subAgentIds");
+    }
+    if ((config instanceof DefaultAgentConfig || config instanceof OrchestratorAgentConfig)
+        && StringUtils.isBlank(config.getSystemPrompt())) {
+      errors.add("systemPrompt: must not be blank");
     }
     if (config instanceof OrchestratorAgentConfig orchestratorAgentConfig) {
       validateOrchestratorConfig(orchestratorAgentConfig, errors);
     }
+    if (!(config instanceof OrchestratorAgentConfig)
+        && !(config instanceof ImageClassificationAgentConfig)
+        && CollectionUtils.isNotEmpty(config.getSubAgentIds())) {
+      errors.add(
+          "subAgentIds are supported only for type=orchestrator and type=image_classification;"
+              + " agent_id="
+              + config.getId());
+    }
     validateToolConfigs(config, errors);
+  }
+
+  private boolean needsModel(final BaseAgentConfig config) {
+    if (config instanceof OrchestratorAgentConfig orchestrator) {
+      final OrchestrationMode mode = orchestrator.orchestrationModeEnum();
+      return mode != OrchestrationMode.SEQUENTIAL && mode != OrchestrationMode.PARALLEL;
+    }
+    return config instanceof DefaultAgentConfig;
   }
 
   private void validateOrchestratorConfig(

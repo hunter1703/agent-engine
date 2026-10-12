@@ -1,6 +1,5 @@
 package com.agentengine.agent.core.session;
 
-import com.agentengine.tenancy.UserCache;
 import static com.agentengine.util.common.Constants.ID_SEPARATOR;
 
 import com.agentengine.agent.core.factories.RunnerFactory;
@@ -9,6 +8,7 @@ import com.agentengine.agent.core.session.commands.IdleTimeoutCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.catalog.api.services.SessionService;
+import com.agentengine.tenancy.UserCache;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.context.Context;

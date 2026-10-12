@@ -1,55 +1,51 @@
 package com.agentengine.knowledge.api.beans;
 
 import com.agentengine.util.common.annotations.Indexed;
+import com.agentengine.util.common.beans.FileDetails;
+import com.agentengine.util.common.events.Copyable;
 import com.agentengine.util.vectordb.VectorEntity;
 
 /**
- * A single indexed chunk stored in the vector store. The {@code id} is the point ID ({@code
- * knowledgeId + "-" + chunkIndex}).
+ * A piece of a knowledge item stored in the vector store, with the vectors of one embedding model
+ * ({@link #embedder}) for its {@link #text}, {@link #description} and {@link #media}.
  *
- * <p>Source and sourceType are intentionally omitted — they are available on the parent {@link
- * Knowledge} entity and can be fetched via {@code knowledgeId} when needed.
+ * <p>The chunks made from one piece of the item, by different models or, for an image, by
+ * different vectors found in it, share its {@link #chunkIndex}, {@link #chunkStart} and {@link
+ * #chunkEnd}. Their ids are their own.
  *
- * <p>Currently a single vector field is used ({@link #FIELD_TEXT}), populated by embedding the
- * chunk's text. Additional fields (e.g. title, summary) can be added later by calling {@link
- * #setVector(String, float[])} with the appropriate physical field name.
+ * <p>The item's source and source type are on the parent {@link Knowledge}, reached through {@link
+ * #knowledgeId}.
  */
-public class KnowledgeChunk extends VectorEntity {
+public class KnowledgeChunk extends VectorEntity implements Copyable<KnowledgeChunk> {
 
   public static final String FIELD_KNOWLEDGE_ID = "knowledgeId";
-  public static final String FIELD_AGENT_ID = "agentId";
+  public static final String FIELD_CHUNK_INDEX = "chunkIndex";
+  public static final String FIELD_CHUNK_START = "chunkStart";
+  public static final String FIELD_CHUNK_END = "chunkEnd";
   public static final String FIELD_KNOWLEDGE_VERSION = "knowledgeVersion";
   public static final String FIELD_STATUS = "status";
 
   public static final String FIELD_TEXT = "text";
-
-  /** Default {@link #mimeType} for a chunk whose content is text, as almost every chunk's is. */
-  public static final String MIME_TYPE_TEXT = "text/plain";
+  public static final String FIELD_MEDIA = "media";
+  public static final String FIELD_DESCRIPTION = "description";
+  public static final String FIELD_EMBEDDER = "embedder";
 
   @Indexed private String knowledgeId;
-  @Indexed private String agentId;
-  @Indexed private long knowledgeVersion;
+  @Indexed private Long knowledgeVersion;
   @Indexed private String status;
   private int chunkIndex;
 
   @Indexed(vector = true)
   private String text;
 
-  /**
-   * The kind of content this chunk carries — {@link #MIME_TYPE_TEXT} unless it's still an
-   * undescribed media chunk (see {@link #bytes}), in which case it's that media's own mime type
-   * (e.g. {@code image/png}). A stage whose logic only makes sense for text (splitting by sentence,
-   * merging by embedding similarity) checks this rather than assuming every chunk it sees is text.
-   */
-  private String mimeType = MIME_TYPE_TEXT;
+  @Indexed(vector = true)
+  private String description;
 
-  /**
-   * Raw bytes of the media (e.g. an image) this chunk represents, set only while it's still
-   * awaiting description by a media-description stage — {@code null} once description has replaced
-   * it with {@link #text} (and {@link #mimeType} reverts to {@link #MIME_TYPE_TEXT}), and for every
-   * chunk that was never media. Pipeline-internal state, never persisted.
-   */
-  private transient byte[] bytes;
+  @Indexed(vector = true)
+  private FileDetails media;
+
+  /** The id of the embedding model that produced the chunk's vectors. */
+  @Indexed private String embedder;
 
   private int chunkStart;
   private int chunkEnd;
@@ -62,14 +58,6 @@ public class KnowledgeChunk extends VectorEntity {
     this.knowledgeId = knowledgeId;
   }
 
-  public String getAgentId() {
-    return agentId;
-  }
-
-  public void setAgentId(final String agentId) {
-    this.agentId = agentId;
-  }
-
   public String getStatus() {
     return status;
   }
@@ -78,11 +66,11 @@ public class KnowledgeChunk extends VectorEntity {
     this.status = status;
   }
 
-  public long getKnowledgeVersion() {
+  public Long getKnowledgeVersion() {
     return knowledgeVersion;
   }
 
-  public void setKnowledgeVersion(final long knowledgeVersion) {
+  public void setKnowledgeVersion(final Long knowledgeVersion) {
     this.knowledgeVersion = knowledgeVersion;
   }
 
@@ -102,22 +90,6 @@ public class KnowledgeChunk extends VectorEntity {
     this.text = text;
   }
 
-  public String getMimeType() {
-    return mimeType;
-  }
-
-  public void setMimeType(final String mimeType) {
-    this.mimeType = mimeType;
-  }
-
-  public byte[] getBytes() {
-    return bytes;
-  }
-
-  public void setBytes(final byte[] bytes) {
-    this.bytes = bytes;
-  }
-
   public int getChunkStart() {
     return chunkStart;
   }
@@ -132,5 +104,50 @@ public class KnowledgeChunk extends VectorEntity {
 
   public void setChunkEnd(final int chunkEnd) {
     this.chunkEnd = chunkEnd;
+  }
+
+  public FileDetails getMedia() {
+    return media;
+  }
+
+  public void setMedia(FileDetails media) {
+    this.media = media;
+  }
+
+  public String getEmbedder() {
+    return embedder;
+  }
+
+  public void setEmbedder(final String embedder) {
+    this.embedder = embedder;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(final String description) {
+    this.description = description;
+  }
+
+  public KnowledgeChunk withEmbedder(final String embedder) {
+    setEmbedder(embedder);
+    return this;
+  }
+
+  @Override
+  public KnowledgeChunk copy() {
+    final KnowledgeChunk copy = new KnowledgeChunk();
+    copy.knowledgeId = this.knowledgeId;
+    copy.knowledgeVersion = this.knowledgeVersion;
+    copy.status = this.status;
+    copy.chunkIndex = this.chunkIndex;
+    copy.text = this.text;
+    copy.description = this.description;
+    copy.media = this.media;
+    copy.embedder = this.embedder;
+    copy.chunkStart = this.chunkStart;
+    copy.chunkEnd = this.chunkEnd;
+    return copy;
   }
 }

@@ -16,19 +16,18 @@ import com.agentengine.agent.core.session.events.*;
 import com.agentengine.agent.core.session.state.*;
 import com.agentengine.agent.core.tools.agent.AwaitAgentTool;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
-import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.SessionService;
-import com.agentengine.util.agents.Constants;
-import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.tenancy.UserCache;
 import com.agentengine.tenancy.beans.User;
+import com.agentengine.util.agents.Constants;
+import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
-import com.google.genai.types.GenerateContentResponseUsageMetadata;
-import com.agentengine.util.agents.beans.session.TokenUsage;
 import com.agentengine.util.agents.beans.session.SessionStatus;
+import com.agentengine.util.agents.beans.session.TokenUsage;
+import com.agentengine.util.agents.tools.ToolUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.UniqueRecord;
@@ -50,10 +49,11 @@ import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
+import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import java.time.Duration;
-import java.util.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
@@ -70,7 +70,6 @@ import org.apache.pekko.persistence.typed.javadsl.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.concurrent.ExecutionContextExecutor;
-import com.agentengine.util.agents.tools.ToolUtils;
 
 /** Persistent, cluster-sharded actor that manages a single agent session. */
 public final class SessionActor
@@ -222,10 +221,7 @@ public final class SessionActor
       case TRIGGERED_RUN -> {
         // The crash-landed before the first turn committed, so restart from the original message.
         final RunState run = Objects.requireNonNull(state.currentRun());
-        startRun(
-            state,
-            run.message(),
-            () -> runner.start(run, authorOf(state.topology())));
+        startRun(state, run.message(), () -> runner.start(run, authorOf(state.topology())));
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case CONTINUING -> {
@@ -970,8 +966,8 @@ public final class SessionActor
         turnEvents.clear();
         turnId = null;
       } else {
-          final RunState currentRun = Objects.requireNonNull(state.currentRun());
-          final List<Event> events = new ArrayList<>(turnEvents);
+        final RunState currentRun = Objects.requireNonNull(state.currentRun());
+        final List<Event> events = new ArrayList<>(turnEvents);
 
         final TurnCommittedFact turnFact =
             commitTurn(

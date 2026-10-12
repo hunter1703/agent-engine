@@ -1,6 +1,5 @@
 package com.agentengine.tenancy.core.services;
 
-import java.util.List;
 import com.agentengine.tenancy.UserService;
 import com.agentengine.tenancy.beans.User;
 import com.agentengine.tenancy.core.repository.UserRepository;
@@ -9,6 +8,7 @@ import com.agentengine.util.distributed.DistributedCacheManager;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.List;
 
 @Singleton
 @Unremovable

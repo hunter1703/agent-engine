@@ -1,6 +1,6 @@
 package com.agentengine.util.models.factories;
 
-import com.agentengine.util.agents.beans.config.ModelConfig;
+import com.agentengine.util.models.config.ModelConfig;
 import com.agentengine.util.models.llm.ToolsOffMode;
 import jakarta.inject.Singleton;
 

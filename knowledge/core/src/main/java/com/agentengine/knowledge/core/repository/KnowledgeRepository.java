@@ -27,10 +27,13 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Singleton
 @Startup
 public class KnowledgeRepository extends AbstractPermissionedRepository<Knowledge> {
+
 
   private final KnowledgeChunkRepository chunkRepository;
 
@@ -66,28 +69,24 @@ public class KnowledgeRepository extends AbstractPermissionedRepository<Knowledg
     chunkRepository.insertMany(chunks);
   }
 
+  /** The completed chunks {@code query} matches among the knowledge the caller may read. */
+  public PaginatedResult<KnowledgeChunk> findChunks(final Query query) {
+    return readableCompletedChunks(query)
+        .map(chunkRepository::findByQuery)
+        .orElseGet(PaginatedResult::empty);
+  }
+
   /**
-   * The chunks {@code query} matches within the knowledge {@code knowledgeIds} names, or within all
-   * the knowledge the caller may read when it names none; knowledge the caller may not read is left
-   * out.
+   * The similarity of each tag of the completed chunks {@code query} matches among the knowledge
+   * the caller may read, closest first: the mean similarity of the tag's {@code
+   * closestChunksPerTag} closest chunks, for at most {@code maxTags} tags. {@code query} has one
+   * semantic filter.
    */
-  public PaginatedResult<KnowledgeChunk> findChunks(
-      final Collection<String> knowledgeIds, final Query query) {
-    final Query source = query == null ? new Query() : query;
-    final List<String> readableIds =
-        CollectionUtils.isEmpty(knowledgeIds)
-            ? findPermittedIds(new Query().withPage(Page.UNBOUNDED), Permission.READ).getItems()
-            : List.copyOf(findPermittedIds(knowledgeIds, Permission.READ));
-    if (readableIds.isEmpty()) {
-      return PaginatedResult.empty();
-    }
-    final Filter readable = Filters.in(KnowledgeChunk.FIELD_KNOWLEDGE_ID, readableIds);
-    final Filter completed =
-        Filters.eq(KnowledgeChunk.FIELD_STATUS, IndexingStatus.COMPLETED.name());
-    final Filter combined =
-        source.getFilter() == null ? readable : Filters.and(source.getFilter(), readable);
-    return chunkRepository.findByQuery(
-        new Query(source).withFilter(Filters.and(combined, completed)));
+  public Map<String, Double> findTagSimilarities(
+      final Query query, final int maxTags, final int closestChunksPerTag) {
+    return readableCompletedChunks(query)
+        .map(scoped -> chunkRepository.findTagSimilarities(scoped, maxTags, closestChunksPerTag))
+        .orElse(Map.of());
   }
 
   public void deleteChunksOfVersion(final String knowledgeId, final Long knowledgeVersion) {
@@ -127,6 +126,26 @@ public class KnowledgeRepository extends AbstractPermissionedRepository<Knowledg
         .map(creator -> creator.isUserActingDirectly() ? creator : creator.forAnyUser())
         .map(owner -> List.of(buildShare(knowledge, owner.toString(), StandardRole.OWNER)))
         .orElse(List.of());
+  }
+
+  /**
+   * {@code query} narrowed to the completed chunks of the knowledge {@code knowledgeIds} names, or
+   * of all the knowledge the caller may read when it names none; knowledge the caller may not read
+   * is left out, and nothing is returned when none is left.
+   */
+  private Optional<Query> readableCompletedChunks(final Query query) {
+    final Query source = query == null ? new Query() : query;
+    final List<String> readableIds =
+        findPermittedIds(new Query().withPage(Page.UNBOUNDED), Permission.READ).getItems();
+    if (readableIds.isEmpty()) {
+      return Optional.empty();
+    }
+    final Filter readable = Filters.in(KnowledgeChunk.FIELD_KNOWLEDGE_ID, readableIds);
+    final Filter completed =
+        Filters.eq(KnowledgeChunk.FIELD_STATUS, IndexingStatus.COMPLETED.name());
+    final Filter combined =
+        source.getFilter() == null ? readable : Filters.and(source.getFilter(), readable);
+    return Optional.of(new Query(source).withFilter(Filters.and(combined, completed)));
   }
 
   /** Deletes the chunks of the knowledge when it was deleted, and returns whether it was. */

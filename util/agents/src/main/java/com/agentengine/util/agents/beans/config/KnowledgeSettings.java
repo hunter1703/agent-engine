@@ -2,7 +2,9 @@ package com.agentengine.util.agents.beans.config;
 
 import com.agentengine.util.common.utils.CollectionUtils;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Reusable knowledge configuration attached to any entity that participates in knowledge indexing
@@ -29,48 +31,20 @@ import java.util.List;
 public class KnowledgeSettings {
 
   /**
-   * ID of the embedding model to use for indexing and search. Falls back to {@code
-   * DefaultModels.embeddingModelId} when null.
-   */
-  private String embeddingModelId;
-
-  private String chatModelId;
-
-  /**
-   * ID of the vision-capable chat model to use for describing image knowledge. Falls back to {@code
-   * DefaultModels.visionModelId} when null.
-   */
-  private String visionModelId;
-
-  /**
    * Explicit ordered pipeline of chunking stages. Each entry is a fully configured {@link
    * ChunkingStrategy} describing one stage and its parameters.
    */
   private List<ChunkingStrategy> chunkingStrategy = new ArrayList<>();
 
-  public String getEmbeddingModelId() {
-    return embeddingModelId;
-  }
+  /**
+   * The embedding models, by id, that embed each modality, keyed by modality name ({@code TEXT},
+   * {@code IMAGE}), in addition to the customer's default embedding model of that modality, which
+   * always embeds.
+   */
+  private Map<String, List<String>> modalityVsEmbeddingModelIds = new LinkedHashMap<>();
 
-  public void setEmbeddingModelId(final String embeddingModelId) {
-    this.embeddingModelId = embeddingModelId;
-  }
-
-  public String getChatModelId() {
-    return chatModelId;
-  }
-
-  public void setChatModelId(final String chatModelId) {
-    this.chatModelId = chatModelId;
-  }
-
-  public String getVisionModelId() {
-    return visionModelId;
-  }
-
-  public void setVisionModelId(final String visionModelId) {
-    this.visionModelId = visionModelId;
-  }
+  /** Whether media is described to text while indexing. */
+  private boolean describeMedia = true;
 
   public List<ChunkingStrategy> getChunkingStrategy() {
     return chunkingStrategy;
@@ -78,5 +52,22 @@ public class KnowledgeSettings {
 
   public void setChunkingStrategy(final List<ChunkingStrategy> chunkingStrategy) {
     this.chunkingStrategy = CollectionUtils.nullSafeList(chunkingStrategy);
+  }
+
+  public Map<String, List<String>> getModalityVsEmbeddingModelIds() {
+    return modalityVsEmbeddingModelIds;
+  }
+
+  public void setModalityVsEmbeddingModelIds(
+      final Map<String, List<String>> modalityVsEmbeddingModelIds) {
+    this.modalityVsEmbeddingModelIds = CollectionUtils.nullSafeMap(modalityVsEmbeddingModelIds);
+  }
+
+  public boolean isDescribeMedia() {
+    return describeMedia;
+  }
+
+  public void setDescribeMedia(final boolean describeMedia) {
+    this.describeMedia = describeMedia;
   }
 }

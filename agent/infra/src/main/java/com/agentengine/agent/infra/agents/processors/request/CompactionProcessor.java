@@ -22,8 +22,8 @@ import org.slf4j.LoggerFactory;
  * {@code Contents} processor, which runs after this one, replaces the events it covers with its
  * content.
  *
- * <p>A compaction never ends between a call and its result. A compaction that fails is skipped:
- * the request goes out uncompacted and the next one tries again.
+ * <p>A compaction never ends between a call and its result. A compaction that fails is skipped: the
+ * request goes out uncompacted and the next one tries again.
  */
 public final class CompactionProcessor implements RequestProcessor {
   private static final Logger LOG = LoggerFactory.getLogger(CompactionProcessor.class);

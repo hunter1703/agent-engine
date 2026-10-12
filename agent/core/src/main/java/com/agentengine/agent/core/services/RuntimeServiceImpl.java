@@ -3,7 +3,6 @@ package com.agentengine.agent.core.services;
 import static com.agentengine.util.common.Defaults.STREAMING_BATCH_SIZE;
 
 import com.agentengine.agent.api.model.UserMessage;
-import com.agentengine.agent.api.services.CommunityExpertsService;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.core.factories.RunnerFactory;
 import com.agentengine.agent.core.schedule.AgentScheduleRepository;
@@ -22,16 +21,12 @@ import com.agentengine.agent.core.session.commands.ParentCommand.InitializeComma
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.state.SessionTopology;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
-import com.agentengine.agent.infra.utils.ContentUtils;
 import com.agentengine.agent.infra.utils.EventUtils;
+import com.agentengine.agent.infra.utils.RequestContentUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.SessionService;
-import com.agentengine.knowledge.api.beans.IndexRequest;
-import com.agentengine.knowledge.api.beans.Knowledge;
-import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
-import com.agentengine.util.agents.AgentFileDetails;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.AgentSchedule;
@@ -40,11 +35,9 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
-import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
-import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.events.SequencedEvent;
@@ -54,10 +47,7 @@ import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
-import com.agentengine.util.common.utils.CollectionUtils;
-import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.common.utils.StringUtils;
-import com.agentengine.util.common.utils.StructuredConcurrencyUtils;
 import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.tenancy.Permission;
@@ -66,6 +56,7 @@ import com.agui.community.core.event.Event;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.agents.RunConfig;
 import com.google.genai.types.Blob;
+import com.google.adk.runner.Runner;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.quarkus.arc.Unremovable;
@@ -74,12 +65,9 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.flowables.ConnectableFlowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.StructuredTaskScope.Subtask;
 import java.util.stream.Collectors;
 import org.apache.pekko.Done;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
@@ -95,13 +83,6 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private static final long COMPACTION_WINDOW_MILLIS = 100;
 
-  /**
-   * Attachments at or below this size are granted as a raw knowledge file (read whole, on demand).
-   * Larger text attachments are indexed instead, since a large file is both wasteful to hand the
-   * model in full and a better fit for semantic search.
-   */
-  private static final long INDEXING_THRESHOLD_BYTES = 5 * 1024;
-
   private static final String INVOKE_AGENT_JOB_CLASS_NAME =
       "com.agentengine.agent.jobs.InvokeAgentJob";
 
@@ -111,41 +92,33 @@ public class RuntimeServiceImpl implements RuntimeService {
   private final PermissionedCache<AgentSession> sessionCache;
   private final PermissionedCache<BaseAgentConfig> agentCache;
   private final SessionEventsRepository sessionEventsRepository;
-  private final KnowledgeService knowledgeService;
   private final FileService fileService;
-  private final CloudStorageService cloudStorageService;
-  private final CommunityExpertsService communityExpertsService;
   private final AgentScheduleRepository agentScheduleRepository;
-    private final SchedulerService schedulerService;
-    private final RunnerFactory runnerFactory;
+  private final SchedulerService schedulerService;
+  private final RunnerFactory runnerFactory;
 
   @Inject
   public RuntimeServiceImpl(
-          final SessionActorFactory sessionActorFactory,
-          final SessionEventChannel eventChannel,
-          final SessionService sessionService,
-          final PermissionedCache<AgentSession> sessionCache,
-          final PermissionedCache<BaseAgentConfig> agentCache,
-          final SessionEventsRepository sessionEventsRepository,
-          final KnowledgeService knowledgeService,
-          final FileService fileService,
-          final CloudStorageService cloudStorageService,
-          final CommunityExpertsService communityExpertsService,
-          final AgentScheduleRepository agentScheduleRepository,
-          final SchedulerService schedulerService, RunnerFactory runnerFactory) {
+      final SessionActorFactory sessionActorFactory,
+      final SessionEventChannel eventChannel,
+      final SessionService sessionService,
+      final PermissionedCache<AgentSession> sessionCache,
+      final PermissionedCache<BaseAgentConfig> agentCache,
+      final SessionEventsRepository sessionEventsRepository,
+      final FileService fileService,
+      final AgentScheduleRepository agentScheduleRepository,
+      final SchedulerService schedulerService,
+      RunnerFactory runnerFactory) {
     this.sessionActorFactory = sessionActorFactory;
     this.eventChannel = eventChannel;
     this.sessionService = sessionService;
     this.sessionCache = sessionCache;
     this.agentCache = agentCache;
     this.sessionEventsRepository = sessionEventsRepository;
-    this.knowledgeService = knowledgeService;
     this.fileService = fileService;
-    this.cloudStorageService = cloudStorageService;
-    this.communityExpertsService = communityExpertsService;
     this.agentScheduleRepository = agentScheduleRepository;
-      this.schedulerService = schedulerService;
-      this.runnerFactory = runnerFactory;
+    this.schedulerService = schedulerService;
+    this.runnerFactory = runnerFactory;
   }
 
   @Override
@@ -193,19 +166,35 @@ public class RuntimeServiceImpl implements RuntimeService {
   @Override
   public Map<String, Object> sendTemp(String agentId, UserMessage userMessage) {
     final Content userContent =
-            ContentUtils.buildUserContent(
-                    ContentUtils.textParts(userMessage.parts()), userMessage.attachments(), fileService);
-    final Map<String, Object> stateDelta = EventUtils.sentAtDelta(ZonedDateTime.now());
+        RequestContentUtils.buildUserContent(
+            RequestContentUtils.textParts(userMessage.parts()),
+            userMessage.attachments(),
+            fileService);
+    final Map<String, Object> stateDelta =
+        EventUtils.userStateDelta(ZonedDateTime.now(), userMessage.attachments());
     final String userId = Context.currentUserId().orElse(Caller.SYSTEM_NAME);
+    final String sessionId = UUID.randomUUID().toString();
+    final Runner runner = runnerFactory.getOrBuildTemp(agentId);
     final String responseText =
-            runnerFactory.getOrBuildTemp(agentId).runAsync(userId, UUID.randomUUID().toString(), userContent, RunConfig.builder().autoCreateSession(true).build(), stateDelta)
-                    .filter(event -> event.content().isPresent())
-                    .map(event -> event.content().orElseThrow().text())
-                    .lastElement()
-                    .blockingGet();
+        runner
+            .runAsync(
+                userId,
+                sessionId,
+                userContent,
+                RunConfig.builder().autoCreateSession(true).build(),
+                stateDelta)
+            .doFinally(
+                () ->
+                    runner
+                        .sessionService()
+                        .deleteSession(runner.appName(), userId, sessionId)
+                        .blockingAwait())
+            .filter(event -> event.content().isPresent())
+            .map(event -> event.content().orElseThrow().text())
+            .lastElement()
+            .blockingGet();
     try {
-      return JsonUtils.fromLenientJson(responseText, new TypeReference<>() {
-      });
+      return JsonUtils.fromLenientJson(responseText, new TypeReference<>() {});
     } catch (Exception e) {
       return Map.of("response", Objects.requireNonNull(responseText));
     }
@@ -268,11 +257,10 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private void startTurn(final String agentId, final String sessionId, final UserMessage message) {
     LOG.debug("Starting session {}:{}", agentId, sessionId);
-    final UserMessage resolvedMessage = resolveMessage(agentId, sessionId, message);
     sessionActorFactory
         .entityRef(sessionId)
         .<StartSessionResult>ask(
-            replyTo -> new StartCommand(new UniqueRecord<>(resolvedMessage), replyTo),
+            replyTo -> new StartCommand(new UniqueRecord<>(message), replyTo),
             SessionActorFactory.ASK_TIMEOUT)
         .whenComplete(
             (result, ex) -> {
@@ -282,90 +270,6 @@ public class RuntimeServiceImpl implements RuntimeService {
                 LOG.debug("Session {}:{} start result: {}", agentId, sessionId, result);
               }
             });
-  }
-
-  private UserMessage resolveMessage(
-      final String agentId, final String sessionId, final UserMessage message) {
-    final List<AgentFileDetails> attachments = message.attachments();
-    if (CollectionUtils.isEmpty(attachments)) {
-      return message;
-    }
-
-    return Context.require()
-        .actingAs(AgentSession.principal(agentId, sessionId))
-        .get(
-            () -> {
-              final List<AgentFileDetails> toIndex = new ArrayList<>();
-              final List<AgentFileDetails> resolved = new ArrayList<>();
-              for (final AgentFileDetails fileDetails : attachments) {
-                if (needsIndexing(fileDetails)) {
-                  toIndex.add(fileDetails);
-                } else {
-                  resolved.add(createUnindexedKnowledge(agentId, fileDetails));
-                }
-              }
-
-              final List<Callable<String>> indexing =
-                  toIndex.stream()
-                      .<Callable<String>>map(
-                          fileDetails -> () -> indexAsKnowledge(agentId, fileDetails).getId())
-                      .toList();
-              final List<StructuredConcurrencyUtils.TaskOutcome<String>> outcomes =
-                  StructuredConcurrencyUtils.callConcurrentlyUntil(
-                      "knowledge-indexing", indexing, _ -> false);
-
-              for (final StructuredConcurrencyUtils.TaskOutcome<String> outcome : outcomes) {
-                if (outcome.state() == Subtask.State.SUCCESS) {
-                  resolved.add(toIndex.get(outcome.index()).withKnowledgeId(outcome.value()));
-                } else {
-                  LOG.warn(
-                      "Indexing failed for {}; dropping it from the message's attachments",
-                      toIndex.get(outcome.index()).source(),
-                      outcome.error());
-                }
-              }
-
-              return new UserMessage(message.parts(), resolved);
-            });
-  }
-
-  private AgentFileDetails createUnindexedKnowledge(
-      final String agentId, final AgentFileDetails fileDetails) {
-    final Knowledge knowledge = createKnowledge(agentId, fileDetails, true);
-    return fileDetails.withKnowledgeId(knowledge.getId());
-  }
-
-  private boolean needsIndexing(final AgentFileDetails agentFileDetails) {
-    final FileDetails fileDetails = agentFileDetails.toFileDetails();
-    if (!FileUtils.isTextFile(fileDetails)
-        && !FileUtils.isOfficeFile(fileDetails)
-        && !FileUtils.isPdfFile(fileDetails)
-        && !FileUtils.isImageFile(fileDetails)) {
-      return false;
-    }
-    if (agentFileDetails.type() != FileDetails.StorageType.CLOUDSTORAGE) {
-      return true;
-    }
-    final long size =
-            agentFileDetails.size() < 1
-                ? cloudStorageService.getSize(agentFileDetails.source())
-                : agentFileDetails.size();
-    return size > INDEXING_THRESHOLD_BYTES;
-  }
-
-  private Knowledge indexAsKnowledge(final String agentId, final AgentFileDetails fileDetails) {
-    return createKnowledge(agentId, fileDetails, false);
-  }
-
-  private Knowledge createKnowledge(
-      final String agentId, final AgentFileDetails fileDetails, final boolean skipIndexing) {
-    final IndexRequest request = new IndexRequest();
-    request.setAgentId(agentId);
-    request.setFileDetails(fileDetails.toFileDetails());
-    request.setTitle(fileDetails.name());
-    request.setSkipIndexing(skipIndexing);
-    request.setWaitForCompletion(true);
-    return knowledgeService.create(request);
   }
 
   @Override
@@ -418,12 +322,6 @@ public class RuntimeServiceImpl implements RuntimeService {
         .<Done>ask(StopCommand::new, SessionActorFactory.ASK_TIMEOUT)
         .toCompletableFuture()
         .join();
-  }
-
-  @Override
-  public String invokeExpert(
-      final String expertId, final String modelId, final UserMessage userMessage) {
-    return communityExpertsService.invokeExpert(expertId, modelId, userMessage);
   }
 
   @Override

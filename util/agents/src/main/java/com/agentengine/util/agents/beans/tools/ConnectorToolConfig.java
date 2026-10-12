@@ -1,9 +1,9 @@
 package com.agentengine.util.agents.beans.tools;
 
-import com.agentengine.util.agents.builder.annotations.UiField;
-import com.agentengine.util.agents.builder.annotations.UiLookup;
-import com.agentengine.util.agents.builder.annotations.UiLookupOption;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.builder.annotations.UiField;
+import com.agentengine.util.common.builder.annotations.UiLookup;
+import com.agentengine.util.common.builder.annotations.UiLookupOption;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 

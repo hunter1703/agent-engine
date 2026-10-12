@@ -6,11 +6,13 @@ import com.agentengine.knowledge.core.pipeline.KnowledgeIndexer;
 import com.agentengine.knowledge.core.repository.KnowledgeRepository;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
+import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
+import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.tenancy.Permission;
 import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.inject.Instance;
@@ -42,13 +44,16 @@ public class KnowledgeServiceImpl implements KnowledgeService {
   private final KnowledgeRepository knowledgeRepo;
   private final LazyLoader<List<KnowledgeIndexer>> indexers;
   private final SchedulerService schedulerService;
+  private final FileService fileService;
 
   @Inject
   public KnowledgeServiceImpl(
       final KnowledgeRepository knowledgeRepo,
       final Instance<KnowledgeIndexer> indexers,
-      final SchedulerService schedulerService) {
+      final SchedulerService schedulerService,
+      final FileService fileService) {
     this.knowledgeRepo = knowledgeRepo;
+    this.fileService = fileService;
     this.indexers =
         new LazyLoader<>(
             () -> {
@@ -66,21 +71,31 @@ public class KnowledgeServiceImpl implements KnowledgeService {
   }
 
   @Override
-  public Knowledge create(final IndexRequest request) {
-    final Knowledge knowledge = new Knowledge();
+  public Knowledge index(final IndexRequest request) {
+    final String knowledgeId = request.getKnowledgeId();
+    final Knowledge existing =
+        StringUtils.isBlank(knowledgeId) ? null : knowledgeRepo.findById(knowledgeId);
+    final Knowledge knowledge = existing != null ? existing : new Knowledge();
+    if (existing == null && StringUtils.isNotBlank(knowledgeId)) {
+      knowledge.setId(knowledgeId);
+    }
     init(knowledge, request);
     if (request.isSkipIndexing()) {
       knowledge.setIndexingStatus(IndexingStatus.NON_INDEXED.name());
-      knowledgeRepo.insert(knowledge);
-      return knowledge;
     }
-    knowledgeRepo.insert(knowledge);
-    if (request.isWaitForCompletion()) {
-      runIndexing(knowledge);
+    final Knowledge saved =
+        existing != null
+            ? knowledgeRepo.update(knowledgeId, knowledge)
+            : knowledgeRepo.insert(knowledge);
+    if (request.isSkipIndexing() && existing == null) {
+      return saved;
+    }
+    if (request.isSkipIndexing() || request.isWaitForCompletion()) {
+      runIndexing(saved);
     } else {
-      scheduleIndexing(knowledge);
+      scheduleIndexing(saved);
     }
-    return knowledge;
+    return saved;
   }
 
   @Override
@@ -96,21 +111,6 @@ public class KnowledgeServiceImpl implements KnowledgeService {
   @Override
   public PaginatedResult<Knowledge> findByQuery(final Query query) {
     return knowledgeRepo.findByQuery(query);
-  }
-
-  @Override
-  public Knowledge reindex(final String id, final IndexRequest request) {
-    final Knowledge existing = knowledgeRepo.findById(id);
-    if (existing == null) {
-      throw new IllegalArgumentException("Knowledge not found: " + id);
-    }
-    if (!Objects.equals(request.getAgentId(), existing.getAgentId())) {
-      throw new IllegalArgumentException("Agent id must match");
-    }
-    init(existing, request);
-    knowledgeRepo.update(id, existing);
-    scheduleIndexing(existing);
-    return existing;
   }
 
   @Override
@@ -134,9 +134,14 @@ public class KnowledgeServiceImpl implements KnowledgeService {
   }
 
   @Override
-  public PaginatedResult<KnowledgeChunk> searchInKnowledge(
-      final Collection<String> knowledgeIds, final Query query) {
-    return knowledgeRepo.findChunks(knowledgeIds, query);
+  public Map<String, Double> findTagSimilarities(
+      final Query query, final int maxTags, final int closestChunksPerTag) {
+    return knowledgeRepo.findTagSimilarities(query, maxTags, closestChunksPerTag);
+  }
+
+  @Override
+  public PaginatedResult<KnowledgeChunk> search(final Query query) {
+    return knowledgeRepo.findChunks(query);
   }
 
   /**
@@ -152,12 +157,17 @@ public class KnowledgeServiceImpl implements KnowledgeService {
   }
 
   /**
-   * Indexes the knowledge as read when indexing was requested. Each status write is versioned on
-   * the one before it, so a run overtaken by a change to the knowledge — a re-upload, a deletion —
-   * stops instead of overwriting what the change wrote.
+   * Indexes the knowledge as read when indexing was requested; unindexed knowledge only has the
+   * chunks of its earlier versions removed. Each status write is versioned on the one before it, so
+   * a run overtaken by a change to the knowledge — a re-upload, a deletion — stops instead of
+   * overwriting what the change wrote.
    */
   private void runIndexing(final Knowledge knowledge) {
     final String id = knowledge.getId();
+    if (IndexingStatus.NON_INDEXED.name().equals(knowledge.getIndexingStatus())) {
+      knowledgeRepo.deleteOlderVersions(id, knowledge.getVersion());
+      return;
+    }
     final Knowledge inProgress;
     try {
       inProgress = knowledgeRepo.update(knowledge, statusUpdate(IndexingStatus.IN_PROGRESS, null));
@@ -222,11 +232,11 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         Operation.set(Knowledge.FIELD_ERROR, error));
   }
 
-  private static void init(final Knowledge knowledge, final IndexRequest request) {
-    knowledge.setAgentId(request.getAgentId());
-    knowledge.setFileDetails(request.getFileDetails());
+  private void init(final Knowledge knowledge, final IndexRequest request) {
+    knowledge.setFileDetails(fileService.withDetectedMimeType(request.getFileDetails()));
     knowledge.setTitle(request.getTitle());
     knowledge.setDescription(request.getDescription());
+    knowledge.setTags(request.getTags());
     knowledge.setSettings(request.getSettings());
     knowledge.setTotalChunks(0);
     knowledge.setIndexingStatus(IndexingStatus.PENDING.name());

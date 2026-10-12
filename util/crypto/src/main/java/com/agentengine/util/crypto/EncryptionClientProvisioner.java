@@ -14,9 +14,9 @@ import jakarta.inject.Singleton;
 
 /**
  * Sets up a customer's encryption: a client on the key the request names, or the default. Also a
- * {@link ProvisioningService} so {@code CustomerProvisioningService}/
- * {@code EnvironmentProvisioningService} discover and call it the same generic way as every
- * other provisioning step, for the context's current customer (the system, at environment level).
+ * {@link ProvisioningService} so {@code CustomerProvisioningService}/ {@code
+ * EnvironmentProvisioningService} discover and call it the same generic way as every other
+ * provisioning step, for the context's current customer (the system, at environment level).
  */
 @Singleton
 public class EncryptionClientProvisioner extends InfraClientProvisioner
@@ -53,7 +53,8 @@ public class EncryptionClientProvisioner extends InfraClientProvisioner
         "encryption",
         () ->
             provision(
-                Context.requireCustomerId(), request.getDefaultServerId(ServerType.ENCRYPTION_KEY)));
+                Context.requireCustomerId(),
+                request.getDefaultServerId(ServerType.ENCRYPTION_KEY)));
     return run.result();
   }
 }

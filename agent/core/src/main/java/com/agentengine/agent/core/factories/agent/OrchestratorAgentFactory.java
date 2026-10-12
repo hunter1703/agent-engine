@@ -1,6 +1,5 @@
 package com.agentengine.agent.core.factories.agent;
 
-import com.agentengine.agent.infra.factories.context.CompactorProvider;
 import com.agentengine.agent.core.tools.agent.AwaitAgentTool;
 import com.agentengine.agent.core.tools.agent.SendMessageTool;
 import com.agentengine.agent.core.tools.agent.SpawnAgentTool;
@@ -11,6 +10,7 @@ import com.agentengine.agent.infra.factories.agent.AbstractAgentFactory;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.agent.infra.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.agent.infra.factories.agent.builders.ParallelOrchestratorAgentBuilder;
+import com.agentengine.agent.infra.factories.context.CompactorProvider;
 import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.agent.infra.tools.ToolFactory;
