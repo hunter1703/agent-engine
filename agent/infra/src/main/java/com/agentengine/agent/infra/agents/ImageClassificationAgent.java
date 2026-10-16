@@ -38,6 +38,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.StructuredTaskScope.Subtask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tells which tags of the indexed knowledge the attached images belong with.
@@ -55,6 +57,7 @@ import java.util.concurrent.StructuredTaskScope.Subtask;
 public class ImageClassificationAgent extends Agent {
 
 
+  private static final Logger LOG = LoggerFactory.getLogger(ImageClassificationAgent.class);
   private static final int MAX_TAGS = 50;
 
   private final ImageClassificationAgentConfig config;
@@ -96,6 +99,7 @@ public class ImageClassificationAgent extends Agent {
   }
 
   private List<LabelMatch> answersMerged(final InvocationContext ctx) {
+    final long start = System.nanoTime();
     final List<Callable<List<LabelMatch>>> asks = new ArrayList<>();
     if (StringUtils.isNotBlank(config.getModelId())) {
       asks.add(() -> classify(imageAttachments(ctx)));
@@ -116,7 +120,9 @@ public class ImageClassificationAgent extends Agent {
     if (answers.isEmpty() && failure != null) {
       throw ExceptionUtils.wrapInRuntimeException(failure);
     }
-    return merge(answers);
+    final List<LabelMatch> merged = merge(answers);
+    LOG.info("{} answered in {} ms", name(), millisSince(start));
+    return merged;
   }
 
   private List<FileDetails> imageAttachments(final InvocationContext ctx) {
@@ -142,30 +148,55 @@ public class ImageClassificationAgent extends Agent {
     if (images.isEmpty()) {
       return List.of();
     }
+    final long start = System.nanoTime();
     final Map<String, Double> tagVsSimilarity = new HashMap<>();
     try (RefCounted<ConfiguredEmbeddingModel> model =
         modelProvider.getEmbeddingModel(config.getModelId())) {
+      long phaseStart = System.nanoTime();
       final List<ImageContent> contents = images.stream().map(this::readImage).toList();
-      for (final List<float[]> vectors : EmbeddingUtils.embedImages(model.value(), contents)) {
-        for (final float[] vector : vectors) {
-          final Query query =
-              new Query()
-                  .withFilter(
-                      Filters.and(
-                          Filters.semanticSearch(
-                              KnowledgeChunk.FIELD_MEDIA, vector, config.getMatchThreshold()),
-                          Filters.eq(KnowledgeChunk.FIELD_EMBEDDER, model.value().modelId())));
-          knowledgeService
-              .findTagSimilarities(query, MAX_TAGS, config.getClosestChunksPerTag())
-              .forEach((tag, similarity) -> tagVsSimilarity.merge(tag, similarity, Math::max));
-        }
+      final long readMillis = millisSince(phaseStart);
+      phaseStart = System.nanoTime();
+      final List<List<float[]>> imageVectors = EmbeddingUtils.embedImages(model.value(), contents);
+      final long embedMillis = millisSince(phaseStart);
+      phaseStart = System.nanoTime();
+      final List<Callable<Map<String, Double>>> searches =
+          imageVectors.stream()
+              .flatMap(List::stream)
+              .<Callable<Map<String, Double>>>map(
+                  vector -> () -> searchTagSimilarities(vector, model.value().modelId()))
+              .toList();
+      for (final Map<String, Double> found :
+          StructuredConcurrencyUtils.callConcurrently("image-vector-search", searches)) {
+        found.forEach((tag, similarity) -> tagVsSimilarity.merge(tag, similarity, Math::max));
       }
+      final int vectorCount = searches.size();
+      LOG.info(
+          "{} classified {} image(s) in {} ms: read {} ms, embed {} ms, search {} ms for {} vector(s)",
+          name(),
+          images.size(),
+          millisSince(start),
+          readMillis,
+          embedMillis,
+          millisSince(phaseStart),
+          vectorCount);
     }
     return tagVsSimilarity.entrySet().stream()
         .map(
             entry ->
                 new LabelMatch(entry.getKey(), probabilityOf(entry.getValue()), entry.getValue()))
         .toList();
+  }
+
+  /** The tags whose closest indexed chunks to {@code vector} pass the match threshold, rated. */
+  private Map<String, Double> searchTagSimilarities(final float[] vector, final String embedderId) {
+    final Query query =
+        new Query()
+            .withFilter(
+                Filters.and(
+                    Filters.semanticSearch(
+                        KnowledgeChunk.FIELD_MEDIA, vector, config.getMatchThreshold()),
+                    Filters.eq(KnowledgeChunk.FIELD_EMBEDDER, embedderId)));
+    return knowledgeService.findTagSimilarities(query, MAX_TAGS, config.getClosestChunksPerTag());
   }
 
   private double probabilityOf(final double similarity) {
@@ -180,6 +211,10 @@ public class ImageClassificationAgent extends Agent {
     } catch (final IOException e) {
       throw ExceptionUtils.wrapInRuntimeException(e);
     }
+  }
+
+  private static long millisSince(final long startNanos) {
+    return (System.nanoTime() - startNanos) / 1_000_000;
   }
 
   private static List<LabelMatch> answerOf(final Agent classifier, final InvocationContext ctx) {

@@ -69,7 +69,7 @@ buffer. Trades memory for CPU. Track as a known limitation until 100MP use cases
 
 `AuthFilter` treats a request carrying the literal cookie `session=systemSession` as `Caller.SYSTEM`
 for the customer of its origin, and logs the cookie value. It is a stopgap so
-`python/ingest_knowledge.py` and `python/pinterest_mitm.py` can call the REST API. Remove it, and
+`python/ingest_knowledge.py` and `python/mitm.py` can call the REST API. Remove it, and
 the logging of cookie values with it, once those scripts log in the way
 `deploy/scripts/ci/seed_app.py` does (`/v1/auth/login` with a seed user).
 

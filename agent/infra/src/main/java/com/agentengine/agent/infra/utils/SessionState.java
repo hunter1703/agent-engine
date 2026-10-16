@@ -7,6 +7,7 @@ import com.agentengine.knowledge.api.beans.IndexingStatus;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
+import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.utils.CollectionUtils;
@@ -40,27 +41,20 @@ public final class SessionState {
     return state;
   }
 
+  /**
+   * Announces the knowledge that cannot be searched, which a model has to be told about to read it.
+   * Indexed knowledge is found through searching, so it needs no reminder.
+   */
   public void syncKnowledgeReminders(final KnowledgeService knowledgeService) {
     reminders.removeIf(r -> Objects.equals(r.group(), Reminder.GROUP_KNOWLEDGE_IDS));
-    final List<Knowledge> knowledges =
-        knowledgeService.findByQuery(new Query().withPage(Page.UNBOUNDED)).getItems();
-    for (final Knowledge knowledge : knowledges) {
-      if (IndexingStatus.NON_INDEXED.name().equals(knowledge.getIndexingStatus())) {
-        addKnowledgeIdReminder(
-            knowledge.getId(), "[%s] (non-indexed — omit query)".formatted(knowledge.getTitle()));
-      } else {
-        final String description = knowledge.getDescription();
-        final String contentPreview = knowledge.getContentPreview();
-        addKnowledgeIdReminder(
-            knowledge.getId(),
-            "["
-                + knowledge.getTitle()
-                + "]"
-                + (StringUtils.isNotBlank(description) ? " " + description : "")
-                + (StringUtils.isNotBlank(contentPreview)
-                    ? " (sample excerpt: \"" + contentPreview + "\")"
-                    : ""));
-      }
+    final Query nonIndexed =
+        new Query()
+            .withFilter(
+                Filters.eq(Knowledge.FIELD_INDEXING_STATUS, IndexingStatus.NON_INDEXED.name()))
+            .withPage(Page.UNBOUNDED);
+    for (final Knowledge knowledge : knowledgeService.findByQuery(nonIndexed).getItems()) {
+      addKnowledgeIdReminder(
+          knowledge.getId(), "[%s] (non-indexed — omit query)".formatted(knowledge.getTitle()));
     }
   }
 

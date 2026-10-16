@@ -15,6 +15,7 @@ dependencies = [
     "transformers>=4.40.0",
     "requests>=2.31.0",
     "mitmproxy>=10.0.0",
+    "pyzipper>=0.3.6",
 ]
 
 [build-system]

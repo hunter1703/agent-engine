@@ -1,0 +1,49 @@
+# Clash profile for the iPhone that sends the Pinterest app's API calls through the Mac running
+# mitm.py (mitmweb on port 9000) and everything else straight to the internet.
+#
+# Import it into the Clash app on the phone. The Mac is tried by its Bonjour name first, then by
+# the addresses it has had on known networks; the first one that answers is used, and if none
+# does the traffic goes direct, so the Pinterest app keeps working with the Mac switched off.
+# To add a network, add its address for the Mac to `proxies` and to the `MITM` group below.
+
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+
+proxies:
+  - { name: "Mac-bonjour", type: http, server: r2d2.local, port: 9000 }
+  - { name: "Mac-192.168.1.15", type: http, server: 192.168.1.15, port: 9000 }
+  - { name: "Mac-192.168.31.250", type: http, server: 192.168.31.250, port: 9000 }
+
+proxy-groups:
+  - name: "MITM"
+    type: fallback
+    url: http://www.gstatic.com/generate_204
+    interval: 30
+    proxies:
+      - "Mac-bonjour"
+      - "Mac-192.168.1.15"
+      - "Mac-192.168.31.250"
+      - DIRECT
+
+# Pinterest's API connections are named after CDN servers (for example
+# api-pinterest-com.gslb.pinterest.com or an akamaiedge.net name), while the TLS name the app asks
+# for is always api.pinterest.com. Sniffing reads that TLS name, so the rules below see it.
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  override-destination: true
+  sniff:
+    TLS:
+      ports: [443]
+    HTTP:
+      ports: [80]
+
+rules:
+  # api.pinterest.com is the host the addon rewrites (TARGET_HOST in mitm.py).
+  - DOMAIN-SUFFIX,pinterest.com,MITM
+  # The same API connection is sometimes named after the Akamai server it lands on instead.
+  - DOMAIN-SUFFIX,akamaiedge.net,MITM
+  - MATCH,DIRECT

@@ -15,7 +15,7 @@ app-base:
       memory: "512Mi"
     limits:
       cpu: "300m"
-      memory: "512Mi"
+      memory: "768Mi"
   config:
     applicationProperties:
       # quarkus.log.category."org.jgroups".level: DEBUG

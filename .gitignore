@@ -49,3 +49,8 @@ deploy/local-certs/
 
 # Local datasets for python/ingest_knowledge.py (personal photos — never commit)
 training/
+
+# The downloaded Pinterest boards (encrypted), the folder they were once kept in, and the browser
+# cookies used to fetch them (personal — never commit)
+python/training.zip
+python/cookies.txt

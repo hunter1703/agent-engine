@@ -1,5 +1,6 @@
 package com.agentengine.util.common.beans;
 
+import com.agentengine.util.common.annotations.Indexed;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -24,7 +25,7 @@ public abstract class BaseEntity {
   private long updatedTime;
   private Long version;
   private String createdBy;
-  private List<String> tags;
+  @Indexed private List<String> tags;
 
   private Acl acl = Acl.EMPTY;
 

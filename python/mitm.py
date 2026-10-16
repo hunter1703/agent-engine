@@ -1,34 +1,38 @@
-"""Pinterest mitmproxy addon (pinterest_mitm.py).
+"""Pinterest mitmproxy addon (mitm.py).
 
-Rewrites Pinterest's board picker shortlist response based on visual semantic match
-returned by the local Agent Engine.
+Answers Pinterest's board picker request with the boards that visually match the pin, as
+classified by the local Agent Engine.
 
 Architecture:
   Pinterest iOS app -> mitmproxy (port 9000)
-    -> intercepts GET /v3/users/boards/board_picker_shortlist/
-    -> fetches the pin (for its image url) and the user's boards, concurrently
+    -> answers GET /v3/users/boards/board_picker_shortlist/ itself, without asking Pinterest
+    -> takes the pin (for its image url) and the user's boards
     -> asks the classifier AGENT_ID (Agent Engine /v1/agent/{id}/send-temp) about the image
-    -> resolves board name -> board ID
-    -> reorders or injects the matching board to position 0 in shortlist
-    -> forwards modified response to Pinterest iOS app
+    -> resolves board names -> boards
+    -> returns the best matching boards, as many as the app asks for (its `count`)
+    -> returns them to the Pinterest iOS app in the shape of Pinterest's own shortlist
 
-The work runs off mitmproxy's event loop and is bounded by DEADLINE_SECONDS. When it does not
-finish in time, or fails, the shortlist is forwarded unmodified.
+The image of every pin in Pinterest's responses to the app is remembered, so the pin is not
+fetched when the picker is requested. The user's boards are kept for BOARDS_TTL_SECONDS. The work runs off mitmproxy's event loop and is bounded by DEADLINE_SECONDS.
+When it does not finish in time, fails, or finds no match, the request goes on to Pinterest. So
+does the first picker request of a user, whose shortlist names the user.
 
 Run:
-  mitmweb -v --listen-host 0.0.0.0 --listen-port 9000 --web-port 9001 -s pinterest_mitm.py
+  mitmweb -v --listen-host 0.0.0.0 --listen-port 9000 --web-port 9001 -s mitm.py
 """
 
 import asyncio
 import json
 import logging
 import os
+import re
 import time
 import traceback
 import urllib3
 import uuid
+from collections import OrderedDict
 
-from mitmproxy import http
+from mitmproxy import ctx, http
 import requests
 
 # ---------------------------------------------------------------------------
@@ -47,11 +51,19 @@ AGENT_ENGINE_CA_BUNDLE = os.environ.get("AGENT_ENGINE_CA_BUNDLE")
 
 TARGET_HOST = "api.pinterest.com"
 TARGET_PATH = "/v3/users/boards/board_picker_shortlist/"
+# The board picker request does not say which pin is being saved; the app opens the pin with a
+# request for its details, at the same moment.
+PIN_DETAILS_PATH = re.compile(r"^/v3/pins/(\d+)/$")
+PIN_MAX_AGE_SECONDS = 60.0
+MAX_REMEMBERED_PINS = 5000
 
 DEADLINE_SECONDS = float(os.environ.get("DEADLINE_SECONDS", "8.0"))
 MIN_BOARD_SCORE = float(os.environ.get("MIN_BOARD_SCORE", "0.5"))
-MAX_BOARD_RESULTS = int(os.environ.get("MAX_BOARD_RESULTS", "5"))
-IMAGE_MIN_SIZE = 236
+MAX_BOARD_RESULTS = int(os.environ.get("MAX_BOARD_RESULTS", "10"))
+IMAGE_MIN_SIZE = 474
+PICKER_ENDPOINT_NAME = "v3_get_board_picker_boards_shortlist"
+BOARDS_TTL_SECONDS = 300.0
+BOARDS_PAGE_SIZE = 250
 
 log = logging.getLogger("pinterest_addon")
 
@@ -79,7 +91,11 @@ if AGENT_ENGINE_INSECURE:
 
 
 def dbg(msg):
-    print(f"[addon] {msg}", flush=True)
+    """Logs to mitmproxy's event log, which the terminal and the web view's Event Log both show."""
+    try:
+        ctx.log.info(f"[addon] {msg}")
+    except Exception:  # no mitmproxy context yet, while the script is loading
+        print(f"[addon] {msg}", flush=True)
 
 
 def dbg_block(title, body, max_len=1500):
@@ -88,7 +104,7 @@ def dbg_block(title, body, max_len=1500):
         s = s[:max_len] + f"... [truncated, total {len(s)} chars]"
     dbg(f"--- {title} ---")
     for line in s.splitlines() or [s]:
-        print(f"    {line}", flush=True)
+        dbg(f"    {line}")
     dbg(f"--- end {title} ---")
 
 
@@ -119,101 +135,144 @@ def to_curl(method, url, headers, cookies, json_body, verify=True):
 
 class PinterestBoardPicker:
 
-    # -- mitmproxy hook ------------------------------------------------------
+    def __init__(self):
+        # Per user (by credential): the id of the user, their boards with when they were read, and
+        # the pin opened last with when.
+        self._auth_to_user_id = {}
+        self._auth_to_boards = {}
+        self._auth_to_opened = {}
+        # The image of every pin seen in Pinterest's responses to the app, least recently seen first.
+        self._pin_id_to_image_url = OrderedDict()
 
-    async def response(self, flow: http.HTTPFlow) -> None:
-        if flow.request.host != TARGET_HOST:
-            return
-        if not flow.request.path.startswith(TARGET_PATH):
-            return
-        if flow.response.status_code != 200:
-            dbg("board picker response skipped (non-200)")
-            return
+    # -- mitmproxy hooks -----------------------------------------------------
 
-        pin_id = flow.request.query.get("pin")
+    async def request(self, flow: http.HTTPFlow) -> None:
+        """Answers the board picker request itself, so Pinterest is not asked for a shortlist. When
+        it cannot, the request goes on to Pinterest."""
+        if flow.request.pretty_host != TARGET_HOST or flow.request.method != "GET":
+            return
         auth = flow.request.headers.get("authorization")
-        cookie = flow.request.headers.get("cookie")
-        if not pin_id or not auth:
-            dbg(f"board picker response skipped (pin_id={pin_id!r}, auth={bool(auth)})")
+        path = flow.request.path.split("?")[0]
+        opened = PIN_DETAILS_PATH.match(path)
+        if opened and auth:
+            self._auth_to_opened[auth] = (opened.group(1), time.time())
+        if path != TARGET_PATH or not auth:
+            return
+
+        pin_id = flow.request.query.get("pin") or self._opened_pin(auth)
+        if pin_id:
+            self._auth_to_opened[auth] = (pin_id, time.time())
+        user_id = self._auth_to_user_id.get(auth)
+        if not pin_id or not user_id:
+            dbg(f"board picker passed on (pin_id={pin_id!r}, user_id={user_id})")
             return
 
         dbg("=" * 70)
-        dbg(f"intercepting {flow.request.method} {flow.request.pretty_url}")
+        dbg(f"answering for pin {pin_id}")
         t0 = time.time()
         try:
-            content = await asyncio.wait_for(
-                self._rewritten_content(flow.response.content, pin_id, auth, cookie),
+            boards = await asyncio.wait_for(
+                self._recommended_boards(
+                    pin_id, auth, flow.request.headers.get("cookie"), user_id,
+                    flow.request.query.get("fields"),
+                ),
                 DEADLINE_SECONDS,
             )
         except asyncio.TimeoutError:
-            dbg(f"deadline of {DEADLINE_SECONDS}s exceeded; leaving response untouched")
+            dbg(f"deadline of {DEADLINE_SECONDS}s exceeded; passing the request on")
             return
         except Exception as e:
-            dbg(f"rewrite FAILED: {type(e).__name__}: {e}")
+            dbg(f"answer FAILED: {type(e).__name__}: {e}")
             traceback.print_exc()
             return
-
-        if content is None:
-            dbg("  -> no match, leaving response untouched")
+        if not boards:
+            dbg("  -> no match, passing the request on")
             return
-        flow.response.content = content
-        dbg(f"RESPONSE REWRITTEN. Elapsed: {(time.time()-t0)*1000:.0f}ms")
+        # The app removes the boards of a shortlist from the list of all boards, and shows only as
+        # many as it asks for, so a longer shortlist would hide the rest of its boards.
+        boards = boards[: int(flow.request.query.get("count", MAX_BOARD_RESULTS))]
+
+        body = {
+            "status": "success",
+            "code": 0,
+            "message": "OK",
+            "endpoint_name": PICKER_ENDPOINT_NAME,
+            "data": boards,
+        }
+        flow.response = http.Response.make(
+            200, json.dumps(body), {"Content-Type": "application/json"}
+        )
+        dbg(f"ANSWERED with {len(boards)} boards. Elapsed: {(time.time()-t0)*1000:.0f}ms")
         dbg("=" * 70)
 
-    # -- Rewrite -------------------------------------------------------------
-
-    async def _rewritten_content(self, body, pin_id, auth, cookie):
-        """The shortlist response body with the matching board first, or None to leave it."""
+    async def response(self, flow: http.HTTPFlow) -> None:
+        if flow.request.pretty_host != TARGET_HOST or flow.response.status_code != 200:
+            return
         try:
-            data = json.loads(body)
-        except Exception as e:
-            dbg(f"JSON parse FAILED: {e}")
-            return None
+            data = flow.response.json()
+        except ValueError:
+            return
+        self._remember_pin_images(data)
+        auth = flow.request.headers.get("authorization")
+        if flow.request.path.startswith(TARGET_PATH) and auth:
+            # Its shortlist names the user, so later requests can be answered.
+            user_id = self._extract_user_id(data.get("data", []))
+            if user_id and self._auth_to_user_id.get(auth) != user_id:
+                self._auth_to_user_id[auth] = user_id
+                dbg(f"learned user id {user_id}")
 
-        shortlist = data.get("data", [])
-        dbg(f"shortlist size={len(shortlist)}")
-        if not shortlist:
-            return None
-        for i, b in enumerate(shortlist):
-            dbg(f"  shortlist[{i}]: id={b.get('id')} name={b.get('name')!r}")
+    def _remember_pin_images(self, node):
+        """Keeps the image of every pin in a response, at most MAX_REMEMBERED_PINS of them."""
+        if isinstance(node, list):
+            for item in node:
+                self._remember_pin_images(item)
+        elif isinstance(node, dict):
+            if node.get("type") == "pin" and node.get("id"):
+                image_url = self._extract_image_url(node)
+                if image_url:
+                    self._pin_id_to_image_url[str(node["id"])] = image_url
+                    self._pin_id_to_image_url.move_to_end(str(node["id"]))
+                    if len(self._pin_id_to_image_url) > MAX_REMEMBERED_PINS:
+                        self._pin_id_to_image_url.popitem(last=False)
+            for value in node.values():
+                if isinstance(value, (list, dict)):
+                    self._remember_pin_images(value)
 
-        user_id = self._extract_user_id(shortlist)
-        dbg(f"pin_id={pin_id!r} user_id={user_id}")
-        if not user_id:
-            return None
+    def _opened_pin(self, auth):
+        """The id of the pin the user opened last, if recently."""
+        pin_id, opened_at = self._auth_to_opened.get(auth, (None, 0.0))
+        return pin_id if time.time() - opened_at <= PIN_MAX_AGE_SECONDS else None
 
-        pin, all_boards = await asyncio.gather(
-            asyncio.to_thread(self._get_pin, pin_id, auth, cookie),
-            asyncio.to_thread(self._get_all_boards, user_id, auth, cookie),
-        )
-        if not pin or not all_boards:
-            return None
+    # -- Recommendation ------------------------------------------------------
 
-        image_url = self._extract_image_url(pin)
-        if not image_url:
-            return None
+    async def _recommended_boards(self, pin_id, auth, cookie, user_id, fields):
+        """The boards the pin's image matches, best first, shaped as shortlist entries; empty when
+        there is no match. `fields` are the board fields to ask Pinterest for, if the boards are
+        read. The pin is fetched when its image has not been seen."""
+        image_url = self._pin_id_to_image_url.get(pin_id)
+        if image_url:
+            all_boards = await asyncio.to_thread(self._get_boards, user_id, auth, cookie, fields)
+        else:
+            dbg(f"pin {pin_id}: image not seen, fetching the pin")
+            pin, all_boards = await asyncio.gather(
+                asyncio.to_thread(self._get_pin, pin_id, auth, cookie),
+                asyncio.to_thread(self._get_boards, user_id, auth, cookie, fields),
+            )
+            image_url = self._extract_image_url(pin) if pin else None
+        if not image_url or not all_boards:
+            return []
 
         names = [b.get("name", "").strip() for b in all_boards if b.get("name")]
-        dbg(f"candidate names: {len(names)}")
-        if not names:
-            return None
-
+        dbg(f"pin {pin_id}: {len(names)} candidate names")
         ranked = await asyncio.to_thread(self._match, image_url, names)
         dbg(f"agent ranked matches: {ranked}")
 
-        matched_id = None
-        for name, score in ranked:
-            resolved = self._name_to_id(all_boards, name)
-            dbg(f"  resolving {name!r} (score={score}) -> id {resolved}")
-            if resolved:
-                matched_id = resolved
-                break
-        if not matched_id:
-            dbg("no returned match resolved to a board id")
-            return None
-
-        self._apply(shortlist, all_boards, matched_id)
-        return json.dumps(data).encode("utf-8")
+        id_vs_entry = {}
+        for name, probability in ranked:
+            board = self._name_to_board(all_boards, name)
+            if board and board["id"] not in id_vs_entry:
+                id_vs_entry[board["id"]] = self._as_shortlist_entry(board, probability)
+        return list(id_vs_entry.values())
 
     # -- Pinterest helpers ---------------------------------------------------
 
@@ -286,60 +345,69 @@ class PinterestBoardPicker:
                 continue
             candidates.append((w, url))
 
-        dbg(f"  image candidates: {[(w, u[-40:]) for w, u in candidates]} originals={bool(originals_url)}")
-
         above = [c for c in candidates if c[0] is not None and c[0] >= IMAGE_MIN_SIZE]
         if above:
             chosen = min(above, key=lambda c: c[0])
-            dbg(f"  chose width={chosen[0]} url={chosen[1]}")
             return chosen[1]
 
         known = [c for c in candidates if c[0] is not None]
         if known:
             chosen = max(known, key=lambda c: c[0])
-            dbg(f"  fallback largest: width={chosen[0]} url={chosen[1]}")
             return chosen[1]
 
         if originals_url:
-            dbg(f"  fallback originals: {originals_url}")
             return originals_url
 
         if candidates:
             return candidates[0][1]
 
-        dbg("  NO IMAGE FOUND")
         return None
 
-    def _get_all_boards(self, user_id, auth, cookie):
+    def _get_boards(self, user_id, auth, cookie, fields):
+        """All of the user's boards, as read at most BOARDS_TTL_SECONDS ago."""
+        boards, read_at = self._auth_to_boards.get(auth, (None, 0.0))
+        if boards and time.time() - read_at <= BOARDS_TTL_SECONDS:
+            return boards
+        boards = self._get_all_boards(user_id, auth, cookie, fields)
+        if boards:
+            self._auth_to_boards[auth] = (boards, time.time())
+        return boards
+
+    def _get_all_boards(self, user_id, auth, cookie, fields):
         url = f"https://api.pinterest.com/v3/users/{user_id}/boards/feed/"
         params = {
-            "page_size": "250",
+            "page_size": str(BOARDS_PAGE_SIZE),
             "sort": "last_pinned_to",
             "filter_all_pins": "true",
             "filter_collage": "true",
         }
+        if fields:
+            params["fields"] = fields
         headers = {"Authorization": auth}
         if cookie:
             headers["Cookie"] = cookie
 
-        dbg(f"GET {url} params={params}")
+        boards = []
         t0 = time.time()
-        try:
-            r = pinterest_session.get(
-                url, headers=headers, params=params, timeout=DEADLINE_SECONDS
-            )
-            dbg(f"  boards: status={r.status_code} len={len(r.content)} time={(time.time()-t0)*1000:.0f}ms")
-            if r.status_code != 200:
-                dbg_block("boards error body", r.text, max_len=800)
-                return []
-            payload = r.json()
-        except Exception as e:
-            dbg(f"  boards fetch FAILED: {type(e).__name__}: {e}")
-            return []
-
-        boards = payload.get("data", []) or []
-        if payload.get("bookmark") and len(boards) >= 250:
-            dbg("  bookmark present (pagination not implemented)")
+        while True:
+            try:
+                r = pinterest_session.get(
+                    url, headers=headers, params=params, timeout=DEADLINE_SECONDS
+                )
+                if r.status_code != 200:
+                    dbg_block("boards error body", r.text, max_len=800)
+                    return boards
+                payload = r.json()
+            except Exception as e:
+                dbg(f"  boards fetch FAILED: {type(e).__name__}: {e}")
+                return boards
+            page = payload.get("data", []) or []
+            boards += page
+            bookmark = payload.get("bookmark")
+            if not page or not bookmark or bookmark == "-end-":
+                break
+            params["bookmark"] = bookmark
+        dbg(f"  boards: {len(boards)} in {(time.time()-t0)*1000:.0f}ms")
         return boards
 
     # -- Agent Engine --------------------------------------------------------
@@ -399,7 +467,7 @@ class PinterestBoardPicker:
             dbg(f"could not dump agent body: {e}")
 
         dbg("--- agent request as curl ---")
-        print(
+        dbg(
             to_curl(
                 "POST",
                 agent_url,
@@ -407,8 +475,7 @@ class PinterestBoardPicker:
                 {"session": "<redacted>"},
                 body,
                 verify=not AGENT_ENGINE_INSECURE,
-            ),
-            flush=True,
+            )
         )
         dbg("--- end curl ---")
 
@@ -424,7 +491,7 @@ class PinterestBoardPicker:
             elapsed_ms = (time.time() - t0) * 1000
             dbg(f"  agent response: status={r.status_code} len={len(r.content)} time={elapsed_ms:.0f}ms")
             dbg("--- agent raw response ---")
-            print(r.text, flush=True)
+            dbg(r.text)
             dbg("--- end agent raw response ---")
             r.raise_for_status()
             payload = r.json()
@@ -448,62 +515,41 @@ class PinterestBoardPicker:
         if not isinstance(labels, list):
             dbg("  no labels in the classifier's answer")
             return []
-        out = [
-            (str(label["label"]), float(label["probability"]))
+        usable = [
+            label
             for label in labels
             if isinstance(label, dict) and "label" in label and "probability" in label
         ]
-        out.sort(key=lambda match: -match[1])
+        # The probability of strong matches saturates near 1, so the similarity breaks ties.
+        usable.sort(key=lambda label: (-float(label["probability"]), -float(label.get("score", 0))))
+        out = [(str(label["label"]), float(label["probability"])) for label in usable]
         dbg(f"  parsed matches -> {out}")
         return out
 
     # -- Response rewrite ----------------------------------------------------
 
     @staticmethod
-    def _name_to_id(all_boards, name):
-        """Case-insensitive, whitespace-normalized name or direct ID -> board id."""
-        # First check if name directly matches an existing board id
+    def _name_to_board(all_boards, name):
+        """Case-insensitive, whitespace-normalized name or direct ID -> board."""
         for b in all_boards:
             if str(b.get("id")) == str(name):
-                return b.get("id")
+                return b
 
         target = " ".join(name.strip().lower().split())
         for b in all_boards:
-            candidate = " ".join((b.get("name") or "").strip().lower().split())
-            if candidate == target:
-                return b.get("id")
+            if " ".join((b.get("name") or "").strip().lower().split()) == target:
+                return b
         return None
 
     @staticmethod
-    def _apply(shortlist, all_boards, matched_id):
-        # (a) reorder if already in shortlist
-        for i, b in enumerate(shortlist):
-            if b.get("id") == matched_id:
-                if i != 0:
-                    shortlist.insert(0, shortlist.pop(i))
-                    dbg(f"  reordered {matched_id} to index 0")
-                else:
-                    dbg("  already at index 0")
-                return
-
-        # (b) inject from the user's board list
-        chosen = next((b for b in all_boards if b.get("id") == matched_id), None)
-        if not chosen:
-            dbg(f"  {matched_id} not in the board list, cannot inject")
-            return
-
-        injected = dict(chosen)
-        injected.setdefault("action", {})
-        injected.setdefault(
-            "recommendation_reason",
-            json.dumps({"reason": 0, "score": 1.0}),
-        )
-        injected.setdefault("ideas_deep_link_url", None)
-        injected.setdefault("has_achievement", False)
-        injected.setdefault("is_ads_only", False)
-
-        shortlist.insert(0, injected)
-        dbg(f"  injected {matched_id} at index 0")
+    def _as_shortlist_entry(board, probability):
+        entry = dict(board)
+        entry.setdefault("action", {})
+        entry["recommendation_reason"] = json.dumps({"reason": 2, "score": probability})
+        entry.setdefault("ideas_deep_link_url", None)
+        entry.setdefault("has_achievement", False)
+        entry.setdefault("is_ads_only", False)
+        return entry
 
 
 # ---------------------------------------------------------------------------

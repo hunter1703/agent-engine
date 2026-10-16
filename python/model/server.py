@@ -26,6 +26,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("model_server")
 
 MIN_FACE_SCORE = 0.7
+# The longest side an image is shrunk to before either model sees it; both models shrink it
+# further themselves, so a larger image only costs decoding and copying.
+MAX_IMAGE_SIDE = 1280
 
 
 
@@ -178,7 +181,11 @@ def decode_image(b64_str: str) -> Image.Image:
         b64_str = b64_str.split(",", 1)[1]
     raw_bytes = base64.b64decode(b64_str)
     image = Image.open(io.BytesIO(raw_bytes))
-    return image.convert("RGB")
+    # A JPEG is decoded at a fraction of its size when it is far larger than needed.
+    image.draft("RGB", (MAX_IMAGE_SIDE, MAX_IMAGE_SIDE))
+    image = image.convert("RGB")
+    image.thumbnail((MAX_IMAGE_SIDE, MAX_IMAGE_SIDE))
+    return image
 
 
 def embed_arcface(image: Image.Image) -> List[List[float]]:
