@@ -1,0 +1,16 @@
+service:
+  name: minio
+
+deploymentStrategy:
+  type: Recreate
+
+# MinIO no longer publishes its container images to a public registry; this is a community build
+# of the upstream source.
+image:
+  repository: ghcr.io/coollabsio/minio
+  tag: "RELEASE.2025-10-15T17-29-55Z"
+  pullPolicy: IfNotPresent
+
+# Local development credentials; the CLOUDSTORAGE server config names the same pair.
+rootUser: minioadmin
+rootPassword: minioadmin

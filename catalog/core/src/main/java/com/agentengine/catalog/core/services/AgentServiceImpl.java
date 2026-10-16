@@ -13,10 +13,13 @@ import com.agentengine.util.agents.builder.BuilderDefinitionUtils;
 import com.agentengine.util.agents.builder.BuilderMode;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.UnauthorizedException;
+import com.agentengine.util.common.query.Filters;
+import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.context.Context;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.tenancy.Permission;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
@@ -144,9 +147,43 @@ public class AgentServiceImpl implements AgentService {
     }
   }
 
+  /**
+   * Drops the cached runners of the agent and of every agent that lists it as a sub-agent, however
+   * far up, since their runners were built with the sub-agent's old config. A runner already
+   * running keeps what it was built with; the next request builds a new one.
+   */
   private void invalidateCachedRunners(final String agentId) {
-    cacheManager.invalidateByPrefix(RuntimeService.RUNNER_CACHE, agentId + ID_SEPARATOR);
-    cacheManager.invalidate(RuntimeService.TEMP_RUNNER_CACHE, agentId);
+    final Set<String> invalidated = new HashSet<>();
+    final Deque<String> pending = new ArrayDeque<>(List.of(agentId));
+    while (!pending.isEmpty()) {
+      final String id = pending.poll();
+      if (invalidated.add(id)) {
+        cacheManager.invalidateByPrefix(RuntimeService.RUNNER_CACHE, id + ID_SEPARATOR);
+        cacheManager.invalidate(RuntimeService.TEMP_RUNNER_CACHE, id);
+        pending.addAll(findIdsOfAgentsListing(id));
+      }
+    }
+  }
+
+  /**
+   * The ids of the agents that list {@code subAgentId} as a sub-agent, whoever may read them: whose
+   * runners to drop is not the caller's to know.
+   */
+  private List<String> findIdsOfAgentsListing(final String subAgentId) {
+    final Query listing =
+        new Query()
+            .withFilter(
+                Filters.or(
+                    Filters.eq(BaseAgentConfig.FIELD_SUB_AGENT_IDS, subAgentId),
+                    Filters.eq(BaseAgentConfig.FIELD_TRANSFERABLE_SUB_AGENT_IDS, subAgentId)))
+            .withPage(Page.UNBOUNDED);
+    return Context.require()
+        .asSystemCaller()
+        .get(
+            () ->
+                agentRepository.findByQuery(listing).getItems().stream()
+                    .map(BaseAgentConfig::getId)
+                    .toList());
   }
 
   private static Set<String> subAgentIds(final BaseAgentConfig config) {

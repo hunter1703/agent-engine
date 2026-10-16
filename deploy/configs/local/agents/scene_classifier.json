@@ -4,7 +4,7 @@
   "name": "Scene Classifier",
   "description": "Tells which tags of the indexed knowledge the whole of an image belongs with.",
   "modelId": "siglip-image-embed",
-  "matchThreshold": 0.73,
-  "sharpness": 24.2,
+  "matchThreshold": 0.76,
+  "sharpness": 25.2,
   "closestChunksPerTag": 3
 }

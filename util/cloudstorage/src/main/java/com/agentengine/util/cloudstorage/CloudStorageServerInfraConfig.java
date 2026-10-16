@@ -12,7 +12,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 public class CloudStorageServerInfraConfig extends InfraConfig {
   private String provider = Provider.S3.name();
   private String region = "us-east-1";
-  private String endpointUrl = "http://localhost:4566";
+  private String endpointUrl = "http://localhost:9000";
   private String accessKeyId = "test";
   @Secure private String secretAccessKey = "test";
   private boolean pathStyleAccess = true;

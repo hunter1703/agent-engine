@@ -21,39 +21,47 @@ spec:
       securityContext:
         {{- include "agent-engine.infra-base.podSecurityContext" . | nindent 8 }}
       containers:
-        - name: localstack
+        - name: minio
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["server", "/data"]
           securityContext:
             {{- include "agent-engine.infra-base.containerSecurityContext" . | nindent 12 }}
           env:
-            - name: SERVICES
-              value: "s3"
-            - name: DEFAULT_REGION
-              value: "us-east-1"
+            - name: MINIO_ROOT_USER
+              value: {{ required "rootUser must be set" .Values.rootUser | quote }}
+            - name: MINIO_ROOT_PASSWORD
+              value: {{ required "rootPassword must be set" .Values.rootPassword | quote }}
           ports:
-            - name: gateway
-              containerPort: 4566
+            - name: api
+              containerPort: 9000
           startupProbe:
             httpGet:
-              path: /_localstack/health
-              port: gateway
+              path: /minio/health/ready
+              port: api
             periodSeconds: {{ $probes.startup.periodSeconds }}
             failureThreshold: {{ $probes.startup.failureThreshold }}
             timeoutSeconds: {{ $probes.startup.timeoutSeconds }}
           readinessProbe:
             httpGet:
-              path: /_localstack/health
-              port: gateway
+              path: /minio/health/ready
+              port: api
             periodSeconds: {{ $probes.readiness.periodSeconds }}
             failureThreshold: {{ $probes.readiness.failureThreshold }}
             timeoutSeconds: {{ $probes.readiness.timeoutSeconds }}
           livenessProbe:
             httpGet:
-              path: /_localstack/health
-              port: gateway
+              path: /minio/health/live
+              port: api
             periodSeconds: {{ $probes.liveness.periodSeconds }}
             failureThreshold: {{ $probes.liveness.failureThreshold }}
             timeoutSeconds: {{ $probes.liveness.timeoutSeconds }}
           resources:
             {{- toYaml (required "resources must be set" .Values.resources) | nindent 12 }}
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+      volumes:
+        - name: minio-data
+          persistentVolumeClaim:
+            claimName: {{ include "agent-engine.infra-base.instance" . }}-pvc

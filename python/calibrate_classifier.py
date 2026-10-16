@@ -1,20 +1,22 @@
-#!/usr/bin/env python3
-"""Evaluates and calibrates an image classifier's embedder on a labelled image folder.
+"""Calibrates an image classifier's `matchThreshold` and `sharpness` on a labelled image folder.
 
-The folder holds one subfolder per label, each with that label's images. Every image is embedded by
-the model server (`/v1/embeddings`), which may return several vectors for it, such as one per face.
-Each image is then scored against every label with the rule `ImageClassificationAgent` applies: a
-label's score is the mean, over its `top_sources` best-matching other images, of the best
-similarity between a vector of the query image and a vector of that image; a label's probability
-is a logistic function of its score. The probability is fitted so that a label scores high for
-its own images and low for the others.
+The folder holds one subfolder per label, each with that label's images. Every image is embedded
+by the model server (`/v1/embeddings`), which may return several vectors for it, such as one per
+face. Each image is then classified against all the others (leave-one-out) the way
+`ImageClassificationAgent` does: for each vector found in it, the vectors of the other images at
+least `matchThreshold` similar are grouped by label, a label's similarity is the mean of its
+`closest_chunks_per_tag` closest, and the best over the image's vectors is kept. A label with no
+such vector is not listed.
+
+The threshold is the one that lists the true label of an image and no other label most often (best
+F1). The sharpness is fitted so that a listed label's probability, a logistic function of its
+similarity above the threshold, matches how often it is the true label.
 
 Usage:
     python calibrate_classifier.py DATASET --model arcface [--server http://localhost:8081]
-        [--top-sources 3]
+        [--closest-chunks-per-tag 3]
 
-Prints recall of the true label among the top 1 and top 3 labels, and the `matchThreshold` and
-`sharpness` to put in the classifier agent's config.
+Prints the precision and recall of the true label, and the values to put in the agent's config.
 """
 
 from __future__ import annotations
@@ -47,24 +49,29 @@ def embed_images(server: str, model: str, paths: list[Path]) -> list[np.ndarray]
     return [np.asarray(v, dtype=np.float32).reshape(-1, 768) for v in vectors]
 
 
-def label_scores(queries: np.ndarray, members: list[np.ndarray], top_sources: int) -> float:
-    """Mean of the best similarities, one per member image, of the `top_sources` best images."""
-    best = [float((queries @ m.T).max()) for m in members if len(m)]
-    if not best:
-        return -1.0
-    return float(np.mean(sorted(best, reverse=True)[:top_sources]))
+def tag_similarity(
+    queries: np.ndarray, pool: np.ndarray, threshold: float, closest: int
+) -> float | None:
+    """The mean of the `closest` vectors of `pool` at least `threshold` similar to a query vector,
+    the best over the query vectors; None when no vector of the pool is."""
+    best = None
+    sims = queries @ pool.T if len(pool) else np.zeros((len(queries), 0))
+    for row in sims:
+        close = np.sort(row[row >= threshold])[::-1][:closest]
+        if len(close):
+            mean = float(close.mean())
+            best = mean if best is None else max(best, mean)
+    return best
 
 
-def fit_logistic(scores: np.ndarray, truth: np.ndarray) -> tuple[float, float]:
-    """Fits probability = sigmoid(sharpness * (score - threshold)) by gradient descent."""
-    a, b = 10.0, -4.0
+def fit_sharpness(similarities: np.ndarray, truth: np.ndarray, threshold: float) -> float:
+    """Fits probability = sigmoid(sharpness * (similarity - threshold)) by gradient descent."""
+    a = 10.0
+    x = similarities - threshold
     for _ in range(20000):
-        p = 1.0 / (1.0 + np.exp(-(a * scores + b)))
-        grad_a = np.mean((p - truth) * scores)
-        grad_b = np.mean(p - truth)
-        a -= 0.5 * grad_a
-        b -= 0.5 * grad_b
-    return a, -b / a
+        p = 1.0 / (1.0 + np.exp(-a * x))
+        a -= 0.5 * float(np.mean((p - truth) * x))
+    return float(np.clip(a, 1.0, 60.0))
 
 
 def main() -> int:
@@ -72,7 +79,7 @@ def main() -> int:
     parser.add_argument("dataset", type=Path)
     parser.add_argument("--model", required=True, help="Embedding model name known to the server")
     parser.add_argument("--server", default="http://localhost:8081")
-    parser.add_argument("--top-sources", type=int, default=3)
+    parser.add_argument("--closest-chunks-per-tag", type=int, default=3)
     args = parser.parse_args()
 
     labels: list[str] = []
@@ -92,26 +99,46 @@ def main() -> int:
     print(f"{len(paths)} images, {len(names)} labels, {len(with_vectors)} with at least one vector, "
           f"{sum(len(v) for v in vectors)} vectors")
 
-    top1 = top3 = 0
-    all_scores: list[float] = []
-    all_truth: list[float] = []
-    for i in with_vectors:
-        scores = {}
-        for name in names:
-            members = [vectors[j] for j in with_vectors if j != i and labels[j] == name]
-            scores[name] = label_scores(vectors[i], members, args.top_sources)
-        ranked = sorted(names, key=scores.get, reverse=True)
-        top1 += ranked[0] == labels[i]
-        top3 += labels[i] in ranked[:3]
-        for name in names:
-            all_scores.append(scores[name])
-            all_truth.append(1.0 if name == labels[i] else 0.0)
+    # For every image and label, the pool is the vectors of the label's other images.
+    pools = {
+        (i, name): np.concatenate(
+            [vectors[j] for j in with_vectors if j != i and labels[j] == name]
+            or [np.zeros((0, 768), dtype=np.float32)]
+        )
+        for i in with_vectors
+        for name in names
+    }
 
-    n = len(with_vectors)
-    print(f"leave-one-out: true label top-1 {top1 / n:.2f}, top-3 {top3 / n:.2f}")
-    sharpness, threshold = fit_logistic(np.array(all_scores), np.array(all_truth))
+    def classify(threshold: float) -> dict[tuple[int, str], float]:
+        found = {}
+        for (i, name), pool in pools.items():
+            similarity = tag_similarity(vectors[i], pool, threshold, args.closest_chunks_per_tag)
+            if similarity is not None:
+                found[(i, name)] = similarity
+        return found
+
+    best = None
+    for threshold in np.arange(0.20, 0.96, 0.02):
+        found = classify(float(threshold))
+        true_positive = sum(1 for (i, name) in found if labels[i] == name)
+        false_positive = len(found) - true_positive
+        recall = true_positive / len(with_vectors)
+        precision = true_positive / len(found) if found else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+        if best is None or f1 > best[0]:
+            best = (f1, float(threshold), precision, recall, false_positive)
+    f1, threshold, precision, recall, false_positive = best
+    print(f"best threshold {threshold:.2f}: the true label is listed for {recall:.0%} of images, "
+          f"{precision:.0%} of listed labels are true ({false_positive} false listings)")
+
+    # Fit the sharpness on labels listed at a threshold a little below the chosen one, so both
+    # true and false labels are present around it.
+    found = classify(threshold - 0.10)
+    similarities = np.array(list(found.values()))
+    truth = np.array([1.0 if labels[i] == name else 0.0 for (i, name) in found])
+    sharpness = fit_sharpness(similarities, truth, threshold)
     print(f'agent config: "matchThreshold": {threshold:.2f}, "sharpness": {sharpness:.1f}, '
-          f'"topSources": {args.top_sources}')
+          f'"closestChunksPerTag": {args.closest_chunks_per_tag}')
     return 0
 
 

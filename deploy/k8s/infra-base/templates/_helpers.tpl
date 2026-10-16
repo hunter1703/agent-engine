@@ -1,5 +1,5 @@
 {{/*
-Shared across mongodb/postgres/localstack/qdrant. Each consuming chart's own .Values.<field>
+Shared across mongodb/postgres/minio/qdrant. Each consuming chart's own .Values.<field>
 (inclusive of whatever -f tiers/<tier>/values.yaml overlay it was rendered with) wins if set;
 otherwise falls back to the default declared once in k8s/infra-base/values.yaml, reached via
 .Subcharts.infra-base.Values — the one place a library chart's own values are actually reachable
@@ -46,7 +46,7 @@ still written out per chart, only the timing numbers are shared):
 {{- end -}}
 
 {{/* Same shape as .probes, defaulting from the infra-base httpProbes profile instead — for
-httpGet-based checks (localstack/qdrant), which start up faster and tolerate fewer missed checks
+httpGet-based checks (minio/qdrant), which start up faster and tolerate fewer missed checks
 than the tcpSocket/exec checks mongodb/postgres use. */}}
 {{- define "agent-engine.infra-base.httpProbes" -}}
 {{- mergeOverwrite (deepCopy (index .Subcharts "infra-base").Values.httpProbes) (.Values.probes | default dict) | toYaml -}}

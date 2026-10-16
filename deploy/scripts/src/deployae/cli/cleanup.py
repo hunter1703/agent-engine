@@ -19,7 +19,6 @@ from deployae.stages import (
     CleanDockerCacheStage,
     DeleteNamespaceStage,
     DeletePvcsStage,
-    RemoveLocalstackResourcesStage,
     Stage,
     UninstallChartStage,
     run_graph,
@@ -110,16 +109,6 @@ async def cleanup_charts(
         uninstalls_by_namespace[namespace_by_chart[stage.chart.name]].append(stage)
 
     stages: list[Stage] = list(uninstall_stages)
-
-    localstack_uninstall = next((s for s in uninstall_stages if s.chart.name == "localstack"), None)
-    if localstack_uninstall:
-        stages.append(
-            RemoveLocalstackResourcesStage(
-                name="remove-localstack-resources",
-                depends_on=(localstack_uninstall,),
-                namespace=namespace_by_chart["localstack"],
-            )
-        )
 
     if clean_docker_cache:
         stages.append(CleanDockerCacheStage(name="clean-docker-cache"))

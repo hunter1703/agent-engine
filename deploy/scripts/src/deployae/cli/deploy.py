@@ -46,7 +46,7 @@ APP_COMPONENTS = (
     "tenancy",
     "internal",
 )
-INFRA_COMPONENTS = ("mongodb", "postgres", "localstack", "qdrant")
+INFRA_COMPONENTS = ("mongodb", "postgres", "minio", "qdrant")
 
 
 def _default_image_tag() -> str:
@@ -483,7 +483,7 @@ def build_stages(
         depends_on=(
             *(
                 infra_deploy_by_name[name]
-                for name in ("mongodb", "postgres", "qdrant", "localstack")
+                for name in ("mongodb", "postgres", "qdrant", "minio")
                 if infra_chart_enabled[name]
             ),
             infra_config_stage,

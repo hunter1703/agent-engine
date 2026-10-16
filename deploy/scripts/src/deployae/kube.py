@@ -60,13 +60,6 @@ def delete_pvcs_by_instance(namespace: str, instance: str) -> None:
     _run(["delete", "pvc", "-n", namespace, "-l", f"app.kubernetes.io/instance={instance}", "--ignore-not-found"], capture=True)
 
 
-def delete_by_label(namespace: str, label_selector: str) -> None:
-    _run(
-        ["delete", "all", "-l", label_selector, "--namespace", namespace, "--ignore-not-found"],
-        capture=True,
-    )
-
-
 def service_exists(namespace: str, name: str) -> bool:
     result = subprocess.run(
         ["kubectl", "get", "svc", name, "--namespace", namespace], capture_output=True

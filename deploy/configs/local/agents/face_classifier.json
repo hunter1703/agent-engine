@@ -4,7 +4,7 @@
   "name": "Face Classifier",
   "description": "Tells which tags of the indexed knowledge the faces in an image belong with.",
   "modelId": "arcface-image-embed",
-  "matchThreshold": 0.43,
-  "sharpness": 17.3,
+  "matchThreshold": 0.56,
+  "sharpness": 16.7,
   "closestChunksPerTag": 3
 }

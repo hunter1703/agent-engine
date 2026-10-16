@@ -15,7 +15,6 @@ from deployae.stages.cleanup import (
     CleanDockerCacheStage,
     DeleteNamespaceStage,
     DeletePvcsStage,
-    RemoveLocalstackResourcesStage,
 )
 from deployae.stages.infraconfig import SeedInfraConfigStage
 from deployae.stages.provision import ProvisionStage
@@ -37,7 +36,6 @@ __all__ = [
     "EnsureLocalTlsCertStage",
     "EnsureNamespaceStage",
     "HelmStage",
-    "RemoveLocalstackResourcesStage",
     "Stage",
     "UninstallChartStage",
     "run_graph",

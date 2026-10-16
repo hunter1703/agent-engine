@@ -46,4 +46,4 @@ Environment variables for `pinterest_mitm.py`:
 - `AGENT_ID`: the classifier agent asked about each pin, default `image_classifier`
 - `AGENT_SESSION_COOKIE`: default `systemSession`
 - `MIN_BOARD_SCORE`: default `0.5`
-- `DEADLINE_SECONDS`: default `3.0`; the longest the addon holds a shortlist response (and each request it makes), after which the response is forwarded unmodified
+- `DEADLINE_SECONDS`: default `8.0`; the longest the addon holds a shortlist response (and each request it makes), after which the response is forwarded unmodified

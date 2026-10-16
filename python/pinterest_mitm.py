@@ -48,7 +48,7 @@ AGENT_ENGINE_CA_BUNDLE = os.environ.get("AGENT_ENGINE_CA_BUNDLE")
 TARGET_HOST = "api.pinterest.com"
 TARGET_PATH = "/v3/users/boards/board_picker_shortlist/"
 
-DEADLINE_SECONDS = float(os.environ.get("DEADLINE_SECONDS", "3.0"))
+DEADLINE_SECONDS = float(os.environ.get("DEADLINE_SECONDS", "8.0"))
 MIN_BOARD_SCORE = float(os.environ.get("MIN_BOARD_SCORE", "0.5"))
 MAX_BOARD_RESULTS = int(os.environ.get("MAX_BOARD_RESULTS", "5"))
 IMAGE_MIN_SIZE = 236

@@ -54,7 +54,9 @@ _torch_device = None
 # Requests run on a thread pool: a model is loaded by one thread at a time, and a model runs one
 # inference at a time.
 _load_lock = threading.Lock()
-_infer_lock = threading.Lock()
+# One lock per model: a model's runtime is not run from several threads at once, but the two models
+# run on different compute units and may run at the same time.
+_infer_locks = {"arcface": threading.Lock(), "siglip": threading.Lock()}
 
 
 def get_device():
@@ -89,13 +91,12 @@ def _load_insightface():
         available_providers = ort.get_available_providers()
         logger.info("Available ONNX Runtime execution providers: %s", available_providers)
 
-        # CUDA if available, else CPU: CoreML measured slower than CPU for these models
-        selected_providers = []
-        for provider in ["CUDAExecutionProvider", "CPUExecutionProvider"]:
-            if provider in available_providers:
-                selected_providers.append(provider)
-        if not selected_providers:
-            selected_providers = ["CPUExecutionProvider"]
+        # The fastest available: CUDA, then CoreML (Apple GPU and Neural Engine), then CPU.
+        selected_providers = [
+            provider
+            for provider in ["CUDAExecutionProvider", "CoreMLExecutionProvider", "CPUExecutionProvider"]
+            if provider in available_providers
+        ] or ["CPUExecutionProvider"]
 
         logger.info("Selected providers for InsightFace: %s", selected_providers)
 
@@ -104,7 +105,8 @@ def _load_insightface():
             allowed_modules=["detection", "recognition"],
             providers=selected_providers,
         )
-        ctx_id = 0 if "CUDAExecutionProvider" in selected_providers else -1
+        # insightface moves every model to the CPU for a negative context id
+        ctx_id = 0 if selected_providers[0] != "CPUExecutionProvider" else -1
         app_instance.prepare(ctx_id=ctx_id, det_size=(640, 640))
         _insightface_app = app_instance
         logger.info("InsightFace loaded successfully.")
@@ -246,7 +248,7 @@ def create_embeddings(request: EmbeddingRequest):
             logger.warning("Failed to decode image at index %d: %s", index, e)
             raise HTTPException(status_code=400, detail=f"Invalid base64 image at index {index}: {e}")
 
-        with _infer_lock:
+        with _infer_locks[model_name]:
             vectors = embed_arcface(image) if model_name == "arcface" else embed_siglip(image)
 
         results.extend(EmbeddingData(index=index, embedding=vector) for vector in vectors)

@@ -1,5 +1,5 @@
-"""Post-uninstall cleanup stages: PVCs, namespaces, and LocalStack's non-Helm-tracked
-resources — each depends on the uninstall(s) it needs to have finished first."""
+"""Post-uninstall cleanup stages: PVCs and namespaces — each depends on the uninstall(s) it needs
+to have finished first."""
 
 from __future__ import annotations
 
@@ -28,17 +28,6 @@ class DeleteNamespaceStage(Stage):
     async def run(self) -> None:
         await asyncio.to_thread(kube.delete_namespace, self.namespace)
         print(f"Deleted namespace {self.namespace}")
-
-
-@dataclass(eq=False, kw_only=True)
-class RemoveLocalstackResourcesStage(Stage):
-    namespace: str
-
-    async def run(self) -> None:
-        await asyncio.to_thread(
-            kube.delete_by_label, self.namespace, "app.kubernetes.io/name=localstack"
-        )
-        print(f"Removed localstack resources from namespace {self.namespace}")
 
 
 @dataclass(eq=False, kw_only=True)

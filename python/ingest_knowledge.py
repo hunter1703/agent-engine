@@ -4,7 +4,10 @@
 Walks a directory tree, finds directories with an `info.json` file, and indexes
 all direct image files in that folder with the `tags` defined in `info.json`.
 With `--folder-as-tag`, a directory with images and no `info.json` is indexed with
-its own name as the tag. With `--skip-existing`, images already indexed are left alone.
+its own name as the tag. With `--tag-level N` it is indexed with the name of its ancestor N
+levels below the given folder instead (1 is the folders directly under it), so every image
+nested beneath that folder shares its tag. With `--skip-existing`, images already indexed are
+left alone.
 Images are uploaded and indexed concurrently, `--workers` at a time, and are not
 described to text unless `--describe` is given.
 Uses standard library only (no external pip dependencies needed).
@@ -13,6 +16,7 @@ Usage:
     python ingest_knowledge.py /path/to/dataset
     python ingest_knowledge.py /path/to/dataset --rest-url http://localhost:8080 --workers 8
     python ingest_knowledge.py ~/pinterest-boards --folder-as-tag --skip-existing
+    python ingest_knowledge.py ~/pinterest-boards/pinterest/me --tag-level 1 --skip-existing
     python ingest_knowledge.py /path/to/dataset --ca-bundle "$(mkcert -CAROOT)/rootCA.pem"
 """
 
@@ -211,6 +215,7 @@ def process_directory(
     embedders: Optional[List[str]] = None,
     folder_as_tag: bool = False,
     skip_existing: bool = False,
+    tag_level: int = 0,
 ) -> Tuple[int, int, int, int]:
     """Recursively walk root_dir and index images where info.json is present.
 
@@ -221,6 +226,8 @@ def process_directory(
     info_dirs = 0
     indexed_images = 0
     skipped_images = 0
+    pool = ThreadPoolExecutor(max_workers=workers)
+    futures = {}
 
     print(f"\nScanning directory: {root_dir.resolve()}\n")
 
@@ -258,8 +265,13 @@ def process_directory(
             if not tags:
                 print(f"[WARN] {info_file} has no tags. Using folder name.")
                 tags = [current_dir.name]
-        elif folder_as_tag and image_files:
-            tags = [current_dir.name]
+        elif (folder_as_tag or tag_level) and image_files:
+            folders = current_dir.relative_to(root_dir).parts
+            if tag_level and len(folders) < tag_level:
+                skipped_images += len(image_files)
+                print(f"[SKIP] {len(image_files)} image(s) above tag level {tag_level}")
+                continue
+            tags = [folders[tag_level - 1] if tag_level else current_dir.name]
         else:
             if image_files:
                 skipped_images += len(image_files)
@@ -275,7 +287,7 @@ def process_directory(
         rel_path = current_dir.relative_to(root_dir)
         display_path = "." if str(rel_path) == "." else str(rel_path)
         print(
-            f"\n📁 Found info.json in: {display_path}"
+            f"\n📁 Indexing folder: {display_path}"
             f"\n   Tags: {tags}"
             f"\n   Images to index: {len(image_files)}"
         )
@@ -286,8 +298,8 @@ def process_directory(
             indexed_images += len(image_files)
             continue
 
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {
+        for img in image_files:
+            futures[
                 pool.submit(
                     index_image,
                     client,
@@ -297,20 +309,22 @@ def process_directory(
                     describe_media,
                     embedders or [],
                     skip_existing,
-                ): img
-                for img in image_files
-            }
-            for future in as_completed(futures):
-                img = futures[future]
-                try:
-                    if future.result():
-                        print(f"   ✓ {img.name}", flush=True)
-                        indexed_images += 1
-                    else:
-                        print(f"   = {img.name} (already indexed)", flush=True)
-                        skipped_images += 1
-                except Exception as e:
-                    print(f"   ✗ {img.name}: {e}", flush=True)
+                )
+            ] = img
+
+    # One pool serves every directory, so folders with few images do not limit the concurrency.
+    for future in as_completed(futures):
+        img = futures[future]
+        try:
+            if future.result():
+                print(f"   ✓ {img}", flush=True)
+                indexed_images += 1
+            else:
+                print(f"   = {img} (already indexed)", flush=True)
+                skipped_images += 1
+        except Exception as e:
+            print(f"   ✗ {img}: {e}", flush=True)
+    pool.shutdown()
 
     return total_dirs, info_dirs, indexed_images, skipped_images
 
@@ -372,6 +386,14 @@ def main():
         help="Index a folder of images that has no info.json with the folder's name as its tag",
     )
     parser.add_argument(
+        "--tag-level",
+        type=int,
+        default=0,
+        help="Index the images of a folder that has no info.json with the name of its ancestor this "
+        "many levels below the given folder (1 = the folders directly under it); implies "
+        "--folder-as-tag",
+    )
+    parser.add_argument(
         "--skip-existing",
         action="store_true",
         help="Skip images that are already indexed, so only new ones are uploaded",
@@ -406,6 +428,7 @@ def main():
         embedders=[e.strip() for e in args.embedders.split(",") if e.strip()],
         folder_as_tag=args.folder_as_tag,
         skip_existing=args.skip_existing,
+        tag_level=args.tag_level,
     )
 
     print("\n" + "=" * 50)

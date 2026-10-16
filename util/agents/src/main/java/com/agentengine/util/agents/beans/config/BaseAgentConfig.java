@@ -71,6 +71,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 @Permissioned(assetClass = AssetClass.AGENT)
 public abstract class BaseAgentConfig extends NamedEntity implements Config {
   public static final String FIELD_DESCRIPTION = "description";
+  public static final String FIELD_SUB_AGENT_IDS = "subAgentIds";
+  public static final String FIELD_TRANSFERABLE_SUB_AGENT_IDS = "transferableSubAgentIds";
 
   @UiField(label = "Agent Type", step = "identity", order = 20)
   @UiSelect(enumType = AgentType.class)

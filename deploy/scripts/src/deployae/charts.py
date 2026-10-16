@@ -64,7 +64,7 @@ APP_CHART_NAMES = (
     "tenancy",
     "internal",
 )
-INFRA_CHART_NAMES = ("mongodb", "postgres", "localstack", "qdrant")
+INFRA_CHART_NAMES = ("mongodb", "postgres", "minio", "qdrant")
 ALL_CHART_NAMES = ("global-properties", *APP_CHART_NAMES, *INFRA_CHART_NAMES)
 DEFAULT_CHART_NAMES = ("global-properties", *APP_CHART_NAMES)
 

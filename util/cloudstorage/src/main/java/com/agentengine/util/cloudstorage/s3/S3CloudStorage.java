@@ -39,13 +39,14 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 /**
- * {@link CloudStorageService} backed by any S3-compatible object store (LocalStack for local dev,
- * AWS S3, or a provider's own S3-compatibility API).
+ * {@link CloudStorageService} backed by any S3-compatible object store (MinIO for local dev, AWS
+ * S3, or a provider's own S3-compatibility API).
  *
- * <p>Start LocalStack locally:
+ * <p>Start MinIO locally:
  *
  * <pre>
- *   docker run --rm -p 4566:4566 localstack/localstack
+ *   docker run --rm -p 9000:9000 -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+ *     minio/minio server /data
  * </pre>
  */
 public class S3CloudStorage extends AbstractCloudStorageService {
