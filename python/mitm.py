@@ -9,11 +9,11 @@ Architecture:
     -> takes the pin (for its image url) and the user's boards
     -> asks the classifier AGENT_ID (Agent Engine /v1/agent/{id}/send-temp) about the image
     -> resolves board names -> boards
-    -> returns the best matching boards, as many as the app asks for (its `count`)
+    -> returns the best MAX_BOARD_RESULTS matching boards
     -> returns them to the Pinterest iOS app in the shape of Pinterest's own shortlist
 
-The image of every pin in Pinterest's responses to the app is remembered, so the pin is not
-fetched when the picker is requested. The user's boards are kept for BOARDS_TTL_SECONDS. The work runs off mitmproxy's event loop and is bounded by DEADLINE_SECONDS.
+The images of the last MAX_REMEMBERED_PINS pins in Pinterest's responses to the app are
+remembered, so the pin is not fetched when the picker is requested. The user's boards are kept for BOARDS_TTL_SECONDS. The work runs off mitmproxy's event loop and is bounded by DEADLINE_SECONDS.
 When it does not finish in time, fails, or finds no match, the request goes on to Pinterest. So
 does the first picker request of a user, whose shortlist names the user.
 
@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import time
 import traceback
 import urllib3
@@ -55,15 +56,19 @@ TARGET_PATH = "/v3/users/boards/board_picker_shortlist/"
 # request for its details, at the same moment.
 PIN_DETAILS_PATH = re.compile(r"^/v3/pins/(\d+)/$")
 PIN_MAX_AGE_SECONDS = 60.0
-MAX_REMEMBERED_PINS = 5000
+MAX_REMEMBERED_PINS = 100
 
 DEADLINE_SECONDS = float(os.environ.get("DEADLINE_SECONDS", "8.0"))
 MIN_BOARD_SCORE = float(os.environ.get("MIN_BOARD_SCORE", "0.5"))
-MAX_BOARD_RESULTS = int(os.environ.get("MAX_BOARD_RESULTS", "10"))
+# The picker shows four suggestions; the app also removes the boards of a longer shortlist from
+# its list of all boards.
+MAX_BOARD_RESULTS = int(os.environ.get("MAX_BOARD_RESULTS", "4"))
 IMAGE_MIN_SIZE = 474
 PICKER_ENDPOINT_NAME = "v3_get_board_picker_boards_shortlist"
 BOARDS_TTL_SECONDS = 300.0
 BOARDS_PAGE_SIZE = 250
+OPEN_FILES_CHECK_SECONDS = 30
+OPEN_FILES_REPORT_ABOVE = 150
 
 log = logging.getLogger("pinterest_addon")
 
@@ -146,6 +151,9 @@ class PinterestBoardPicker:
 
     # -- mitmproxy hooks -----------------------------------------------------
 
+    def running(self) -> None:
+        asyncio.ensure_future(self._watch_open_files())
+
     async def request(self, flow: http.HTTPFlow) -> None:
         """Answers the board picker request itself, so Pinterest is not asked for a shortlist. When
         it cannot, the request goes on to Pinterest."""
@@ -188,9 +196,6 @@ class PinterestBoardPicker:
         if not boards:
             dbg("  -> no match, passing the request on")
             return
-        # The app removes the boards of a shortlist from the list of all boards, and shows only as
-        # many as it asks for, so a longer shortlist would hide the rest of its boards.
-        boards = boards[: int(flow.request.query.get("count", MAX_BOARD_RESULTS))]
 
         body = {
             "status": "success",
@@ -221,6 +226,36 @@ class PinterestBoardPicker:
                 self._auth_to_user_id[auth] = user_id
                 dbg(f"learned user id {user_id}")
 
+    async def _watch_open_files(self):
+        """Every OPEN_FILES_CHECK_SECONDS, logs what holds the proxy's open files while it has more
+        than OPEN_FILES_REPORT_ABOVE: how many, and its TCP connections by state and by the five
+        remote addresses with the most."""
+        while True:
+            await asyncio.sleep(OPEN_FILES_CHECK_SECONDS)
+            open_files = len(os.listdir("/dev/fd"))
+            if open_files > OPEN_FILES_REPORT_ABOVE:
+                dbg(f"open files: {open_files}; {await self._describe_connections()}")
+
+    @staticmethod
+    async def _describe_connections():
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "lsof", "-nP", "-a", "-p", str(os.getpid()), "-iTCP",
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            )
+            output, _ = await process.communicate()
+        except OSError as e:
+            return f"connections not listed ({e})"
+        state_vs_count, remote_vs_count = {}, {}
+        for line in output.decode(errors="replace").splitlines()[1:]:
+            fields = line.split()
+            state = fields[-1].strip("()") if fields and fields[-1].startswith("(") else "-"
+            state_vs_count[state] = state_vs_count.get(state, 0) + 1
+            remote = fields[-2].split("->")[-1].rsplit(":", 1)[0] if "->" in line else "-"
+            remote_vs_count[remote] = remote_vs_count.get(remote, 0) + 1
+        top = sorted(remote_vs_count.items(), key=lambda item: -item[1])[:5]
+        return f"TCP by state {state_vs_count}; most connections to {top}"
+
     def _remember_pin_images(self, node):
         """Keeps the image of every pin in a response, at most MAX_REMEMBERED_PINS of them."""
         if isinstance(node, list):
@@ -228,15 +263,17 @@ class PinterestBoardPicker:
                 self._remember_pin_images(item)
         elif isinstance(node, dict):
             if node.get("type") == "pin" and node.get("id"):
-                image_url = self._extract_image_url(node)
-                if image_url:
-                    self._pin_id_to_image_url[str(node["id"])] = image_url
-                    self._pin_id_to_image_url.move_to_end(str(node["id"]))
-                    if len(self._pin_id_to_image_url) > MAX_REMEMBERED_PINS:
-                        self._pin_id_to_image_url.popitem(last=False)
+                self._remember_pin_image(str(node["id"]), self._extract_image_url(node))
             for value in node.values():
                 if isinstance(value, (list, dict)):
                     self._remember_pin_images(value)
+
+    def _remember_pin_image(self, pin_id, image_url):
+        if image_url:
+            self._pin_id_to_image_url[pin_id] = image_url
+            self._pin_id_to_image_url.move_to_end(pin_id)
+            if len(self._pin_id_to_image_url) > MAX_REMEMBERED_PINS:
+                self._pin_id_to_image_url.popitem(last=False)
 
     def _opened_pin(self, auth):
         """The id of the pin the user opened last, if recently."""
@@ -259,6 +296,7 @@ class PinterestBoardPicker:
                 asyncio.to_thread(self._get_boards, user_id, auth, cookie, fields),
             )
             image_url = self._extract_image_url(pin) if pin else None
+            self._remember_pin_image(pin_id, image_url)
         if not image_url or not all_boards:
             return []
 
@@ -271,7 +309,8 @@ class PinterestBoardPicker:
         for name, probability in ranked:
             board = self._name_to_board(all_boards, name)
             if board and board["id"] not in id_vs_entry:
-                id_vs_entry[board["id"]] = self._as_shortlist_entry(board, probability)
+                reason = 2 if not id_vs_entry else 1
+                id_vs_entry[board["id"]] = self._as_shortlist_entry(board, probability, reason)
         return list(id_vs_entry.values())
 
     # -- Pinterest helpers ---------------------------------------------------
@@ -542,10 +581,12 @@ class PinterestBoardPicker:
         return None
 
     @staticmethod
-    def _as_shortlist_entry(board, probability):
+    def _as_shortlist_entry(board, probability, reason):
+        """A board as Pinterest's shortlist has it. Pinterest gives the first board reason 2 and the
+        others reason 1, and the app shows the shortlist only when it is marked that way."""
         entry = dict(board)
         entry.setdefault("action", {})
-        entry["recommendation_reason"] = json.dumps({"reason": 2, "score": probability})
+        entry["recommendation_reason"] = json.dumps({"reason": reason, "score": probability})
         entry.setdefault("ideas_deep_link_url", None)
         entry.setdefault("has_achievement", False)
         entry.setdefault("is_ads_only", False)

@@ -1,10 +1,14 @@
 # Clash profile for the iPhone that sends the Pinterest app's API calls through the Mac running
 # mitm.py (mitmweb on port 9000) and everything else straight to the internet.
 #
-# Import it into the Clash app on the phone. The Mac is tried by its Bonjour name first, then by
-# the addresses it has had on known networks; the first one that answers is used, and if none
-# does the traffic goes direct, so the Pinterest app keeps working with the Mac switched off.
-# To add a network, add its address for the Mac to `proxies` and to the `MITM` group below.
+# Import it into the Clash app on the phone. The Mac is found by its Bonjour name, so it works on
+# any network the phone and the Mac share, whatever address the Mac has there. When the name does
+# not answer, the traffic goes direct, so the Pinterest app keeps working with the Mac switched off.
+#
+# Clash sends its own connections over the phone's internet connection (Wi-Fi or cellular). When
+# the Mac is on the phone's Personal Hotspot it is only reachable over the hotspot's own interface,
+# so a second node reaches the same name over that interface; the group uses the first node that
+# works, so each network gets the one that fits it.
 
 mixed-port: 7890
 allow-lan: false
@@ -13,8 +17,7 @@ log-level: info
 
 proxies:
   - { name: "Mac-bonjour", type: http, server: r2d2.local, port: 9000 }
-  - { name: "Mac-192.168.1.15", type: http, server: 192.168.1.15, port: 9000 }
-  - { name: "Mac-192.168.31.250", type: http, server: 192.168.31.250, port: 9000 }
+  - { name: "Mac-bonjour-hotspot", type: http, server: r2d2.local, port: 9000, interface-name: bridge100 }
 
 proxy-groups:
   - name: "MITM"
@@ -23,8 +26,7 @@ proxy-groups:
     interval: 30
     proxies:
       - "Mac-bonjour"
-      - "Mac-192.168.1.15"
-      - "Mac-192.168.31.250"
+      - "Mac-bonjour-hotspot"
       - DIRECT
 
 # Pinterest's API connections are named after CDN servers (for example
@@ -42,6 +44,11 @@ sniffer:
       ports: [80]
 
 rules:
+  # The Mac proxies carry TCP only. The Pinterest app tries HTTP/3 (QUIC, which is UDP) first, and
+  # without this rule that UDP matches nothing below and leaves the phone directly, never reaching
+  # the Mac. Rejecting it makes the app fall back to HTTP/2 over TCP, which the rules below send to
+  # the Mac. The Clash app's own "UDP Fallback" setting adds this same rule.
+  - AND,((NETWORK,udp),(DST-PORT,443/80)),REJECT
   # api.pinterest.com is the host the addon rewrites (TARGET_HOST in mitm.py).
   - DOMAIN-SUFFIX,pinterest.com,MITM
   # The same API connection is sometimes named after the Akamai server it lands on instead.

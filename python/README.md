@@ -14,7 +14,7 @@ This module contains Python-based runtime services and integrations for `agent-e
 2. **`mitm.py` (Pinterest MITM Addon)**:
    - `mitmproxy` addon intercepting Pinterest iOS `GET /v3/users/boards/board_picker_shortlist/`.
    - Calls the local Agent Engine (`POST /v1/agent/{agentId}/send-temp`) with the pin image attachment; the answer is the classifier's `{"labels": [...]}`.
-   - Resolves visual classification matches against boards and answers the picker request itself with the best matching boards, as many as the app asks for in its `count` (the app shows no more, and hides the boards of a longer answer from its list of all boards), without asking Pinterest.
+   - Resolves visual classification matches against boards and answers the picker request itself with the best matching boards (up to `MAX_BOARD_RESULTS`), marked the way Pinterest marks its own shortlist, without asking Pinterest.
 
 ## Running
 
@@ -25,12 +25,18 @@ cd python
 uv sync
 ```
 
-### One entry point: `run.py`
+### One entry point: `modelae`
+Install the command once, as editable so it keeps using the files in this folder (`training.zip`,
+`cookies.txt`, `mitm.py`):
 ```bash
 cd python
-uv run python run.py download <pinterest-url>   # gallery-dl -> training.zip (replaced when done)
-uv run python run.py training                   # model server + index the images of training.zip
-uv run python run.py start                      # model server + proxy for the iPhone, no dashboard
+uv tool install --editable .
+```
+Then, from any folder:
+```bash
+modelae download <pinterest-url>   # gallery-dl -> training.zip (replaced when done)
+modelae training                   # model server + index the images of training.zip
+modelae start                      # model server + proxy for the iPhone, no dashboard
 ```
 `training` and `start` take `--engine-url` (default `$AGENT_ENGINE_URL` or `https://agents.com`) and
 `--insecure/--no-insecure` (on by default: the local certificate is self-signed). `training` skips
@@ -48,15 +54,19 @@ written. `training.zip` and `cookies.txt` are git-ignored.
 ### Running the parts separately
 ```bash
 cd python
-uv run python -m model.server                   # the model server
+uv run python -m model.server                   # the model server alone
 uv run python ingest_knowledge.py --skip-existing
 AGENT_ENGINE_URL=https://agents.com AGENT_ENGINE_INSECURE=true \
 uv run mitmweb -v --listen-host 0.0.0.0 --listen-port 9000 --web-port 9001 -s mitm.py
 ```
 
 Phone side: import `clash.yaml` into the Clash app on the iPhone. It sends only
-`api.pinterest.com` to the Mac, trying its Bonjour name and its known addresses in turn, and
+`api.pinterest.com` to the Mac, found by its Bonjour name (`r2d2.local`) so no address is needed, and
 everything else goes direct. The mitmproxy certificate must be installed and trusted on the phone.
+
+Use Clash in **Rule** mode. The profile rejects QUIC (UDP on ports 443 and 80), which the Mac
+proxies cannot carry: without that the Pinterest app uses HTTP/3 and its traffic bypasses the
+proxy, so only Global mode appeared to work. With the rule, the app falls back to HTTP/2 over TCP.
 
 Environment variables for `mitm.py`:
 - `AGENT_ENGINE_URL`: default `http://localhost:8080`
@@ -65,5 +75,5 @@ Environment variables for `mitm.py`:
 - `AGENT_ID`: the classifier agent asked about each pin, default `image_classifier`
 - `AGENT_SESSION_COOKIE`: default `systemSession`
 - `MIN_BOARD_SCORE`: default `0.5`
-- `MAX_BOARD_RESULTS`: default `10`; the most boards the classifier's answer is cut to, and the answer's length when the app does not ask for a number
+- `MAX_BOARD_RESULTS`: default `4`; the number of boards the picker shows. A longer answer is cut to it, because the app also removes the boards of a shortlist from its list of all boards
 - `DEADLINE_SECONDS`: default `8.0`; the longest the addon holds a shortlist response (and each request it makes), after which the response is forwarded unmodified

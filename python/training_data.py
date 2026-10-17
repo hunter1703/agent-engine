@@ -16,25 +16,37 @@ import pyzipper
 
 ARCHIVE_PATH = Path(__file__).parent / "training.zip"
 PASSWORD = os.environ.get("TRAINING_ZIP_PASSWORD", "justletmein").encode("utf-8")
+# gallery-dl's record of the files it has downloaded, kept in the archive so a download continues
+# where the last one ended.
+DOWNLOAD_RECORD = "archive.sqlite"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tiff", ".tif"}
 
 
 def write_archive(source_dir: Path, archive_path: Path = ARCHIVE_PATH) -> int:
-    """Writes every file under `source_dir` into an AES-256 encrypted archive at `archive_path`,
-    replacing it, and returns the number of files. Images are already compressed, so they are
-    stored as they are."""
+    """Writes the files under `source_dir` into an AES-256 encrypted archive at `archive_path`,
+    together with the files of the archive already there that `source_dir` does not have, and
+    replaces it. Returns the number of files taken from `source_dir`. Images are already
+    compressed, so they are stored as they are."""
     temporary_path = archive_path.with_name(archive_path.name + ".part")
-    count = 0
+    new_files = {
+        path.relative_to(source_dir).as_posix(): path
+        for path in sorted(source_dir.rglob("*"))
+        if path.is_file()
+    }
     with pyzipper.AESZipFile(
         temporary_path, "w", compression=pyzipper.ZIP_STORED, encryption=pyzipper.WZ_AES
     ) as archive:
         archive.setpassword(PASSWORD)
-        for path in sorted(source_dir.rglob("*")):
-            if path.is_file():
-                archive.write(path, path.relative_to(source_dir).as_posix())
-                count += 1
+        if archive_path.is_file():
+            with pyzipper.AESZipFile(archive_path) as existing:
+                existing.setpassword(PASSWORD)
+                for name in existing.namelist():
+                    if name not in new_files and not name.endswith("/"):
+                        archive.writestr(name, existing.read(name))
+        for name, path in new_files.items():
+            archive.write(path, name)
     temporary_path.replace(archive_path)
-    return count
+    return len(new_files)
 
 
 class TrainingArchive:
@@ -62,6 +74,9 @@ class TrainingArchive:
 
     def __exit__(self, *_) -> None:
         self._archive.close()
+
+    def has(self, entry: str) -> bool:
+        return entry in self._archive.namelist()
 
     def board_vs_images(self) -> dict[str, list[str]]:
         """The entries of the images of each board, nested sections included."""
