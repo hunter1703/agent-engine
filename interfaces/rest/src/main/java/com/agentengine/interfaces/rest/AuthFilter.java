@@ -15,18 +15,16 @@ import com.agentengine.util.distributed.CacheScope;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.common.cache.CacheBuilder;
-import jakarta.annotation.Priority;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import jakarta.ws.rs.HttpMethod;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseContext;
-import jakarta.ws.rs.container.ContainerResponseFilter;
-import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.Provider;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
@@ -34,6 +32,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.jboss.resteasy.reactive.server.ServerRequestFilter;
+import org.jboss.resteasy.reactive.server.ServerResponseFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,10 +44,8 @@ import org.slf4j.LoggerFactory;
  * origin of every cross-site request, so a page on any other site cannot use the session cookie it
  * sends along.
  */
-@Provider
-@PreMatching
-@Priority(Priorities.AUTHENTICATION)
-public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilter {
+@Singleton
+public class AuthFilter {
   private static final Logger LOG = LoggerFactory.getLogger(AuthFilter.class);
   static final String SESSION_COOKIE = "session";
   private static final String REQUEST_ID_HEADER = "X-Request-Id";
@@ -93,8 +91,19 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
             .build();
   }
 
-  @Override
-  public void filter(final ContainerRequestContext requestContext) {
+  /**
+   * A pre-matching filter runs on the event loop, which forbids the blocking customer lookup
+   * {@code customerIdOf} can do on a cold cache; running the body on the default worker executor
+   * keeps that blocking work off the event loop regardless.
+   */
+  @ServerRequestFilter(preMatching = true, priority = Priorities.AUTHENTICATION)
+  public Uni<Response> filter(final ContainerRequestContext requestContext) {
+    return Uni.createFrom()
+        .item(() -> filterBlocking(requestContext))
+        .runSubscriptionOn(Infrastructure.getDefaultExecutor());
+  }
+
+  private Response filterBlocking(final ContainerRequestContext requestContext) {
     final String requestId = UUID.randomUUID().toString();
     final String path = path(requestContext);
     final String origin = requestContext.getHeaderString(ORIGIN_HEADER);
@@ -109,7 +118,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
         sessionCookie == null ? null : sessionCookie.getValue(),
         customerId,
         origin);
-    boolean isSystemRequest =
+    final boolean isSystemRequest =
         Objects.equals(sessionCookie == null ? null : sessionCookie.getValue(), "systemSession");
     requestContextProvider.set(
         loggedIn
@@ -133,7 +142,7 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
         origin);
     if (LOGOUT_PATH.equals(path)) {
       // Clearing the cookie needs no identity, so an expired or foreign session can still log out.
-      return;
+      return null;
     }
     if (loggedIn.isPresent()) {
       final UserSession session = loggedIn.get();
@@ -142,27 +151,27 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
               .get(() -> activeUsersCache.get(session.getUserId()));
       if (!active) {
         identityProvider.logout(sessionCookie.getValue());
-        requestContext.abortWith(Response.status(Response.Status.UNAUTHORIZED).build());
-        return;
+        return Response.status(Response.Status.UNAUTHORIZED).build();
       }
       if (origin != null && !session.getCustomerId().equals(customerId)) {
-        requestContext.abortWith(Response.status(Response.Status.FORBIDDEN).build());
+        return Response.status(Response.Status.FORBIDDEN).build();
       }
-      return;
-    } else if (isSystemRequest) {
-      return;
+      return null;
+    }
+    if (isSystemRequest) {
+      return null;
     }
     if (customerId == null) {
-      requestContext.abortWith(Response.status(Response.Status.FORBIDDEN).build());
-    } else if (!HttpMethod.OPTIONS.equals(requestContext.getMethod()) && !LOGIN_PATH.equals(path)) {
-      requestContext.abortWith(Response.status(Response.Status.UNAUTHORIZED).build());
+      return Response.status(Response.Status.FORBIDDEN).build();
     }
+    if (!HttpMethod.OPTIONS.equals(requestContext.getMethod()) && !LOGIN_PATH.equals(path)) {
+      return Response.status(Response.Status.UNAUTHORIZED).build();
+    }
+    return null;
   }
 
-  @Override
-  public void filter(
-      final ContainerRequestContext requestContext,
-      final ContainerResponseContext responseContext) {
+  @ServerResponseFilter
+  public void filter(final ContainerResponseContext responseContext) {
     final Context context = requestContextProvider.get();
     if (context != null) {
       responseContext.getHeaders().add(REQUEST_ID_HEADER, context.requestId());

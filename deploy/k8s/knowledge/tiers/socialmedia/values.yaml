@@ -13,8 +13,8 @@ app-base:
       cpu: "100m"
       memory: "512Mi"
     limits:
-      cpu: "100m"
-      memory: "512Mi"
+      cpu: "400m"
+      memory: "820Mi"
   config:
     applicationProperties:
       quarkus.otel.service.name: agent-engine-knowledge

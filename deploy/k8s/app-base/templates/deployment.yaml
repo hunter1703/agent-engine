@@ -34,6 +34,16 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      # Kubernetes' own default ndots (5) makes any hostname with fewer dots than that try every
+      # search-list suffix (this namespace, the cluster, and any VCN-level search domain) before
+      # ever trying it as absolute — for a MongoDB Atlas mongodb+srv:// host, that races the
+      # JVM's DNS client against however many suffixes exist and can fail its SRV/TXT lookup
+      # outright rather than just adding latency. 1 skips straight to the absolute name for any
+      # externally-qualified host, which is what every external dependency this pod talks to is.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       containers:
         - name: {{ .Values.service.name }}
           image: {{ include "agent-engine.app-base.image" . | quote }}
