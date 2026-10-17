@@ -5,6 +5,7 @@ import com.agentengine.util.common.builder.annotations.*;
 import com.agentengine.util.common.builder.annotations.UiAccess;
 import com.agentengine.util.common.builder.annotations.UiAccessLevel;
 import com.agentengine.util.common.builder.annotations.UiBoolean;
+import com.agentengine.util.common.builder.annotations.UiDate;
 import com.agentengine.util.common.builder.annotations.UiDynamicSchema;
 import com.agentengine.util.common.builder.annotations.UiExpression;
 import com.agentengine.util.common.builder.annotations.UiField;
@@ -18,7 +19,9 @@ import com.agentengine.util.common.builder.annotations.UiStep;
 import com.agentengine.util.common.builder.annotations.UiSteps;
 import com.agentengine.util.common.builder.annotations.UiText;
 import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.utils.ResourceUtils;
 import com.agentengine.util.common.utils.SchemaUtils;
+import com.agentengine.util.common.utils.StringUtils;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -60,6 +63,7 @@ public final class BuilderDefinitionUtils {
     TEXTAREA,
     SWITCH,
     NUMBER,
+    DATE,
     SELECT,
     LOOKUP,
     DYNAMIC_SCHEMA
@@ -422,6 +426,7 @@ public final class BuilderDefinitionUtils {
         || find(owner, field, UiText.class) != null
         || find(owner, field, UiBoolean.class) != null
         || find(owner, field, UiNumber.class) != null
+        || find(owner, field, UiDate.class) != null
         || find(owner, field, UiSelect.class) != null
         || find(owner, field, UiLookup.class) != null
         || find(owner, field, UiDynamicSchema.class) != null;
@@ -432,6 +437,7 @@ public final class BuilderDefinitionUtils {
     if (find(owner, field, UiLookup.class) != null) return Widget.LOOKUP;
     if (find(owner, field, UiSelect.class) != null) return Widget.SELECT;
     if (find(owner, field, UiBoolean.class) != null) return Widget.SWITCH;
+    if (find(owner, field, UiDate.class) != null) return Widget.DATE;
     if (find(owner, field, UiNumber.class) != null) return Widget.NUMBER;
     final UiText text = find(owner, field, UiText.class);
     if (text != null) return text.multiline() ? Widget.TEXTAREA : Widget.TEXT;
@@ -505,7 +511,19 @@ public final class BuilderDefinitionUtils {
     if (ann == null) {
       return List.of();
     }
+    if (StringUtils.isNotBlank(ann.optionsResource())) {
+      return resourceOptions(ann.optionsResource());
+    }
     return enumOptions(ann.enumType());
+  }
+
+  private static List<Object> resourceOptions(final String resource) {
+    final String json = ResourceUtils.loadResourceAsString(resource);
+    if (StringUtils.isBlank(json)) {
+      throw new IllegalStateException("Options resource not found: " + resource);
+    }
+    final List<?> values = JsonUtils.fromJson(json, List.class);
+    return values.stream().filter(BuilderDefinitionUtils::isValidOption).map(v -> (Object) v).toList();
   }
 
   private static List<Object> enumOptions(final Class<? extends Enum<?>> enumType) {

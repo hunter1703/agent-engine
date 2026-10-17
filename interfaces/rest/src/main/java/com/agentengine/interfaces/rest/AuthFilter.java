@@ -92,9 +92,9 @@ public class AuthFilter {
   }
 
   /**
-   * A pre-matching filter runs on the event loop, which forbids the blocking customer lookup
-   * {@code customerIdOf} can do on a cold cache; running the body on the default worker executor
-   * keeps that blocking work off the event loop regardless.
+   * A pre-matching filter runs on the event loop, which forbids the blocking customer lookup {@code
+   * customerIdOf} can do on a cold cache; running the body on the default worker executor keeps
+   * that blocking work off the event loop regardless.
    */
   @ServerRequestFilter(preMatching = true, priority = Priorities.AUTHENTICATION)
   public Uni<Response> filter(final ContainerRequestContext requestContext) {

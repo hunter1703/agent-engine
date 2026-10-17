@@ -2,16 +2,17 @@ package com.agentengine.agent.infra.tools.connector;
 
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.tools.Tool;
-import com.agentengine.knowledge.api.beans.IndexRequest;
-import com.agentengine.knowledge.api.beans.Knowledge;
-import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.agents.tools.ToolConstructor;
+import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.beans.FileDetails;
+import com.agentengine.util.common.utils.MarkdownUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.tools.ToolContext;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @DiscoverableTool
@@ -21,26 +22,16 @@ public final class GetWebpageTool extends Tool {
       new ToolDescriptor(
           TOOL_NAME,
           "Fetches a web page from the provided URL and returns its content as Markdown. "
-              + "When indexAsKnowledge is true the page is asynchronously indexed as knowledge and a "
-              + "knowledgeId is returned instead of the raw Markdown — use search_knowledge to search it. "
-              + "Returns: { markdown, url, statusCode, contentLength } "
-              + "or { knowledgeId, hint } when indexAsKnowledge is true.");
+              + "Returns: { markdown, url, contentLength } or { error, url }.");
 
-  private final KnowledgeService knowledgeService;
+  private final FileService fileService;
 
   @ToolConstructor
-  public GetWebpageTool(KnowledgeService knowledgeService) {
+  public GetWebpageTool(final FileService fileService) {
     super(DESCRIPTOR);
-    this.knowledgeService = knowledgeService;
+    this.fileService = fileService;
   }
 
-  /**
-   * Fetches a web page and indexes it as knowledge, returning a reference to the indexed content.
-   *
-   * @param url the URL of the web page to fetch
-   * @param toolContext the tool execution context; provides the agent and session IDs
-   * @return a knowledgeId reference to the indexed page
-   */
   public ToolOutput<?> execute(
       @ToolArg(
               name = "url",
@@ -48,21 +39,21 @@ public final class GetWebpageTool extends Tool {
           String url,
       ToolContext toolContext) {
     if (StringUtils.isBlank(url)) {
-      return ToolOutput.direct(Map.of("error", "URL cannot be null or empty", "statusCode", 400));
+      return ToolOutput.direct(Map.of("error", "URL cannot be null or empty"));
     }
-
     if (!url.startsWith("http")) {
       url = "https://" + url;
     }
-    return indexUrl(url);
-  }
 
-  private ToolOutput<?> indexUrl(final String url) {
-    final IndexRequest request = new IndexRequest();
-    request.setFileDetails(FileDetails.fromUrl(url));
-    request.setTitle(url);
-    request.setWaitForCompletion(true);
-    final Knowledge knowledge = knowledgeService.index(request);
-    return ToolOutput.knowledge(knowledge.getId(), "Webpage '%s' indexed.".formatted(url));
+    final String html;
+    try (InputStream content = fileService.getContent(FileDetails.fromUrl(url))) {
+      html = new String(content.readAllBytes(), StandardCharsets.UTF_8);
+    } catch (final Exception ex) {
+      return ToolOutput.direct(
+          Map.of("error", "Failed to fetch URL: " + ex.getMessage(), "url", url));
+    }
+    final String markdown = MarkdownUtils.fromHtml(html);
+    return ToolOutput.direct(
+        Map.of("markdown", markdown, "url", url, "contentLength", markdown.length()));
   }
 }

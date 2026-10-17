@@ -66,7 +66,12 @@ public class AccessControlServiceImpl implements AccessControlService {
 
   @Override
   public List<String> getRolesForUser(final String userId) {
+    // Only roles on every asset, not roles on one specific asset (e.g. the OWNER a user picks up
+    // on each entity they create) — this answers "what is the user's role", not "what has the
+    // user been granted access to". assetClass and assetId are always both null or both set
+    // (see SharingChange), so assetId alone tells them apart.
     return roleMappingRepository.findForPrincipal(Principal.ofUser(userId).toString()).stream()
+        .filter(mapping -> mapping.getAssetId() == null)
         .flatMap(mapping -> mapping.getRoleIds().stream())
         .distinct()
         .toList();
