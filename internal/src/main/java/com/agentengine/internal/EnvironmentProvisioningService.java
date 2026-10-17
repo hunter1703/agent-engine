@@ -11,6 +11,8 @@ import com.agentengine.util.mongodb.mongo.MongoClientProvisioner;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.Comparator;
+import java.util.List;
 
 @Singleton
 public class EnvironmentProvisioningService {
@@ -40,7 +42,11 @@ public class EnvironmentProvisioningService {
                           provisioningRequest.getServer(
                               ServerType.MONGO_SERVER,
                               IdentityDocumentStoreClientType.IDENTITY.name())));
-              for (final ProvisioningService service : provisioningServices) {
+              final List<ProvisioningService> orderedServices =
+                  provisioningServices.stream()
+                      .sorted(Comparator.comparingInt(ProvisioningService::order))
+                      .toList();
+              for (final ProvisioningService service : orderedServices) {
                 run.merge(
                     service.getClass().getSimpleName(),
                     () -> service.provisionEnvironment(provisioningRequest));
