@@ -49,10 +49,16 @@ public class SessionRepository extends AbstractPermissionedRepository<AgentSessi
    * Starting a session is a use of its agent, so it takes READ on the agent. A child session is
    * started by its parent's run for a sub-agent the parent's agent lists, and whoever listed it was
    * checked for using it then, so it takes acting in the parent session instead — or in the child
-   * session itself, which re-creates its own record when it recovers without one.
+   * session itself, which re-creates its own record when it recovers without one. The system is
+   * exempt either way — consistent with {@link #getInitialShare}, which grants a system-created
+   * agent no explicit access because the system needs none, a system-created agent would otherwise
+   * be one no caller, including the system itself, could ever start a session with.
    */
   @Override
   protected void requireCreatePermission(final List<AgentSession> sessions) {
+    if (Context.require().isSystem()) {
+      return;
+    }
     final Set<String> agentIds = new LinkedHashSet<>();
     for (final AgentSession session : sessions) {
       if (StringUtils.isBlank(session.getParentSessionId())) {

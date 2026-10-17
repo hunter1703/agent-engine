@@ -38,6 +38,17 @@ public class AgentProvisioningServiceImpl implements AgentProvisioningService {
     this.microServiceProvisioner = microServiceProvisioner;
   }
 
+  /**
+   * Runs ahead of every other service's environment provisioning: a service that invokes the
+   * agent service as part of its own environment provisioning needs this one's event-store and
+   * microservice registration to already exist, since the session actor creation that triggers
+   * depends on both.
+   */
+  @Override
+  public int order() {
+    return -100;
+  }
+
   @Override
   public ProvisioningResult provisionEnvironment(final ProvisioningRequest request) {
     final ProvisioningRun run = new ProvisioningRun();
