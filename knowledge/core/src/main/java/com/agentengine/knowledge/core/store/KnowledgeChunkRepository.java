@@ -4,12 +4,12 @@ import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.AbstractRepository;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.validation.ValidationService;
-import com.agentengine.util.common.query.Query;
-import com.agentengine.util.vectordb.VectorEntityStore;
 import com.agentengine.util.vectordb.VectorBackend;
+import com.agentengine.util.vectordb.VectorEntityStore;
 import com.agentengine.util.vectordb.VectorRepositorySpec;
 import io.quarkus.runtime.Startup;
 import jakarta.inject.Inject;
@@ -99,7 +99,8 @@ public class KnowledgeChunkRepository extends AbstractRepository<KnowledgeChunk>
         CollectionUtils.getIntValueFromMap(payload, KnowledgeChunk.FIELD_CHUNK_END, 0));
     chunk.setDescription(
         CollectionUtils.getStringValueFromMap(payload, KnowledgeChunk.FIELD_DESCRIPTION));
-    chunk.setEmbedder(CollectionUtils.getStringValueFromMap(payload, KnowledgeChunk.FIELD_EMBEDDER));
+    chunk.setEmbedder(
+        CollectionUtils.getStringValueFromMap(payload, KnowledgeChunk.FIELD_EMBEDDER));
     chunk.setTags(CollectionUtils.getListFromMap(payload, BaseEntity.FIELD_TAGS));
 
     final Object mediaObj = payload.get(KnowledgeChunk.FIELD_MEDIA);

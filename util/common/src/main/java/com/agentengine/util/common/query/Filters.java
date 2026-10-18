@@ -26,8 +26,7 @@ public class Filters {
 
   /** A semantic search that only matches entities at least {@code minSimilarity} similar. */
   public static Filter semanticSearch(String field, Object value, double minSimilarity) {
-    return semanticSearch(field, value)
-        .withAdditional(Map.of(MIN_SIMILARITY, minSimilarity));
+    return semanticSearch(field, value).withAdditional(Map.of(MIN_SIMILARITY, minSimilarity));
   }
 
   public static Filter ne(String field, Object value) {

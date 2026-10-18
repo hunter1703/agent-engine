@@ -10,9 +10,7 @@ import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.query.Filters;
-import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.Query;
-import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.ExceptionUtils;
 import com.agentengine.util.common.utils.FileUtils;
 import com.agentengine.util.common.utils.StringUtils;
@@ -45,17 +43,16 @@ import org.slf4j.LoggerFactory;
  * Tells which tags of the indexed knowledge the attached images belong with.
  *
  * <p>With a {@code modelId}, the agent compares every vector that embedding model finds in an
- * image, such as one per face, with the knowledge indexed with that model; a tag's similarity is the
- * best it gets from any of them. It asks its sub-agents, which are image classification agents
+ * image, such as one per face, with the knowledge indexed with that model; a tag's similarity is
+ * the best it gets from any of them. It asks its sub-agents, which are image classification agents
  * too, at the same time, and merges their answers with its own: a tag matches with the probability
  * that at least one of them is right.
  *
  * <p>The answer is a JSON object {@code {"labels": [{label, probability, score}, ...]}}, most
  * probable first.
  */
-//TODO: make it better
+// TODO: make it better
 public class ImageClassificationAgent extends Agent {
-
 
   private static final Logger LOG = LoggerFactory.getLogger(ImageClassificationAgent.class);
   private static final int MAX_TAGS = 50;
@@ -110,7 +107,8 @@ public class ImageClassificationAgent extends Agent {
     final List<List<LabelMatch>> answers = new ArrayList<>();
     Throwable failure = null;
     for (final TaskOutcome<List<LabelMatch>> outcome :
-        StructuredConcurrencyUtils.callConcurrentlyUntil("image-classification", asks, _ -> false)) {
+        StructuredConcurrencyUtils.callConcurrentlyUntil(
+            "image-classification", asks, _ -> false)) {
       if (outcome.state() == Subtask.State.SUCCESS) {
         answers.add(outcome.value());
       } else {
@@ -140,9 +138,9 @@ public class ImageClassificationAgent extends Agent {
   }
 
   /**
-   * What this agent's own embedding model finds the images to belong with: for each vector found
-   * in them, the tags whose closest indexed images are at least {@code matchThreshold} similar,
-   * each rated by the mean similarity of its {@code closestChunksPerTag} closest.
+   * What this agent's own embedding model finds the images to belong with: for each vector found in
+   * them, the tags whose closest indexed images are at least {@code matchThreshold} similar, each
+   * rated by the mean similarity of its {@code closestChunksPerTag} closest.
    */
   private List<LabelMatch> classify(final List<FileDetails> images) {
     if (images.isEmpty()) {

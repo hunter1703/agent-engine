@@ -15,7 +15,9 @@ import io.quarkus.arc.Arc;
 import io.quarkus.arc.ArcContainer;
 import io.quarkus.arc.InstanceHandle;
 import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.spi.Bean;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -29,13 +31,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public final class DiscoveredToolProviders {
+  private static final Logger LOG = LoggerFactory.getLogger(DiscoveredToolProviders.class);
   private final LazyLoader<List<ToolProvider>> providers;
 
-  public DiscoveredToolProviders() {
-    this.providers = new LazyLoader<>(DiscoveredToolProviders::discoverProviders);
+  @Inject
+  public DiscoveredToolProviders(final @Any Instance<Tool> tools) {
+    this.providers = new LazyLoader<>(() -> discoverProviders(tools));
   }
 
   /**
@@ -43,16 +49,18 @@ public final class DiscoveredToolProviders {
    * constructing the bean itself, so a tool's own dependencies are only required when it is
    * actually created (see {@link DiscoveredToolProvider#create}), not merely discovered.
    */
-  private static List<ToolProvider> discoverProviders() {
+  private static List<ToolProvider> discoverProviders(final Instance<Tool> tools) {
     final Map<String, ToolProvider> resolvedProviders = new LinkedHashMap<>();
-    final ArcContainer container = Arc.container();
-    for (final Bean<?> bean : container.beanManager().getBeans(Tool.class, Any.Literal.INSTANCE)) {
+    for (final Instance.Handle<Tool> handle : tools.handles()) {
       @SuppressWarnings("unchecked")
-      final Class<? extends Tool> toolClass = (Class<? extends Tool>) bean.getBeanClass();
+      final Class<? extends Tool> toolClass =
+          (Class<? extends Tool>) handle.getBean().getBeanClass();
       final ToolDefinition definition = buildDefinition(toolClass);
       resolvedProviders.putIfAbsent(
           definition.descriptor().name(), new DiscoveredToolProvider(definition));
+      LOG.info("Discovered tool: {}", definition.descriptor().name());
     }
+    LOG.info("Discovered {} tools via CDI auto-discovery", resolvedProviders.size());
     return List.copyOf(resolvedProviders.values());
   }
 
@@ -138,8 +146,8 @@ public final class DiscoveredToolProviders {
     if (container == null) {
       return false;
     }
-    try (final InstanceHandle<?> instance = container.instance(type)) {
-      return instance.isAvailable();
+    try {
+      return !container.beanManager().getBeans(type, Any.Literal.INSTANCE).isEmpty();
     } catch (Exception ignored) {
       return false;
     }

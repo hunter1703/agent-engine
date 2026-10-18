@@ -7,7 +7,7 @@ pdb:
   enabled: false
 
 tmpVolume:
-  sizeLimit: 256Mi
+  sizeLimit: 1Gi
 
 # A tier can override this with the name of a docker-registry Secret (created out of band,
 # e.g. `kubectl create secret docker-registry ...`) when its images live in a private registry.
@@ -25,7 +25,7 @@ pekko: {}
 # Same for every service today; an app chart can override app-base.java.* if it ever differs.
 java:
   opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
-  args: "-XX:InitialRAMPercentage=40.0 -XX:MaxRAMPercentage=40.0 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xss256k -XX:+ExitOnOutOfMemoryError"
+  args: "-XX:InitialRAMPercentage=40.0 -XX:MaxRAMPercentage=40.0 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xss256k -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump-%p-%t.hprof -XX:+ExitOnOutOfMemoryError"
 
 ingress:
   enabled: false

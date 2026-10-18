@@ -10,7 +10,6 @@ dependencies {
     implementation project(':util:context')
     implementation project(':util:distributed')
     implementation project(':util:infra')
-    implementation project(':util:cloudstorage')
     api project(':util:mongodb')
     api project(':util:models')
 

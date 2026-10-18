@@ -43,10 +43,9 @@ public record Reminder(String group, String id, String message, Map<String, Obje
   }
 
   public static final String GROUP_SPAWNED_AGENTS = "spawned_agents";
-  public static final String GROUP_ACTIVE_PLAN = "active_plan";
-  public static final String GROUP_NOTEBOOK_ACCESS = "notebook_access";
   public static final String GROUP_KNOWLEDGE_IDS = "knowledge_ids";
 
+  public static final String ID_USER_CONTEXT = "user_context";
   public static final String ID_ACTIVE_PLAN = "plan";
   public static final String ID_NOTEBOOK_ACCESS = "notebook_access";
 
@@ -56,20 +55,33 @@ public record Reminder(String group, String id, String message, Map<String, Obje
    * (future addition) sorts after all of these.
    */
   public static final List<String> GROUP_ORDER =
-      List.of(GROUP_ACTIVE_PLAN, GROUP_SPAWNED_AGENTS, GROUP_NOTEBOOK_ACCESS, GROUP_KNOWLEDGE_IDS);
+      List.of(
+          ID_USER_CONTEXT,
+          ID_ACTIVE_PLAN,
+          GROUP_SPAWNED_AGENTS,
+          ID_NOTEBOOK_ACCESS,
+          GROUP_KNOWLEDGE_IDS);
 
   private static final Map<String, GroupInfo> GROUPS =
       Map.of(
-          GROUP_ACTIVE_PLAN, new GroupInfo("Active Plan"),
-          GROUP_SPAWNED_AGENTS, new GroupInfo("Pending Child Sessions"),
-          GROUP_NOTEBOOK_ACCESS, new GroupInfo("Notebook Access"),
+          ID_USER_CONTEXT,
+          new GroupInfo("Current Context"),
+          ID_ACTIVE_PLAN,
+          new GroupInfo("Active Plan"),
+          GROUP_SPAWNED_AGENTS,
+          new GroupInfo("Pending Child Sessions"),
+          ID_NOTEBOOK_ACCESS,
+          new GroupInfo("Notebook Access"),
           GROUP_KNOWLEDGE_IDS,
-              new GroupInfo(
-                  "Available Knowledge",
-                  "Access these with "
-                      + SearchKnowledgeTool.DESCRIPTOR.name()
-                      + " — pass a query to search an indexed item, omit it to read a"
-                      + " non-indexed one in full."));
+          new GroupInfo(
+              "Non-Indexed Knowledge",
+              "This list contains only non-indexed knowledge items. "
+                  + "To read any of these in full, call "
+                  + SearchKnowledgeTool.DESCRIPTOR.name()
+                  + " with its knowledge ID and omit the query. "
+                  + "Indexed knowledge is not listed here; search it by calling "
+                  + SearchKnowledgeTool.DESCRIPTOR.name()
+                  + " with a query."));
 
   /** The section title a group renders as in the brief (see {@code ReminderPlugin}). */
   public static String title(final String group) {

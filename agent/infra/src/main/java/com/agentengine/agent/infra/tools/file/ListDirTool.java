@@ -32,7 +32,8 @@ public final class ListDirTool extends BaseFileTool {
   private static final int DEFAULT_DEPTH = 2;
   private static final int MAX_ENTRY_LENGTH = 500;
   private static final Set<String> DEFAULT_IGNORED_DIRS =
-      Set.of(".git", ".gradle", "node_modules", "build", "target", ".idea", ".vscode", "__pycache__");
+      Set.of(
+          ".git", ".gradle", "node_modules", "build", "target", ".idea", ".vscode", "__pycache__");
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
@@ -160,7 +161,7 @@ public final class ListDirTool extends BaseFileTool {
 
       return ToolOutput.direct(response);
 
-    } catch (IOException exception) {
+    } catch (final Exception exception) {
       LOG.debug("Failed to list directory: {}", dirPath, exception);
       return ToolOutput.direct(
           Map.of(

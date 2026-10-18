@@ -24,5 +24,4 @@ public class LazyLoader<T> {
   }
 
   private record ValueHolder<T>(T value) {}
-  ;
 }

@@ -70,7 +70,9 @@ public class NotebookService {
 
   public boolean deleteNotebook(final String notebookId) {
     final Notebook notebook = notebookRepository.findById(notebookId);
-    if (notebook == null || !notebookRepository.hasPermission(notebook, Permission.DELETE)) {
+    if (notebook == null
+        || !notebookRepository.hasPermission(notebook, Permission.DELETE)
+        || NotebookType.SCRATCHPAD.name().equalsIgnoreCase(notebook.getType())) {
       return false;
     }
     final boolean deleted = notebookRepository.deleteByIdIgnoringVersion(notebookId);
@@ -106,6 +108,30 @@ public class NotebookService {
     // A note is set to the content given, whatever was written to it before.
     final Note saved =
         notesRepository.saveIgnoringVersion(new Note(notebookId, noteTitle, content));
+    invalidateNotebookCache(notebook);
+    return saved;
+  }
+
+  /**
+   * Appends content to an existing note, or creates the note if it does not exist yet.
+   *
+   * @throws UnauthorizedException when the caller may not write notes in the notebook
+   */
+  public Note appendNote(
+      final String notebookId, final String noteTitle, final String contentToAppend) {
+    final Notebook notebook = notebookRepository.findById(notebookId);
+    if (notebook == null || !notebookRepository.hasPermission(notebook, Permission.EDIT)) {
+      throw new UnauthorizedException(AssetClass.NOTEBOOK, notebookId);
+    }
+    final Note existing = notesRepository.findById(NotebookUtils.noteId(notebookId, noteTitle));
+    final String newContent;
+    if (existing == null || StringUtils.isBlank(existing.getContent())) {
+      newContent = contentToAppend;
+    } else {
+      newContent = existing.getContent() + "\n\n" + contentToAppend;
+    }
+    final Note saved =
+        notesRepository.saveIgnoringVersion(new Note(notebookId, noteTitle, newContent));
     invalidateNotebookCache(notebook);
     return saved;
   }
@@ -202,7 +228,7 @@ public class NotebookService {
             .orElse(null);
 
     if (sessionId == null) {
-      return "You have no notebook access.";
+      return "";
     }
 
     if (skipCache) {
@@ -212,16 +238,23 @@ public class NotebookService {
   }
 
   private String loadSummary(final String sessionId) {
+    final List<Notebook> notebooks =
+        new ArrayList<>(
+            notebookRepository.findByQuery(new Query().withPage(Page.UNBOUNDED)).getItems());
+    notebooks.sort(
+        (a, b) ->
+            String.CASE_INSENSITIVE_ORDER.compare(
+                a.getName() == null ? "" : a.getName(), b.getName() == null ? "" : b.getName()));
+
     final Map<String, NotebookSummary> notebookIdVsSummary = new LinkedHashMap<>();
-    for (final Notebook notebook :
-        notebookRepository.findByQuery(new Query().withPage(Page.UNBOUNDED)).getItems()) {
+    for (final Notebook notebook : notebooks) {
       notebookIdVsSummary.put(
           notebook.getId(),
           new NotebookSummary(
               notebook, notebookRepository.hasPermission(notebook, Permission.EDIT)));
     }
     if (notebookIdVsSummary.isEmpty()) {
-      return "You have no notebook access.";
+      return "";
     }
     for (final Note note :
         notesRepository
@@ -239,28 +272,11 @@ public class NotebookService {
       }
     }
     final StringBuilder sb = new StringBuilder();
-    int index = 1;
-    for (final Map.Entry<String, NotebookSummary> entry : notebookIdVsSummary.entrySet()) {
-      final NotebookSummary summary = entry.getValue();
-      sb.append("   ").append(index++).append(". Notebook id: `");
-      sb.append(entry.getKey()).append("`\n");
-      final Notebook notebook = summary.notebook;
-      sb.append("      - name: ").append(notebook.getName()).append("\n");
-      if (StringUtils.isNotBlank(notebook.getDescription())) {
-        sb.append("      - description: ").append(notebook.getDescription()).append("\n");
-      }
-      sb.append("      - add, change and delete notes: ")
-          .append(summary.canWrite ? "yes" : "no, read only")
-          .append("\n");
-      sb.append("      - notes:");
-      if (summary.noteTitles.isEmpty()) {
-        sb.append(" (none)\n");
-      } else {
+    for (final NotebookSummary summary : notebookIdVsSummary.values()) {
+      if (!sb.isEmpty()) {
         sb.append("\n");
-        for (final String noteTitle : summary.noteTitles) {
-          sb.append("          - `").append(noteTitle).append("`\n");
-        }
       }
+      sb.append(summary.notebook.summarize(summary.canWrite, summary.noteTitles));
     }
     return sb.toString().trim();
   }

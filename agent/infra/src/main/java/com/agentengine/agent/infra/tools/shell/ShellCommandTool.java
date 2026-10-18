@@ -72,7 +72,7 @@ public final class ShellCommandTool extends Tool {
               optional = true)
           final String cwd) {
     if (command == null || command.isBlank()) {
-      throw new IllegalArgumentException("Empty command");
+      return ToolOutput.direct(Map.of("error", "Empty command"));
     }
     if (BLOCKED.matcher(command).find()) {
       if (toolContext.toolConfirmation().isEmpty()) {
@@ -145,9 +145,12 @@ public final class ShellCommandTool extends Tool {
       }
 
       return ToolOutput.direct(response);
-    } catch (IOException | InterruptedException exception) {
-      Thread.currentThread().interrupt();
-      throw new RuntimeException(exception.getMessage(), exception);
+    } catch (final Exception exception) {
+      if (exception instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      return ToolOutput.direct(
+          Map.of("error", "Command execution failed: " + exception.getMessage()));
     }
   }
 

@@ -2,12 +2,12 @@ package com.agentengine.agent.infra.plugins;
 
 import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.notebook.ScratchpadNotebook;
 import com.agentengine.agent.infra.tools.notebook.CreateOrUpdateNoteTool;
 import com.agentengine.agent.infra.utils.*;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.common.utils.StringUtils;
-import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmRequest;
@@ -15,7 +15,6 @@ import com.google.adk.models.LlmResponse;
 import com.google.adk.plugins.BasePlugin;
 import com.google.genai.types.*;
 import io.reactivex.rxjava3.core.Maybe;
-import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,32 +34,15 @@ public final class NotebookPlugin extends BasePlugin {
   private static final String NAME = "notebook_plugin";
 
   private final NotebookService notebookService;
-  private final Set<String> agentsWithNotebook;
 
-  public NotebookPlugin(
-      final NotebookService notebookService, final Set<String> agentsWithNotebook) {
+  public NotebookPlugin(final NotebookService notebookService) {
     super(NAME);
     this.notebookService = notebookService;
-    this.agentsWithNotebook = agentsWithNotebook;
-  }
-
-  /** Tells an agent with notebook tools, once per run, which notebooks and notes it can reach. */
-  @Override
-  public Maybe<Content> beforeAgentCallback(
-      final BaseAgent agent, final CallbackContext callbackContext) {
-    final InvocationContext invocationContext = callbackContext.invocationContext();
-    if (agentsWithNotebook.contains(agent.name())) {
-      SessionUtils.getSessionState(invocationContext).syncNotebookReminder(notebookService);
-    }
-    return Maybe.empty();
   }
 
   @Override
   public Maybe<LlmResponse> beforeModelCallback(
       final CallbackContext callbackContext, final LlmRequest.Builder llmRequestBuilder) {
-    if (!agentsWithNotebook.contains(callbackContext.agentName())) {
-      return Maybe.empty();
-    }
     final InvocationContext invocationContext = callbackContext.invocationContext();
     if (RunUtils.getRunState(invocationContext).isNoteStarted()) {
       final GenerateContentConfig config =
@@ -104,16 +86,49 @@ public final class NotebookPlugin extends BasePlugin {
     }
 
     final String notebookId = pending.notebookId();
-    notebookService.saveNote(notebookId, noteTitle, text);
-    LOG.info("Created or updated note notebook={} title={}", notebookId, noteTitle);
+    final String formattedTime = sessionState.formatCurrentTimeInUserZone();
+    final String stampedContent =
+        "[" + (pending.append() ? "Appended: " : "Written: ") + formattedTime + "]\n" + text;
+    if (sessionState.isScratchpad(notebookId)) {
+      final ScratchpadNotebook scratchpad = sessionState.scratchpadNotebook();
+      if (scratchpad != null) {
+        if (pending.append()) {
+          scratchpad.appendNote(noteTitle, stampedContent);
+          LOG.info("Appended to scratchpad note title={}", noteTitle);
+        } else {
+          scratchpad.saveNote(noteTitle, stampedContent);
+          LOG.info("Created or updated scratchpad note title={}", noteTitle);
+        }
+      }
+    } else {
+      if (pending.append()) {
+        notebookService.appendNote(notebookId, noteTitle, stampedContent);
+        LOG.info("Appended to note notebook={} title={}", notebookId, noteTitle);
+      } else {
+        notebookService.saveNote(notebookId, noteTitle, stampedContent);
+        LOG.info("Created or updated note notebook={} title={}", notebookId, noteTitle);
+      }
+    }
     final String message =
-        """
-            Note '%s' saved. Its content now lives in the shared notebook, where anyone with access can read it. Your reply and the note are separate channels : the note carries the content and, the reply carries whatever else you want to communicate. Continue your task, or give your final answer if you're done.
-            """
-            .formatted(noteTitle);
+        pending.append()
+            ? """
+              Note '%s' updated. Content was appended with timestamp [%s]. Continue your task, or give your final answer if you're done.
+              """
+                .formatted(noteTitle, formattedTime)
+            : """
+              Note '%s' saved. Its content now lives in the notebook with timestamp [%s]. Your reply and the note are separate channels: the note carries the content and the reply carries whatever else you want to communicate. Continue your task, or give your final answer if you're done.
+              """
+                .formatted(noteTitle, formattedTime);
     runState.addSignal(
         callbackContext,
-        new Signal<>("note_saved_" + NotebookUtils.noteId(notebookId, noteTitle), message, true));
+        new Signal<>(
+            (pending.append() ? "note_appended_" : "note_saved_")
+                + NotebookUtils.noteId(notebookId, noteTitle),
+            message,
+            true));
+    if (sessionState.isScratchpad(notebookId)) {
+      return Maybe.empty();
+    }
     return Maybe.just(
         ResponseUtils.withFunctionCall(response, Constants.ToolNames.REFRESH_REMINDERS));
   }

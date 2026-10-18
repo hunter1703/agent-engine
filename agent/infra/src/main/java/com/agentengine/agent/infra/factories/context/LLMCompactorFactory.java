@@ -41,6 +41,8 @@ public class LLMCompactorFactory implements CompactorFactory<CompactionContextSt
   }
 
   private static String resolveModelId(final CompactionContextStrategyConfig config) {
-    return StringUtils.isNotBlank(config.getModelId()) ? config.getModelId() : DefaultModels.FAST_ID;
+    return StringUtils.isNotBlank(config.getModelId())
+        ? config.getModelId()
+        : DefaultModels.FAST_ID;
   }
 }

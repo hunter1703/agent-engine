@@ -119,7 +119,8 @@ public abstract class AbstractKnowledgeIndexer implements KnowledgeIndexer {
 
     final String preview = contentPreview(sample);
     final String generatedDescription =
-        StringUtils.isBlank(knowledge.getDescription()) && sample.stream().anyMatch(this::hasContent)
+        StringUtils.isBlank(knowledge.getDescription())
+                && sample.stream().anyMatch(this::hasContent)
             ? generateDescription(knowledge.getId(), preview)
             : null;
     return new IndexResult(totalChunks, preview, generatedDescription);
@@ -202,7 +203,8 @@ public abstract class AbstractKnowledgeIndexer implements KnowledgeIndexer {
     if (StringUtils.isBlank(preview)) {
       return null;
     }
-    try (RefCounted<ConfiguredModel<BaseLlm>> refCounted = modelProvider.get(DefaultModels.FAST_ID)) {
+    try (RefCounted<ConfiguredModel<BaseLlm>> refCounted =
+        modelProvider.get(DefaultModels.FAST_ID)) {
       final String prompt =
           "Excerpts sampled from across a knowledge source (including text, media, or transcripts):\n\n"
               + preview

@@ -15,7 +15,10 @@ public class JoinTemplateImpl implements Template<String> {
   public String getValue(Map<String, Object> parameters) {
     final StringBuilder result = new StringBuilder();
     for (final Template<?> template : templates) {
-      result.append(template.getValue(parameters));
+      final Object value = template.getValue(parameters);
+      if (value != null) {
+        result.append(value);
+      }
     }
     return result.toString();
   }

@@ -92,10 +92,10 @@ public final class FileUtils {
   }
 
   /**
-   * Derives a filename from a URL or path. If the derived name has no file extension,
-   * it inherits the extension from {@code defaultName} if {@code defaultName} has one;
-   * if {@code defaultName} has no extension, the derived name is returned with no extension.
-   * If no name can be derived from the URL, {@code defaultName} is returned.
+   * Derives a filename from a URL or path. If the derived name has no file extension, it inherits
+   * the extension from {@code defaultName} if {@code defaultName} has one; if {@code defaultName}
+   * has no extension, the derived name is returned with no extension. If no name can be derived
+   * from the URL, {@code defaultName} is returned.
    */
   public static String deriveFileName(final String url, final String defaultName) {
     String derivedName = null;

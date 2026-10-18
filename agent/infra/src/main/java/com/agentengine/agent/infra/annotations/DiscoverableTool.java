@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.annotations;
 
+import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.context.Dependent;
 import jakarta.enterprise.inject.Stereotype;
 import java.lang.annotation.Documented;
@@ -14,4 +15,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Stereotype
 @Target(ElementType.TYPE)
+@Unremovable
 public @interface DiscoverableTool {}

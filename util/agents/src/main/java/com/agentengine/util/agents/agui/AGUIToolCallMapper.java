@@ -141,7 +141,7 @@ public final class AGUIToolCallMapper {
     }
     final String originalToolCallId = originalFunctionCall.id().orElseThrow();
 
-    final String prompt = toolConfirmation.hint();
+    final String question = toolConfirmation.hint();
     @SuppressWarnings("unchecked")
     final Map<String, Object> payload = (Map<String, Object>) toolConfirmation.payload();
     final List<String> options =
@@ -165,7 +165,7 @@ public final class AGUIToolCallMapper {
     final CustomEvent event =
         AGUIUtils.buildInterruptRequestedEvent(
             interruptId,
-            prompt,
+            question,
             originalToolCallId,
             options,
             allowCustomAnswer,

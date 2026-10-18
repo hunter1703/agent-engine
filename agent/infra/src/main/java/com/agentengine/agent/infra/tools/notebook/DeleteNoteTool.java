@@ -1,6 +1,8 @@
 package com.agentengine.agent.infra.tools.notebook;
 
 import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.notebook.ScratchpadNotebook;
+import com.agentengine.agent.infra.utils.SessionState;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -31,21 +33,31 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
           final ToolContext toolContext,
       @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_ID,
-              description = "The ID of the notebook the note is in.")
+              description =
+                  "The ID of the notebook the note is in. Use 'scratchpad' for your private working memory, or the exact notebook ID from your active notebook list.")
           final String notebookId,
       @ToolArg(
               name = Constants.ToolArgs.NOTE_TITLE,
               description = "The title of the note to delete.")
           final String noteTitle) {
-    if (!notebookService.deleteNote(notebookId, noteTitle)) {
-      return ToolOutput.direct(
-          accessDeniedError(
-              notebookService,
-              "No such note '%s' in this notebook, or you aren't allowed to delete it."
-                  .formatted(noteTitle)));
+    final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
+    if (sessionState.isScratchpad(notebookId)) {
+      final ScratchpadNotebook scratchpad = sessionState.scratchpadNotebook();
+      if (!scratchpad.deleteNote(noteTitle)) {
+        return ToolOutput.direct(
+            accessDeniedError(
+                notebookService, "No such note '%s' in this notebook.".formatted(noteTitle)));
+      }
+    } else {
+      if (!notebookService.deleteNote(notebookId, noteTitle)) {
+        return ToolOutput.direct(
+            accessDeniedError(
+                notebookService,
+                "No such note '%s' in this notebook, or you aren't allowed to delete it."
+                    .formatted(noteTitle)));
+      }
+      sessionState.syncNotebookReminder(notebookService);
     }
-    SessionUtils.getSessionState(toolContext.invocationContext())
-        .syncNotebookReminder(notebookService);
     return ToolOutput.direct(Map.of(Constants.ToolStatus.STATUS, Constants.ToolStatus.SUCCESS));
   }
 }

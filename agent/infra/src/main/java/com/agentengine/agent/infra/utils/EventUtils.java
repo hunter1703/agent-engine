@@ -7,7 +7,6 @@ import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.Signal;
-import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.codec.JsonUtils;
@@ -138,7 +137,7 @@ public final class EventUtils {
       if (content == null || !Constants.AUTHOR_USER.equals(content.role().orElse(""))) {
         continue;
       }
-      final String text = ContentUtils.textWithoutCurrentTime(content);
+      final String text = content.text();
       if (StringUtils.isNotBlank(text)) {
         intents.add(text);
       }
@@ -172,28 +171,9 @@ public final class EventUtils {
       final long timestamp,
       final String author,
       final Map<String, Object> stateDelta) {
-    final Event event =
-        _buildUserEvent(
-            invocationId,
-            RequestContentUtils.buildUserContent(
-                RequestContentUtils.textParts(userMessage.parts()), null, null),
-            timestamp,
-            author);
-    if (CollectionUtils.isNotEmpty(stateDelta)) {
-      event.setActions(
-          EventActions.builder().stateDelta(new ConcurrentHashMap<>(stateDelta)).build());
-    }
-    return event;
-  }
-
-  /** When {@code event} was sent, as kept with it, or null if it holds none. */
-  public static ZonedDateTime sentAtOf(final Event event) {
-    if (event == null || event.actions() == null) {
-      return null;
-    }
-    final String kept =
-        CollectionUtils.getStringValueFromMap(event.actions().stateDelta(), SENT_AT_KEY);
-    return kept == null ? null : ZonedDateTime.parse(kept);
+    final Content textContent =
+        RequestContentUtils.buildUserContent(RequestContentUtils.textParts(userMessage.parts()));
+    return _buildUserEvent(invocationId, textContent, timestamp, author, stateDelta);
   }
 
   /** What is kept with a message's event, and handed to the runner, for when it was sent. */
@@ -224,18 +204,27 @@ public final class EventUtils {
             .mapToLong(ResumeRequest::getTimestamp)
             .max()
             .orElse(System.currentTimeMillis());
-    return _buildUserEvent(invocationId, resumeContent, resumeTimestamp, author);
+    return _buildUserEvent(invocationId, resumeContent, resumeTimestamp, author, null);
   }
 
   private static Event _buildUserEvent(
-      final String invocationId, final Content content, final long timestamp, final String author) {
-    return Event.builder()
-        .id(Event.generateEventId())
-        .invocationId(invocationId)
-        .author(author)
-        .content(content)
-        .timestamp(timestamp)
-        .build();
+      final String invocationId,
+      final Content content,
+      final long timestamp,
+      final String author,
+      final Map<String, Object> stateDelta) {
+    final Event.Builder builder =
+        Event.builder()
+            .id(Event.generateEventId())
+            .invocationId(invocationId)
+            .author(author)
+            .content(content)
+            .timestamp(timestamp);
+    if (CollectionUtils.isNotEmpty(stateDelta)) {
+      builder.actions(
+          EventActions.builder().stateDelta(new ConcurrentHashMap<>(stateDelta)).build());
+    }
+    return builder.build();
   }
 
   public static Event buildCorrectiveEvent(
@@ -252,8 +241,9 @@ public final class EventUtils {
         """
                 Violations were detected in your previous response. Please resolve or correct them.
 
-                > Some of your replies may have been stripped from the history because they caused \
-                violations that must not be persisted.
+                > Your previous reply violated protocol constraints. Your earlier tool calls \
+                and results are already recorded in the conversation — do not repeat completed work. \
+                Follow the instructions below to proceed.
 
                 ## Violations
                 """
@@ -313,17 +303,6 @@ public final class EventUtils {
             })
         .filter(Objects::nonNull)
         .toList();
-  }
-
-  public static Event enrichWithAttachments(final Event event, final FileService fileService) {
-    final List<AgentFileDetails> attachments = getAttachments(event);
-    if (attachments.isEmpty() || event.content().isEmpty()) {
-      return event;
-    }
-    return event.toBuilder()
-        .content(
-            ContentUtils.addAttachmentsToContent(event.content().get(), attachments, fileService))
-        .build();
   }
 
   /**
@@ -387,5 +366,9 @@ public final class EventUtils {
             .compactedContent(content)
             .build();
     return event.toBuilder().actions(actions.toBuilder().compaction(compaction).build()).build();
+  }
+
+  public static boolean isModelEvent(final Event event) {
+    return event != null && event.content().map(ContentUtils::isModelContent).orElse(false);
   }
 }

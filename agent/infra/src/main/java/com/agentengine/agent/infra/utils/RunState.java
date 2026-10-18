@@ -48,6 +48,7 @@ public final class RunState {
     if (signal == null) {
       return;
     }
+    signals.remove(signal);
     signals.add(signal);
   }
 
@@ -68,6 +69,7 @@ public final class RunState {
     final List<Signal<?>> raised =
         CollectionUtils.nullSafeMutableList(
             CollectionUtils.getListFromMap(callbackContext.state(), EventUtils.SIGNAL_RAISED_KEY));
+    raised.remove(signal);
     raised.add(signal);
     callbackContext.state().put(EventUtils.SIGNAL_RAISED_KEY, raised);
   }
@@ -124,13 +126,12 @@ public final class RunState {
     return signals.stream().anyMatch(Signal::requiresContinuation);
   }
 
-  public boolean hasSignal(final String prefix) {
-    return signals.stream()
-        .anyMatch(signal -> signal.id() != null && signal.id().startsWith(prefix));
+  public void startNote(final String notebookId, final String noteTitle) {
+    startNote(notebookId, noteTitle, false);
   }
 
-  public void startNote(final String notebookId, final String noteTitle) {
-    this.pendingNote = new PendingNote(notebookId, noteTitle);
+  public void startNote(final String notebookId, final String noteTitle, final boolean append) {
+    this.pendingNote = new PendingNote(notebookId, noteTitle, append);
   }
 
   public boolean isNoteStarted() {
@@ -209,10 +210,12 @@ public final class RunState {
   }
 
   private void addSignals(final Collection<Signal<?>> signals) {
-    this.signals.addAll(CollectionUtils.nullSafeList(signals));
+    for (final Signal<?> signal : CollectionUtils.nullSafeList(signals)) {
+      addSignal(signal);
+    }
   }
 
-  public record PendingNote(String notebookId, String noteTitle) {}
+  public record PendingNote(String notebookId, String noteTitle, boolean append) {}
 
   public record ToolCallSignature(String name, Map<String, Object> args) {
     public ToolCallSignature {

@@ -34,7 +34,7 @@ public final class SessionUtils {
     if (existing != null) {
       return existing;
     }
-    final SessionState sessionState = SessionState.buildFrom(context.session().events());
+    final SessionState sessionState = SessionState.buildFrom(context.session());
     final Map<String, Object> state = state(context);
     if (state != null) {
       // a session can have multiple agent states because a session can be shared by multiple

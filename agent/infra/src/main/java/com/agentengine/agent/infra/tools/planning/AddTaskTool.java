@@ -19,14 +19,18 @@ public final class AddTaskTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.ADD_TASK,
-          """
-          Appends a new task to the current active plan in pending (TODO) status. Use when work in \
-          progress reveals steps not captured in the original plan. An active plan must already exist. \
-          Returns: { status: "success", task } on success, or { error } on failure.""",
+"""
+           Appends a new task to the current active plan in pending (TODO) status. Use when work in \
+           progress reveals tasks not captured in the original plan or scope of the problem changes. An active plan must already exist. \
+           Only add tasks that are genuinely needed — do not add tasks that duplicate or overlap with \
+           existing ones. Returns: { status: "success", task } on success, or { error } on failure.""",
           Map.of());
 
-  public AddTaskTool() {
+  private final PlanningValidator planningValidator;
+  
+  public AddTaskTool(final PlanningValidator planningValidator) {
     super(DESCRIPTOR);
+    this.planningValidator = planningValidator;
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -34,7 +38,10 @@ public final class AddTaskTool extends Tool {
           ToolContext toolContext,
       @ToolArg(
               name = Constants.ToolArgs.PARENT,
-              description = "Name of an existing parent task, if this is a subtask. Omit for top-level tasks.",
+              description =
+                  """
+                  Name of an existing parent task ONLY if this task is an internal sub-part of it. \
+                  DO NOT use 'parent' for sequential phases, execution order, or dependencies. Omit for top-level tasks.""",
               optional = true)
           String parent,
       @ToolArg(
@@ -43,7 +50,8 @@ public final class AddTaskTool extends Tool {
           String name,
       @ToolArg(
               name = "goal",
-              description = "Concise statement of what this task should produce or achieve when completed.")
+              description =
+                  "Concise statement of what this task should produce or achieve when completed.")
           String goal,
       @ToolArg(
               name = "description",
@@ -63,44 +71,44 @@ public final class AddTaskTool extends Tool {
       return ToolOutput.direct(Map.of("error", "Task goal is required"));
     }
 
-    String resolvedParent = parent;
-    if (StringUtils.isNotBlank(resolvedParent)) {
-      final Task existing = PlanningUtils.findTaskByName(currentPlan, resolvedParent);
-      if (existing != null) {
-        resolvedParent = existing.getName();
-      }
+    // Resolve parent name to its canonical casing as stored in the plan.
+    final String resolvedParent;
+    if (StringUtils.isNotBlank(parent)) {
+      final Task existing = PlanningUtils.findTaskByName(currentPlan, parent);
+      resolvedParent = existing != null ? existing.getName() : parent;
+    } else {
+      resolvedParent = null;
     }
 
-    final Task newTask = new Task(name, goal);
-    if (StringUtils.isNotBlank(resolvedParent)) {
-      newTask.setParent(resolvedParent);
-    }
-    if (StringUtils.isNotBlank(description)) {
-      newTask.setDescription(description);
-    }
-    final String validationError = currentPlan.canAddTask(newTask);
+    final Task newTask = buildTask(name, resolvedParent, goal, description);
+    final String validationError = planningValidator.canAddTask(currentPlan, newTask);
     if (StringUtils.isNotBlank(validationError)) {
       return ToolOutput.direct(Map.of("error", validationError));
     }
 
-    final Plan updatedPlan =
-        applyAddTask(currentPlan, resolvedParent, name, goal, description);
+    final Plan updatedPlan = applyAddTask(currentPlan, newTask);
     sessionState.updatePlan(updatedPlan);
-    final Task addedTask = updatedPlan.getTasks().getLast();
     return ToolOutput.direct(
         Map.of(
             Constants.ToolStatus.STATUS,
             Constants.ToolStatus.SUCCESS,
             "task",
-            addedTask.getName()));
+            newTask.getName()));
   }
 
-  public static Plan applyAddTask(
-      final Plan plan,
-      final String parent,
-      final String name,
-      final String goal,
-      final String description) {
+  public static Plan applyAddTask(final Plan plan, final String parent, final String name,
+      final String goal, final String description) {
+    return applyAddTask(plan, buildTask(name, parent, goal, description));
+  }
+
+  public static Plan applyAddTask(final Plan plan, final Task task) {
+    final Plan updatedPlan = new Plan(plan);
+    updatedPlan.addTask(task);
+    return updatedPlan;
+  }
+
+  private static Task buildTask(
+      final String name, final String parent, final String goal, final String description) {
     final Task task = new Task(name, goal);
     if (StringUtils.isNotBlank(parent)) {
       task.setParent(parent);
@@ -108,10 +116,6 @@ public final class AddTaskTool extends Tool {
     if (StringUtils.isNotBlank(description)) {
       task.setDescription(description);
     }
-    final List<Task> updatedTasks = CollectionUtils.nullSafeMutableList(plan.getTasks());
-    updatedTasks.add(task);
-    final Plan updatedPlan = new Plan(plan);
-    updatedPlan.setTasks(updatedTasks);
-    return updatedPlan;
+    return task;
   }
 }

@@ -23,11 +23,7 @@ public class TextKnowledgeIndexer extends AbstractKnowledgeIndexer {
       final KnowledgeRepository knowledgeRepository,
       final ModelProvider modelProvider,
       final FileService fileService) {
-    super(
-        chunkingPipelineFactory,
-        knowledgeRepository,
-        modelProvider,
-        fileService);
+    super(chunkingPipelineFactory, knowledgeRepository, modelProvider, fileService);
   }
 
   @Override

@@ -2,6 +2,9 @@ package com.agentengine.agent.infra.tools.notebook;
 
 import com.agentengine.agent.infra.notebook.Note;
 import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.notebook.ScratchpadNotebook;
+import com.agentengine.agent.infra.utils.SessionState;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -35,7 +38,8 @@ public final class ReadNoteTool extends AbstractNotebookTool {
           final ToolContext toolContext,
       @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_ID,
-              description = "The ID of the notebook to read from.")
+              description =
+                  "The ID of the notebook to read from. Use 'scratchpad' for your private working memory to read intermediate findings stored earlier in this session, or the exact notebook ID from your active notebook list.")
           final String notebookId,
       @ToolArg(name = Constants.ToolArgs.NOTE_TITLE, description = "The title of the note to read.")
           final String noteTitle,
@@ -47,7 +51,14 @@ public final class ReadNoteTool extends AbstractNotebookTool {
                   section by section, pass the next_offset returned by the previous read.""",
               optional = true)
           final Integer offset) {
-    final Note note = notebookService.getNote(notebookId, noteTitle);
+    final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
+    final Note note;
+    if (sessionState.isScratchpad(notebookId)) {
+      final ScratchpadNotebook scratchpad = sessionState.scratchpadNotebook();
+      note = scratchpad.getNote(noteTitle);
+    } else {
+      note = notebookService.getNote(notebookId, noteTitle);
+    }
     if (note == null) {
       return ToolOutput.direct(
           accessDeniedError(

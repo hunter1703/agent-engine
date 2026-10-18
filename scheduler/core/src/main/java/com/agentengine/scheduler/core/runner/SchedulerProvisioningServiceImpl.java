@@ -43,9 +43,9 @@ public class SchedulerProvisioningServiceImpl implements SchedulerProvisioningSe
   }
 
   /**
-   * Runs ahead of every other service's environment provisioning: a service that schedules a job
-   * as part of its own environment provisioning needs this one's job store (mongo) and
-   * microservice registration to already exist first.
+   * Runs ahead of every other service's environment provisioning: a service that schedules a job as
+   * part of its own environment provisioning needs this one's job store (mongo) and microservice
+   * registration to already exist first.
    */
   @Override
   public int order() {

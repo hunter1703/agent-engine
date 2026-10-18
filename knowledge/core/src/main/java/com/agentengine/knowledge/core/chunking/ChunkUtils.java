@@ -64,12 +64,12 @@ public final class ChunkUtils {
 
   /**
    * Splits each chunk in {@code parents} by applying {@code splitter} to its text, producing new
-   * chunks that inherit the parent's {@code knowledgeId}. {@code chunkIndex} is
-   * left unset — whatever ultimately consumes the full chunk stream assigns the real, sequential
-   * index once it knows the final ordering, so there's nothing for an intermediate stage to
-   * usefully assign here. Offsets are located by searching the parent chunk's text, always moving
-   * forward from the previous part's end so the search stays anchored near where the next part
-   * actually is instead of ever rescanning from further back.
+   * chunks that inherit the parent's {@code knowledgeId}. {@code chunkIndex} is left unset —
+   * whatever ultimately consumes the full chunk stream assigns the real, sequential index once it
+   * knows the final ordering, so there's nothing for an intermediate stage to usefully assign here.
+   * Offsets are located by searching the parent chunk's text, always moving forward from the
+   * previous part's end so the search stays anchored near where the next part actually is instead
+   * of ever rescanning from further back.
    *
    * <p>Each parent's own split still needs that parent's whole text before it can decide any
    * boundary within it — that doesn't change here. But {@code parents} itself is consumed one

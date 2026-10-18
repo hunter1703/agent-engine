@@ -7,6 +7,7 @@ import com.agentengine.util.common.builder.annotations.UiLookup;
 import jakarta.validation.constraints.NotBlank;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public final class ToolsConfig {
 
@@ -43,5 +44,17 @@ public final class ToolsConfig {
 
   public void setConfigs(final Map<String, Object> configs) {
     this.configs = configs == null ? new HashMap<>() : new HashMap<>(configs);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o == null || getClass() != o.getClass()) return false;
+    ToolsConfig that = (ToolsConfig) o;
+    return Objects.equals(toolName, that.toolName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(toolName);
   }
 }

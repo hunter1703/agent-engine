@@ -8,13 +8,11 @@ import com.agentengine.util.scripts.templated.Template;
 import com.agentengine.util.scripts.templated.TemplatedList;
 import com.agentengine.util.scripts.templated.TemplatedMap;
 import com.agentengine.util.scripts.templated.TemplatedObject;
-import com.hubspot.jinjava.Jinjava;
 import java.util.List;
 import java.util.Map;
 import org.codehaus.groovy.control.CompilerConfiguration;
 
 public final class TemplateUtils {
-  private static final Jinjava JINJAVA = new Jinjava();
   private static final GroovyTemplateProcessor GROOVY_TEMPLATE_PROCESSOR =
       new GroovyTemplateProcessor(new CompilerConfiguration());
 
@@ -25,7 +23,9 @@ public final class TemplateUtils {
     if (template == null) {
       return "";
     }
-    return JINJAVA.render(template, context).trim();
+    final Template<Object> built = buildStringTemplate(template);
+    final Object result = built.getValue(context);
+    return result == null ? "" : result.toString().trim();
   }
 
   public static String renderTemplateForName(final String name, final Map<String, Object> context) {

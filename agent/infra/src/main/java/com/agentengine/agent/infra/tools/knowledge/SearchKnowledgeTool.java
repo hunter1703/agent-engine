@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.tools.knowledge;
 
+import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.knowledge.api.beans.IndexingStatus;
 import com.agentengine.knowledge.api.beans.Knowledge;
@@ -11,7 +12,6 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.tools.ToolArg;
-import com.agentengine.util.agents.tools.ToolConstructor;
 import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.query.Filter;
@@ -27,7 +27,6 @@ import com.google.adk.tools.ToolContext;
 import com.google.genai.types.Modality;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -42,6 +41,7 @@ import org.slf4j.LoggerFactory;
  * language queries or media inputs. When a single non-indexed item is requested, returns its full
  * content instead.
  */
+@DiscoverableTool
 public final class SearchKnowledgeTool extends Tool {
 
   private static final Logger LOG = LoggerFactory.getLogger(SearchKnowledgeTool.class);
@@ -61,7 +61,6 @@ public final class SearchKnowledgeTool extends Tool {
   private final MediaService mediaService;
   private final ModelProvider modelProvider;
 
-  @ToolConstructor
   public SearchKnowledgeTool(
       final KnowledgeService knowledgeService,
       final FileService fileService,
@@ -177,10 +176,12 @@ public final class SearchKnowledgeTool extends Tool {
 
     if (StringUtils.isNotBlank(query)) {
       if (targetText) {
-        semanticSubFilters.add(semanticFilter(KnowledgeChunk.FIELD_TEXT, query, DefaultModels.TEXT_EMBEDDING_ID));
+        semanticSubFilters.add(
+            semanticFilter(KnowledgeChunk.FIELD_TEXT, query, DefaultModels.TEXT_EMBEDDING_ID));
       }
       if (targetImage || targetAudio) {
-        semanticSubFilters.add(semanticFilter(
+        semanticSubFilters.add(
+            semanticFilter(
                 KnowledgeChunk.FIELD_DESCRIPTION, query, DefaultModels.TEXT_EMBEDDING_ID));
       }
     }
@@ -191,7 +192,8 @@ public final class SearchKnowledgeTool extends Tool {
         if ((targetAll || targetText) && StringUtils.isBlank(query)) {
           final String textContent = readMediaAsText(queryMediaFile);
           if (StringUtils.isNotBlank(textContent)) {
-            semanticSubFilters.add(semanticFilter(
+            semanticSubFilters.add(
+                semanticFilter(
                     KnowledgeChunk.FIELD_TEXT, textContent, DefaultModels.TEXT_EMBEDDING_ID));
           }
         }
@@ -369,7 +371,7 @@ public final class SearchKnowledgeTool extends Tool {
                   "mime_type",
                   mimeType,
                   "size_bytes",
-                      size,
+                  size,
                   "message",
                   "Binary asset ("
                       + mimeType
@@ -420,7 +422,12 @@ public final class SearchKnowledgeTool extends Tool {
               "error",
               "Failed to read content for knowledge file"));
     } catch (final IOException exception) {
-      throw new UncheckedIOException(exception);
+      return ToolOutput.direct(
+          Map.of(
+              Constants.ToolStatus.STATUS,
+              "failed",
+              "error",
+              "Failed to read content for knowledge file: " + exception.getMessage()));
     }
   }
 }

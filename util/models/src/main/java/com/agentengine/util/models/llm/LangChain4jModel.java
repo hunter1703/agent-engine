@@ -603,10 +603,9 @@ public final class LangChain4jModel extends BaseLlm {
   }
 
   private static List<ChatMessage> toChatMessage(final Content content) {
-    return switch (content.role().orElseThrow().toLowerCase()) {
-      case "user" -> toUserOrToolResultMessages(content);
+    return switch (content.role().orElse("user").toLowerCase()) {
       case "model", "assistant" -> List.of(toAiMessage(content));
-      default -> throw new IllegalStateException("Unexpected role: " + content.role());
+      default -> toUserOrToolResultMessages(content);
     };
   }
 
@@ -862,76 +861,43 @@ public final class LangChain4jModel extends BaseLlm {
   }
 
   private static List<Content> withToolCallsAsMessages(final List<Content> contents) {
-    final Map<String, FunctionCall> idVsCall = new HashMap<>();
-    final Set<String> answeredIds = new HashSet<>();
-    for (final Content content : contents) {
-      for (final Part part : content.parts().orElse(List.of())) {
-        part.functionCall().ifPresent(call -> call.id().ifPresent(id -> idVsCall.put(id, call)));
-        part.functionResponse().flatMap(FunctionResponse::id).ifPresent(answeredIds::add);
-      }
-    }
-
     final List<Content> rewritten = new ArrayList<>();
     for (final Content content : contents) {
-      final List<Part> textParts = new ArrayList<>();
-      final List<String> toolMessages = new ArrayList<>();
-      final List<String> unansweredToolMessages = new ArrayList<>();
+      final List<Part> parts = new ArrayList<>();
       for (final Part part : content.parts().orElse(List.of())) {
         if (part.functionCall().isPresent()) {
-          final FunctionCall call = part.functionCall().get();
-          if (call.id().map(answeredIds::contains).orElse(false)) {
-            continue;
-          }
-          unansweredToolMessages.add(
-              toolMessage(call.name().orElse(""), call.args().orElse(Map.of()), null));
+          parts.add(Part.fromText(actionCallMessage(part.functionCall().get())));
         } else if (part.functionResponse().isPresent()) {
-          final FunctionResponse response = part.functionResponse().get();
-          final FunctionCall call =
-              response
-                  .id()
-                  .map(idVsCall::get)
-                  .orElseThrow(
-                      () -> new IllegalStateException("Tool result has no call: " + response));
-          toolMessages.add(
-              toolMessage(
-                  response.name().orElse(""),
-                  call.args().orElse(Map.of()),
-                  response.response().orElse(Map.of())));
+          parts.add(Part.fromText(actionResultMessage(part.functionResponse().get())));
         } else {
-          textParts.add(part);
+          parts.add(part);
         }
       }
-
-      if (!toolMessages.isEmpty()) {
-        textParts.addAll(toolMessages.stream().map(Part::fromText).toList());
-        rewritten.add(Content.builder().role("user").parts(textParts).build());
-        continue;
-      }
-      if (!textParts.isEmpty()) {
-        rewritten.add(content.toBuilder().parts(textParts).build());
-      }
-      if (!unansweredToolMessages.isEmpty()) {
-        rewritten.add(
-            Content.builder()
-                .role("user")
-                .parts(unansweredToolMessages.stream().map(Part::fromText).toList())
-                .build());
+      if (!parts.isEmpty()) {
+        rewritten.add(content.toBuilder().parts(parts).build());
       }
     }
     return rewritten;
   }
 
-  private static String toolMessage(
-      final String name, final Map<String, Object> inputs, final Map<String, Object> result) {
-    final StringBuilder toolMessage =
-        new StringBuilder("Completed action\nAction: ")
-            .append(name)
-            .append("\nInputs:")
-            .append(keyValueLines(inputs));
-    if (result != null) {
-      toolMessage.append("\nResult:").append(keyValueLines(result));
-    }
-    return toolMessage.toString();
+  private static String actionCallMessage(final FunctionCall call) {
+    final StringBuilder message = new StringBuilder("Action: ").append(call.name().orElse(""));
+    call.id()
+        .filter(StringUtils::isNotBlank)
+        .ifPresent(id -> message.append(" [call id: ").append(id).append("]"));
+    message.append("\nInputs:").append(keyValueLines(call.args().orElse(Map.of())));
+    return message.toString();
+  }
+
+  private static String actionResultMessage(final FunctionResponse response) {
+    final StringBuilder message =
+        new StringBuilder("Action ").append(response.name().orElse("")).append(" result");
+    response
+        .id()
+        .filter(StringUtils::isNotBlank)
+        .ifPresent(id -> message.append(" [call id: ").append(id).append("]"));
+    message.append(":").append(keyValueLines(response.response().orElse(Map.of())));
+    return message.toString();
   }
 
   // One "- key: value" line per entry; a string value is shown as is, any other value as JSON.

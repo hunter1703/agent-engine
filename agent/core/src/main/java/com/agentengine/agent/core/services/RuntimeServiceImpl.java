@@ -55,8 +55,8 @@ import com.agentengine.util.tenancy.PermissionedCache;
 import com.agui.community.core.event.Event;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.agents.RunConfig;
-import com.google.genai.types.Blob;
 import com.google.adk.runner.Runner;
+import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.quarkus.arc.Unremovable;
@@ -166,7 +166,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   @Override
   public Map<String, Object> sendTemp(String agentId, UserMessage userMessage) {
     final Content userContent =
-        RequestContentUtils.buildUserContent(
+        RequestContentUtils.buildTempUserContent(
             RequestContentUtils.textParts(userMessage.parts()),
             userMessage.attachments(),
             fileService);

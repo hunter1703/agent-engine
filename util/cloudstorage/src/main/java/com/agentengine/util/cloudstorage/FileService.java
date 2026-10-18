@@ -89,8 +89,8 @@ public class FileService {
 
   /**
    * {@code fileDetails}, with the MIME type of a URL whose type is not known filled in: from the
-   * extension of the URL's path, else from the {@code Content-Type} of the answer to a HEAD request,
-   * which does not download the content. A type that cannot be told stays unknown.
+   * extension of the URL's path, else from the {@code Content-Type} of the answer to a HEAD
+   * request, which does not download the content. A type that cannot be told stays unknown.
    */
   public FileDetails withDetectedMimeType(final FileDetails fileDetails) {
     if (fileDetails == null

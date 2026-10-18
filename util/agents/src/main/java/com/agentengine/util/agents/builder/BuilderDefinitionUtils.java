@@ -523,7 +523,10 @@ public final class BuilderDefinitionUtils {
       throw new IllegalStateException("Options resource not found: " + resource);
     }
     final List<?> values = JsonUtils.fromJson(json, List.class);
-    return values.stream().filter(BuilderDefinitionUtils::isValidOption).map(v -> (Object) v).toList();
+    return values.stream()
+        .filter(BuilderDefinitionUtils::isValidOption)
+        .map(v -> (Object) v)
+        .toList();
   }
 
   private static List<Object> enumOptions(final Class<? extends Enum<?>> enumType) {

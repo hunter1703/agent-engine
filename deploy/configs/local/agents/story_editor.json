@@ -15,9 +15,5 @@
     "type": "COMPACTION",
     "tokenThreshold": 100000
   },
-  "tools": [
-    {
-      "toolName": "notebook"
-    }
-  ]
+  "tools": []
 }

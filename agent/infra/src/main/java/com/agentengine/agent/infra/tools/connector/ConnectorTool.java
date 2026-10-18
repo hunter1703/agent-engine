@@ -3,7 +3,6 @@ package com.agentengine.agent.infra.tools.connector;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
 import com.agentengine.connectors.api.beans.ConnectorRequest;
-import com.agentengine.connectors.api.exceptions.ConnectorException;
 import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -87,7 +86,7 @@ public class ConnectorTool extends Tool {
           Map.of(
               "result",
               CollectionUtils.nullSafeList(results).stream().findFirst().orElseGet(Map::of)));
-    } catch (ConnectorException e) {
+    } catch (Exception e) {
       return ToolOutput.direct(Map.of("error", ExceptionUtils.getErrorMessage(e)));
     }
   }

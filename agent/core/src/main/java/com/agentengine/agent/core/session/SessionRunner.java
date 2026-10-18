@@ -15,11 +15,7 @@ import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.beans.FileDetails;
-import com.agentengine.util.common.utils.CollectionUtils;
-import com.agentengine.util.common.utils.ExceptionUtils;
-import com.agentengine.util.common.utils.FileUtils;
-import com.agentengine.util.common.utils.StringUtils;
-import com.agentengine.util.common.utils.StructuredConcurrencyUtils;
+import com.agentengine.util.common.utils.*;
 import com.agentengine.util.common.utils.StructuredConcurrencyUtils.TaskOutcome;
 import com.agentengine.util.context.Context;
 import com.google.adk.agents.RunConfig;
@@ -88,14 +84,13 @@ public final class SessionRunner {
    * so the stream opens with it, as {@code author}'s event kept with when it was sent.
    */
   public synchronized void start(final RunState run, final String author) {
-    final UserMessage rawMessage = run.message().getRecord().message();
-    final ResolvedMessage resolved = resolveAttachments(rawMessage);
+    final UserMessage message = resolve(run.message().getRecord().message());
     final Map<String, Object> stateDelta =
-        EventUtils.userStateDelta(run.sentAt(), resolved.userMessage().attachments());
+        EventUtils.userStateDelta(run.sentAt(), message.attachments());
     final Event userEvent =
         EventUtils.buildUserEvent(
-            resolved.userMessage(), run.runId(), run.messagePickedTimestamp(), author, stateDelta);
-    startStream(resolved.userContent(), Flowable.just(userEvent), stateDelta);
+            message, run.runId(), run.messagePickedTimestamp(), author, stateDelta);
+    startStream(userEvent.content().orElseThrow(), Flowable.just(userEvent), stateDelta);
   }
 
   /**
@@ -105,7 +100,7 @@ public final class SessionRunner {
   public synchronized void continueRun(final ZonedDateTime continuedAt) {
     startStream(
         RequestContentUtils.buildUserContent(
-            RequestContentUtils.textParts(UserMessage.ofText("continue").parts()), null, null),
+            RequestContentUtils.textParts(UserMessage.ofText("continue").parts())),
         Flowable.empty(),
         EventUtils.sentAtDelta(continuedAt));
   }
@@ -116,7 +111,7 @@ public final class SessionRunner {
       final Map<String, Object> stateDelta) {
     // ADK appends its own user event to the session without emitting it, and the stream's leading
     // event is what is stored. The delta puts when it was sent on ADK's event, which is what
-    // UserContextSessionService stamps the model's view from.
+    // InitPlugin stamps the model's view from.
     publish(leading, runner.runAsync(createdBy, sessionId, userContent, RUN_CONFIG, stateDelta));
   }
 
@@ -189,13 +184,10 @@ public final class SessionRunner {
     return sessionId;
   }
 
-  private ResolvedMessage resolveAttachments(final UserMessage message) {
+  private UserMessage resolve(final UserMessage message) {
     final List<AgentFileDetails> attachments = message.attachments();
     if (CollectionUtils.isEmpty(attachments)) {
-      final Content userContent =
-          RequestContentUtils.buildUserContent(
-              RequestContentUtils.textParts(message.parts()), null, null);
-      return new ResolvedMessage(message, userContent);
+      return message;
     }
 
     return Context.require()
@@ -203,14 +195,14 @@ public final class SessionRunner {
         .get(
             () -> {
               final List<AgentFileDetails> toIndex = new ArrayList<>();
-              final List<AgentFileDetails> resolved = new ArrayList<>();
+              final List<AgentFileDetails> knowledgeCreatedFor = new ArrayList<>();
               for (final AgentFileDetails fileDetails : attachments) {
                 if (StringUtils.isNotBlank(fileDetails.knowledgeId())) {
-                  resolved.add(fileDetails);
+                  knowledgeCreatedFor.add(fileDetails);
                 } else if (needsIndexing(fileDetails)) {
                   toIndex.add(fileDetails);
                 } else {
-                  resolved.add(createUnindexedKnowledge(fileDetails));
+                  knowledgeCreatedFor.add(createUnindexedKnowledge(fileDetails));
                 }
               }
 
@@ -226,7 +218,8 @@ public final class SessionRunner {
 
                 for (final TaskOutcome<String> outcome : outcomes) {
                   if (outcome.state() == Subtask.State.SUCCESS) {
-                    resolved.add(toIndex.get(outcome.index()).withKnowledgeId(outcome.value()));
+                    knowledgeCreatedFor.add(
+                        toIndex.get(outcome.index()).withKnowledgeId(outcome.value()));
                   } else {
                     LOG.warn(
                         "Indexing failed for {}; dropping it from the message's attachments",
@@ -236,13 +229,7 @@ public final class SessionRunner {
                 }
               }
 
-              final UserMessage resolvedMessage = new UserMessage(message.parts(), resolved);
-              final Content userContent =
-                  RequestContentUtils.buildUserContent(
-                      RequestContentUtils.textParts(resolvedMessage.parts()),
-                      resolvedMessage.attachments(),
-                      fileService);
-              return new ResolvedMessage(resolvedMessage, userContent);
+              return new UserMessage(message.parts(), knowledgeCreatedFor);
             });
   }
 
@@ -276,6 +263,4 @@ public final class SessionRunner {
     request.setWaitForCompletion(true);
     return knowledgeService.index(request);
   }
-
-  private record ResolvedMessage(UserMessage userMessage, Content userContent) {}
 }

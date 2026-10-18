@@ -33,11 +33,7 @@ public class ImageKnowledgeIndexer extends AbstractKnowledgeIndexer {
       final ModelProvider modelProvider,
       final MediaService mediaService,
       final FileService fileService) {
-    super(
-        chunkingPipelineFactory,
-        knowledgeRepository,
-        modelProvider,
-        fileService);
+    super(chunkingPipelineFactory, knowledgeRepository, modelProvider, fileService);
     this.mediaService = mediaService;
   }
 

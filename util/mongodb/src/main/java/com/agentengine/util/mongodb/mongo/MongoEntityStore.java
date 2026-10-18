@@ -362,12 +362,11 @@ public final class MongoEntityStore<T extends BaseEntity> implements EntityStore
   }
 
   /**
-   * Whether this customer's data for this spec lives in the bare, global database rather than
-   * its own {@code _<customerId>} one. True for a spec declared {@link
-   * DocumentRepositorySpec#global}, and also for the system customer: it owns no tenant data to
-   * keep apart from anyone else's, so even a per-customer spec's system-customer data joins the
-   * same global database as every other service's system-owned data, rather than getting its own
-   * {@code _system} database.
+   * Whether this customer's data for this spec lives in the bare, global database rather than its
+   * own {@code _<customerId>} one. True for a spec declared {@link DocumentRepositorySpec#global},
+   * and also for the system customer: it owns no tenant data to keep apart from anyone else's, so
+   * even a per-customer spec's system-customer data joins the same global database as every other
+   * service's system-owned data, rather than getting its own {@code _system} database.
    */
   private boolean isGlobalDatabase(final String customerId) {
     return spec.global() || Context.SYSTEM_CUSTOMER_ID.equals(customerId);

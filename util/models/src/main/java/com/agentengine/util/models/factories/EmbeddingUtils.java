@@ -6,7 +6,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
-
 import java.util.ArrayList;
 import java.util.List;
 

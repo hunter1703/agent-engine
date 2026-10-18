@@ -1,6 +1,6 @@
 {
   "name": "brave_web_search",
-  "description": "Query a live web search service and return a synthesised summary of results for a given query.",
+  "description": "Query a live web search service and return relevant search results and excerpts for a given query.",
   "inputSchema": {
     "type": "object",
     "properties": {

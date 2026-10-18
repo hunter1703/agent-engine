@@ -1,6 +1,5 @@
 package com.agentengine.util.agents;
 
-import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.flows.llmflows.Functions;
@@ -8,20 +7,11 @@ import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
-import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.List;
+import java.util.Optional;
 
 /** Utilities for generic content/message extraction and indexing. */
 public final class ContentUtils {
-  private static final Logger LOG = LoggerFactory.getLogger(ContentUtils.class);
-  private static final String CURRENT_USER_CONTEXT_OPEN = "<current_user_context>";
-  private static final String CURRENT_USER_CONTEXT_CLOSE = "</current_user_context>";
-  private static final String USER_MESSAGE_OPEN = "<user_message>\n";
-  private static final String USER_MESSAGE_CLOSE = "\n</user_message>";
 
   private ContentUtils() {}
 
@@ -142,91 +132,27 @@ public final class ContentUtils {
                         .isPresent());
   }
 
-  public static Content addAttachmentsToContent(
-      final Content content,
-      final List<AgentFileDetails> attachments,
-      final FileService fileService) {
-    final StringBuilder text = new StringBuilder();
-    final List<Part> binaryParts = new ArrayList<>();
-    for (final AgentFileDetails attachment : CollectionUtils.nullSafeList(attachments)) {
-      if (StringUtils.isNotBlank(attachment.knowledgeId())) {
-        text.append("\n(The attached file \"")
-            .append(attachment.name())
-            .append("\" is indexed as knowledgeId \"")
-            .append(attachment.knowledgeId())
-            .append("\").");
-      } else {
-        try (InputStream stream = fileService.getContent(attachment.toFileDetails())) {
-          byte[] bytes = stream.readAllBytes();
-          if (bytes.length > 0) {
-            binaryParts.add(Part.fromBytes(bytes, attachment.mimeType()));
-          }
-        } catch (IOException ioException) {
-          LOG.warn("Failed to read attachment file {}.", attachment.source(), ioException);
-        }
-      }
-    }
-    final List<Part> parts = new ArrayList<>(content.parts().orElse(List.of()));
-    if (!text.isEmpty()) {
-      parts.add(Part.fromText(text.toString()));
-    }
-    if (CollectionUtils.isNotEmpty(binaryParts)) {
-      parts.addAll(binaryParts);
-    }
-    return content.toBuilder().parts(parts).build();
-  }
-
   public static Content userMessage(final List<Part> parts) {
     return Content.builder().role(Constants.AUTHOR_USER).parts(parts).build();
   }
 
-  /**
-   * A run's start message as the model reads it: its parts between {@code <user_message>} tags, led
-   * by {@code currentTime}, when it was sent.
-   */
-  public static Content withUserContext(final Content content, final String currentTime) {
-    final List<Part> parts = new ArrayList<>();
-    parts.add(
-        Part.fromText(
-            CURRENT_USER_CONTEXT_OPEN
-                + "\n"
-                + currentTime
-                + "\n"
-                + CURRENT_USER_CONTEXT_CLOSE
-                + "\n\n"));
-    parts.add(Part.fromText(USER_MESSAGE_OPEN));
-    parts.addAll(content.parts().orElse(List.of()));
-    parts.add(Part.fromText(USER_MESSAGE_CLOSE));
-    return content.toBuilder().parts(parts).build();
-  }
-
-  /** Whether {@code content} is a message {@link #withUserContext} made. */
-  public static boolean startsWithUserContext(final Content content) {
-    return content
-        .parts()
-        .flatMap(parts -> parts.stream().findFirst())
-        .flatMap(Part::text)
-        .filter(text -> text.startsWith(CURRENT_USER_CONTEXT_OPEN))
-        .isPresent();
-  }
-
-  /** The text of {@code content}, without what {@link #withUserContext} adds around a message. */
-  public static String textWithoutCurrentTime(final Content content) {
-    final boolean framed = startsWithUserContext(content);
-    final List<Part> parts = content.parts().orElse(List.of());
-    // The time, the opening tag, then the message, then the closing tag.
-    return parts.subList(framed ? 2 : 0, framed ? parts.size() - 1 : parts.size()).stream()
-        .flatMap(part -> part.text().stream())
-        .collect(Collectors.joining());
-  }
-
   /** Whether {@code content} is a user-role message rather than a tool result. */
-  public static boolean isUserMessage(final Content content) {
-    return content != null && isUserRole(content) && getToolResponseParts(content).isEmpty();
+  public static boolean isUserSentMessage(final Content content) {
+    return content != null && isUserContent(content) && getToolResponseParts(content).isEmpty();
   }
 
-  private static boolean isUserRole(final Content content) {
+  private static boolean isUserContent(final Content content) {
     final Optional<String> role = content.role();
     return role.isEmpty() || Constants.AUTHOR_USER.equalsIgnoreCase(role.get());
+  }
+
+  public static boolean isModelContent(final Content content) {
+    if (content == null) {
+      return false;
+    }
+    final Optional<String> role = content.role();
+    return role.isPresent()
+        && (Constants.AUTHOR_MODEL.equalsIgnoreCase(role.get())
+            || Constants.AUTHOR_ASSISTANT.equalsIgnoreCase(role.get()));
   }
 }

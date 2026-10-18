@@ -2,9 +2,9 @@ package com.agentengine.agent.infra.agents.flow;
 
 import com.agentengine.agent.infra.agents.processors.request.CompactionProcessor;
 import com.agentengine.agent.infra.agents.processors.request.SignalProcessor;
+import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
-import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
@@ -109,8 +109,8 @@ public final class BaseFlow extends SingleFlow {
                 endInvocation.set(true);
               }
               // Only model/agent events count as a final answer — user events (e.g. signal
-              // messages injected by SignalProcessor) must not set this flag
-              if (!Constants.AUTHOR_USER.equals(event.author()) && event.finalResponse()) {
+              // messages injected by SignalProcessor) and tool events must not set this flag.
+              if (EventUtils.isModelEvent(event) && event.finalResponse()) {
                 foundFinalAnswer.set(true);
               }
               // Strip turnComplete and finishReason — the synthetic boundary event is the

@@ -28,6 +28,8 @@ public final class NotebookToolsetProvider extends AbstractToolsetProvider {
             new ToolDefinition(
                 CreateOrUpdateNoteTool.DESCRIPTOR,
                 () -> new CreateOrUpdateNoteTool(notebookService)),
+            new ToolDefinition(
+                AppendToNoteTool.DESCRIPTOR, () -> new AppendToNoteTool(notebookService)),
             new ToolDefinition(ReadNoteTool.DESCRIPTOR, () -> new ReadNoteTool(notebookService)),
             new ToolDefinition(
                 DeleteNoteTool.DESCRIPTOR, () -> new DeleteNoteTool(notebookService)),

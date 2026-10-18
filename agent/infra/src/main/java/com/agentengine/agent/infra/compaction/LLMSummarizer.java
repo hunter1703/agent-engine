@@ -58,6 +58,11 @@ public final class LLMSummarizer implements BaseEventSummarizer {
             .filter(part -> !part.thought().orElse(false))
             .toList());
     parts.add(Part.fromText("</earlier_conversation_summary>"));
+    parts.add(
+        Part.fromText(
+            """
+            Note: Earlier conversation turns have been compacted into the summary above. If you need detailed context, intermediate drafts, or past calculations in your notebooks, use `read_note` to inspect the notes to find the lay of the land."""
+                .trim()));
     return EventUtils.withCompactedContent(event, ContentUtils.userMessage(parts));
   }
 }

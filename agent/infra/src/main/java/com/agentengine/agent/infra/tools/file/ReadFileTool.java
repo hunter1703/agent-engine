@@ -85,7 +85,12 @@ public final class ReadFileTool extends BaseFileTool {
       return ToolOutput.direct(Map.of("error", "Not a regular file: " + filePath));
     }
 
-    final FileDetails fileDetails = readFile(path, offset, limit);
+    final FileDetails fileDetails;
+    try {
+      fileDetails = readFile(path, offset, limit);
+    } catch (final Exception ex) {
+      return ToolOutput.direct(Map.of("error", "Failed to read file: " + ex.getMessage()));
+    }
     final List<String> selectedLines = fileDetails.content();
     final StringBuilder content = new StringBuilder();
     boolean truncated = false;

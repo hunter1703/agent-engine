@@ -262,16 +262,16 @@ public final class CollectionUtils {
     return transformedMap;
   }
 
-  public static <T, K> Map<K, T> transformToMap(
+  public static <T, K> LinkedHashMap<K, T> transformToMap(
       final Collection<T> collection, final Function<T, K> keyFunction) {
     return transformToMap(collection, keyFunction, item -> item);
   }
 
-  public static <T, K, V> Map<K, V> transformToMap(
+  public static <T, K, V> LinkedHashMap<K, V> transformToMap(
       final Collection<T> collection,
       final Function<T, K> keyFunction,
       final Function<T, V> valueFunction) {
-    final Map<K, V> transformedMap = new HashMap<>();
+    final LinkedHashMap<K, V> transformedMap = new LinkedHashMap<>();
     if (CollectionUtils.isEmpty(collection)) {
       return transformedMap;
     }

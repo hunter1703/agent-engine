@@ -73,10 +73,7 @@ public final class GetWebpageTool extends Tool {
     final String markdown = MarkdownUtils.fromHtml(html);
 
     if (markdown.length() <= DEFAULT_MAX_LENGTH) {
-      return ToolOutput.direct(
-          Map.of(
-              "markdown", markdown,
-              "chars_read", markdown.length()));
+      return ToolOutput.direct(Map.of("markdown", markdown, "chars_read", markdown.length()));
     }
 
     try {

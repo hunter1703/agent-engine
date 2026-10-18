@@ -11,15 +11,12 @@ import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
 import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.plugins.*;
+import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
-import com.agentengine.agent.infra.session.UserContextSessionService;
 import com.agentengine.agent.infra.utils.AgentUtils;
-import com.agentengine.agent.infra.utils.EventUtils;
-import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.knowledge.api.services.KnowledgeService;
-import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -36,6 +33,7 @@ import com.google.adk.runner.Runner;
 import com.google.adk.sessions.BaseSessionService;
 import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.sessions.Session;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,10 +50,12 @@ public class RunnerFactory {
   private final KnowledgeService knowledgeService;
   private final MemoryService memoryService;
   private final NotebookService notebookService;
+  private final ReminderSyncService reminderSyncService;
   private final DistributedCache<SessionRunner> runnersCache;
   private final DistributedCache<Runner> tempRunnersCache;
   private final FileService fileService;
 
+  @Inject
   public RunnerFactory(
       AgentService agentService,
       AgentProvider agentProvider,
@@ -65,6 +65,7 @@ public class RunnerFactory {
       final KnowledgeService knowledgeService,
       final MemoryService memoryService,
       final NotebookService notebookService,
+      final ReminderSyncService reminderSyncService,
       final DistributedCacheManager cacheManager,
       FileService fileService) {
     this.agentService = agentService;
@@ -75,6 +76,7 @@ public class RunnerFactory {
     this.knowledgeService = knowledgeService;
     this.memoryService = memoryService;
     this.notebookService = notebookService;
+    this.reminderSyncService = reminderSyncService;
     this.runnersCache =
         new DistributedCache.Builder<SessionRunner>(RuntimeService.RUNNER_CACHE, cacheManager)
             .removalListener(SessionRunner::stop)
@@ -115,8 +117,7 @@ public class RunnerFactory {
                               .build();
                       return Runner.builder()
                           .app(app)
-                          .sessionService(
-                              new UserContextSessionService(new InMemorySessionService()))
+                          .sessionService(new InMemorySessionService())
                           .memoryService(memoryService)
                           .build();
                     }));
@@ -161,29 +162,17 @@ public class RunnerFactory {
 
   private BaseSessionService buildAdkSessionService(
       final String appId, final String sessionId, final AgentSession agentSession) {
-    final BaseSessionService adkSessionService =
-        new UserContextSessionService(new InMemorySessionService());
-    final Session persistedSession = SessionUtils.toSession(agentSession, getEvents(sessionId));
-
-    final Map<String, Object> initialState =
-        persistedSession == null
-            ? new ConcurrentHashMap<>()
-            : new ConcurrentHashMap<>(
-                persistedSession.state() == null ? Map.of() : persistedSession.state());
+    final BaseSessionService sessionService = new InMemorySessionService();
+    final Map<String, Object> state =
+        new ConcurrentHashMap<>(CollectionUtils.nullSafeMap(agentSession.getState()));
     final Session session =
-        adkSessionService
-            .createSession(appId, agentSession.getCreatedBy(), initialState, sessionId)
+        sessionService
+            .createSession(appId, agentSession.getCreatedBy(), state, sessionId)
             .blockingGet();
-
-    if (persistedSession != null) {
-
-      for (final Event event : CollectionUtils.nullSafeList(persistedSession.events())) {
-        adkSessionService
-            .appendEvent(session, EventUtils.enrichWithAttachments(event, fileService))
-            .blockingGet();
-      }
+    for (final Event event : getEvents(sessionId)) {
+      sessionService.appendEvent(session, event).blockingGet();
     }
-    return adkSessionService;
+    return sessionService;
   }
 
   private List<Event> getEvents(final String sessionId) {
@@ -198,7 +187,6 @@ public class RunnerFactory {
     queue.add(rootAgent);
     final Set<String> visited = new HashSet<>();
     final Map<String, GuardrailPolicyFactory.GuardrailPolicy> policies = new LinkedHashMap<>();
-    final Set<String> agentsWithNotebook = new HashSet<>();
 
     while (!queue.isEmpty()) {
       final Agent agent = queue.poll();
@@ -210,10 +198,6 @@ public class RunnerFactory {
       if (policy.enabled()) {
         policies.put(agent.name(), policy);
       }
-      if (CollectionUtils.nullSafeList(agent.getAgentConfig().getTools()).stream()
-          .anyMatch(tool -> Constants.Toolsets.NOTEBOOK.equals(tool.getToolName()))) {
-        agentsWithNotebook.add(agent.name());
-      }
       for (final BaseAgent subAgent : CollectionUtils.nullSafeList(agent.subAgents())) {
         if (subAgent instanceof Agent nestedAgent) {
           queue.add(nestedAgent);
@@ -223,14 +207,13 @@ public class RunnerFactory {
 
     final List<BasePlugin> plugins =
         List.of(
-            new InitPlugin(),
-            new KnowledgePlugin(knowledgeService),
+            new InitPlugin(reminderSyncService),
             new GuardrailPlugin(policies),
             new ReminderPlugin(),
             new ToolTimingPlugin(),
+            new NotebookPlugin(notebookService),
             new PlanningPlugin(),
-            new ResponseValidationPlugin(),
-            new NotebookPlugin(notebookService, agentsWithNotebook));
+            new ResponseValidationPlugin());
     return List.of(new PluginGroup("engine", plugins), AddEventMetadataPlugin.INSTANCE);
   }
 }

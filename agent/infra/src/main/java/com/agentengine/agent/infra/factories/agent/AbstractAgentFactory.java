@@ -5,7 +5,9 @@ import com.agentengine.agent.infra.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.agent.infra.factories.context.CompactorProvider;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.agent.infra.utils.PromptUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.agents.beans.config.ToolsConfig;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.models.ConfiguredModel;
@@ -13,10 +15,11 @@ import com.agentengine.util.models.factories.ModelProvider;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.tools.BaseTool;
+import com.google.adk.tools.BaseToolset;
 import com.google.genai.types.GenerateContentConfig;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends Agent>
     implements AgentFactory<C, A> {
@@ -51,19 +54,39 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
               .responseJsonSchema(responseFormat)
               .build());
     }
-    final List<BaseTool> tools = new ArrayList<>(toolFactory.buildTools(config.getTools()));
-    if (config.getRuntime().isResumable()) {
-      tools.add(toolFactory.getHITLTool());
+    final boolean toolCallingEnabled = modelProvider.isToolCallingEnabled(modelId);
+    final List<BaseTool> tools;
+    final List<BaseToolset> toolsets;
+    final boolean hasTools;
+    final boolean isResumable = toolCallingEnabled && config.getRuntime().isResumable();
+    if (toolCallingEnabled) {
+      final Set<ToolsConfig> toolsConfigs = CollectionUtils.nullSafeMutableSet(config.getTools());
+      if (isResumable) {
+        toolsConfigs.add(new ToolsConfig(Constants.ToolNames.HITL, Map.of()));
+      }
+      toolsConfigs.add(new ToolsConfig(Constants.ToolNames.SEARCH_KNOWLEDGE, Map.of()));
+      toolsConfigs.add(new ToolsConfig(Constants.ToolNames.REFRESH_REMINDERS, Map.of()));
+      toolsConfigs.add(new ToolsConfig(Constants.Toolsets.NOTEBOOK, Map.of()));
+      tools = toolFactory.buildTools(toolsConfigs);
+      toolsets = toolFactory.buildToolsets(toolsConfigs);
+      hasTools = CollectionUtils.isNotEmpty(tools) || CollectionUtils.isNotEmpty(toolsets);
+    } else {
+      tools = List.of();
+      toolsets = List.of();
+      hasTools = false;
     }
-    tools.add(toolFactory.getSearchKnowledgeTool());
-    tools.add(toolFactory.getRefreshRemindersTool());
+
     final BaseLlmAgentBuilder baseLlmAgentBuilder = new BaseLlmAgentBuilder(builder);
     return baseLlmAgentBuilder
         .systemInstructions(
             PromptUtils.renderSystemPrompt(
-                config.getSystemPrompt(), config.getName(), config.getResponseFormat()))
+                config.getSystemPrompt(),
+                config.getName(),
+                config.getResponseFormat(),
+                hasTools,
+                isResumable))
         .appendTools(tools)
-        .appendToolSets(toolFactory.buildToolsets(config.getTools()))
+        .appendToolSets(toolsets)
         .compactor(compactorProvider.create(config))
         .agentConfig(config)
         .closeHook(refCounted::close);

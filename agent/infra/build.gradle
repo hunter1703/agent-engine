@@ -21,7 +21,6 @@ dependencies {
     runtimeOnly project(':util:ms:server')
     implementation project(':util:mongodb')
     implementation project(':util:cloudstorage')
-    implementation libs.jinjava
 
     api libs.google.adk
     api libs.google.genai

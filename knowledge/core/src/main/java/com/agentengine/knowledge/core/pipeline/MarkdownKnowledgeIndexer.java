@@ -24,11 +24,7 @@ public class MarkdownKnowledgeIndexer extends AbstractKnowledgeIndexer {
       final KnowledgeRepository knowledgeRepository,
       final ModelProvider modelProvider,
       final FileService fileService) {
-    super(
-        chunkingPipelineFactory,
-        knowledgeRepository,
-        modelProvider,
-        fileService);
+    super(chunkingPipelineFactory, knowledgeRepository, modelProvider, fileService);
   }
 
   @Override

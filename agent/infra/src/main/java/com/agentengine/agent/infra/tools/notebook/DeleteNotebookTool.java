@@ -28,7 +28,9 @@ public final class DeleteNotebookTool extends AbstractNotebookTool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolArg(name = Constants.ToolArgs.NOTEBOOK_ID, description = "The ID of the notebook to delete.")
+      @ToolArg(
+              name = Constants.ToolArgs.NOTEBOOK_ID,
+              description = "The ID of the notebook to delete.")
           final String notebookId) {
     if (!notebookService.deleteNotebook(notebookId)) {
       return ToolOutput.direct(

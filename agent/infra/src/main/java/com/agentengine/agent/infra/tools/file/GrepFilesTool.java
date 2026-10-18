@@ -5,7 +5,6 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.agents.tools.ToolArg;
-import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.ExceptionUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -38,7 +37,8 @@ public final class GrepFilesTool extends BaseFileTool {
   private static final int MAX_LIMIT = 2000;
   private static final int MAX_LINE_LENGTH = 500;
   private static final java.util.Set<String> DEFAULT_IGNORED_DIRS =
-      java.util.Set.of(".git", ".gradle", "node_modules", "build", "target", ".idea", ".vscode", "__pycache__");
+      java.util.Set.of(
+          ".git", ".gradle", "node_modules", "build", "target", ".idea", ".vscode", "__pycache__");
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
@@ -165,7 +165,7 @@ public final class GrepFilesTool extends BaseFileTool {
       LOG.debug("Invalid regex pattern: {}", pattern, exception);
       return ToolOutput.direct(
           Map.of("error", "Invalid regex pattern: " + exception.getDescription()));
-    } catch (IOException exception) {
+    } catch (final Exception exception) {
       LOG.debug("Failed to search files: {}", basePath, exception);
       return ToolOutput.direct(
           Map.of("error", "Failed to search files: " + ExceptionUtils.getErrorMessage(exception)));

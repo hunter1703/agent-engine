@@ -30,7 +30,6 @@ import com.agentengine.util.models.config.DefaultModels;
 import com.agentengine.util.models.embedding.ConfiguredEmbeddingModel;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.genai.types.Modality;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
@@ -359,10 +358,11 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
     // matches nothing.
     final List<Filter> semanticFilters =
         getSemanticFilters(query.getFilter()).stream()
-            .filter(semantic -> {
-              final float[] toSearchVector = CollectionUtils.getFirst(semantic.getValues());
-              return toSearchVector != null && toSearchVector.length > 0;
-            })
+            .filter(
+                semantic -> {
+                  final float[] toSearchVector = CollectionUtils.getFirst(semantic.getValues());
+                  return toSearchVector != null && toSearchVector.length > 0;
+                })
             .toList();
     if (semanticFilters.isEmpty()) {
       return PaginatedResult.create(List.of(), page, null);
@@ -475,7 +475,8 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
               modelProvider.getEmbeddingModel(
                   embeddingModelIdOf(filter, DefaultModels.TEXT_EMBEDDING_ID))) {
             final Response<Embedding> embeddings = refCounted.value().model().embed(str);
-            return withAdditionalOf(filter, Filters.semanticSearch(vectorName, embeddings.content().vector()));
+            return withAdditionalOf(
+                filter, Filters.semanticSearch(vectorName, embeddings.content().vector()));
           }
         }
         case FileDetails fileDetails when FileUtils.isImageFile(fileDetails) -> {
@@ -493,8 +494,11 @@ public final class QdrantEntityStore<T extends VectorEntity> implements VectorEn
                     .model()
                     .embed(EmbeddingRequest.builder().input(imageContent).build())
                     .embeddings();
-            return withAdditionalOf(filter, Filters.semanticSearch(
-                vectorName, embeddings.isEmpty() ? new float[0] : embeddings.getFirst().vector()));
+            return withAdditionalOf(
+                filter,
+                Filters.semanticSearch(
+                    vectorName,
+                    embeddings.isEmpty() ? new float[0] : embeddings.getFirst().vector()));
           } catch (IOException e) {
             throw new RuntimeException(e);
           }

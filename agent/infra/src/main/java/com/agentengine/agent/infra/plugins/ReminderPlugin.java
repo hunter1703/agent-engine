@@ -20,13 +20,13 @@ import java.util.function.Function;
 /**
  * Injects the agent's reminder map into the user's message as a working-memory brief.
  *
- * <p>This plugin reads whatever reminders are currently registered in {@link SessionState}, groups
- * them by group, and renders each group as a titled section inside a brief placed ahead of the
- * message that started the latest invocation started by one, each in its own tag, so the brief
- * reads as context for the request rather than as a standing rule in the system instruction.
+ * <p>This plugin reads whatever reminders are registered in {@link SessionState}, groups them by
+ * category, and renders each group as a titled section inside a brief placed ahead of the user
+ * message that started the run.
  *
- * <p>Once the current run holds a {@code refresh_reminders} result, that result carries the
- * reminders, so the brief is left out and every older result is expired.
+ * <p>Once the current run holds a {@code refresh_reminders} result, that result carries the latest
+ * resource reminders: the brief attached to the user message is updated to retain only live
+ * execution state (such as the active plan), and every older refresh result is expired.
  */
 public final class ReminderPlugin extends BasePlugin {
 
@@ -43,34 +43,27 @@ public final class ReminderPlugin extends BasePlugin {
 
     final SessionState sessionState =
         SessionUtils.getSessionState(callbackContext.invocationContext());
-    final List<Reminder> initialReminders = sessionState.initialReminders();
-    final List<Reminder> currentReminders = sessionState.reminders();
-
-    if (CollectionUtils.isEmpty(initialReminders) && CollectionUtils.isEmpty(currentReminders)) {
-      return Maybe.empty();
-    }
 
     final List<Content> contents = llmRequestBuilder.build().contents();
-    // A run's start message is the one a current time leads; one missing from the request was
-    // compacted, and ADK's tail compactor always summarizes from the beginning, so the summary that
-    // replaced it is the request's first message.
-    final int startMessageIndex =
-        CollectionUtils.findLastIndexAfter(contents, -1, ContentUtils::startsWithUserContext);
-    final boolean summaryFirst =
-        !contents.isEmpty() && ContentUtils.isUserMessage(contents.getFirst());
-    final int userMessageIndex = startMessageIndex < 0 && summaryFirst ? 0 : startMessageIndex;
+    final int userMessageIndex =
+        CollectionUtils.findLastIndexAfter(contents, -1, ContentUtils::isUserSentMessage);
     if (userMessageIndex < 0) {
       return Maybe.empty();
     }
 
-    final int latestResultIndex =
+    final int latestRefreshRemindersResultIndex =
         CollectionUtils.findLastIndexAfter(
             contents, userMessageIndex, ReminderPlugin::isRefreshRemindersResult);
+    // If a refresh_reminders call exists, only inject the session's local reminders (which are not
+    // shared and cannot be invalidated by external entities)
+    final Collection<Reminder> remindersToInject =
+        latestRefreshRemindersResultIndex >= 0
+            ? sessionState.localReminders()
+            : sessionState.allReminders();
     final List<Content> withBrief =
-        latestResultIndex < 0
-            ? withRemindersBrief(contents, userMessageIndex, buildBrief(initialReminders))
-            : contents;
-    llmRequestBuilder.contents(expireRefreshResultsExcept(withBrief, latestResultIndex));
+        withRemindersBrief(contents, userMessageIndex, buildBrief(remindersToInject));
+    llmRequestBuilder.contents(
+        expireRefreshResultsExcept(withBrief, latestRefreshRemindersResultIndex));
     return Maybe.empty();
   }
 
@@ -125,18 +118,18 @@ public final class ReminderPlugin extends BasePlugin {
     }
 
     final Content userContent = contents.get(userMessageIndex);
-    final List<Part> parts = new ArrayList<>();
-    parts.add(
+    final Part remindersPart =
         Part.fromText(
             """
-            <reference_material>
-            Use what applies, skip the rest.
-
+            <reminders>
             %s
-            </reference_material>
+            </reminders>
 
             """
-                .formatted(brief)));
+                .formatted(brief));
+
+    final List<Part> parts = new ArrayList<>();
+    parts.add(remindersPart);
     parts.addAll(userContent.parts().orElse(List.of()));
 
     final List<Content> updated = new ArrayList<>(contents);
@@ -144,7 +137,7 @@ public final class ReminderPlugin extends BasePlugin {
     return updated;
   }
 
-  public static String buildBrief(final List<Reminder> reminders) {
+  public static String buildBrief(final Collection<Reminder> reminders) {
     final StringBuilder sb = new StringBuilder();
     boolean hasContent = false;
     final Map<String, List<Reminder>> reminderGroups =

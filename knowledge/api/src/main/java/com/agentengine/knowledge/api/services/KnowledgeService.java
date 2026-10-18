@@ -6,7 +6,6 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.ms.client.MicroService;
 import com.agentengine.util.tenancy.Permission;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -38,8 +37,8 @@ public interface KnowledgeService {
 
   /**
    * The similarity of each tag of the chunks {@code query}, which has one semantic filter, matches
-   * among the knowledge the caller may read, closest first: the mean similarity of the tag's
-   * {@code closestChunksPerTag} closest chunks, for at most {@code maxTags} tags.
+   * among the knowledge the caller may read, closest first: the mean similarity of the tag's {@code
+   * closestChunksPerTag} closest chunks, for at most {@code maxTags} tags.
    */
   Map<String, Double> findTagSimilarities(Query query, int maxTags, int closestChunksPerTag);
 

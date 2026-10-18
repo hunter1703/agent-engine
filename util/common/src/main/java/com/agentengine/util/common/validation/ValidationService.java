@@ -27,14 +27,20 @@ public class ValidationService {
     if (value == null) {
       throw new IllegalArgumentException("Config is required.");
     }
-    final ValidationCollector errors = new ValidationCollector();
-    collectBeanValidationErrors(value, errors);
-    applyRuleValidators(value, errors);
-    if (!errors.hasErrors()) {
-      return;
+    final List<String> errors = errors(value);
+    if (!errors.isEmpty()) {
+      throw new IllegalArgumentException("Config validation failed: " + String.join("; ", errors));
     }
-    throw new IllegalArgumentException(
-        "Config validation failed: " + String.join("; ", errors.errors()));
+  }
+
+  public <T> List<String> errors(final T value) {
+    if (value == null) {
+      return List.of("Config is required.");
+    }
+    final ValidationCollector collector = new ValidationCollector();
+    collectBeanValidationErrors(value, collector);
+    applyRuleValidators(value, collector);
+    return collector.errors();
   }
 
   private <T> void collectBeanValidationErrors(final T value, final ValidationCollector errors) {

@@ -8,6 +8,7 @@ import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.distributed.RefCountedDistributedCache;
 import com.agentengine.util.models.ConfiguredModel;
 import com.agentengine.util.models.ModelLookup;
+import com.agentengine.util.models.config.ChatModelConfig;
 import com.agentengine.util.models.config.DefaultModels;
 import com.agentengine.util.models.config.EmbeddingModelConfig;
 import com.agentengine.util.models.config.ModelConfig;
@@ -78,6 +79,21 @@ public class ModelProvider {
                     .asSystemCaller()
                     .get(() -> new ConfiguredModel<>(buildChatModel(id)) {}))
         .acquire();
+  }
+
+  public boolean isToolCallingEnabled(final String modelId) {
+    return Context.require()
+        .asSystemCaller()
+        .get(
+            () -> {
+              final String resolvedId = resolveModelId(modelId, defaultModelIdSupplier(modelId));
+              if (StringUtils.isBlank(resolvedId)) {
+                return false;
+              }
+              final ModelConfig config = modelLookup.getModel(resolvedId);
+              return config instanceof ChatModelConfig chatConfig
+                  && chatConfig.isToolCallingEnabled();
+            });
   }
 
   public RefCounted<ConfiguredEmbeddingModel> getDefaultEmbeddingModel(

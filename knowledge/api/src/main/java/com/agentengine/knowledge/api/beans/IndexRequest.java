@@ -7,7 +7,9 @@ import java.util.List;
 
 public class IndexRequest {
 
-  /** The id the knowledge is created with. Knowledge that has this id is replaced and indexed again. */
+  /**
+   * The id the knowledge is created with. Knowledge that has this id is replaced and indexed again.
+   */
   private String knowledgeId;
 
   private FileDetails fileDetails;

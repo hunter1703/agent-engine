@@ -105,10 +105,10 @@ Descriptor resolution:
 
 The codebase exposes extension seams primarily through CDI-discovered providers and tool auto-discovery inside the agent runtime modules (`agent:infra` / `agent:core`).
 
-## 5.7 Prompt Protocol Resources
+## 5.7 Agent Instruction Resources
 
-Runtime protocol text templates live under:
+Runtime agent instructions and operational principles live under:
 
-- `agent/core/src/main/resources/prompts/prompts/shared/protocol/text.txt`
+- `agent/infra/src/main/resources/common-agent-instructions.txt`
 
-These are used when constructing final prompt instructions for model behavior/protocol conformance, and are rendered via Jinjava.
+These define core cognitive guidelines (autonomy, epistemic humility, scratchpad working memory, grounding) and are rendered via Groovy templating (`TemplateUtils`) into the agent system prompt.

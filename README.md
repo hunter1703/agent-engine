@@ -191,7 +191,7 @@ Tools are provided through `ToolProvider` / `ToolsetProvider` CDI beans plus aut
 
 | Suite / group | Tools |
 |---|---|
-| `planning` | `create_plan`, `add_task`, `update_task`, `view_plan` |
+| `planning` | `create_plan`, `add_task`, `complete_task` |
 | `agent_tools` | `spawn_agent`, `send_message`, `await_agent`, `lookup_expert` |
 | `file_tools` | `read_file`, `list_dir`, `grep_files`, `apply_patch` |
 | Shell | `run_cmd` (sandboxed; `rm` blocked, output-capped, `HIGH` risk) |

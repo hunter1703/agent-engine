@@ -1,7 +1,6 @@
 package com.agentengine.util.models.factories;
 
 import com.agentengine.util.common.utils.EnvUtils;
-import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.config.ChatModelConfig;
 import com.agentengine.util.models.config.ModelConfig;
 import com.agentengine.util.models.llm.DelegatingLLMModel;
@@ -9,7 +8,6 @@ import com.agentengine.util.models.llm.Parser;
 import com.agentengine.util.scripts.TemplateUtils;
 import com.agentengine.util.scripts.templated.Template;
 import com.google.adk.models.BaseLlm;
-import java.util.HashMap;
 import java.util.Map;
 
 public abstract class DelegatingModelFactory<T extends BaseLlm>
@@ -22,22 +20,13 @@ public abstract class DelegatingModelFactory<T extends BaseLlm>
     final boolean toolCallingEnabled = chatConfig.isToolCallingEnabled();
     final Parser parser =
         new Parser(
-            buildProtocolMessage(toolCallingEnabled, chatConfig.getInstructions()),
+            chatConfig.getInstructions() == null ? "" : chatConfig.getInstructions().trim(),
             toolCallingEnabled);
     final T delegate = buildDelegate(chatConfig);
     return new DelegatingLLMModel(delegate, parser);
   }
 
   protected abstract T buildDelegate(final ChatModelConfig chatConfig);
-
-  private static String buildProtocolMessage(
-      final boolean toolCallingEnabled, final String modelInstructions) {
-    final Map<String, Object> context = new HashMap<>();
-    context.put("toolCallingAllowed", toolCallingEnabled);
-    return TemplateUtils.renderTemplateForName("shared/protocol/text.txt", context)
-        + "\n\n\n"
-        + (StringUtils.isBlank(modelInstructions) ? "" : modelInstructions);
-  }
 
   private static void resolveConfig(final ModelConfig modelConfig) {
     final Template<String> template = TemplateUtils.buildTemplate(modelConfig.getApiKey());

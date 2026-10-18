@@ -33,11 +33,7 @@ public class PdfKnowledgeIndexer extends AbstractKnowledgeIndexer {
       final MediaService mediaService,
       final FileService fileService,
       final CloudStorageService cloudStorageService) {
-    super(
-        chunkingPipelineFactory,
-        knowledgeRepository,
-        modelProvider,
-        fileService);
+    super(chunkingPipelineFactory, knowledgeRepository, modelProvider, fileService);
     this.mediaService = mediaService;
     this.cloudStorageService = cloudStorageService;
   }

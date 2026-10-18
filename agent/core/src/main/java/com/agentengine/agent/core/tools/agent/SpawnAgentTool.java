@@ -190,10 +190,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .build());
     properties.put(
         Constants.ToolArgs.GOAL,
-        Schema.builder()
-            .type(Known.STRING)
-            .description(GOAL_SCHEMA_DESCRIPTION)
-            .build());
+        Schema.builder().type(Known.STRING).description(GOAL_SCHEMA_DESCRIPTION).build());
     properties.put(
         Constants.ToolArgs.AWAIT_COMPLETION,
         Schema.builder()

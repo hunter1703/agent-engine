@@ -31,8 +31,7 @@ public class SessionTitleGenerator {
   private final ModelProvider modelProvider;
 
   public SessionTitleGenerator(
-      final SessionEventsRepository sessionEventsRepository,
-      final ModelProvider modelProvider) {
+      final SessionEventsRepository sessionEventsRepository, final ModelProvider modelProvider) {
     this.sessionEventsRepository = sessionEventsRepository;
     this.modelProvider = modelProvider;
   }

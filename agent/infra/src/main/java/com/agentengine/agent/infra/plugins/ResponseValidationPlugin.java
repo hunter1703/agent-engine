@@ -1,9 +1,9 @@
 package com.agentengine.agent.infra.plugins;
 
 import com.agentengine.agent.infra.agents.Agent;
-import com.agentengine.agent.infra.utils.ResponseUtils;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.agent.infra.utils.SchemaUtils;
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.codec.JsonUtils;
@@ -47,9 +47,35 @@ public final class ResponseValidationPlugin extends BasePlugin {
       final CallbackContext callbackContext, final LlmResponse response) {
 
     final InvocationContext context = callbackContext.invocationContext();
-    if (!ResponseUtils.isFinalAnswer(response)
-        || RunUtils.getRunState(context).hasSignal("note_saved_")
-        || !(context.agent() instanceof Agent engineAgent)) {
+    if (response == null || response.partial().orElse(false)) {
+      return Maybe.empty();
+    }
+    final boolean hasToolCalls =
+        response
+            .content()
+            .map(content -> content.parts().orElse(List.of()))
+            .orElse(List.of())
+            .stream()
+            .anyMatch(
+                part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
+    if (hasToolCalls) {
+      return Maybe.empty();
+    }
+
+    final boolean hasVisibleText = ContentUtils.hasVisibleText(response.content().orElse(null));
+    if (!hasVisibleText) {
+      RunUtils.getRunState(context)
+          .addSignal(
+              callbackContext,
+              new Signal<>(
+                  "empty_response_continuation",
+                  "You did not produce a user-facing response or execute any tool calls. "
+                      + "Please call the necessary tools to address the user request or provide your final response.",
+                  true));
+      return Maybe.empty();
+    }
+
+    if (!(context.agent() instanceof Agent engineAgent)) {
       return Maybe.empty();
     }
 

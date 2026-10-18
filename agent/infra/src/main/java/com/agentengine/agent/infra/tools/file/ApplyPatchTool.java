@@ -199,7 +199,7 @@ public final class ApplyPatchTool extends BaseFileTool {
                 false));
       }
 
-    } catch (IOException exception) {
+    } catch (final Exception exception) {
       LOG.error("Failed to apply patch to {}", filePath, exception);
       return ToolOutput.direct(
           Map.of("error", "Failed to apply patch: " + ExceptionUtils.getErrorMessage(exception)));

@@ -6,6 +6,5 @@ group = 'com.agentengine.util'
 
 dependencies {
     implementation project(':util:common')
-    implementation libs.jinjava
     implementation libs.groovy
 }

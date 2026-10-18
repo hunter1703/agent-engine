@@ -38,7 +38,7 @@ public final class AGUIUtils {
    */
   public static CustomEvent buildInterruptRequestedEvent(
       final String interruptId,
-      final String prompt,
+      final String question,
       final String originalToolCallId,
       final List<String> options,
       final Boolean allowCustomAnswer,
@@ -47,7 +47,7 @@ public final class AGUIUtils {
       final long timestamp) {
     final Map<String, Object> fields = new LinkedHashMap<>();
     fields.put(HitlArgs.INTERRUPT_ID, interruptId);
-    fields.put(HitlArgs.PROMPT, prompt);
+    fields.put(HitlArgs.QUESTION, question);
     fields.put(HitlArgs.ORIGINAL_TOOL_CALL_ID, originalToolCallId);
     fields.put(HitlArgs.OPTIONS, options);
     if (allowCustomAnswer != null) {

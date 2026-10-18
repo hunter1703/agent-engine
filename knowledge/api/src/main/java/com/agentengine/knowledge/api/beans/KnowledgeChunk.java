@@ -9,9 +9,9 @@ import com.agentengine.util.vectordb.VectorEntity;
  * A piece of a knowledge item stored in the vector store, with the vectors of one embedding model
  * ({@link #embedder}) for its {@link #text}, {@link #description} and {@link #media}.
  *
- * <p>The chunks made from one piece of the item, by different models or, for an image, by
- * different vectors found in it, share its {@link #chunkIndex}, {@link #chunkStart} and {@link
- * #chunkEnd}. Their ids are their own.
+ * <p>The chunks made from one piece of the item, by different models or, for an image, by different
+ * vectors found in it, share its {@link #chunkIndex}, {@link #chunkStart} and {@link #chunkEnd}.
+ * Their ids are their own.
  *
  * <p>The item's source and source type are on the parent {@link Knowledge}, reached through {@link
  * #knowledgeId}.

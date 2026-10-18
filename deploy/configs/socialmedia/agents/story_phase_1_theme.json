@@ -8,9 +8,5 @@
   "contextStrategy": {
     "type": "COMPACTION"
   },
-  "tools": [
-    {
-      "toolName": "notebook"
-    }
-  ]
+  "tools": []
 }

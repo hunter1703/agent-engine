@@ -25,13 +25,13 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Turns each chunk into the chunks that carry its embeddings, in its place. Each embedding model
- * of the text and description makes one chunk, and each vector an image embedding model finds in
- * the chunk's image, such as one per face, makes one; each names its model as the {@code
- * embedder}. A chunk nothing is embedded from is passed on as it is.
+ * Turns each chunk into the chunks that carry its embeddings, in its place. Each embedding model of
+ * the text and description makes one chunk, and each vector an image embedding model finds in the
+ * chunk's image, such as one per face, makes one; each names its model as the {@code embedder}. A
+ * chunk nothing is embedded from is passed on as it is.
  *
- * <p>The {@code n}th chunk of the stream, and every chunk made from it, has the chunk index
- * {@code n}.
+ * <p>The {@code n}th chunk of the stream, and every chunk made from it, has the chunk index {@code
+ * n}.
  */
 public final class EmbeddingStage extends IndexingStage {
 
@@ -55,29 +55,31 @@ public final class EmbeddingStage extends IndexingStage {
     return Flowable.defer(
         () -> {
           final AtomicInteger nextIndex = new AtomicInteger();
-          return chunks.concatMapIterable(chunk -> {
-            final int chunkIndex = nextIndex.getAndIncrement();
-            final List<KnowledgeChunk> embedded = new ArrayList<>();
-            if (hasText(chunk)) {
-              for (final String modelId : embeddingModelIds(Modality.Known.TEXT)) {
-                embedded.add(embedText(modelId, chunk));
-              }
-            }
-            if (FileUtils.isImageFile(chunk.getMedia())) {
-              for (final String modelId : embeddingModelIds(Modality.Known.IMAGE)) {
-                embedded.addAll(embedImage(modelId, chunk));
-              }
-            }
-            if (embedded.isEmpty()) {
-              embedded.add(chunk);
-            }
-            embedded.forEach(embeddedChunk -> {
-              embeddedChunk.setChunkIndex(chunkIndex);
-              embeddedChunk.setChunkStart(chunk.getChunkStart());
-              embeddedChunk.setChunkEnd(chunk.getChunkEnd());
-            });
-            return embedded;
-          });
+          return chunks.concatMapIterable(
+              chunk -> {
+                final int chunkIndex = nextIndex.getAndIncrement();
+                final List<KnowledgeChunk> embedded = new ArrayList<>();
+                if (hasText(chunk)) {
+                  for (final String modelId : embeddingModelIds(Modality.Known.TEXT)) {
+                    embedded.add(embedText(modelId, chunk));
+                  }
+                }
+                if (FileUtils.isImageFile(chunk.getMedia())) {
+                  for (final String modelId : embeddingModelIds(Modality.Known.IMAGE)) {
+                    embedded.addAll(embedImage(modelId, chunk));
+                  }
+                }
+                if (embedded.isEmpty()) {
+                  embedded.add(chunk);
+                }
+                embedded.forEach(
+                    embeddedChunk -> {
+                      embeddedChunk.setChunkIndex(chunkIndex);
+                      embeddedChunk.setChunkStart(chunk.getChunkStart());
+                      embeddedChunk.setChunkEnd(chunk.getChunkEnd());
+                    });
+                return embedded;
+              });
         });
   }
 
@@ -104,7 +106,11 @@ public final class EmbeddingStage extends IndexingStage {
 
   private List<KnowledgeChunk> embedImage(final String modelId, final KnowledgeChunk chunk) {
     try (RefCounted<ConfiguredEmbeddingModel> model = modelProvider.getEmbeddingModel(modelId)) {
-      final EmbeddingResponse response = model.value().model().embed(EmbeddingRequest.builder().input(readImage(chunk.getMedia())).build());
+      final EmbeddingResponse response =
+          model
+              .value()
+              .model()
+              .embed(EmbeddingRequest.builder().input(readImage(chunk.getMedia())).build());
       final List<KnowledgeChunk> embedded = new ArrayList<>();
       final String vectorField = fieldVsVectorName.get(KnowledgeChunk.FIELD_MEDIA);
       for (final Embedding embedding : response.embeddings()) {

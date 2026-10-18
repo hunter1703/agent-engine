@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.tools.connector;
 
+import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -12,21 +13,24 @@ import java.util.Map;
 import java.util.Optional;
 
 /** {@link ConnectorTool} hardwired to the brave_web_search connector. */
+@DiscoverableTool
 public final class WebSearchTool extends ConnectorTool {
 
   /**
-   * Fixed and static so it's cheap to read at service startup (see {@link
-   * WebSearchToolProvider#descriptor()}) - it must not require a call to the connectors service,
-   * which may not be up yet or may not have this connector at all. Also keeps the tool's identity
-   * as seen by the LLM ("web_research") decoupled from the specific connector backing it.
+   * Fixed and static so it's cheap to read at service startup - it must not require a call to the
+   * connectors service, which may not be up yet or may not have this connector at all. Also keeps
+   * the tool's identity as seen by the LLM ("web_research") decoupled from the specific connector
+   * backing it.
    */
-  static final ToolDescriptor DESCRIPTOR =
+  public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           "web_research",
           """
-          Queries a live web search service and returns a synthesised summary of relevant results for a given query.
-          Best for retrieving external facts, documentation, current events, or third-party library details.
-          Formulate clear, specific keyword queries rather than conversational questions or sentences.
+          Queries a live web search service and returns relevant search results and excerpts for a given query.
+          Best for retrieving external facts, documentation, current events, or finding primary source links.
+          Formulate clear, specific keyword queries rather than broad conversational sentences.
+          For multi-entity, multi-question, or deep research, issue separate targeted queries for each subject
+          rather than a single overarching query. Follow up with get_webpage to inspect detailed primary source pages.
           Do NOT automatically append years (e.g., '2024', '2025', '2026') unless the user explicitly requested
           recent or time-bound information.""",
           Map.of(),

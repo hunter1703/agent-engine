@@ -37,9 +37,9 @@ import java.util.Set;
  *
  * <p>Sends base64-encoded images to an OpenAI-compatible {@code /embeddings} endpoint, which
  * answers with zero or more embeddings per image, each tagged with the index of its image. As an
- * {@link dev.langchain4j.model.embedding.EmbeddingModel} it yields every vector found in the
- * images of a request, one embedding each, so a request has no embedding for an image the endpoint
- * found nothing to embed in, and several for an image it found several in.
+ * {@link dev.langchain4j.model.embedding.EmbeddingModel} it yields every vector found in the images
+ * of a request, one embedding each, so a request has no embedding for an image the endpoint found
+ * nothing to embed in, and several for an image it found several in.
  */
 public class ImageEmbeddingModel extends DimensionAwareEmbeddingModel {
 
@@ -83,12 +83,10 @@ public class ImageEmbeddingModel extends DimensionAwareEmbeddingModel {
   @Override
   public EmbeddingResponse doEmbed(final EmbeddingRequest request) {
     final String effectiveModel = getOrDefault(request.parameters().modelName(), modelName);
-    final List<String> images = request.inputs().stream().map(ImageEmbeddingModel::base64Of).toList();
+    final List<String> images =
+        request.inputs().stream().map(ImageEmbeddingModel::base64Of).toList();
     final List<Embedding> embeddings =
-        embed(images, effectiveModel).stream()
-            .flatMap(List::stream)
-            .map(Embedding::from)
-            .toList();
+        embed(images, effectiveModel).stream().flatMap(List::stream).map(Embedding::from).toList();
 
     return EmbeddingResponse.builder()
         .embeddings(embeddings)

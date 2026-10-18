@@ -29,11 +29,7 @@ public class OfficeKnowledgeIndexer extends AbstractKnowledgeIndexer {
       final KnowledgeRepository knowledgeRepository,
       final ModelProvider modelProvider,
       final FileService fileService) {
-    super(
-        chunkingPipelineFactory,
-        knowledgeRepository,
-        modelProvider,
-        fileService);
+    super(chunkingPipelineFactory, knowledgeRepository, modelProvider, fileService);
   }
 
   @Override

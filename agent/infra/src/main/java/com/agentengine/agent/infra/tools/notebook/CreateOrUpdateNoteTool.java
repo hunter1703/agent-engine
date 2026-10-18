@@ -4,6 +4,8 @@ import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.SessionState;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -17,7 +19,11 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.CREATE_OR_UPDATE_NOTE,
           """
-          Creates or overwrites a note in a notebook. Use it for content meant to be read from the notebook — longer text, deliverables, anything another agent might need to consult — instead of relaying that text through your replies.
+          Creates or overwrites a note in a notebook. Use it to record intermediate findings, working data, or structured research that you need to retain and consult in subsequent steps, or notes shared with other agents.
+
+          Only use this when data needs to be retained across multiple subsequent steps or long investigations; do not record notes for trivial steps or findings already available in recent context.
+
+          Do NOT use this tool for final answers or deliverables meant for the user — final deliverables and answers belong directly in your conversation replies.
 
           The note's content comes in two steps: this call opens the note, and the message that follows asks you to write its content. Write that content as your reply, in plain text. The whole reply is saved as the note, so it holds the note and nothing else. After that, you continue your task.
 
@@ -37,13 +43,16 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
           final ToolContext toolContext,
       @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_ID,
-              description = "The ID of the notebook to add this note to.")
+              description =
+                  "The ID of the notebook to add this note to. Use 'scratchpad' for your private working memory when you need to retain intermediate findings for later steps, or the exact notebook ID from your active notebook list.")
           final String notebookId,
       @ToolArg(
               name = Constants.ToolArgs.NOTE_TITLE,
               description = "Short title identifying this note within the notebook.")
           final String noteTitle) {
-    if (!notebookService.canWriteNotes(notebookId)) {
+    final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
+    final boolean isScratchpad = sessionState.isScratchpad(notebookId);
+    if (!isScratchpad && !notebookService.canWriteNotes(notebookId)) {
       return ToolOutput.direct(
           accessDeniedError(
               notebookService,

@@ -10,10 +10,10 @@ public interface Constants {
     String AGENT_TRANSFER = "transfer_to_agent";
     String CREATE_PLAN = "create_plan";
     String ADD_TASK = "add_task";
-    String UPDATE_TASK = "update_task";
-    String VIEW_PLAN = "view_plan";
+    String COMPLETE_TASK = "complete_task";
     String CREATE_NOTEBOOK = "create_notebook";
     String CREATE_OR_UPDATE_NOTE = "create_or_update_note";
+    String APPEND_TO_NOTE = "append_to_note";
     String READ_NOTE = "read_note";
     String DELETE_NOTE = "delete_note";
     String DELETE_NOTEBOOK = "delete_notebook";
@@ -24,6 +24,12 @@ public interface Constants {
       return SPAWN_AGENT.equals(toolName)
           || SEND_MESSAGE.equals(toolName)
           || AWAIT_AGENT.equals(toolName);
+    }
+
+    static boolean isPlanningTool(String toolName) {
+      return CREATE_PLAN.equals(toolName)
+          || ADD_TASK.equals(toolName)
+          || COMPLETE_TASK.equals(toolName);
     }
   }
 
@@ -51,7 +57,7 @@ public interface Constants {
     String ALLOW_CUSTOM_ANSWER = "allowCustomAnswer";
     String IS_MULTI_SELECT = "isMultiSelect";
     String INTERRUPT_ID = "interruptId";
-    String PROMPT = "prompt";
+    String QUESTION = "question";
     String ORIGINAL_TOOL_CALL_ID = "originalToolCallId";
     String OPTIONS = "options";
   }
@@ -67,7 +73,10 @@ public interface Constants {
 
   interface Toolsets {
     String NOTEBOOK = "notebook";
+    String WEB = "web";
   }
 
   String AUTHOR_USER = "user";
+  String AUTHOR_MODEL = "model";
+  String AUTHOR_ASSISTANT = "assistant";
 }

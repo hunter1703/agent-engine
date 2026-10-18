@@ -8,9 +8,9 @@ import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.models.config.DefaultModels;
 import com.agentengine.util.models.factories.ModelProvider;
+import com.google.genai.types.Modality;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import com.google.genai.types.Modality;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,8 +27,8 @@ import java.util.Set;
  * #getConfiguredStages}'s result with its own (see {@code AbstractKnowledgeIndexer#stages} and its
  * overrides in {@code PdfKnowledgeIndexer}, {@code OfficeKnowledgeIndexer}, {@code
  * ImageKnowledgeIndexer}); this class only resolves the knowledge-configured part and appends the
- * {@link EmbeddingStage} that every pipeline ends with, so
- * vectors are populated once all splitting, merging, and describing is done.
+ * {@link EmbeddingStage} that every pipeline ends with, so vectors are populated once all
+ * splitting, merging, and describing is done.
  *
  * <p>Adding a new splitting/merging technique requires only:
  *
@@ -45,17 +45,18 @@ public class ChunkingPipelineFactory {
   private final FileService fileService;
 
   @Inject
-  public ChunkingPipelineFactory(
-      final ModelProvider modelProvider,
-      final FileService fileService) {
+  public ChunkingPipelineFactory(final ModelProvider modelProvider, final FileService fileService) {
     this.modelProvider = modelProvider;
     this.fileService = fileService;
   }
 
   public ChunkingPipeline create(
-      final KnowledgeSettings settings, final RootIndexingStage rootStage, List<IndexingStage> stages) {
+      final KnowledgeSettings settings,
+      final RootIndexingStage rootStage,
+      List<IndexingStage> stages) {
     stages = CollectionUtils.nullSafeMutableList(stages);
-    stages.add(new EmbeddingStage(modelProvider, fileService, modalityVsEmbeddingModelIds(settings)));
+    stages.add(
+        new EmbeddingStage(modelProvider, fileService, modalityVsEmbeddingModelIds(settings)));
     return new ChunkingPipeline(rootStage, stages);
   }
 
@@ -69,7 +70,8 @@ public class ChunkingPipelineFactory {
     final Map<String, List<String>> modalityVsModelIds = new LinkedHashMap<>();
     modalityVsModelIds.put(
         Modality.Known.TEXT.name(),
-        embeddingModelIds(DefaultModels.TEXT_EMBEDDING_ID, configured.get(Modality.Known.TEXT.name())));
+        embeddingModelIds(
+            DefaultModels.TEXT_EMBEDDING_ID, configured.get(Modality.Known.TEXT.name())));
     modalityVsModelIds.put(
         Modality.Known.IMAGE.name(),
         embeddingModelIds(
@@ -90,9 +92,7 @@ public class ChunkingPipelineFactory {
     final KnowledgeSettings settings = knowledge.getSettings();
     List<ChunkingStrategy> strategies = settings != null ? settings.getChunkingStrategy() : null;
     strategies = CollectionUtils.isEmpty(strategies) ? List.of(new ChunkingStrategy()) : strategies;
-    return strategies.stream()
-        .flatMap(strategy -> toStages(strategy).stream())
-        .toList();
+    return strategies.stream().flatMap(strategy -> toStages(strategy).stream()).toList();
   }
 
   private List<IndexingStage> toStages(final ChunkingStrategy strategy) {

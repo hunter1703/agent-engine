@@ -66,16 +66,16 @@ public final class ResponseUtils {
     return builder.confirmed(Objects.requireNonNullElse(confirmed, true)).build();
   }
 
-  public static LlmResponse requestHumanToDecide(final String prompt) {
+  public static LlmResponse requestHumanToDecide(final String question) {
     final String message =
-        StringUtils.isBlank(prompt) ? "User input is required to continue." : prompt.trim();
+        StringUtils.isBlank(question) ? "User input is required to continue." : question.trim();
     final FunctionCall functionCall =
         FunctionCall.builder()
             .id(Functions.generateClientFunctionCallId())
             .name(Constants.ToolNames.HITL)
             .args(
                 Map.of(
-                    HumanInTheLoopTool.PROMPT,
+                    HumanInTheLoopTool.QUESTION,
                     message,
                     HumanInTheLoopTool.KIND,
                     InterruptKind.DECISION.name()))

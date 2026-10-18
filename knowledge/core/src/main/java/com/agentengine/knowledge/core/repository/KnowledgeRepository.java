@@ -14,7 +14,6 @@ import com.agentengine.util.common.repository.DocumentBackend;
 import com.agentengine.util.common.repository.DocumentRepositorySpec;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
-import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.validation.ValidationService;
 import com.agentengine.util.context.Context;
 import com.agentengine.util.tenancy.AbstractPermissionedRepository;
@@ -25,7 +24,6 @@ import com.agentengine.util.tenancy.StandardRole;
 import io.quarkus.runtime.Startup;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,7 +31,6 @@ import java.util.Optional;
 @Singleton
 @Startup
 public class KnowledgeRepository extends AbstractPermissionedRepository<Knowledge> {
-
 
   private final KnowledgeChunkRepository chunkRepository;
 
