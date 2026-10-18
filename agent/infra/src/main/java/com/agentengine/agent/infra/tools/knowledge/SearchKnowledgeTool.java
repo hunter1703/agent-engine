@@ -17,7 +17,6 @@ import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
-import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.FileUtils;
@@ -51,20 +50,12 @@ public final class SearchKnowledgeTool extends Tool {
       new ToolDescriptor(
           Constants.ToolNames.SEARCH_KNOWLEDGE,
           """
-          Searches indexed knowledge (text, images, audio) for content semantically relevant to your query.
-          When a single non-indexed item is specified, returns its full content instead.
+          Searches indexed knowledge (text, images, audio) for content semantically relevant to natural \
+          language queries or media inputs. When a single non-indexed item is specified, returns its full \
+          content instead.""");
 
-          MULTIMODAL QUERYING:
-          - Text Query: pass 'query' to search text passages, audio transcripts, and media descriptions.
-          - Media Query: pass 'media' (URL or knowledge ID) to find similar media or cross-reference content.
-          - Target Modality: pass 'target' (TEXT, IMAGE, AUDIO) to restrict returned modalities. Omit to search all.
-          - Multimodal Hybrid: pass both 'query' and 'media' for joint retrieval fused via Reciprocal Rank Fusion (RRF).
-
-          SCOPING & PAGINATION:
-          - Pass 'knowledgeIds' to restrict retrieval to specific documents or knowledge collections.
-          - Pass 'offset' and 'limit' to page through results.
-          """);
-
+  private static final int MAX_NON_INDEXED_KNOWLEDGE_CHUNK_TEXT_CHARS = 50_000;
+  private static final int MAX_BINARY_BASE64_BYTES = 32_768; // 32 KB threshold for inline base64
   private final KnowledgeService knowledgeService;
   private final FileService fileService;
   private final MediaService mediaService;
@@ -88,31 +79,55 @@ public final class SearchKnowledgeTool extends Tool {
       @ToolArg(
               name = "query",
               description =
-                  "Text query to search for (e.g., questions, keywords, phrases said in an audio clip, or descriptions of visual figures).",
+                  """
+                  Natural language text query to search for (e.g. questions, keywords, domain terms). \
+                  Can be combined with 'media' for joint multimodal hybrid search.""",
               optional = true)
           final String query,
       @ToolArg(
               name = "media",
               description =
-                  "Media to search with (URL or knowledge ID). Used to find similar media or retrieve text matching a media sample.",
+                  """
+                  Media input (URL or knowledge ID) to search with. Can be combined with 'query' \
+                  for joint multimodal hybrid search.""",
               optional = true)
           final String media,
       @ToolArg(
               name = "target",
               description =
-                  "Target modality to filter results: TEXT (prose, articles, code), IMAGE (charts, diagrams, photos), or AUDIO (speech, recordings). Omit to search across all modalities.",
+                  "Target modality to filter results (TEXT, IMAGE, AUDIO). Omit to search across all modalities.",
               optional = true)
           final Modality.Known target,
       @ToolArg(
-              name = "knowledgeIds",
+              name = Constants.ToolArgs.KNOWLEDGE_IDS,
               description =
-                  "Optional list of knowledge IDs to restrict search to. If a single non-indexed item is passed, its full content is returned.",
+                  """
+                  List of knowledge IDs to restrict search to. If a single non-indexed item is passed, \
+                  its full content is returned. Omit to search across all indexed knowledge.""",
               optional = true)
           final List<String> knowledgeIds,
-      @ToolArg(name = "limit", description = "Max results to return (default 5).", optional = true)
+      @ToolArg(
+              name = "limit",
+              description = "Maximum number of chunks to return (default 5).",
+              optional = true)
           final Integer limit,
-      @ToolArg(name = "offset", description = "Pagination offset (default 0).", optional = true)
-          final Integer offset) {
+      @ToolArg(
+              name = "offset",
+              description =
+                  """
+                  0-indexed pagination offset (default 0). When hasMore is true in a prior response, \
+                  pass the returned next_offset to fetch the subsequent page of results.""",
+              optional = true)
+          final Integer offset,
+      @ToolArg(
+              name = "response_format",
+              description =
+                  """
+                  Detail level of returned chunks: 'concise' (default, 200-character text preview) \
+                  or 'detailed' (full text content).""",
+              enums = {"concise", "detailed"},
+              optional = true)
+          final String responseFormat) {
 
     final List<String> scopedKnowledgeIds =
         CollectionUtils.nullSafeList(knowledgeIds).stream()
@@ -215,12 +230,49 @@ public final class SearchKnowledgeTool extends Tool {
         new Query().withFilter(filter).withPage(new Page(resolvedOffset, resolvedLimit));
 
     final List<KnowledgeChunk> chunks = knowledgeService.search(searchQuery).getItems();
+    final boolean isDetailed = "detailed".equalsIgnoreCase(responseFormat);
+    final List<Map<String, Object>> chunkMaps =
+        CollectionUtils.nullSafeList(chunks).stream()
+            .map(chunk -> toChunkMap(chunk, isDetailed))
+            .toList();
     final Map<String, Object> output = new LinkedHashMap<>();
-    output.put("chunks", chunks);
-    output.put("offset", resolvedOffset);
-    output.put("limit", resolvedLimit);
-    output.put("hasMore", chunks.size() >= resolvedLimit);
+    output.put("chunks", chunkMaps);
+    output.put("results_count", chunkMaps.size());
+    final boolean hasMore = chunks.size() >= resolvedLimit;
+    output.put("hasMore", hasMore);
+    if (hasMore) {
+      output.put("next_offset", resolvedOffset + chunks.size());
+    }
     return ToolOutput.direct(output);
+  }
+
+  private static Map<String, Object> toChunkMap(
+      final KnowledgeChunk chunk, final boolean isDetailed) {
+    final Map<String, Object> map = new LinkedHashMap<>();
+    if (StringUtils.isNotBlank(chunk.getKnowledgeId())) {
+      map.put(KnowledgeChunk.FIELD_KNOWLEDGE_ID, chunk.getKnowledgeId());
+    }
+    if (StringUtils.isNotBlank(chunk.getText())) {
+      final String text = chunk.getText();
+      if (!isDetailed && text.length() > 200) {
+        map.put(KnowledgeChunk.FIELD_TEXT, text.substring(0, 200) + "...");
+      } else {
+        map.put(KnowledgeChunk.FIELD_TEXT, text);
+      }
+    }
+    if (StringUtils.isNotBlank(chunk.getDescription())) {
+      final String description = chunk.getDescription();
+      if (!isDetailed && description.length() > 200) {
+        map.put(KnowledgeChunk.FIELD_DESCRIPTION, description.substring(0, 200) + "...");
+      } else {
+        map.put(KnowledgeChunk.FIELD_DESCRIPTION, description);
+      }
+    }
+    if (chunk.getMedia() != null) {
+      map.put(KnowledgeChunk.FIELD_MEDIA, chunk.getMedia());
+    }
+    map.put(KnowledgeChunk.FIELD_CHUNK_INDEX, chunk.getChunkIndex());
+    return map;
   }
 
   /**
@@ -302,22 +354,64 @@ public final class SearchKnowledgeTool extends Tool {
               "Knowledge has no associated file details"));
     }
     final boolean isText = FileUtils.isTextFile(fileDetails);
+    final String mimeType = fileDetails.mimeType() == null ? "" : fileDetails.mimeType();
     try (InputStream stream = fileService.getContent(fileDetails)) {
+      if (!isText) {
+        final byte[] bytes = stream.readNBytes(MAX_BINARY_BASE64_BYTES + 1);
+        if (bytes.length > MAX_BINARY_BASE64_BYTES) {
+          final Long size = fileDetails.size();
+          return ToolOutput.direct(
+              Map.of(
+                  Constants.ToolStatus.STATUS,
+                  Constants.ToolStatus.SUCCESS,
+                  "is_binary",
+                  true,
+                  "mime_type",
+                  mimeType,
+                  "size_bytes",
+                      size,
+                  "message",
+                  "Binary asset ("
+                      + mimeType
+                      + ") exceeds inline threshold. Use semantic search with the 'media' parameter to query it."));
+        }
+        return ToolOutput.direct(
+            Map.of(
+                Constants.ToolStatus.STATUS,
+                Constants.ToolStatus.SUCCESS,
+                "content",
+                Base64.getEncoder().encodeToString(bytes),
+                "encoding",
+                "base64",
+                "mime_type",
+                mimeType));
+      }
+
       final byte[] bytes = stream.readAllBytes();
-      final String value =
-          isText
-              ? new String(bytes, StandardCharsets.UTF_8)
-              : Base64.getEncoder().encodeToString(bytes);
-      return ToolOutput.direct(
-          Map.of(
-              Constants.ToolStatus.STATUS,
-              Constants.ToolStatus.SUCCESS,
-              "content",
-              value,
-              "encoding",
-              isText ? "utf-8" : "base64",
-              "mime_type",
-              fileDetails.mimeType() == null ? "" : fileDetails.mimeType()));
+
+      final String fullText = new String(bytes, StandardCharsets.UTF_8);
+      final int totalChars = fullText.length();
+      String text = fullText;
+      boolean truncated = false;
+      if (totalChars > MAX_NON_INDEXED_KNOWLEDGE_CHUNK_TEXT_CHARS) {
+        text =
+            fullText.substring(0, MAX_NON_INDEXED_KNOWLEDGE_CHUNK_TEXT_CHARS)
+                + "\n...<truncated at "
+                + MAX_NON_INDEXED_KNOWLEDGE_CHUNK_TEXT_CHARS
+                + " chars>...";
+        truncated = true;
+      }
+      final Map<String, Object> response = new LinkedHashMap<>();
+      response.put(Constants.ToolStatus.STATUS, Constants.ToolStatus.SUCCESS);
+      response.put("content", text);
+      response.put("chars_read", text.length());
+      response.put("total_chars", totalChars);
+      response.put("encoding", "utf-8");
+      response.put("mime_type", mimeType);
+      if (truncated) {
+        response.put("truncated", true);
+      }
+      return ToolOutput.direct(response);
     } catch (final IllegalStateException exception) {
       return ToolOutput.direct(
           Map.of(

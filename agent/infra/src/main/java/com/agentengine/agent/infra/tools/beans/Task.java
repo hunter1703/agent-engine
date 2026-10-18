@@ -2,37 +2,24 @@ package com.agentengine.agent.infra.tools.beans;
 
 import com.agentengine.util.agents.tools.ToolArg;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import java.util.UUID;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Task {
-  @ToolArg(
-      name = "task_id",
-      description =
-          "Auto-generated unique identifier for this task. Set by the system; do not provide when creating tasks.",
-      optional = true)
-  private String taskId = UUID.randomUUID().toString();
 
-  @ToolArg(
-      name = "parent_id",
-      description =
-          "ID (task_id) of an existing task that this task is a child of. Establishes both hierarchy and "
-              + "execution ordering: the parent must be IN_PROGRESS before a child can be started, and "
-              + "the parent cannot be completed until all children are in a terminal state. Tasks are "
-              + "executed depth-first (parent before children; children before siblings). "
-              + "Omit for top-level tasks.",
-      optional = true)
-  private String parentId;
-
-  @ToolArg(description = "Short label identifying this task. Should be unique within the plan.")
+  @ToolArg(description = "Short label identifying this task. Must be unique within the plan.")
   private String name;
+
+  @ToolArg(
+      description = "Name of the parent task, if this is a subtask. Omit for top-level tasks.",
+      optional = true)
+  private String parent;
 
   @ToolArg(
       description = "Concise statement of what this task should produce or achieve when completed.")
   private String goal;
 
   @ToolArg(
-      description = "Current lifecycle status of the task: TODO, IN_PROGRESS, DONE, or ABANDONED.",
+      description = "Current lifecycle status of the task.",
       optional = true)
   private TaskStatus status = TaskStatus.TODO;
 
@@ -53,28 +40,20 @@ public class Task {
     this.goal = goal;
   }
 
-  public String getTaskId() {
-    return taskId;
-  }
-
-  public void setTaskId(String taskId) {
-    this.taskId = taskId;
-  }
-
-  public String getParentId() {
-    return parentId;
-  }
-
-  public void setParentId(String parentId) {
-    this.parentId = parentId;
-  }
-
   public String getName() {
     return name;
   }
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public String getParent() {
+    return parent;
+  }
+
+  public void setParent(String parent) {
+    this.parent = parent;
   }
 
   public String getGoal() {

@@ -12,16 +12,14 @@ import java.util.Map;
 
 public final class ReadNoteTool extends AbstractNotebookTool {
   public static final int DEFAULT_CHUNK_CHARS = 10_000;
-  public static final int MAX_CHUNK_CHARS = 20_000;
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.READ_NOTE,
           """
-          Reads the text content of a note in a notebook you created or were granted. For small notes
-          (under 10,000 characters), the full content is returned immediately. For longer notes, content
-          is returned section-by-section. When has_more is true, supply the returned next_offset to continue
-          reading subsequent sections.
+          Reads the text content of a note in a notebook you created or were granted. For small notes \
+          (under 10,000 characters), the full content is returned immediately. For longer notes, content \
+          is returned section-by-section. \
           Returns: { status: "success", content, chars_read, total_note_chars, has_more?, next_offset?, message? } or { error }.""",
           Map.of());
 
@@ -37,7 +35,7 @@ public final class ReadNoteTool extends AbstractNotebookTool {
           final ToolContext toolContext,
       @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_ID,
-              description = "The name of the notebook to read from.")
+              description = "The ID of the notebook to read from.")
           final String notebookId,
       @ToolArg(name = Constants.ToolArgs.NOTE_TITLE, description = "The title of the note to read.")
           final String noteTitle,
@@ -48,14 +46,7 @@ public final class ReadNoteTool extends AbstractNotebookTool {
                   0-indexed character offset to begin reading from. Defaults to 0. When reading a long note
                   section by section, pass the next_offset returned by the previous read.""",
               optional = true)
-          final Integer offset,
-      @ToolArg(
-              name = "limit",
-              description =
-                  """
-                  Maximum number of characters to return per section. Defaults to 10,000 characters (capped at 20,000).""",
-              optional = true)
-          final Integer limit) {
+          final Integer offset) {
     final Note note = notebookService.getNote(notebookId, noteTitle);
     if (note == null) {
       return ToolOutput.direct(
@@ -69,12 +60,10 @@ public final class ReadNoteTool extends AbstractNotebookTool {
     final int totalChars = content.length();
 
     final int startOffset = offset != null ? Math.max(0, offset) : 0;
-    final int maxLimit =
-        limit != null ? Math.clamp(limit, 1, MAX_CHUNK_CHARS) : DEFAULT_CHUNK_CHARS;
 
-    if (offset != null || limit != null || totalChars > DEFAULT_CHUNK_CHARS) {
+    if (offset != null || totalChars > DEFAULT_CHUNK_CHARS) {
       final int fromIndex = Math.min(startOffset, totalChars);
-      final int toIndex = Math.min(fromIndex + maxLimit, totalChars);
+      final int toIndex = Math.min(fromIndex + DEFAULT_CHUNK_CHARS, totalChars);
       final String section = content.substring(fromIndex, toIndex);
       final boolean hasMore = toIndex < totalChars;
 

@@ -17,12 +17,8 @@ public final class PlanningToolsetProvider extends AbstractToolsetProvider {
         TOOLSET_DESCRIPTOR,
         List.of(
             new ToolDefinition(CreatePlanTool.DESCRIPTOR, CreatePlanTool::new),
-            new ToolDefinition(UpdatePlanTool.DESCRIPTOR, UpdatePlanTool::new),
             new ToolDefinition(AddTaskTool.DESCRIPTOR, AddTaskTool::new),
-            new ToolDefinition(UpdateTaskInfoTool.DESCRIPTOR, UpdateTaskInfoTool::new),
-            new ToolDefinition(StartTaskTool.DESCRIPTOR, StartTaskTool::new),
-            new ToolDefinition(CompleteTaskTool.DESCRIPTOR, CompleteTaskTool::new),
-            new ToolDefinition(FinishPlanTool.DESCRIPTOR, FinishPlanTool::new),
+            new ToolDefinition(UpdateTaskTool.DESCRIPTOR, UpdateTaskTool::new),
             new ToolDefinition(ViewPlanTool.DESCRIPTOR, ViewPlanTool::new)));
   }
 }

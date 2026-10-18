@@ -98,6 +98,10 @@ public class Plan {
     this.result = result;
   }
 
+  public boolean isFinished() {
+    return status != null && status.isTerminal();
+  }
+
   public String validate() {
     return PlanningValidator.validatePlan(this);
   }
@@ -108,9 +112,5 @@ public class Plan {
 
   public String canUpdateTask(final Task task, final TaskStatus newStatus, final String result) {
     return PlanningValidator.canUpdateTask(this, task, newStatus, result);
-  }
-
-  public String canFinish(final PlanStatus newStatus, final String result) {
-    return PlanningValidator.canFinishPlan(this, newStatus, result);
   }
 }

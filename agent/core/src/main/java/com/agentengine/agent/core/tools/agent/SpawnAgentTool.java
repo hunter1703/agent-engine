@@ -41,13 +41,10 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       new ToolDescriptor(
           Constants.ToolNames.SPAWN_AGENT,
           """
-                  Creates a new child agent session and starts it with the given message. The child has no prior context — it sees only the message you send and the material you explicitly grant. To continue an existing child session, use SendMessageTool instead.
-
-                  Nothing you have access to is automatically available to the child. Pass `notebook_ids` for every notebook the child needs to read or write — including the shared workspace. A child spawned without the notebooks it needs may proceed silently with incomplete context rather than fail.
-
-                  By default the tool waits for the child to finish and returns its result. Set `await_completion` to false to return immediately with just the child session id; use AwaitAgentTool to collect its result later.
-
-                  Returns: { child_session_id, result } if awaited, { child_session_id, status: "started" } if not, or { error } on failure.""",
+          Creates a new child agent session and starts it with the given message. The child runs with its \
+          own isolated context and has access only to resources (notebooks, knowledge) explicitly granted to it. \
+          To continue an existing child session, use send_message instead.
+          Returns: { child_session_id, result } if awaited, { child_session_id, status: "started" } if not, or { error } on failure.""",
           Map.of());
 
   private static final Schema KNOWLEDGE_IDS_SCHEMA =
@@ -63,7 +60,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
   private static final Schema NOTEBOOK_IDS_SCHEMA =
       ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
           .description(
-              "Names of notebooks to grant the spawned agent. Notebooks you have access to are "
+              "Notebook IDs to grant the spawned agent. Notebooks you have access to are "
                   + "not automatically visible to the child — pass every notebook the child's "
                   + "work depends on, including the shared workspace if the team is using one. "
                   + "A child spawned without the notebooks it needs may proceed "

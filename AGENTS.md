@@ -403,8 +403,10 @@ that call site chose it.
 7. **4-Tier Entity & Identifier Hierarchy**: When designing tools and entity identifiers, evaluate
    in this order:
    - **Tier 1 (Avoid IDs)**: If the context or operation can be identified using existing natural
-     arguments (e.g. names, file paths, titles) without introducing new complexity, omit IDs
-     entirely.
+     arguments (e.g. names, file paths, titles) without introducing new complexity or ambiguity, omit IDs
+     entirely (e.g. task name, note title within a notebook). The parameter schema name and Java variable
+     must reflect the natural entity, eliminating contradictory schemas where an argument named `_id` is
+     described as a name.
    - **Tier 2 (Derive sensible human-readable IDs)**: If IDs cannot be avoided, avoid opaque IDs
      (e.g. random UUIDs, hex ObjectIds) and derive human-readable IDs from the data (e.g. clean slugs).
    - **Tier 3 (Generate on backend, don't expect from model)**: If sensible IDs cannot be derived and
@@ -419,6 +421,17 @@ that call site chose it.
    (e.g. `TODO, IN_PROGRESS, DONE, or ABANDONED`) or requirement qualifiers (`Required.`, `Optional.`)
    inside description strings. Declare the Java enum or `enums = {...}` on `@ToolArg` and let the
    schema framework inject these constraints deterministically.
+9. **Motivate tool parameters by agent workflow intent and cognitive focus, not backend logistics**:
+   LLMs optimize for task completion and accuracy, not API billing or transport costs. Describing a
+   parameter in terms of backend logistics (e.g. "without consuming tokens", "saves bandwidth", "to reduce
+   payload size") fails to provide a meaningful operational incentive to the model and often leads to the
+   option being ignored or misapplied. Instead, articulate parameter motivations from the agent's cognitive
+   and workflow perspective:
+   - Contrast the cognitive mode or workflow phase: e.g. getting the lay of the land across broad
+     searches or candidate documents without cluttering working memory with long passages (`concise`)
+     versus firing precise queries to read full content, code, exact quotes, or media (`detailed`).
+   - Ground choices in signal-to-noise ratio, distraction avoidance, and phased problem-solving rather
+     than system accounting metrics.
 
 ## Agent Prompt Authoring Guidelines
 

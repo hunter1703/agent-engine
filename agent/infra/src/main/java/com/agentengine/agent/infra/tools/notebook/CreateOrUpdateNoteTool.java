@@ -37,10 +37,7 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
           final ToolContext toolContext,
       @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_ID,
-              description =
-                  "The notebook to add this note to. Must be the exact notebook_id string you "
-                      + "were granted or that create_notebook returned — never a shortened or "
-                      + "human-friendly name.")
+              description = "The ID of the notebook to add this note to.")
           final String notebookId,
       @ToolArg(
               name = Constants.ToolArgs.NOTE_TITLE,

@@ -17,8 +17,8 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.CREATE_NOTEBOOK,
           """
-                      Creates a new, empty notebook — a shared space where titled notes can be read across sessions. You have full access to a notebook you create; other sessions reach it only once you grant it to them when you communicate with them. Use the returned notebook_id with create_note to add notes.
-                      Returns: { status: "success", notebook_id }, or { error } if the name is already in use.""",
+          Creates a new empty notebook for storing titled notes. \
+          Returns: { status: "success", notebook_id }, or { error } if the name is already in use.""",
           Map.of());
 
   private final NotebookService notebookService;

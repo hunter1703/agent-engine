@@ -12,8 +12,11 @@ import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.tools.ToolContext;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,17 +25,10 @@ public final class CreatePlanTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.CREATE_PLAN,
-          "Initialises a new structured plan with a title, goal, and initial list of tasks. Use at the start of "
-              + "any multi-step task where tracking completion state across distinct phases has value — if the "
-              + "work can be done in a single step without meaningful state to track, a plan is not needed. "
-              + "A plan is a persistent work-tracking structure that records what needs to be done and tracks "
-              + "completion. Only one active (non-finished) plan may exist at a time — calling this while a "
-              + "non-terminal plan is active will fail. Tasks are provided as a flat list; parent_id "
-              + "establishes both hierarchy and execution ordering (parent must be started before children; "
-              + "children must be terminal before parent can complete). "
-              + "Returns: { status: \"success\", createdPlan } on success, where createdPlan contains the full plan "
-              + "including the assigned task_id for every task — these IDs are required for all subsequent "
-              + "task operations; or { error } on failure.",
+          """
+          Initialises a new plan with a title, goal, and initial list of tasks. Only one active \
+          (non-finished) plan may exist at a time. \
+          Returns: { status: "success", createdPlan } on success, or { error } on failure.""",
           Map.of());
 
   public CreatePlanTool() {
@@ -47,17 +43,11 @@ public final class CreatePlanTool extends Tool {
       @ToolArg(
               name = "goal",
               description =
-                  "Clear description of the objective this plan is intended to achieve. Guides task "
-                      + "prioritisation and completion criteria.")
+                  """
+                  Clear description of the objective this plan is intended to achieve. Guides task \
+                  prioritisation and completion criteria.""")
           String goal,
-      @ToolArg(
-              name = "tasks",
-              description =
-                  "Initial list of task objects. Each task requires 'name' (short label) and 'goal' "
-                      + "(expected result). Optionally include 'description' for detail. To establish "
-                      + "parent-child relationships within this list, explicitly set 'task_id' on the parent "
-                      + "task and reference that same value in the child's 'parent_id' — IDs are otherwise "
-                      + "assigned automatically and not predictable. May be empty.")
+      @ToolArg(name = "tasks", description = "Initial list of tasks comprising the plan.")
           List<Task> tasks) {
     final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
     final Plan existingPlan = sessionState.plan();
@@ -70,11 +60,29 @@ public final class CreatePlanTool extends Tool {
                 "Active plan '"
                     + existingPlan.getTitle()
                     + "' already exists — see the Active Plan reminder above for its current "
-                    + "state. Finish it with "
-                    + Constants.ToolNames.FINISH_PLAN
-                    + " before creating a new one."));
+                    + "state. Finish the active plan before creating a new one."));
       }
     }
+
+    if (tasks != null) {
+      final Map<String, String> nameLookup = new HashMap<>();
+      for (final Task task : tasks) {
+        if (StringUtils.isNotBlank(task.getName())) {
+          nameLookup.put(task.getName().trim().toLowerCase(), task.getName());
+        }
+      }
+
+      for (final Task task : tasks) {
+        final String parent = task.getParent();
+        if (StringUtils.isNotBlank(parent)) {
+          final String resolved = nameLookup.get(parent.trim().toLowerCase());
+          if (resolved != null) {
+            task.setParent(resolved);
+          }
+        }
+      }
+    }
+
     final Plan currentPlan = new Plan(title, goal, tasks);
 
     final String validationError = currentPlan.validate();

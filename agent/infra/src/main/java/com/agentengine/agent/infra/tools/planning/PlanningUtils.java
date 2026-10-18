@@ -75,11 +75,10 @@ public final class PlanningUtils {
     if (StringUtils.isNotBlank(plan.getResult())) {
       builder.append("\nResult: ").append(plan.getResult());
     }
-    builder.append("\nTask IDs: Use the IDs below when updating tasks.");
     builder.append("\n\n");
 
-    final Map<String, Task> tasksById = getTasksById(plan);
-    final Map<String, List<Task>> taskVsAncestors = buildTaskAncestorMap(plan, tasksById);
+    final Map<String, Task> nameVsTask = getTasksByName(plan);
+    final Map<String, List<Task>> taskVsAncestors = buildTaskAncestorMap(plan, nameVsTask);
     final Map<String, List<Task>> taskVsChildren = groupTasksByParent(plan);
     final List<Task> orderedTasks = collectOrderedTasks(taskVsChildren);
     appendProgressSummary(builder, orderedTasks);
@@ -92,7 +91,7 @@ public final class PlanningUtils {
         true,
         false,
         title,
-        tasksById,
+        nameVsTask,
         taskVsAncestors);
     appendPlanSection(
         builder,
@@ -102,7 +101,7 @@ public final class PlanningUtils {
         true,
         false,
         title,
-        tasksById,
+        nameVsTask,
         taskVsAncestors);
     appendPlanSection(
         builder,
@@ -112,11 +111,11 @@ public final class PlanningUtils {
         false,
         true,
         title,
-        tasksById,
+        nameVsTask,
         taskVsAncestors);
 
     builder.append("\nPlan Tree (compact):\n");
-    final Set<String> relevantIds = collectRelevantTaskIds(plan, tasksById, taskVsAncestors);
+    final Set<String> relevantIds = collectRelevantTaskIds(plan, nameVsTask, taskVsAncestors);
     appendTaskTree(builder, taskVsChildren, null, 0, relevantIds);
 
     return builder.toString().trim();
@@ -180,10 +179,7 @@ public final class PlanningUtils {
       final Task nextTask = findNextTodoTask(plan);
       if (nextTask != null) {
         sb.append("\nNo active task — pick up the next one:\n");
-        sb.append("Task [")
-            .append(getTaskIdValue(nextTask))
-            .append("] — ")
-            .append(nextTask.getName());
+        sb.append("Task '").append(nextTask.getName()).append("'");
         if (StringUtils.isNotBlank(nextTask.getGoal())) {
           sb.append("\nGoal: ").append(nextTask.getGoal());
         }
@@ -241,7 +237,7 @@ public final class PlanningUtils {
       final boolean includeGoal,
       final boolean includeResult,
       final String rootTitle,
-      final Map<String, Task> tasksById,
+      final Map<String, Task> nameVsTask,
       final Map<String, List<Task>> ancestorMap) {
     if (CollectionUtils.isEmpty(items)) {
       return;
@@ -253,7 +249,7 @@ public final class PlanningUtils {
           .append("- ")
           .append(
               formatTaskLine(
-                  items.get(i), includeGoal, includeResult, rootTitle, tasksById, ancestorMap))
+                  items.get(i), includeGoal, includeResult, rootTitle, nameVsTask, ancestorMap))
           .append("\n");
     }
     if (items.size() > maxItems) {
@@ -264,21 +260,21 @@ public final class PlanningUtils {
   private static void appendTaskTree(
       final StringBuilder sb,
       final Map<String, List<Task>> taskTree,
-      final String parentId,
+      final String parent,
       final int depth,
-      final Set<String> relevantIds) {
-    final List<Task> level = CollectionUtils.nullSafeList(taskTree.get(parentId));
+      final Set<String> relevantNames) {
+    final List<Task> level = CollectionUtils.nullSafeList(taskTree.get(parent));
     for (Task task : level) {
-      final String taskId = getTaskIdValue(task);
-      sb.append("  ".repeat(Math.max(0, depth))).append("- ").append(taskLabel(task));
+      final String taskName = task.getName();
+      sb.repeat("  ", Math.max(0, depth)).append("- ").append(taskLabel(task));
 
-      final List<Task> children = taskTree.get(taskId);
+      final List<Task> children = taskTree.get(taskName);
       if (CollectionUtils.isNotEmpty(children)) {
-        if (depth == 0 || relevantIds.contains(taskId)) {
+        if (depth == 0 || relevantNames.contains(taskName)) {
           sb.append("\n");
-          appendTaskTree(sb, taskTree, taskId, depth + 1, relevantIds);
+          appendTaskTree(sb, taskTree, taskName, depth + 1, relevantNames);
         } else {
-          sb.append(" (+ ").append(countAllDescendants(taskId, taskTree)).append(" subtasks)\n");
+          sb.append(" (+ ").append(countAllDescendants(taskName, taskTree)).append(" subtasks)\n");
         }
       } else {
         sb.append("\n");
@@ -287,13 +283,13 @@ public final class PlanningUtils {
   }
 
   private static int countAllDescendants(
-      final String parentId, final Map<String, List<Task>> taskTree) {
+      final String parent, final Map<String, List<Task>> taskTree) {
     int count = 0;
-    final List<Task> children = taskTree.get(parentId);
+    final List<Task> children = taskTree.get(parent);
     if (children != null) {
       count += children.size();
       for (Task child : children) {
-        count += countAllDescendants(getTaskIdValue(child), taskTree);
+        count += countAllDescendants(child.getName(), taskTree);
       }
     }
     return count;
@@ -301,7 +297,7 @@ public final class PlanningUtils {
 
   private static Set<String> collectRelevantTaskIds(
       final Plan plan,
-      final Map<String, Task> tasksById,
+      final Map<String, Task> nameVsTask,
       final Map<String, List<Task>> ancestorMap) {
     final Set<String> relevant = new HashSet<>();
     final List<Task> inProgress =
@@ -310,11 +306,11 @@ public final class PlanningUtils {
             .toList();
 
     for (Task task : inProgress) {
-      final String id = getTaskIdValue(task);
-      if (id != null) {
-        relevant.add(id);
-        for (Task ancestor : getAncestors(task, tasksById, ancestorMap)) {
-          final String aid = getTaskIdValue(ancestor);
+      final String name = task.getName();
+      if (name != null) {
+        relevant.add(name);
+        for (Task ancestor : getAncestors(task, nameVsTask, ancestorMap)) {
+          final String aid = ancestor.getName();
           if (aid != null) {
             relevant.add(aid);
           }
@@ -326,16 +322,13 @@ public final class PlanningUtils {
 
   private static String taskLabel(final Task task) {
     final String name = getTaskName(task);
-    final String id = getTaskId(task);
-    final String parentId = getTaskParent(task);
+    final String parent = getTaskParent(task);
     return "["
         + getTaskStatusValue(task)
         + "] "
         + name
-        + " (id: "
-        + id
-        + ", parent: "
-        + parentId
+        + " (parent: "
+        + parent
         + ")";
   }
 
@@ -353,10 +346,10 @@ public final class PlanningUtils {
   }
 
   private static void appendOrderedTasks(
-      final Map<String, List<Task>> taskTree, final String parentId, final List<Task> ordered) {
-    for (Task task : CollectionUtils.nullSafeList(taskTree.get(parentId))) {
+      final Map<String, List<Task>> taskTree, final String parent, final List<Task> ordered) {
+    for (Task task : CollectionUtils.nullSafeList(taskTree.get(parent))) {
       ordered.add(task);
-      appendOrderedTasks(taskTree, task.getTaskId(), ordered);
+      appendOrderedTasks(taskTree, task.getName(), ordered);
     }
   }
 
@@ -365,20 +358,18 @@ public final class PlanningUtils {
       final boolean includeGoal,
       final boolean includeResult,
       final String rootTitle,
-      final Map<String, Task> tasksById,
+      final Map<String, Task> nameVsTask,
       final Map<String, List<Task>> ancestorMap) {
     final List<String> path = new ArrayList<>();
     path.add(rootTitle);
-    for (Task ancestor : getAncestors(task, tasksById, ancestorMap)) {
+    for (Task ancestor : getAncestors(task, nameVsTask, ancestorMap)) {
       path.add(getTaskName(ancestor));
     }
     path.add(getTaskName(task));
     final StringBuilder line = new StringBuilder();
     line.append(String.join(" > ", path));
-    if (StringUtils.isNotBlank(task.getTaskId())) {
-      line.append(" (id: ").append(task.getTaskId());
-      line.append(", parent: ").append(getTaskParent(task));
-      line.append(")");
+    if (StringUtils.isNotBlank(task.getParent())) {
+      line.append(" (parent: ").append(task.getParent()).append(")");
     }
     line.append(" [").append(getTaskStatusValue(task)).append("]");
     if (includeGoal && StringUtils.isNotBlank(task.getGoal())) {
@@ -390,12 +381,13 @@ public final class PlanningUtils {
     return line.toString();
   }
 
-  public static Task findTaskById(final Plan plan, final String taskId) {
-    if (plan == null || plan.getTasks() == null || StringUtils.isBlank(taskId)) {
+  public static Task findTaskByName(final Plan plan, final String name) {
+    if (plan == null || plan.getTasks() == null || StringUtils.isBlank(name)) {
       return null;
     }
-    for (Task task : plan.getTasks()) {
-      if (taskId.equals(task.getTaskId())) {
+    final String trimmed = name.trim();
+    for (final Task task : plan.getTasks()) {
+      if (trimmed.equalsIgnoreCase(task.getName())) {
         return task;
       }
     }
@@ -440,15 +432,15 @@ public final class PlanningUtils {
     if (nextTodo == null) {
       return openTasks;
     }
-    final String nextId = getTaskIdValue(nextTodo);
-    if (StringUtils.isBlank(nextId)) {
+    final String nextName = nextTodo.getName();
+    if (StringUtils.isBlank(nextName)) {
       return openTasks;
     }
-    final Map<String, Task> tasksById = getTasksById(plan);
-    final Map<String, List<Task>> ancestorMap = buildTaskAncestorMap(plan, tasksById);
+    final Map<String, Task> nameVsTask = getTasksByName(plan);
+    final Map<String, List<Task>> ancestorMap = buildTaskAncestorMap(plan, nameVsTask);
     final List<Task> branchTasks =
         openTasks.stream()
-            .filter(task -> isInSubtree(task, nextId, tasksById, ancestorMap))
+            .filter(task -> isInSubtree(task, nextName, nameVsTask, ancestorMap))
             .toList();
     return CollectionUtils.isEmpty(branchTasks) ? openTasks : branchTasks;
   }
@@ -456,11 +448,12 @@ public final class PlanningUtils {
   private static String formatTaskFocus(final Task task) {
     final String status = getTaskStatusValue(task);
     final String name = getTaskName(task);
-    final String id = getTaskId(task);
     final String parent = getTaskParent(task);
     final StringBuilder line = new StringBuilder();
     line.append("[").append(status).append("] ").append(name);
-    line.append(" (id: ").append(id).append(", parent: ").append(parent).append(")");
+    if (!"none".equals(parent)) {
+      line.append(" (parent: ").append(parent).append(")");
+    }
     if (StringUtils.isNotBlank(task.getGoal())) {
       line.append(" | goal: ").append(task.getGoal());
     }
@@ -470,16 +463,17 @@ public final class PlanningUtils {
     return line.toString();
   }
 
-  private static String getTaskParent(final Task task) {
-    return StringUtils.isBlank(task.getParentId()) ? "none" : task.getParentId();
+  public static String taskName(final Task task) {
+    return task == null ? null : task.getName();
   }
 
-  private static String getTaskId(final Task task) {
-    return StringUtils.isBlank(task.getTaskId()) ? "no-id" : task.getTaskId();
+  private static String getTaskParent(final Task task) {
+    return task == null || StringUtils.isBlank(task.getParent()) ? "none" : task.getParent();
   }
 
   private static String getTaskName(final Task task) {
-    return StringUtils.isBlank(task.getName()) ? "Untitled" : task.getName();
+    final String name = taskName(task);
+    return StringUtils.isBlank(name) ? "Untitled" : name;
   }
 
   public static String getTaskStatusValue(final Task task) {
@@ -506,27 +500,26 @@ public final class PlanningUtils {
     }
     final Map<String, List<Task>> grouped = new LinkedHashMap<>();
     for (Task task : CollectionUtils.nullSafeList(plan.getTasks())) {
-      grouped.computeIfAbsent(task.getParentId(), ignored -> new ArrayList<>()).add(task);
+      grouped.computeIfAbsent(task.getParent(), ignored -> new ArrayList<>()).add(task);
     }
     return grouped;
   }
 
-  public static Map<String, Task> getTasksById(final Plan plan) {
+  public static Map<String, Task> getTasksByName(final Plan plan) {
     if (plan == null) {
       return Map.of();
     }
-    final Map<String, Task> tasksById = new LinkedHashMap<>();
+    final Map<String, Task> tasksByName = new LinkedHashMap<>();
     for (Task task : CollectionUtils.nullSafeList(plan.getTasks())) {
-      final String taskId = getTaskIdValue(task);
-      if (StringUtils.isNotBlank(taskId)) {
-        tasksById.putIfAbsent(taskId, task);
+      if (StringUtils.isNotBlank(task.getName())) {
+        tasksByName.putIfAbsent(task.getName(), task);
       }
     }
-    return tasksById;
+    return tasksByName;
   }
 
   public static Map<String, List<Task>> buildTaskAncestorMap(
-      final Plan plan, final Map<String, Task> tasksById) {
+      final Plan plan, final Map<String, Task> nameVsTask) {
     if (plan == null) {
       return Map.of();
     }
@@ -535,8 +528,8 @@ public final class PlanningUtils {
     final Set<String> visited = new HashSet<>();
     final List<Task> roots = new ArrayList<>();
     for (Task task : CollectionUtils.nullSafeList(plan.getTasks())) {
-      final String parentId = task.getParentId();
-      if (StringUtils.isBlank(parentId) || !tasksById.containsKey(parentId)) {
+      final String parent = task.getParent();
+      if (StringUtils.isBlank(parent) || !nameVsTask.containsKey(parent)) {
         roots.add(task);
       }
     }
@@ -545,37 +538,37 @@ public final class PlanningUtils {
     }
     for (Task task : CollectionUtils.nullSafeList(plan.getTasks())) {
       appendAncestorMap(
-          task, resolveAncestors(task.getParentId(), tasksById), taskTree, ancestorMap, visited);
+          task, resolveAncestors(task.getParent(), nameVsTask), taskTree, ancestorMap, visited);
     }
     return ancestorMap;
   }
 
   public static List<Task> getAncestors(
       final Task task,
-      final Map<String, Task> tasksById,
+      final Map<String, Task> nameVsTask,
       final Map<String, List<Task>> ancestorMap) {
-    final String taskId = getTaskIdValue(task);
-    if (StringUtils.isNotBlank(taskId)) {
-      final List<Task> cached = ancestorMap.get(taskId);
+    final String name = taskName(task);
+    if (StringUtils.isNotBlank(name)) {
+      final List<Task> cached = ancestorMap.get(name);
       if (cached != null) {
         return cached;
       }
     }
-    return resolveAncestors(task == null ? null : task.getParentId(), tasksById);
+    return resolveAncestors(task == null ? null : task.getParent(), nameVsTask);
   }
 
   private static List<Task> resolveAncestors(
-      final String parentId, final Map<String, Task> tasksById) {
+      final String parent, final Map<String, Task> nameVsTask) {
     final List<Task> ancestors = new ArrayList<>();
     final Set<String> visited = new HashSet<>();
-    String currentId = parentId;
-    while (StringUtils.isNotBlank(currentId) && visited.add(currentId)) {
-      final Task parent = tasksById.get(currentId);
-      if (parent == null) {
+    String current = parent;
+    while (StringUtils.isNotBlank(current) && visited.add(current)) {
+      final Task parentTask = nameVsTask.get(current);
+      if (parentTask == null) {
         break;
       }
-      ancestors.addFirst(parent);
-      currentId = parent.getParentId();
+      ancestors.addFirst(parentTask);
+      current = parentTask.getParent();
     }
     return ancestors;
   }
@@ -589,34 +582,34 @@ public final class PlanningUtils {
     if (task == null) {
       return;
     }
-    final String taskId = getTaskIdValue(task);
-    if (StringUtils.isNotBlank(taskId)) {
-      if (!visited.add(taskId)) {
+    final String name = task.getName();
+    if (StringUtils.isNotBlank(name)) {
+      if (!visited.add(name)) {
         return;
       }
-      ancestorMap.put(taskId, List.copyOf(ancestors));
+      ancestorMap.put(name, List.copyOf(ancestors));
     }
     final List<Task> nextAncestors = new ArrayList<>(ancestors);
     nextAncestors.add(task);
-    for (Task child : CollectionUtils.nullSafeList(taskTree.get(taskId))) {
+    for (Task child : CollectionUtils.nullSafeList(taskTree.get(name))) {
       appendAncestorMap(child, nextAncestors, taskTree, ancestorMap, visited);
     }
   }
 
   private static boolean isInSubtree(
       final Task task,
-      final String ancestorId,
-      final Map<String, Task> tasksById,
+      final String ancestorName,
+      final Map<String, Task> nameVsTask,
       final Map<String, List<Task>> ancestorMap) {
-    if (StringUtils.isBlank(ancestorId)) {
+    if (StringUtils.isBlank(ancestorName)) {
       return true;
     }
-    final String taskId = getTaskIdValue(task);
-    if (StringUtils.isNotBlank(taskId) && ancestorId.equals(taskId)) {
+    final String name = taskName(task);
+    if (StringUtils.isNotBlank(name) && ancestorName.equals(name)) {
       return true;
     }
-    for (Task ancestor : getAncestors(task, tasksById, ancestorMap)) {
-      if (ancestorId.equals(getTaskIdValue(ancestor))) {
+    for (Task ancestor : getAncestors(task, nameVsTask, ancestorMap)) {
+      if (ancestorName.equals(ancestor.getName())) {
         return true;
       }
     }
@@ -637,6 +630,49 @@ public final class PlanningUtils {
       return task;
     }
     return null;
+  }
+
+  public static Task findNonTerminalDescendant(
+      final Task task, final Map<String, List<Task>> taskTree) {
+    final String taskName = taskName(task);
+    for (Task child : CollectionUtils.nullSafeList(taskTree.get(taskName))) {
+      if (!isTerminalStatus(getTaskStatusEnum(child))) {
+        return child;
+      }
+      final Task nested = findNonTerminalDescendant(child, taskTree);
+      if (nested != null) {
+        return nested;
+      }
+    }
+    return null;
+  }
+
+  public static boolean allTasksTerminal(final Plan plan) {
+    if (plan == null || CollectionUtils.isEmpty(plan.getTasks())) {
+      return false;
+    }
+    for (Task task : plan.getTasks()) {
+      if (!isTerminalStatus(getTaskStatusEnum(task))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public static Task findNextActionableTask(final Plan plan, final Task completedTask) {
+    if (plan == null) {
+      return null;
+    }
+    if (completedTask != null && StringUtils.isNotBlank(completedTask.getParent())) {
+      final Task parentTask = findTaskByName(plan, completedTask.getParent());
+      if (parentTask != null && getTaskStatusEnum(parentTask) == TaskStatus.IN_PROGRESS) {
+        final Map<String, List<Task>> taskTree = groupTasksByParent(plan);
+        if (findNonTerminalDescendant(parentTask, taskTree) == null) {
+          return parentTask;
+        }
+      }
+    }
+    return findNextTodoTask(plan);
   }
 
   public static boolean isTerminalStatus(final TaskStatus status) {
@@ -674,9 +710,6 @@ public final class PlanningUtils {
     return String.join(", ", values);
   }
 
-  public static String getTaskIdValue(final Task task) {
-    return task == null ? null : task.getTaskId();
-  }
 
   public static Plan buildFrom(final List<Event> events) {
     final Map<String, FunctionCall> pendingCallsByCallId = new HashMap<>();
@@ -736,11 +769,7 @@ public final class PlanningUtils {
   private static boolean isPlanningTool(final String toolName) {
     return Constants.ToolNames.CREATE_PLAN.equals(toolName)
         || Constants.ToolNames.ADD_TASK.equals(toolName)
-        || Constants.ToolNames.UPDATE_TASK_INFO.equals(toolName)
-        || Constants.ToolNames.START_TASK.equals(toolName)
-        || Constants.ToolNames.COMPLETE_TASK.equals(toolName)
-        || Constants.ToolNames.FINISH_PLAN.equals(toolName)
-        || Constants.ToolNames.UPDATE_PLAN.equals(toolName);
+        || Constants.ToolNames.UPDATE_TASK.equals(toolName);
   }
 
   private static Plan applyReplayedEvent(
@@ -753,60 +782,42 @@ public final class PlanningUtils {
           CollectionUtils.getMapFromMap(responseMap, "createdPlan"), Plan.class);
     }
     if (Constants.ToolNames.ADD_TASK.equals(toolName)) {
+      final String parent =
+          CollectionUtils.getStringValueFromMap(args, Constants.ToolArgs.PARENT);
       currentPlan =
           AddTaskTool.applyAddTask(
               currentPlan,
-              CollectionUtils.getStringValueFromMap(args, "parent_id"),
+              parent,
               CollectionUtils.getStringValueFromMap(args, "name"),
               CollectionUtils.getStringValueFromMap(args, "goal"),
               CollectionUtils.getStringValueFromMap(args, "description"));
-      currentPlan
-          .getTasks()
-          .getLast()
-          .setTaskId(CollectionUtils.getStringValueFromMap(responseMap, "task_id"));
-    } else if (Constants.ToolNames.UPDATE_TASK_INFO.equals(toolName)) {
+    } else if (Constants.ToolNames.UPDATE_TASK.equals(toolName)) {
+      final String task = CollectionUtils.getStringValueFromMap(args, "task");
+      final String taskResult = CollectionUtils.getStringValueFromMap(args, "result");
       currentPlan =
-          UpdateTaskStatusTool.applyTaskUpdate(
+          applyTaskUpdate(
               currentPlan,
-              CollectionUtils.getStringValueFromMap(args, "task_id"),
-              CollectionUtils.getStringValueFromMap(args, "name"),
-              CollectionUtils.getStringValueFromMap(args, "goal"),
-              CollectionUtils.getStringValueFromMap(args, "description"),
-              null,
-              null);
-    } else if (Constants.ToolNames.START_TASK.equals(toolName)) {
-      currentPlan =
-          UpdateTaskStatusTool.applyTaskUpdate(
-              currentPlan,
-              CollectionUtils.getStringValueFromMap(args, "task_id"),
-              null,
-              null,
-              null,
-              TaskStatus.IN_PROGRESS,
-              null);
-    } else if (Constants.ToolNames.COMPLETE_TASK.equals(toolName)) {
-      currentPlan =
-          UpdateTaskStatusTool.applyTaskUpdate(
-              currentPlan,
-              CollectionUtils.getStringValueFromMap(args, "task_id"),
-              null,
-              null,
-              null,
+              task,
               TaskStatus.valueOfOrDefault(CollectionUtils.getStringValueFromMap(args, "status")),
-              CollectionUtils.getStringValueFromMap(args, "result"));
-    } else if (Constants.ToolNames.FINISH_PLAN.equals(toolName)) {
-      currentPlan =
-          FinishPlanTool.applyFinish(
-              currentPlan,
-              PlanStatus.valueOfOrDefault(CollectionUtils.getStringValueFromMap(args, "status")),
-              CollectionUtils.getStringValueFromMap(args, "result"));
-    } else if (Constants.ToolNames.UPDATE_PLAN.equals(toolName)) {
-      currentPlan =
-          UpdatePlanTool.applyPlanUpdate(
-              currentPlan,
-              CollectionUtils.getStringValueFromMap(args, "title"),
-              CollectionUtils.getStringValueFromMap(args, "goal"));
+              taskResult);
     }
     return currentPlan;
+  }
+
+  public static Plan applyTaskUpdate(
+      final Plan plan, final String taskName, TaskStatus newStatus, String result) {
+    final Plan updatedPlan = new Plan(plan);
+    final Task task = PlanningUtils.findTaskByName(updatedPlan, taskName);
+    if (task == null) {
+      return updatedPlan;
+    }
+    newStatus = newStatus != null ? newStatus : task.getStatus();
+    result = StringUtils.isNotBlank(result) ? result : task.getResult();
+    task.setStatus(newStatus);
+    task.setResult(result);
+    if (allTasksTerminal(updatedPlan)) {
+      updatedPlan.finish(PlanStatus.DONE, result);
+    }
+    return updatedPlan;
   }
 }

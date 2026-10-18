@@ -25,22 +25,18 @@ public final class PlanningValidator {
     if (plan.getStatus() == null || plan.getStatus() == PlanStatus.UNKNOWN) {
       return planLabel + " has unknown status.";
     }
-    final Map<String, Task> tasksById = new LinkedHashMap<>();
+    final Map<String, Task> nameVsTask = new LinkedHashMap<>();
     for (Task task : CollectionUtils.nullSafeList(plan.getTasks())) {
-      final String taskId = PlanningUtils.getTaskIdValue(task);
-      if (StringUtils.isBlank(taskId)) {
+      final String name = PlanningUtils.taskName(task);
+      if (StringUtils.isBlank(name)) {
         continue;
       }
-      final Task existing = tasksById.putIfAbsent(taskId, task);
+      final Task existing = nameVsTask.putIfAbsent(name, task);
       if (existing != null) {
-        return "Duplicate task id "
-            + taskId
-            + " found in "
+        return "Duplicate task name '"
+            + name
+            + "' found in "
             + planLabel
-            + " for "
-            + describeTask(existing)
-            + " and "
-            + describeTask(task)
             + ".";
       }
     }
@@ -66,9 +62,9 @@ public final class PlanningValidator {
       return planLabel + " is " + describePlanStatus(plan) + " but is missing a result.";
     }
     for (Task task : CollectionUtils.nullSafeList(plan.getTasks())) {
-      final String parentId = task.getParentId();
-      if (StringUtils.isNotBlank(parentId) && !tasksById.containsKey(parentId)) {
-        return describeTask(task) + " references missing parent " + parentId + ".";
+      final String parent = task.getParent();
+      if (StringUtils.isNotBlank(parent) && !nameVsTask.containsKey(parent)) {
+        return describeTask(task) + " references missing parent task '" + parent + "'.";
       }
       final TaskStatus status = PlanningUtils.getTaskStatusEnum(task);
       if (status == TaskStatus.UNKNOWN) {
@@ -78,13 +74,13 @@ public final class PlanningValidator {
         return describeTask(task) + " is " + describeTaskStatus(task) + " but has a result.";
       }
       if (status == TaskStatus.IN_PROGRESS) {
-        final String ancestorError = validateAncestorsInProgress(task, tasksById);
+        final String ancestorError = validateAncestorsInProgress(task, nameVsTask);
         if (ancestorError != null) {
           return ancestorError;
         }
       }
       if (PlanningUtils.isTerminalStatus(status)) {
-        final Task blocking = findNonTerminalDescendant(task, parentVsTasks);
+        final Task blocking = PlanningUtils.findNonTerminalDescendant(task, parentVsTasks);
         if (blocking != null) {
           return describeTask(task)
               + " is "
@@ -101,11 +97,11 @@ public final class PlanningValidator {
       }
     }
     final List<Task> inProgressTasks = collectInProgressTasks(plan, null, null, false);
-    final String lineageError = validateSingleLineage(inProgressTasks, tasksById, null);
+    final String lineageError = validateSingleLineage(inProgressTasks, nameVsTask, null);
     if (lineageError != null) {
       return lineageError;
     }
-    return validateInProgressOrder(plan, tasksById, parentVsTasks, inProgressTasks);
+    return validateInProgressOrder(plan, nameVsTask, parentVsTasks, inProgressTasks);
   }
 
   public static String canAddTask(final Plan plan, final Task task) {
@@ -126,28 +122,28 @@ public final class PlanningValidator {
     if (PlanningUtils.getTaskStatusEnum(task) == TaskStatus.UNKNOWN) {
       return describeTask(task) + " has unknown status.";
     }
-    final Map<String, Task> tasksById = PlanningUtils.getTasksById(plan);
-    final String taskId = PlanningUtils.getTaskIdValue(task);
-    if (StringUtils.isNotBlank(taskId) && tasksById.containsKey(taskId)) {
-      return "Task id "
-          + taskId
-          + " already exists in "
+    final Map<String, Task> nameVsTask = PlanningUtils.getTasksByName(plan);
+    final String name = task.getName();
+    if (StringUtils.isNotBlank(name) && nameVsTask.containsKey(name)) {
+      return "Task name '"
+          + name
+          + "' already exists in "
           + describePlan(plan)
           + " (existing "
-          + describeTask(tasksById.get(taskId))
+          + describeTask(nameVsTask.get(name))
           + ").";
     }
-    final String parentId = task.getParentId();
-    if (StringUtils.isNotBlank(parentId)) {
-      final Task parent = tasksById.get(parentId);
-      if (parent == null) {
-        return describeTask(task) + " references missing parent " + parentId + ".";
+    final String parent = task.getParent();
+    if (StringUtils.isNotBlank(parent)) {
+      final Task parentTask = nameVsTask.get(parent);
+      if (parentTask == null) {
+        return describeTask(task) + " references missing parent task '" + parent + "'.";
       }
-      if (PlanningUtils.isTerminalStatus(PlanningUtils.getTaskStatusEnum(parent))) {
+      if (PlanningUtils.isTerminalStatus(PlanningUtils.getTaskStatusEnum(parentTask))) {
         return "Parent "
-            + describeTask(parent)
+            + describeTask(parentTask)
             + " is "
-            + describeTaskStatus(parent)
+            + describeTaskStatus(parentTask)
             + "; cannot add child "
             + describeTask(task)
             + ".";
@@ -163,17 +159,17 @@ public final class PlanningValidator {
             + PlanStatus.IN_PROGRESS.getValue()
             + " before starting tasks.";
       }
-      final String ancestorError = validateAncestorsInProgress(task, tasksById);
+      final String ancestorError = validateAncestorsInProgress(task, nameVsTask);
       if (ancestorError != null) {
         return ancestorError;
       }
       final List<Task> inProgressTasks = collectInProgressTasks(plan, task, status, true);
-      final String lineageError = validateSingleLineage(inProgressTasks, tasksById, task);
+      final String lineageError = validateSingleLineage(inProgressTasks, nameVsTask, task);
       if (lineageError != null) {
         return lineageError;
       }
       return validateInProgressOrder(
-          plan, tasksById, PlanningUtils.groupTasksByParent(plan), inProgressTasks);
+          plan, nameVsTask, PlanningUtils.groupTasksByParent(plan), inProgressTasks);
     }
     return null;
   }
@@ -216,7 +212,7 @@ public final class PlanningValidator {
       return describeTask(task) + " is " + currentStatus.getValue() + "; cannot reopen it.";
     }
 
-    final Map<String, Task> tasksById = PlanningUtils.getTasksById(plan);
+    final Map<String, Task> nameVsTask = PlanningUtils.getTasksByName(plan);
     final Map<String, List<Task>> taskTree = PlanningUtils.groupTasksByParent(plan);
 
     if (newStatus == TaskStatus.IN_PROGRESS) {
@@ -228,7 +224,7 @@ public final class PlanningValidator {
             + PlanStatus.IN_PROGRESS.getValue()
             + " before starting tasks.";
       }
-      final String ancestorError = validateAncestorsInProgress(task, tasksById);
+      final String ancestorError = validateAncestorsInProgress(task, nameVsTask);
       if (ancestorError != null) {
         return ancestorError;
       }
@@ -253,7 +249,7 @@ public final class PlanningValidator {
     }
 
     if (PlanningUtils.isTerminalStatus(newStatus)) {
-      final Task blocking = findNonTerminalDescendant(task, taskTree);
+      final Task blocking = PlanningUtils.findNonTerminalDescendant(task, taskTree);
       if (blocking != null) {
         return describeTask(task)
             + " cannot be marked "
@@ -273,48 +269,16 @@ public final class PlanningValidator {
     }
 
     final List<Task> inProgressTasks = collectInProgressTasks(plan, task, newStatus, false);
-    final String lineageError = validateSingleLineage(inProgressTasks, tasksById, task);
+    final String lineageError = validateSingleLineage(inProgressTasks, nameVsTask, task);
     if (lineageError != null) {
       return lineageError;
     }
-    return validateInProgressOrder(plan, tasksById, taskTree, inProgressTasks);
+    return validateInProgressOrder(plan, nameVsTask, taskTree, inProgressTasks);
   }
 
   @Deprecated
   public static String canUpdateTask(final Plan plan, final Task task, final TaskStatus newStatus) {
     return canUpdateTask(plan, task, newStatus, null);
-  }
-
-  public static String canFinishPlan(
-      final Plan plan, final PlanStatus newStatus, final String result) {
-    if (plan == null || newStatus == null) {
-      return null;
-    }
-    if (newStatus == PlanStatus.UNKNOWN) {
-      return describePlan(plan) + " has unknown status.";
-    }
-    if (!PlanningUtils.isTerminalStatus(newStatus)) {
-      return "The '"
-          + newStatus
-          + "' is not a terminal status. Allowed values are ["
-          + PlanningUtils.getTerminalStatuses(PlanStatus.class)
-          + "].";
-    }
-    final Task openTask = findFirstOpenTask(plan);
-    if (openTask != null) {
-      return describePlan(plan)
-          + " cannot be marked "
-          + newStatus.getValue()
-          + " while "
-          + describeTask(openTask)
-          + " is "
-          + describeTaskStatus(openTask)
-          + ".";
-    }
-    if (StringUtils.isBlank(result)) {
-      return "The 'result' field is required when marking a plan as " + newStatus.getValue() + ".";
-    }
-    return null;
   }
 
   public static String getPrematureCompleteViolation(final Plan plan) {
@@ -353,53 +317,38 @@ public final class PlanningValidator {
   }
 
   private static String validateAncestorsInProgress(
-      final Task task, final Map<String, Task> tasksById) {
+      final Task task, final Map<String, Task> nameVsTask) {
     if (task == null) {
       return null;
     }
-    String parentId = task.getParentId();
-    while (StringUtils.isNotBlank(parentId)) {
-      final Task parent = tasksById.get(parentId);
-      if (parent == null) {
-        return describeTask(task) + " references missing parent " + parentId + ".";
+    String parent = task.getParent();
+    while (StringUtils.isNotBlank(parent)) {
+      final Task parentTask = nameVsTask.get(parent);
+      if (parentTask == null) {
+        return describeTask(task) + " references missing parent task '" + parent + "'.";
       }
-      if (PlanningUtils.getTaskStatusEnum(parent) != TaskStatus.IN_PROGRESS) {
+      if (PlanningUtils.getTaskStatusEnum(parentTask) != TaskStatus.IN_PROGRESS) {
         return "Parent "
-            + describeTask(parent)
+            + describeTask(parentTask)
             + " must be "
             + TaskStatus.IN_PROGRESS.getValue()
             + " before starting child "
             + describeTask(task)
             + ".";
       }
-      parentId = parent.getParentId();
+      parent = parentTask.getParent();
     }
     return null;
   }
 
   private static Task findInProgressDescendant(
       final Task task, final Map<String, List<Task>> taskTree) {
-    final String taskId = PlanningUtils.getTaskIdValue(task);
-    for (Task child : CollectionUtils.nullSafeList(taskTree.get(taskId))) {
+    final String taskName = PlanningUtils.taskName(task);
+    for (Task child : CollectionUtils.nullSafeList(taskTree.get(taskName))) {
       if (PlanningUtils.getTaskStatusEnum(child) == TaskStatus.IN_PROGRESS) {
         return child;
       }
       final Task nested = findInProgressDescendant(child, taskTree);
-      if (nested != null) {
-        return nested;
-      }
-    }
-    return null;
-  }
-
-  private static Task findNonTerminalDescendant(
-      final Task task, final Map<String, List<Task>> taskTree) {
-    final String taskId = PlanningUtils.getTaskIdValue(task);
-    for (Task child : CollectionUtils.nullSafeList(taskTree.get(taskId))) {
-      if (!PlanningUtils.isTerminalStatus(PlanningUtils.getTaskStatusEnum(child))) {
-        return child;
-      }
-      final Task nested = findNonTerminalDescendant(child, taskTree);
       if (nested != null) {
         return nested;
       }
@@ -416,9 +365,9 @@ public final class PlanningValidator {
     if (nextTask == task) {
       return null;
     }
-    final String taskId = PlanningUtils.getTaskIdValue(task);
-    final String nextId = PlanningUtils.getTaskIdValue(nextTask);
-    if (StringUtils.isNotBlank(taskId) && taskId.equals(nextId)) {
+    final String taskName = PlanningUtils.taskName(task);
+    final String nextName = nextTask.getName();
+    if (StringUtils.isNotBlank(taskName) && taskName.equals(nextName)) {
       return null;
     }
     return "Tasks are started in plan order, so "
@@ -430,7 +379,7 @@ public final class PlanningValidator {
 
   private static String validateInProgressOrder(
       final Plan plan,
-      final Map<String, Task> tasksById,
+      final Map<String, Task> nameVsTask,
       final Map<String, List<Task>> taskTree,
       final List<Task> inProgressTasks) {
     if (CollectionUtils.isEmpty(inProgressTasks)) {
@@ -440,13 +389,13 @@ public final class PlanningValidator {
     if (nextTodo == null) {
       return null;
     }
-    final Set<String> lineage = collectLineageIds(nextTodo, tasksById);
+    final Set<String> lineage = collectLineageIds(nextTodo, nameVsTask);
     for (Task task : inProgressTasks) {
-      final String taskId = PlanningUtils.getTaskIdValue(task);
-      if (StringUtils.isBlank(taskId)) {
-        return "In-progress " + describeTask(task) + " is missing an id.";
+      final String taskName = PlanningUtils.taskName(task);
+      if (StringUtils.isBlank(taskName)) {
+        return "In-progress " + describeTask(task) + " is missing a name.";
       }
-      if (!lineage.contains(taskId)) {
+      if (!lineage.contains(taskName)) {
         return describeTask(task)
             + " is still in progress, so no other task can be started or completed yet. Carry on"
             + " with its work and then complete it with its result, or complete it now if its work"
@@ -466,13 +415,13 @@ public final class PlanningValidator {
       final TaskStatus newStatus,
       final boolean includeMissingTask) {
     final List<Task> inProgress = new ArrayList<>();
-    final String updatedId = PlanningUtils.getTaskIdValue(updatedTask);
+    final String updatedName = PlanningUtils.taskName(updatedTask);
     boolean updatedFound = false;
     for (Task task : CollectionUtils.nullSafeList(plan.getTasks())) {
       TaskStatus status = PlanningUtils.getTaskStatusEnum(task);
       if (task == updatedTask
-          || (StringUtils.isNotBlank(updatedId)
-              && updatedId.equals(PlanningUtils.getTaskIdValue(task)))) {
+          || (StringUtils.isNotBlank(updatedName)
+              && updatedName.equals(task.getName()))) {
         status = newStatus;
         updatedFound = true;
       }
@@ -490,21 +439,21 @@ public final class PlanningValidator {
    * {@code actedOn} is the task being started or completed, or null when a whole plan is checked.
    */
   private static String validateSingleLineage(
-      final List<Task> inProgressTasks, final Map<String, Task> tasksById, final Task actedOn) {
+      final List<Task> inProgressTasks, final Map<String, Task> nameVsTask, final Task actedOn) {
     if (inProgressTasks.size() <= 1) {
       return null;
     }
-    final Task deepest = findDeepestTask(inProgressTasks, tasksById);
+    final Task deepest = findDeepestTask(inProgressTasks, nameVsTask);
     if (deepest == null) {
       return null;
     }
-    final Set<String> lineageIds = collectLineageIds(deepest, tasksById);
+    final Set<String> lineageIds = collectLineageIds(deepest, nameVsTask);
     for (Task task : inProgressTasks) {
-      final String taskId = PlanningUtils.getTaskIdValue(task);
-      if (StringUtils.isBlank(taskId)) {
-        return "In-progress " + describeTask(task) + " is missing an id.";
+      final String taskName = PlanningUtils.taskName(task);
+      if (StringUtils.isBlank(taskName)) {
+        return "In-progress " + describeTask(task) + " is missing a name.";
       }
-      if (!lineageIds.contains(taskId)) {
+      if (!lineageIds.contains(taskName)) {
         if (actedOn == null) {
           return "The plan marks "
               + describeTask(task)
@@ -513,7 +462,7 @@ public final class PlanningValidator {
               + " as in progress in different branches, but only one branch can be in progress at"
               + " a time. Mark at most one of them as in progress.";
         }
-        final Task blocking = taskId.equals(PlanningUtils.getTaskIdValue(actedOn)) ? deepest : task;
+        final Task blocking = taskName.equals(actedOn.getName()) ? deepest : task;
         return describeTask(actedOn)
             + " cannot be started or completed while "
             + describeTask(blocking)
@@ -526,11 +475,11 @@ public final class PlanningValidator {
     return null;
   }
 
-  private static Task findDeepestTask(final List<Task> tasks, final Map<String, Task> tasksById) {
+  private static Task findDeepestTask(final List<Task> tasks, final Map<String, Task> nameVsTask) {
     Task deepest = null;
     int maxDepth = -1;
     for (Task task : tasks) {
-      final int depth = taskDepth(task, tasksById);
+      final int depth = taskDepth(task, nameVsTask);
       if (depth > maxDepth) {
         maxDepth = depth;
         deepest = task;
@@ -539,34 +488,34 @@ public final class PlanningValidator {
     return deepest;
   }
 
-  private static int taskDepth(final Task task, final Map<String, Task> tasksById) {
+  private static int taskDepth(final Task task, final Map<String, Task> nameVsTask) {
     int depth = 0;
-    String parentId = task == null ? null : task.getParentId();
+    String parent = task == null ? null : task.getParent();
     final Set<String> visited = new HashSet<>();
-    while (StringUtils.isNotBlank(parentId) && visited.add(parentId)) {
-      final Task parent = tasksById.get(parentId);
-      if (parent == null) {
+    while (StringUtils.isNotBlank(parent) && visited.add(parent)) {
+      final Task parentTask = nameVsTask.get(parent);
+      if (parentTask == null) {
         break;
       }
       depth++;
-      parentId = parent.getParentId();
+      parent = parentTask.getParent();
     }
     return depth;
   }
 
-  private static Set<String> collectLineageIds(final Task task, final Map<String, Task> tasksById) {
+  private static Set<String> collectLineageIds(final Task task, final Map<String, Task> nameVsTask) {
     final Set<String> lineage = new HashSet<>();
     Task current = task;
     while (current != null) {
-      final String taskId = PlanningUtils.getTaskIdValue(current);
-      if (StringUtils.isBlank(taskId) || !lineage.add(taskId)) {
+      final String taskName = current.getName();
+      if (StringUtils.isBlank(taskName) || !lineage.add(taskName)) {
         break;
       }
-      final String parentId = current.getParentId();
-      if (StringUtils.isBlank(parentId)) {
+      final String parent = current.getParent();
+      if (StringUtils.isBlank(parent)) {
         break;
       }
-      current = tasksById.get(parentId);
+      current = nameVsTask.get(parent);
     }
     return lineage;
   }
@@ -597,21 +546,11 @@ public final class PlanningValidator {
   }
 
   private static String describeTask(final Task task) {
-    if (task == null) {
+    final String name = PlanningUtils.taskName(task);
+    if (StringUtils.isBlank(name)) {
       return "task <unknown>";
     }
-    final String id = PlanningUtils.getTaskIdValue(task);
-    final String name = task.getName();
-    if (StringUtils.isNotBlank(id) && StringUtils.isNotBlank(name)) {
-      return "task " + id + " (" + name + ")";
-    }
-    if (StringUtils.isNotBlank(id)) {
-      return "task " + id;
-    }
-    if (StringUtils.isNotBlank(name)) {
-      return "task " + name;
-    }
-    return "task <unknown>";
+    return "task '" + name + "'";
   }
 
   private static String describeTaskStatus(final Task task) {

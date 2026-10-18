@@ -30,14 +30,9 @@ public final class ShellCommandTool extends Tool {
       new ToolDescriptor(
           TOOL_NAME,
           """
-          Executes a single-line shell command and returns structured execution details including output,
-          exit code, success status, and working directory. Use when no dedicated tool covers the required
-          operation — building projects, running test suites, installing packages, or system-level tasks.
-          Prefer dedicated tools (file read/write/grep) when available. Supports shell constructs including
-          pipes (|), redirects (>), semicolons (;), and logical operators (&&, ||). Multi-line constructs and
-          heredocs are not supported. Commands that invoke `rm` are paused for explicit user confirmation.
-          Pass 'cwd' to specify the working directory (defaults to the user's home directory).
-          Output exceeding 12,000 characters is truncated with guidance on using head/tail/grep.
+          Executes a shell command in a subprocess. Use when no dedicated tool covers the \
+          operation (e.g. building projects, running test suites, installing packages). \
+          Prefer dedicated file tools when available. \
           Returns: { output, exit_code, success, working_directory, truncated?, total_chars?, message? }.""",
           ToolRiskLevel.MEDIUM);
   private final Duration timeout;
@@ -64,9 +59,9 @@ public final class ShellCommandTool extends Tool {
               name = "command",
               description =
                   """
-                  The shell command string to execute on a single line. Supports pipes (|), redirects (>),
-                  semicolons (;), and logical operators (&&, ||). Heredocs and embedded newlines are
-                  not supported. Commands invoking `rm` will pause for user confirmation.""")
+                  The single-line shell command string to execute. Supports pipes (|), redirects (>), \
+                  semicolons (;), and logical operators (&&, ||). Heredocs and newlines are not supported. \
+                  Commands invoking rm pause for user confirmation.""")
           final String command,
       @ToolArg(
               name = "cwd",

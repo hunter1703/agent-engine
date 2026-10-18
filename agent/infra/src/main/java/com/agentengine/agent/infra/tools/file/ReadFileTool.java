@@ -66,15 +66,7 @@ public final class ReadFileTool extends BaseFileTool {
               description =
                   "Maximum number of lines to return. Capped at 2,000. Defaults to 2,000.",
               optional = true)
-          Integer limit,
-      @ToolArg(
-              name = "with_line_numbers",
-              description =
-                  """
-                  Whether to prefix each line with its 1-indexed line number (e.g. '1 | content').
-                  Defaults to true for accurate line reference in patch and edit authoring.""",
-              optional = true)
-          Boolean withLineNumbers) {
+          Integer limit) {
 
     if (filePath == null || filePath.isBlank()) {
       return ToolOutput.direct(Map.of("error", "file_path is required"));
@@ -96,7 +88,6 @@ public final class ReadFileTool extends BaseFileTool {
     final FileDetails fileDetails = readFile(path, offset, limit);
     final List<String> selectedLines = fileDetails.content();
     final StringBuilder content = new StringBuilder();
-    final boolean showLineNumbers = withLineNumbers == null || withLineNumbers;
     boolean truncated = false;
 
     int currentLine = offset;
@@ -106,11 +97,7 @@ public final class ReadFileTool extends BaseFileTool {
         line = truncate(line, MAX_LINE_LENGTH);
         truncated = true;
       }
-      if (showLineNumbers) {
-        content.append(currentLine).append(" | ").append(line).append("\n");
-      } else {
-        content.append(line).append("\n");
-      }
+      content.append(currentLine).append(" | ").append(line).append("\n");
       currentLine++;
     }
 

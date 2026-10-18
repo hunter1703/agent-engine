@@ -34,7 +34,7 @@ public final class GetWebpageTool extends Tool {
           If the converted content exceeds 25,000 characters, it is automatically indexed as knowledge
           to conserve context, and the tool returns a knowledgeId with guidance on how to query its content
           using semantic knowledge search.
-          Returns: { markdown, contentLength } when within limit, or { knowledgeId, hint } when indexed as knowledge, or { error } on failure.""");
+          Returns: { markdown, chars_read } when within limit, or { knowledge_id, hint } when indexed as knowledge, or { error } on failure.""");
 
   private final FileService fileService;
   private final KnowledgeService knowledgeService;
@@ -74,7 +74,9 @@ public final class GetWebpageTool extends Tool {
 
     if (markdown.length() <= DEFAULT_MAX_LENGTH) {
       return ToolOutput.direct(
-          Map.of("markdown", markdown, "contentLength", markdown.length()));
+          Map.of(
+              "markdown", markdown,
+              "chars_read", markdown.length()));
     }
 
     try {
@@ -102,7 +104,7 @@ public final class GetWebpageTool extends Tool {
           Map.of(
               "error",
               "Failed to index webpage as knowledge: " + ex.getMessage(),
-              "contentLength",
+              "chars_read",
               markdown.length()));
     }
   }

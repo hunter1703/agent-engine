@@ -14,8 +14,8 @@ public final class DeleteNotebookTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.DELETE_NOTEBOOK,
           """
-                  Permanently deletes an entire notebook and every note in it. Only the session that created the notebook can delete it — being granted the notebook does not authorize this.
-                  Returns: { status: "success" } or { error }.""",
+          Permanently deletes an entire notebook and every note in it. Only the session that created the notebook can delete it — being granted the notebook does not authorize this. \
+          Returns: { status: "success" } or { error }.""",
           Map.of());
 
   private final NotebookService notebookService;
@@ -28,7 +28,7 @@ public final class DeleteNotebookTool extends AbstractNotebookTool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolArg(name = Constants.ToolArgs.NOTEBOOK_ID, description = "The notebook to delete.")
+      @ToolArg(name = Constants.ToolArgs.NOTEBOOK_ID, description = "The ID of the notebook to delete.")
           final String notebookId) {
     if (!notebookService.deleteNotebook(notebookId)) {
       return ToolOutput.direct(

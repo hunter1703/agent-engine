@@ -14,12 +14,12 @@ public final class ViewPlanTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           TOOL_NAME,
-          "Retrieves the current plan in its entirety: title, goal, overall status, and all tasks with their "
-              + "individual statuses, results, and hierarchical relationships. Returns null if no plan exists "
-              + "for the current session. Use to inspect progress, determine which task to work on next, or "
-              + "confirm a task's current state before updating it. "
-              + "Returns: { planId, title, goal, status, result?, "
-              + "tasks: [{taskId, name, goal, description?, status, result?, parentId?}] }, or null.",
+          """
+          Retrieves the current plan in its entirety: title, goal, overall status, and all tasks with their \
+          individual statuses, descriptions, results, and hierarchical relationships. Returns null if no plan \
+          exists for the current session. Use to inspect full task details, review completed task results, or \
+          confirm task relationships before updating progress.
+          Returns: { planId, title, goal, status, result?, tasks: [{name, goal, description?, status, result?, parent?}] }.""",
           Map.of());
 
   public ViewPlanTool() {

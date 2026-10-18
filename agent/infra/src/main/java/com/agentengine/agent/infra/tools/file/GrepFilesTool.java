@@ -47,12 +47,11 @@ public final class GrepFilesTool extends BaseFileTool {
           Searches the text content of files under a directory tree for lines matching a regular expression.
           Use when you need to find which files contain a pattern, or locate all occurrences of a
           string, symbol, or keyword across a codebase — particularly when you do not know which
-          specific file to look in. By default, returns matching lines in a concise ripgrep format
-          (path:lineNumber:content); set output_format='json' for structured match objects.
+          specific file to look in. Returns matching lines in standard ripgrep format (path:lineNumber:content).
           Searches are case-insensitive by default. Hidden files and directories (names starting with '.' or '_')
           and common dependency/build directories (node_modules, build, target, .git, etc.) are automatically skipped.
           Binary or unreadable files are silently skipped. Results are capped at the configured limit.
-          Returns: { matches: [...], format, pattern, search_path, files_searched, total_matches, matches_returned, truncated }.""",
+          Returns: { matches: [...], pattern, search_path, files_searched, total_matches, matches_returned, truncated }.""",
           Map.of(),
           ToolRiskLevel.LOW);
 
@@ -98,13 +97,7 @@ public final class GrepFilesTool extends BaseFileTool {
               description =
                   "Whether the regex match is case-sensitive. Defaults to false (case-insensitive).",
               optional = true)
-          Boolean caseSensitive,
-      @ToolArg(
-              name = "output_format",
-              description = "Output format. Defaults to 'text'.",
-              enums = {"text", "json"},
-              optional = true)
-          String outputFormat) {
+          Boolean caseSensitive) {
 
     if (pattern == null || pattern.isBlank()) {
       return ToolOutput.direct(Map.of("error", "pattern is required"));
@@ -131,13 +124,10 @@ public final class GrepFilesTool extends BaseFileTool {
       Files.walkFileTree(
           baseDir, new SearchVisitor(baseDir, regexPattern, searchState, includePattern));
 
-      final boolean isJson = "json".equalsIgnoreCase(outputFormat);
-      final List<?> matchesOutput =
-          isJson
-              ? searchState.matches().stream().map(JsonUtils::toMap).toList()
-              : searchState.matches().stream()
-                  .map(match -> match.file() + ":" + match.lineNumber() + ":" + match.line())
-                  .toList();
+      final List<String> matchesOutput =
+          searchState.matches().stream()
+              .map(match -> match.file() + ":" + match.lineNumber() + ":" + match.line())
+              .toList();
       final boolean truncated = searchState.isTruncated();
 
       LOG.debug(
@@ -149,7 +139,6 @@ public final class GrepFilesTool extends BaseFileTool {
 
       final Map<String, Object> response = new HashMap<>();
       response.put("matches", matchesOutput);
-      response.put("format", isJson ? "json" : "text");
       response.put("pattern", pattern);
       response.put("search_path", basePath);
       response.put("files_searched", searchState.filesSearched());

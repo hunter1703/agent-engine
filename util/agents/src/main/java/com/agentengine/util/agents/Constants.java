@@ -9,12 +9,9 @@ public interface Constants {
     String SEND_MESSAGE = "send_message";
     String AGENT_TRANSFER = "transfer_to_agent";
     String CREATE_PLAN = "create_plan";
-    String UPDATE_PLAN = "update_plan";
     String ADD_TASK = "add_task";
-    String UPDATE_TASK_INFO = "update_task_info";
-    String START_TASK = "start_task";
-    String COMPLETE_TASK = "complete_task";
-    String FINISH_PLAN = "finish_plan";
+    String UPDATE_TASK = "update_task";
+    String VIEW_PLAN = "view_plan";
     String CREATE_NOTEBOOK = "create_notebook";
     String CREATE_OR_UPDATE_NOTE = "create_or_update_note";
     String READ_NOTE = "read_note";
@@ -33,18 +30,20 @@ public interface Constants {
   interface ToolArgs {
     String ORIGINAL_FUNCTION_CALL = "originalFunctionCall";
     String TOOL_CONFIRMATION = "toolConfirmation";
-    String KNOWLEDGE_ID = "knowledgeId";
+    String KNOWLEDGE_ID = "knowledge_id";
     String IMAGE_KNOWLEDGE_ID = "imageKnowledgeId";
     String CHILD_SESSION_ID = "child_session_id";
     String AGENT_ID = "agent_id";
     String AWAIT_COMPLETION = "await_completion";
     String GOAL = "goal";
     String NOTEBOOK_ID = "notebook_id";
+    String NOTEBOOK_IDS = "notebook_ids";
     String NOTEBOOK_DESCRIPTION = "description";
     String NOTE_TITLE = "note_title";
     String CONTINUATION = "continuation";
     String KNOWLEDGE_IDS = "knowledge_ids";
-    String NOTEBOOK_IDS = "notebook_ids";
+    String PARENT = "parent";
+    String TASK = "task";
   }
 
   interface HitlArgs {

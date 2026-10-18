@@ -31,7 +31,7 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
           final ToolContext toolContext,
       @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_ID,
-              description = "The name of the notebook the note is in.")
+              description = "The ID of the notebook the note is in.")
           final String notebookId,
       @ToolArg(
               name = Constants.ToolArgs.NOTE_TITLE,

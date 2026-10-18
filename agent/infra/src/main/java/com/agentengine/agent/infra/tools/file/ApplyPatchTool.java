@@ -50,15 +50,8 @@ public final class ApplyPatchTool extends BaseFileTool {
       new ToolDescriptor(
           TOOL_NAME,
           """
-          Applies a patch to a file, modifying it in-place. Supports two hunk header formats:
-          1. Standard unified diff: @@ -line,count +line,count @@ — requires exact line numbers.
-          2. Context-anchor: @@ context: <anchor text> — locates each hunk by searching for a
-          distinctive surrounding line, tolerating line-number drift from earlier edits in the same
-          turn. Prefer context-anchor for multi-hunk patches or when line numbers may be unreliable.
-          Both formats may be mixed in one patch string.
-          Optionally accepts a content hash to guard against stale patches. File writes are atomic.
-          Maximum patch size: 100,000 characters.
-          Returns: { success, additions, deletions, hunks, message } on success,
+          Applies a unified diff patch to an existing file, modifying it in-place atomically. \
+          Returns: { success, additions, deletions, hunks, message } on success, \
           or { error, validation_failed?, rolled_back? } on failure.""",
           Map.of(),
           ToolRiskLevel.MEDIUM);
@@ -76,15 +69,21 @@ public final class ApplyPatchTool extends BaseFileTool {
       @ToolArg(
               name = "patch",
               description =
-                  "Unified diff content to apply, including @@ hunk headers. Must be valid unified diff "
-                      + "format. Maximum 100,000 characters.")
+                  """
+                  Unified diff content to apply, including @@ hunk headers. Maximum 100,000 characters. \
+                  Supports two hunk header formats (which may be mixed in one patch): \
+                  1. Standard unified diff: @@ -line,count +line,count @@ (requires exact line numbers). \
+                  2. Context-anchor: @@ context: <anchor text> (locates each hunk by searching for a \
+                  distinctive surrounding line, tolerating line-number drift from earlier edits in the \
+                  same turn; preferred for multi-hunk patches or when line numbers may be unreliable).""")
           String patch,
       @ToolArg(
               name = "expected_hash",
               description =
-                  "Content hash representing the expected file state before patching. When provided, "
-                      + "the patch is rejected if the file has been modified since this hash was recorded, "
-                      + "preventing accidental modification of an already-changed file.",
+                  """
+                  Content hash representing the expected file state before patching. When provided, \
+                  the patch is rejected if the file has been modified since this hash was recorded, \
+                  preventing accidental modification of an already-changed file.""",
               optional = true)
           String expectedHash)
       throws PatchFailedException {

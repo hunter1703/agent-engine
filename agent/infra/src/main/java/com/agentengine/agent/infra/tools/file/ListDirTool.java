@@ -38,14 +38,11 @@ public final class ListDirTool extends BaseFileTool {
       new ToolDescriptor(
           TOOL_NAME,
           """
-          Lists the contents of a directory, optionally traversing subdirectories up to a configurable depth.
-          Use to understand directory structure, discover what files are present, or browse for files
-          by name when you do not know the exact path. Hidden entries (starting with '.' or '_') and
-          common dependency/build directories (node_modules, build, target, etc.) are skipped by default.
-          For searching file contents by pattern, use the search tool instead. Entries are sorted alphabetically
-          at each level and include their type (file or directory), relative path, depth level, and file size in bytes (files only).
-          Returns: { entries: [{name, path, type, depth, size_bytes?}], entries_returned,
-          total_entries, has_more, next_offset (when has_more is true) }.""",
+          Lists the contents of a directory, optionally traversing subdirectories up to a configurable depth. \
+          Use to understand directory structure, discover what files are present, or browse for files \
+          by name when you do not know the exact path. For searching file contents by regex pattern, use grep_files instead. \
+          Returns: { entries: [{name, path, type, depth, size_bytes?}], entries_returned, \
+          total_entries, has_more, next_offset }.""",
           Map.of(),
           ToolRiskLevel.LOW);
 

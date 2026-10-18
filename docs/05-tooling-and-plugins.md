@@ -77,7 +77,7 @@ Descriptor resolution:
 - `apply_patch` — apply a unified diff patch to files with validation
 
 **Planning** (suite name: `planning`)
-- `create_plan`, `update_plan`, `add_task`, `update_task_info`, `start_task`, `complete_task`, `finish_plan`, `view_plan`
+- `create_plan`, `add_task`, `update_task`, `view_plan`
 
 **Agent coordination** (suite name: `agent_tools`)
 - `spawn_agent` — start a child agent session for a subtask; returns `child_session_id`
