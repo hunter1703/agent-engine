@@ -22,11 +22,13 @@ Run:
 """
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
 import re
 import subprocess
+import threading
 import time
 import traceback
 import urllib3
@@ -64,6 +66,12 @@ MIN_BOARD_SCORE = float(os.environ.get("MIN_BOARD_SCORE", "0.5"))
 # its list of all boards.
 MAX_BOARD_RESULTS = int(os.environ.get("MAX_BOARD_RESULTS", "4"))
 IMAGE_MIN_SIZE = 474
+PICTURE_HOST_SUFFIX = "pinimg.com"
+MAX_PICTURE_BYTES = 1_000_000
+# Where the backend reads a picture the proxy serves: this machine, as the backend's containers
+# see it, on PICTURE_PORT.
+PICTURE_HOST = os.environ.get("PICTURE_HOST", "host.docker.internal")
+PICTURE_PORT = int(os.environ.get("PICTURE_PORT", "9002"))
 PICKER_ENDPOINT_NAME = "v3_get_board_picker_boards_shortlist"
 BOARDS_TTL_SECONDS = 300.0
 BOARDS_PAGE_SIZE = 250
@@ -138,6 +146,58 @@ def to_curl(method, url, headers, cookies, json_body, verify=True):
 # ---------------------------------------------------------------------------
 
 
+class RecentPictures:
+    """The images of the last `limit` pins: their addresses, preferred first, and the content of
+    those the app has loaded."""
+
+    def __init__(self, limit):
+        self._limit = limit
+        self._pin_id_to_urls = OrderedDict()
+        self._url_to_pin_id = {}
+        self._url_to_picture = {}
+
+    def remember(self, pin_id, urls):
+        if not urls:
+            return
+        if self._pin_id_to_urls.get(pin_id) == urls:
+            self._pin_id_to_urls.move_to_end(pin_id)
+            return
+        self._forget(pin_id)
+        self._pin_id_to_urls[pin_id] = urls
+        for url in urls:
+            self._url_to_pin_id[url] = pin_id
+        while len(self._pin_id_to_urls) > self._limit:
+            self._forget(next(iter(self._pin_id_to_urls)))
+
+    def urls(self, pin_id):
+        return self._pin_id_to_urls.get(pin_id, [])
+
+    def keep(self, url, content, mime_type):
+        """Keeps the content of an image of a remembered pin, unless it is large."""
+        if url in self._url_to_pin_id and 0 < len(content) <= MAX_PICTURE_BYTES:
+            self._url_to_picture[url] = (content, mime_type)
+
+    def loaded_url(self, pin_id):
+        """The first address of the pin's image whose content has been kept, if any."""
+        return next((url for url in self.urls(pin_id) if url in self._url_to_picture), None)
+
+    def picture(self, token):
+        """The (content, mime type) of the kept image whose address has this token."""
+        return next(
+            (picture for url, picture in self._url_to_picture.items() if self.token(url) == token),
+            None,
+        )
+
+    @staticmethod
+    def token(url):
+        return hashlib.sha1(url.encode("utf-8")).hexdigest()[:20]
+
+    def _forget(self, pin_id):
+        for url in self._pin_id_to_urls.pop(pin_id, []):
+            self._url_to_pin_id.pop(url, None)
+            self._url_to_picture.pop(url, None)
+
+
 class PinterestBoardPicker:
 
     def __init__(self):
@@ -145,14 +205,21 @@ class PinterestBoardPicker:
         # the pin opened last with when.
         self._auth_to_user_id = {}
         self._auth_to_boards = {}
+        self._auth_refreshing_boards = set()
         self._auth_to_opened = {}
-        # The image of every pin seen in Pinterest's responses to the app, least recently seen first.
-        self._pin_id_to_image_url = OrderedDict()
+        # The images of the pins seen in Pinterest's responses to the app, and the pictures loaded.
+        self._recent_pictures = RecentPictures(MAX_REMEMBERED_PINS)
+        self._picture_server = None
 
     # -- mitmproxy hooks -----------------------------------------------------
 
     def running(self) -> None:
         asyncio.ensure_future(self._watch_open_files())
+        asyncio.ensure_future(self._serve_pictures())
+
+    def done(self) -> None:
+        if self._picture_server is not None:
+            self._picture_server.close()
 
     async def request(self, flow: http.HTTPFlow) -> None:
         """Answers the board picker request itself, so Pinterest is not asked for a shortlist. When
@@ -211,7 +278,16 @@ class PinterestBoardPicker:
         dbg("=" * 70)
 
     async def response(self, flow: http.HTTPFlow) -> None:
-        if flow.request.pretty_host != TARGET_HOST or flow.response.status_code != 200:
+        if flow.response.status_code != 200:
+            return
+        if flow.request.pretty_host.endswith(PICTURE_HOST_SUFFIX):
+            self._recent_pictures.keep(
+                flow.request.pretty_url,
+                flow.response.content,
+                flow.response.headers.get("content-type", "image/jpeg"),
+            )
+            return
+        if flow.request.pretty_host != TARGET_HOST:
             return
         try:
             data = flow.response.json()
@@ -225,6 +301,45 @@ class PinterestBoardPicker:
             if user_id and self._auth_to_user_id.get(auth) != user_id:
                 self._auth_to_user_id[auth] = user_id
                 dbg(f"learned user id {user_id}")
+                asyncio.ensure_future(asyncio.to_thread(
+                    self._get_boards, user_id, auth, flow.request.headers.get("cookie"),
+                    flow.request.query.get("fields"),
+                ))
+
+    async def _serve_pictures(self):
+        """Serves the pictures the app has loaded on PICTURE_PORT, each at an address of its own,
+        so that the backend can read one from here rather than from Pinterest's servers."""
+        try:
+            self._picture_server = await asyncio.start_server(
+                self._answer_picture_request, "0.0.0.0", PICTURE_PORT
+            )
+        except OSError as e:
+            dbg(f"pictures cannot be served on port {PICTURE_PORT}: {e}")
+
+    async def _answer_picture_request(self, reader, writer):
+        try:
+            head = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), 5)
+            token = head.split(b" ", 2)[1].decode(errors="replace").strip("/").split(".")[0]
+            picture = self._recent_pictures.picture(token)
+            if picture is None:
+                writer.write(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+            else:
+                content, mime_type = picture
+                writer.write(
+                    b"HTTP/1.1 200 OK\r\nContent-Type: " + mime_type.encode()
+                    + b"\r\nContent-Length: " + str(len(content)).encode()
+                    + b"\r\nConnection: close\r\n\r\n" + content
+                )
+            await writer.drain()
+        except (asyncio.TimeoutError, asyncio.IncompleteReadError, asyncio.LimitOverrunError,
+                ConnectionError, IndexError):
+            pass
+        finally:
+            writer.close()
+
+    @staticmethod
+    def _served_address(url):
+        return f"http://{PICTURE_HOST}:{PICTURE_PORT}/{RecentPictures.token(url)}.jpg"
 
     async def _watch_open_files(self):
         """Every OPEN_FILES_CHECK_SECONDS, logs what holds the proxy's open files while it has more
@@ -263,17 +378,10 @@ class PinterestBoardPicker:
                 self._remember_pin_images(item)
         elif isinstance(node, dict):
             if node.get("type") == "pin" and node.get("id"):
-                self._remember_pin_image(str(node["id"]), self._extract_image_url(node))
+                self._recent_pictures.remember(str(node["id"]), self._image_urls(node))
             for value in node.values():
                 if isinstance(value, (list, dict)):
                     self._remember_pin_images(value)
-
-    def _remember_pin_image(self, pin_id, image_url):
-        if image_url:
-            self._pin_id_to_image_url[pin_id] = image_url
-            self._pin_id_to_image_url.move_to_end(pin_id)
-            if len(self._pin_id_to_image_url) > MAX_REMEMBERED_PINS:
-                self._pin_id_to_image_url.popitem(last=False)
 
     def _opened_pin(self, auth):
         """The id of the pin the user opened last, if recently."""
@@ -286,8 +394,9 @@ class PinterestBoardPicker:
         """The boards the pin's image matches, best first, shaped as shortlist entries; empty when
         there is no match. `fields` are the board fields to ask Pinterest for, if the boards are
         read. The pin is fetched when its image has not been seen."""
-        image_url = self._pin_id_to_image_url.get(pin_id)
-        if image_url:
+        image_was_seen = bool(self._recent_pictures.urls(pin_id))
+        started = time.time()
+        if image_was_seen:
             all_boards = await asyncio.to_thread(self._get_boards, user_id, auth, cookie, fields)
         else:
             dbg(f"pin {pin_id}: image not seen, fetching the pin")
@@ -295,15 +404,29 @@ class PinterestBoardPicker:
                 asyncio.to_thread(self._get_pin, pin_id, auth, cookie),
                 asyncio.to_thread(self._get_boards, user_id, auth, cookie, fields),
             )
-            image_url = self._extract_image_url(pin) if pin else None
-            self._remember_pin_image(pin_id, image_url)
-        if not image_url or not all_boards:
+            self._recent_pictures.remember(pin_id, self._image_urls(pin) if pin else [])
+        urls = self._recent_pictures.urls(pin_id)
+        if not urls or not all_boards:
             return []
 
         names = [b.get("name", "").strip() for b in all_boards if b.get("name")]
         dbg(f"pin {pin_id}: {len(names)} candidate names")
-        ranked = await asyncio.to_thread(self._match, image_url, names)
+        prepared = time.time()
+        loaded_url = self._recent_pictures.loaded_url(pin_id)
+        served = loaded_url is not None
+        ranked = await asyncio.to_thread(
+            self._match, self._served_address(loaded_url) if served else urls[0], names
+        )
+        if served and not ranked:
+            # The backend may not have reached this machine; the image's own address is the check.
+            ranked = await asyncio.to_thread(self._match, urls[0], names)
         dbg(f"agent ranked matches: {ranked}")
+        dbg(
+            f"timing: pin image {'seen' if image_was_seen else 'fetched'}, "
+            f"picture {'served from here' if served else 'read by address'}, "
+            f"pin and boards {(prepared - started) * 1000:.0f} ms, "
+            f"classifier {(time.time() - prepared) * 1000:.0f} ms"
+        )
 
         id_vs_entry = {}
         for name, probability in ranked:
@@ -341,13 +464,14 @@ class PinterestBoardPicker:
             dbg(f"  pin fetch FAILED: {type(e).__name__}: {e}")
             return None
 
-    def _extract_image_url(self, pin):
+    def _image_urls(self, pin):
         """
+        The addresses of a pin's images, preferred first: the smallest one at least IMAGE_MIN_SIZE
+        wide, then larger ones, then smaller ones, then the original.
         Pinterest returns images in two shapes:
           A) nested map: pin["images"]["236x"|"474x"|"originals"] = {"url": ...}
           B) flat fields: pin["image_square_url"|"image_medium_url"|"image_large_url"]
                           with matching "_size_pixels" objects
-        Pick smallest >= IMAGE_MIN_SIZE.
         """
         candidates = []
         originals_url = None
@@ -384,29 +508,33 @@ class PinterestBoardPicker:
                 continue
             candidates.append((w, url))
 
-        above = [c for c in candidates if c[0] is not None and c[0] >= IMAGE_MIN_SIZE]
-        if above:
-            chosen = min(above, key=lambda c: c[0])
-            return chosen[1]
-
-        known = [c for c in candidates if c[0] is not None]
-        if known:
-            chosen = max(known, key=lambda c: c[0])
-            return chosen[1]
-
-        if originals_url:
-            return originals_url
-
-        if candidates:
-            return candidates[0][1]
-
-        return None
+        wide_enough = sorted((c for c in candidates if c[0] is not None and c[0] >= IMAGE_MIN_SIZE))
+        smaller = sorted((c for c in candidates if c[0] is not None and c[0] < IMAGE_MIN_SIZE), reverse=True)
+        unknown_size = [c for c in candidates if c[0] is None]
+        urls = [c[1] for c in wide_enough + smaller] + ([originals_url] if originals_url else [])
+        urls += [c[1] for c in unknown_size]
+        return list(dict.fromkeys(urls))
 
     def _get_boards(self, user_id, auth, cookie, fields):
-        """All of the user's boards, as read at most BOARDS_TTL_SECONDS ago."""
+        """The user's boards: read on first use, then returned at once from what was read, which a
+        background read replaces once it is older than BOARDS_TTL_SECONDS."""
         boards, read_at = self._auth_to_boards.get(auth, (None, 0.0))
-        if boards and time.time() - read_at <= BOARDS_TTL_SECONDS:
-            return boards
+        if not boards:
+            return self._read_boards(user_id, auth, cookie, fields)
+        if time.time() - read_at > BOARDS_TTL_SECONDS and auth not in self._auth_refreshing_boards:
+            self._auth_refreshing_boards.add(auth)
+            threading.Thread(
+                target=self._refresh_boards, args=(user_id, auth, cookie, fields), daemon=True
+            ).start()
+        return boards
+
+    def _refresh_boards(self, user_id, auth, cookie, fields):
+        try:
+            self._read_boards(user_id, auth, cookie, fields)
+        finally:
+            self._auth_refreshing_boards.discard(auth)
+
+    def _read_boards(self, user_id, auth, cookie, fields):
         boards = self._get_all_boards(user_id, auth, cookie, fields)
         if boards:
             self._auth_to_boards[auth] = (boards, time.time())

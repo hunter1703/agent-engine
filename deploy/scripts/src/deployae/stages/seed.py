@@ -63,6 +63,7 @@ class SeedAppConfigStage(Stage):
         run_id = f"seed-app-{self.tier}-{uuid.uuid4().hex[:6]}"
         namespace = "agent-engine"
         rest_service_name = f"rest-{self.tier}"
+        internal_service_name = f"internal-{self.tier}"
         
         # Read the first customer's domain and credentials
         customers_path = CONFIGS_DIR / self.environment / "customers.json"
@@ -84,10 +85,13 @@ class SeedAppConfigStage(Stage):
         cmd = f"kubectl create configmap {run_id}-script -n {namespace} --from-file=seed_app.py={seed_app_py} --dry-run=client -o yaml | kubectl apply --server-side --force-conflicts -f -"
         await run_cmd(cmd)
         
-        # 2. Create secrets for models, agents, connectors
+        # 2. Create secrets for models, agents, connectors — and their "global" resources, shared
+        # across every customer rather than seeded for the first customer only.
         await create_secret_from_dir(namespace, f"{run_id}-connectors", CONFIGS_DIR / self.environment / "connectors")
         await create_secret_from_dir(namespace, f"{run_id}-models", CONFIGS_DIR / self.environment / "models")
         await create_secret_from_dir(namespace, f"{run_id}-agents", CONFIGS_DIR / self.environment / "agents")
+        await create_secret_from_dir(namespace, f"{run_id}-models-global", CONFIGS_DIR / self.environment / "models" / "global")
+        await create_secret_from_dir(namespace, f"{run_id}-agents-global", CONFIGS_DIR / self.environment / "agents" / "global")
         
         # 3. Apply Job
         job_yaml = f"""apiVersion: batch/v1
@@ -108,6 +112,8 @@ spec:
           env:
             - name: REST_URL
               value: "http://{rest_service_name}:8080"
+            - name: INTERNAL_URL
+              value: "http://{internal_service_name}:8080/internal"
             - name: SEED_DOMAIN
               value: "{seed_domain}"
             - name: SEED_USERNAME
@@ -123,11 +129,15 @@ spec:
             - {{name: connectors, mountPath: /config/connectors}}
             - {{name: models, mountPath: /config/models}}
             - {{name: agents, mountPath: /config/agents}}
+            - {{name: models-global, mountPath: /config/models-global}}
+            - {{name: agents-global, mountPath: /config/agents-global}}
       volumes:
         - {{name: script, configMap: {{name: {run_id}-script}}}}
         - {{name: connectors, secret: {{secretName: {run_id}-connectors, optional: true}}}}
         - {{name: models, secret: {{secretName: {run_id}-models, optional: true}}}}
         - {{name: agents, secret: {{secretName: {run_id}-agents, optional: true}}}}
+        - {{name: models-global, secret: {{secretName: {run_id}-models-global, optional: true}}}}
+        - {{name: agents-global, secret: {{secretName: {run_id}-agents-global, optional: true}}}}
 """
 
         import tempfile

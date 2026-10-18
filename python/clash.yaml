@@ -1,9 +1,10 @@
-# Clash profile for the iPhone that sends the Pinterest app's API calls through the Mac running
-# mitm.py (mitmweb on port 9000) and everything else straight to the internet.
+# Clash profile for the iPhone. The domains listed under `rules` go through a proxy running on the
+# Mac (port 9000), and everything else goes straight to the internet.
 #
-# Import it into the Clash app on the phone. The Mac is found by its Bonjour name, so it works on
-# any network the phone and the Mac share, whatever address the Mac has there. When the name does
-# not answer, the traffic goes direct, so the Pinterest app keeps working with the Mac switched off.
+# Import it into the Clash app on the phone. The Mac is found by its local network name
+# (r2d2.local), so it works on any network the phone and the Mac share, whatever address the Mac
+# has there. When the name does not answer, the traffic goes direct, so the phone keeps working
+# with the Mac switched off.
 #
 # Clash sends its own connections over the phone's internet connection (Wi-Fi or cellular). When
 # the Mac is on the phone's Personal Hotspot it is only reachable over the hotspot's own interface,
@@ -16,8 +17,8 @@ mode: rule
 log-level: info
 
 proxies:
-  - { name: "Mac-bonjour", type: http, server: r2d2.local, port: 9000 }
-  - { name: "Mac-bonjour-hotspot", type: http, server: r2d2.local, port: 9000, interface-name: bridge100 }
+  - { name: "Mac", type: http, server: r2d2.local, port: 9000 }
+  - { name: "Mac-hotspot", type: http, server: r2d2.local, port: 9000, interface-name: bridge100 }
 
 proxy-groups:
   - name: "MITM"
@@ -25,32 +26,18 @@ proxy-groups:
     url: http://www.gstatic.com/generate_204
     interval: 30
     proxies:
-      - "Mac-bonjour"
-      - "Mac-bonjour-hotspot"
+      - "Mac"
+      - "Mac-hotspot"
       - DIRECT
 
-# Pinterest's API connections are named after CDN servers (for example
-# api-pinterest-com.gslb.pinterest.com or an akamaiedge.net name), while the TLS name the app asks
-# for is always api.pinterest.com. Sniffing reads that TLS name, so the rules below see it.
-sniffer:
-  enable: true
-  force-dns-mapping: true
-  parse-pure-ip: true
-  override-destination: true
-  sniff:
-    TLS:
-      ports: [443]
-    HTTP:
-      ports: [80]
-
 rules:
-  # The Mac proxies carry TCP only. The Pinterest app tries HTTP/3 (QUIC, which is UDP) first, and
-  # without this rule that UDP matches nothing below and leaves the phone directly, never reaching
-  # the Mac. Rejecting it makes the app fall back to HTTP/2 over TCP, which the rules below send to
-  # the Mac. The Clash app's own "UDP Fallback" setting adds this same rule.
+  # The Mac proxy carries TCP only. Apps try HTTP/3 (QUIC, which is UDP) first, and without this
+  # rule that UDP matches nothing below and leaves the phone directly, never reaching the Mac.
+  # Rejecting it makes the app fall back to HTTP/2 over TCP, which the rules below send to the
+  # Mac. The Clash app's own "UDP Fallback" setting adds this same rule.
   - AND,((NETWORK,udp),(DST-PORT,443/80)),REJECT
-  # api.pinterest.com is the host the addon rewrites (TARGET_HOST in mitm.py).
+  # Domains sent through the Mac; add one line per domain.
   - DOMAIN-SUFFIX,pinterest.com,MITM
-  # The same API connection is sometimes named after the Akamai server it lands on instead.
-  - DOMAIN-SUFFIX,akamaiedge.net,MITM
+  - DOMAIN-SUFFIX,pinimg.com,MITM
+  # Everything else.
   - MATCH,DIRECT

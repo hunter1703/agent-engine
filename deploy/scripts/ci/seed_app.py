@@ -35,6 +35,7 @@ def topological_agent_order(agent_files):
 
 def seed():
     rest_url = os.environ.get("REST_URL", "http://rest:8080")
+    internal_url = os.environ.get("INTERNAL_URL", "http://internal:8080/internal")
     seed_domain = os.environ.get("SEED_DOMAIN", "localhost")
     seed_username = os.environ.get("SEED_USERNAME", "admin")
     seed_password = os.environ.get("SEED_PASSWORD", "password")
@@ -98,6 +99,30 @@ def seed():
         for doc in docs:
             post_json(f"{rest_url}/v1/agent/upsert?skipVersion=true", doc)
             print(f"Seeded agent {doc.get('id')}", flush=True)
+
+    # Global models — shared across every customer, so seeded under the system customer via the
+    # internal service rather than the logged-in tenant's own /v1 endpoints.
+    for path in sorted(glob.glob("/config/models-global/*.json")):
+        with open(path) as f:
+            docs = json.load(f)
+        if not isinstance(docs, list):
+            docs = [docs]
+        for doc in docs:
+            post_json(f"{internal_url}/catalog/model/upsert?skipVersion=true", doc)
+            print(f"Seeded global model {doc.get('id')}", flush=True)
+
+    # Global agents — same reasoning as global models above.
+    global_agent_files = sorted(glob.glob("/config/agents-global/*.json"))
+    if global_agent_files:
+        global_agent_files = topological_agent_order(global_agent_files)
+    for path in global_agent_files:
+        with open(path) as f:
+            docs = json.load(f)
+        if not isinstance(docs, list):
+            docs = [docs]
+        for doc in docs:
+            post_json(f"{internal_url}/catalog/agent/upsert?skipVersion=true", doc)
+            print(f"Seeded global agent {doc.get('id')}", flush=True)
 
     # Connections
     for path in sorted(glob.glob("/config/connectors/*.json")):

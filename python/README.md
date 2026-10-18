@@ -15,6 +15,7 @@ This module contains Python-based runtime services and integrations for `agent-e
    - `mitmproxy` addon intercepting Pinterest iOS `GET /v3/users/boards/board_picker_shortlist/`.
    - Calls the local Agent Engine (`POST /v1/agent/{agentId}/send-temp`) with the pin image attachment; the answer is the classifier's `{"labels": [...]}`.
    - Resolves visual classification matches against boards and answers the picker request itself with the best matching boards (up to `MAX_BOARD_RESULTS`), marked the way Pinterest marks its own shortlist, without asking Pinterest.
+   - Keeps the pictures the app loads for the last 100 pins and serves them from a small web server on `PICTURE_PORT`, so the classifier reads a picture from this machine instead of downloading it from Pinterest. Nothing is stored in the backend. When a picture was not seen, the classifier is given Pinterest's address for it, as before.
 
 ## Running
 
@@ -76,4 +77,6 @@ Environment variables for `mitm.py`:
 - `AGENT_SESSION_COOKIE`: default `systemSession`
 - `MIN_BOARD_SCORE`: default `0.5`
 - `MAX_BOARD_RESULTS`: default `4`; the number of boards the picker shows. A longer answer is cut to it, because the app also removes the boards of a shortlist from its list of all boards
+- `PICTURE_HOST`: default `host.docker.internal`; how the Agent Engine reaches this machine, to read a pin's picture from it
+- `PICTURE_PORT`: default `9002`; the port the proxy serves the pictures it has seen on
 - `DEADLINE_SECONDS`: default `8.0`; the longest the addon holds a shortlist response (and each request it makes), after which the response is forwarded unmodified
