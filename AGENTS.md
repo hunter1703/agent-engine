@@ -144,7 +144,10 @@ docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
   through a collection registered with a `DocumentBackend` or a `VectorBackend`. Permissioned entities live
   in their customer's own database (`DocumentRepositorySpec.perCustomer`), never in a global
   collection: roles on every asset skip per-entity filtering, so only the database keeps customers
-  apart. A customer-facing view of global data is its own per-customer entity that the owning
+  apart. The system customer is the one exception: it owns no tenant data to keep apart from
+  anyone else's, so its data for a per-customer spec still joins the bare, global database — the
+  same one a spec declared `global` always uses — instead of getting its own `_system` database
+  (`MongoEntityStore.isGlobalDatabase`). A customer-facing view of global data is its own per-customer entity that the owning
   service mirrors into the global one (e.g. `AgentSchedule` and the scheduler's `JobDefinition`).
 - **Store registration happens when a repository is created**: `DocumentBackend`/`VectorBackend` set up
   (indexes, vector collections) only the collections registered with them, so every repository

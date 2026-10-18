@@ -92,6 +92,7 @@ class SeedAppConfigStage(Stage):
         await create_secret_from_dir(namespace, f"{run_id}-agents", CONFIGS_DIR / self.environment / "agents")
         await create_secret_from_dir(namespace, f"{run_id}-models-global", CONFIGS_DIR / self.environment / "models" / "global")
         await create_secret_from_dir(namespace, f"{run_id}-agents-global", CONFIGS_DIR / self.environment / "agents" / "global")
+        await create_secret_from_dir(namespace, f"{run_id}-connectors-global", CONFIGS_DIR / self.environment / "connectors" / "global")
         
         # 3. Apply Job
         job_yaml = f"""apiVersion: batch/v1
@@ -131,6 +132,7 @@ spec:
             - {{name: agents, mountPath: /config/agents}}
             - {{name: models-global, mountPath: /config/models-global}}
             - {{name: agents-global, mountPath: /config/agents-global}}
+            - {{name: connectors-global, mountPath: /config/connectors-global}}
       volumes:
         - {{name: script, configMap: {{name: {run_id}-script}}}}
         - {{name: connectors, secret: {{secretName: {run_id}-connectors, optional: true}}}}
@@ -138,6 +140,7 @@ spec:
         - {{name: agents, secret: {{secretName: {run_id}-agents, optional: true}}}}
         - {{name: models-global, secret: {{secretName: {run_id}-models-global, optional: true}}}}
         - {{name: agents-global, secret: {{secretName: {run_id}-agents-global, optional: true}}}}
+        - {{name: connectors-global, secret: {{secretName: {run_id}-connectors-global, optional: true}}}}
 """
 
         import tempfile

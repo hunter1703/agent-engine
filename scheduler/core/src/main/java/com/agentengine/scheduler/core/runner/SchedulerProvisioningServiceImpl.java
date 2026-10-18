@@ -2,6 +2,7 @@ package com.agentengine.scheduler.core.runner;
 
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.CustomerJobsProvider;
+import com.agentengine.scheduler.api.runner.GlobalJobsProvider;
 import com.agentengine.scheduler.api.runner.SchedulerProvisioningService;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.scheduler.core.store.SchedulerDocumentStoreClientType;
@@ -24,18 +25,21 @@ public class SchedulerProvisioningServiceImpl implements SchedulerProvisioningSe
   private final MongoClientProvisioner mongoClientProvisioner;
   private final MicroServiceProvisioner microServiceProvisioner;
   private final SchedulerService schedulerService;
-  private final Instance<CustomerJobsProvider> jobsProviders;
+  private final Instance<CustomerJobsProvider> customerJobsProviders;
+  private final Instance<GlobalJobsProvider> globalJobsProviders;
 
   @Inject
   public SchedulerProvisioningServiceImpl(
       final MongoClientProvisioner mongoClientProvisioner,
       final MicroServiceProvisioner microServiceProvisioner,
       final SchedulerService schedulerService,
-      final Instance<CustomerJobsProvider> jobsProviders) {
+      final Instance<CustomerJobsProvider> customerJobsProviders,
+      final Instance<GlobalJobsProvider> globalJobsProviders) {
     this.mongoClientProvisioner = mongoClientProvisioner;
     this.microServiceProvisioner = microServiceProvisioner;
     this.schedulerService = schedulerService;
-    this.jobsProviders = jobsProviders;
+    this.customerJobsProviders = customerJobsProviders;
+    this.globalJobsProviders = globalJobsProviders;
   }
 
   /**
@@ -66,6 +70,7 @@ public class SchedulerProvisioningServiceImpl implements SchedulerProvisioningSe
                 Context.SYSTEM_CUSTOMER_ID,
                 "scheduler",
                 request.getServer(ServerType.MICROSERVICE_SERVER, "scheduler")));
+    run.step("jobs", this::scheduleGlobalJobs);
     return run.result();
   }
 
@@ -89,8 +94,20 @@ public class SchedulerProvisioningServiceImpl implements SchedulerProvisioningSe
    * customer, so provisioning again sets a stored job to its template, whatever it was.
    */
   private void scheduleCustomerJobs(final String customerId) {
-    for (final CustomerJobsProvider provider : jobsProviders) {
+    for (final CustomerJobsProvider provider : customerJobsProviders) {
       for (final JobDefinition definition : provider.jobDefinitionsFor(customerId)) {
+        schedulerService.scheduleIgnoringVersion(definition);
+      }
+    }
+  }
+
+  /**
+   * Schedules every {@link GlobalJobsProvider}'s jobs, run as the system customer since this runs
+   * during environment provisioning.
+   */
+  private void scheduleGlobalJobs() {
+    for (final GlobalJobsProvider provider : globalJobsProviders) {
+      for (final JobDefinition definition : provider.jobDefinitions()) {
         schedulerService.scheduleIgnoringVersion(definition);
       }
     }

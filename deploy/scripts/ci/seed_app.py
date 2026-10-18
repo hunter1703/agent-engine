@@ -134,6 +134,16 @@ def seed():
             post_json(f"{rest_url}/v1/connection/?skipVersion=true", doc)
             print(f"Seeded connection {doc.get('id') or doc.get('appName')}", flush=True)
 
+    # Global connections — same reasoning as global models/agents above.
+    for path in sorted(glob.glob("/config/connectors-global/*.json")):
+        with open(path) as f:
+            docs = json.load(f)
+        if not isinstance(docs, list):
+            docs = [docs]
+        for doc in docs:
+            post_json(f"{internal_url}/connectors/connection/upsert?skipVersion=true", doc)
+            print(f"Seeded global connection {doc.get('id') or doc.get('appName')}", flush=True)
+
 
 if __name__ == "__main__":
     seed()
