@@ -38,9 +38,9 @@ public final class SendMessageTool extends AbstractAgentTool {
       new ToolDescriptor(
           Constants.ToolNames.SEND_MESSAGE,
           """
-          Sends a follow-up message to an ongoing child agent session, allowing you to have a back-and-forth dialogue while preserving its full conversation history. Use this to continue a complex task, provide missing information, grant additional access, or issue corrections to a session that you previously spawned. The child session must have already finished processing its previous message before a new one is accepted; sending to an active session will be rejected. A successful response confirms the message was accepted and the child has begun processing — it does not mean the child has finished.
+          Delivers a follow-up message to an existing child sub-agent session, allowing back-and-forth dialogue while preserving the child's full conversation history. Use this to continue a sub-agent task, provide missing information, grant additional access, or issue corrections to a spawned sub-agent. Do NOT use this tool for messaging end users or external communication — it is strictly for coordinating with child sub-agents. The child session must have completed its previous turn before a new message is accepted.
 
-          Returns: { child_session_id } on success, or { error } on failure.""",
+          Returns: { child_session_id, result } if awaited, { child_session_id, status: "started" } if not, or { error } on failure.""",
           Map.of());
 
   public SendMessageTool(
@@ -64,7 +64,7 @@ public final class SendMessageTool extends AbstractAgentTool {
       @ToolArg(
               name = Constants.ToolArgs.CHILD_SESSION_ID,
               description =
-                  "The opaque identifier of an existing child agent session to deliver the message to.")
+                  "The session identifier of an existing child agent to deliver the message to.")
           final String childSessionId,
       @ToolArg(
               name = "message",

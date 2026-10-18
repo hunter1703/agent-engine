@@ -57,16 +57,16 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                   + "is not automatically visible to the child — pass the ids of any documents "
                   + "or references the child's work depends on. A child working from your "
                   + "paraphrase of source material produces weaker work than one reading the "
-                  + "source directly. Optional.")
+                  + "source directly.")
           .build();
 
   private static final Schema NOTEBOOK_IDS_SCHEMA =
       ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
           .description(
-              "Ids of notebooks to grant the spawned agent. Notebooks you have access to are "
+              "Names of notebooks to grant the spawned agent. Notebooks you have access to are "
                   + "not automatically visible to the child — pass every notebook the child's "
                   + "work depends on, including the shared workspace if the team is using one. "
-                  + "Optional, but a child spawned without the notebooks it needs may proceed "
+                  + "A child spawned without the notebooks it needs may proceed "
                   + "silently with incomplete context.")
           .build();
 
@@ -183,20 +183,19 @@ public final class SpawnAgentTool extends AbstractAgentTool {
         Schema.builder()
             .type(Known.STRING)
             .enum_(subAgentIds)
-            .description(
-                "ID of the agent to spawn. Available agents: %s. Required.".formatted(agentList))
+            .description("ID of the agent to spawn. Available agents: %s.".formatted(agentList))
             .build());
     properties.put(
         "message",
         Schema.builder()
             .type(Known.STRING)
-            .description("Initial message to send to the spawned agent. Required.")
+            .description("Initial message to send to the spawned agent.")
             .build());
     properties.put(
         Constants.ToolArgs.GOAL,
         Schema.builder()
             .type(Known.STRING)
-            .description(GOAL_SCHEMA_DESCRIPTION + " Required.")
+            .description(GOAL_SCHEMA_DESCRIPTION)
             .build());
     properties.put(
         Constants.ToolArgs.AWAIT_COMPLETION,

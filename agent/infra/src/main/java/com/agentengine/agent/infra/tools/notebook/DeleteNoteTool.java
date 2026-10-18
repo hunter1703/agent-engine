@@ -29,7 +29,9 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolArg(name = Constants.ToolArgs.NOTEBOOK_ID, description = "The notebook the note is in.")
+      @ToolArg(
+              name = Constants.ToolArgs.NOTEBOOK_ID,
+              description = "The name of the notebook the note is in.")
           final String notebookId,
       @ToolArg(
               name = Constants.ToolArgs.NOTE_TITLE,

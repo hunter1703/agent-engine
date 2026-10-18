@@ -37,19 +37,22 @@ public final class GrepFilesTool extends BaseFileTool {
   private static final int DEFAULT_LIMIT = 100;
   private static final int MAX_LIMIT = 2000;
   private static final int MAX_LINE_LENGTH = 500;
+  private static final java.util.Set<String> DEFAULT_IGNORED_DIRS =
+      java.util.Set.of(".git", ".gradle", "node_modules", "build", "target", ".idea", ".vscode", "__pycache__");
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           TOOL_NAME,
-          "Searches the text content of files under a directory tree for lines matching a regular expression. "
-              + "Use when you need to find which files contain a pattern, or locate all occurrences of a "
-              + "string, symbol, or keyword across a codebase — particularly when you do not know which "
-              + "specific file to look in. Returns matching lines with their relative file paths, line "
-              + "numbers, and the matched text segment. Searches are case-insensitive by default. Hidden "
-              + "files and directories (names starting with '.' or '_') are automatically skipped. Binary or "
-              + "unreadable files are silently skipped. Results are capped at the configured limit. "
-              + "Returns: { matches: [{file, lineNumber, line, matchedText}], pattern, search_path, "
-              + "files_searched, total_matches, matches_returned, truncated }.",
+          """
+          Searches the text content of files under a directory tree for lines matching a regular expression.
+          Use when you need to find which files contain a pattern, or locate all occurrences of a
+          string, symbol, or keyword across a codebase — particularly when you do not know which
+          specific file to look in. By default, returns matching lines in a concise ripgrep format
+          (path:lineNumber:content); set output_format='json' for structured match objects.
+          Searches are case-insensitive by default. Hidden files and directories (names starting with '.' or '_')
+          and common dependency/build directories (node_modules, build, target, .git, etc.) are automatically skipped.
+          Binary or unreadable files are silently skipped. Results are capped at the configured limit.
+          Returns: { matches: [...], format, pattern, search_path, files_searched, total_matches, matches_returned, truncated }.""",
           Map.of(),
           ToolRiskLevel.LOW);
 
@@ -61,29 +64,33 @@ public final class GrepFilesTool extends BaseFileTool {
       @ToolArg(
               name = "pattern",
               description =
-                  "regular expression matched against individual lines. The full line "
-                      + "content is searched; ^ and $ anchors are supported. Special regex characters must be escaped.")
+                  """
+                  regular expression matched against individual lines. The full line
+                  content is searched; ^ and $ anchors are supported. Special regex characters must be escaped.""")
           String pattern,
       @ToolArg(
               name = "path",
               description =
-                  "Root directory from which to start the recursive search. Defaults to the process "
-                      + "working directory. Must be an existing directory.",
+                  """
+                  Root directory from which to start the recursive search. Defaults to the process
+                  working directory. Must be an existing directory.""",
               optional = true)
           String searchPath,
       @ToolArg(
               name = "include",
               description =
-                  "Glob pattern to restrict which files are searched (e.g., '*.java', '*.md', 'src/**/*.ts'). "
-                      + "When no directory separator is present, matched against the file name only. "
-                      + "Defaults to all files.",
+                  """
+                  Glob pattern to restrict which files are searched (e.g., '*.java', '*.md', 'src/**/*.ts').
+                  When no directory separator is present, matched against the file name only.
+                  Defaults to all files.""",
               optional = true)
           String includePattern,
       @ToolArg(
               name = "limit",
               description =
-                  "Maximum number of matching lines to return. Capped at 2,000. Defaults to 100. "
-                      + "When the result is truncated, the response includes truncated: true.",
+                  """
+                  Maximum number of matching lines to return. Capped at 2,000. Defaults to 100.
+                  When the result is truncated, the response includes truncated: true.""",
               optional = true)
           Integer limit,
       @ToolArg(
@@ -91,7 +98,13 @@ public final class GrepFilesTool extends BaseFileTool {
               description =
                   "Whether the regex match is case-sensitive. Defaults to false (case-insensitive).",
               optional = true)
-          Boolean caseSensitive) {
+          Boolean caseSensitive,
+      @ToolArg(
+              name = "output_format",
+              description = "Output format. Defaults to 'text'.",
+              enums = {"text", "json"},
+              optional = true)
+          String outputFormat) {
 
     if (pattern == null || pattern.isBlank()) {
       return ToolOutput.direct(Map.of("error", "pattern is required"));
@@ -118,24 +131,30 @@ public final class GrepFilesTool extends BaseFileTool {
       Files.walkFileTree(
           baseDir, new SearchVisitor(baseDir, regexPattern, searchState, includePattern));
 
-      final List<Map<String, Object>> resultsJson =
-          searchState.matches().stream().map(JsonUtils::toMap).toList();
+      final boolean isJson = "json".equalsIgnoreCase(outputFormat);
+      final List<?> matchesOutput =
+          isJson
+              ? searchState.matches().stream().map(JsonUtils::toMap).toList()
+              : searchState.matches().stream()
+                  .map(match -> match.file() + ":" + match.lineNumber() + ":" + match.line())
+                  .toList();
       final boolean truncated = searchState.isTruncated();
 
       LOG.debug(
           "Grep search: pattern='{}' in {} files, found {} matches (limit: {})",
           pattern,
           searchState.filesSearched(),
-          resultsJson.size(),
+          matchesOutput.size(),
           maxMatches);
 
       final Map<String, Object> response = new HashMap<>();
-      response.put("matches", resultsJson);
+      response.put("matches", matchesOutput);
+      response.put("format", isJson ? "json" : "text");
       response.put("pattern", pattern);
       response.put("search_path", basePath);
       response.put("files_searched", searchState.filesSearched());
       response.put("total_matches", searchState.totalMatches());
-      response.put("matches_returned", resultsJson.size());
+      response.put("matches_returned", matchesOutput.size());
       response.put("truncated", truncated);
 
       if (includePattern != null) {
@@ -186,7 +205,7 @@ public final class GrepFilesTool extends BaseFileTool {
       if (searchState.shouldStop()) {
         return FileVisitResult.TERMINATE;
       }
-      if (!dir.equals(baseDir) && isHiddenPath(dir)) {
+      if (!dir.equals(baseDir) && isIgnoredDirectory(dir)) {
         return FileVisitResult.SKIP_SUBTREE;
       }
       return FileVisitResult.CONTINUE;
@@ -235,6 +254,15 @@ public final class GrepFilesTool extends BaseFileTool {
     public FileVisitResult visitFileFailed(final Path file, final IOException exc) {
       LOG.debug("Skipping file that could not be visited during grep search: {}", file, exc);
       return searchState.shouldStop() ? FileVisitResult.TERMINATE : FileVisitResult.CONTINUE;
+    }
+
+    private static boolean isIgnoredDirectory(Path path) {
+      final Path fileName = path.getFileName();
+      if (fileName == null) {
+        return false;
+      }
+      final String name = fileName.toString();
+      return isHiddenPath(path) || DEFAULT_IGNORED_DIRS.contains(name);
     }
 
     private static boolean isHiddenPath(Path path) {

@@ -42,7 +42,7 @@ public final class FinishPlanTool extends Tool {
       @ToolArg(
               name = "result",
               description =
-                  "Summary of what was accomplished, or an explanation of why the plan was abandoned. Required.")
+                  "Summary of what was accomplished, or an explanation of why the plan was abandoned.")
           String result) {
     final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
     final Plan currentPlan = sessionState.plan();

@@ -50,7 +50,8 @@ public final class HumanInTheLoopTool extends Tool {
       @ToolArg(
               name = KIND,
               description =
-                  "Type of input required. TEXT: expecting information, choices, or custom answers. DECISION: user must only approve or reject an action (ALLOW/DISALLOW). DECISION requires no other parameters.")
+                  "Type of input required: TEXT for answers or choices; DECISION for approval.",
+              enums = {"TEXT", "DECISION"})
           final String kind,
       @ToolArg(
               name = RESPONSE_OPTIONS,
@@ -73,7 +74,7 @@ public final class HumanInTheLoopTool extends Tool {
       @ToolArg(
               name = CONTEXT,
               description =
-                  "Optional structured metadata describing why user input is required, what is blocked, and what decision is pending. For machine-readable state only. Do NOT place user-facing explanations or final answers here.",
+                  "Structured metadata describing why user input is required, what is blocked, and what decision is pending. For machine-readable state only. Do NOT place user-facing explanations or final answers here.",
               optional = true)
           final Map<String, Object> context) {
     if (toolContext == null) {

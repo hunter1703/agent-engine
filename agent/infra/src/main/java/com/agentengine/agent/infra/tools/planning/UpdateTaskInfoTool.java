@@ -28,7 +28,9 @@ public final class UpdateTaskInfoTool extends UpdateTaskStatusTool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @ToolArg(name = "task_id", description = "ID of the task whose metadata is to be updated.")
+      @ToolArg(
+              name = "task_id",
+              description = "ID of the task whose metadata is to be updated.")
           String taskId,
       @ToolArg(
               name = "name",

@@ -34,7 +34,7 @@ public abstract class UpdateTaskStatusTool extends Tool {
 
     final Task task = PlanningUtils.findTaskById(currentPlan, taskId);
     if (task == null) {
-      return Map.of("error", "Task not found with ID: " + taskId);
+      return Map.of("error", "Task not found: " + taskId);
     }
     final TaskStatus resolvedStatus = newStatus != null ? newStatus : task.getStatus();
     final String resolvedResult = StringUtils.isNotBlank(result) ? result : task.getResult();
@@ -44,13 +44,13 @@ public abstract class UpdateTaskStatusTool extends Tool {
     }
 
     final Plan updatedPlan =
-        applyTaskUpdate(currentPlan, taskId, name, goal, description, newStatus, result);
+        applyTaskUpdate(currentPlan, task.getTaskId(), name, goal, description, newStatus, result);
     sessionState.updatePlan(updatedPlan);
     return Map.of(
         Constants.ToolStatus.STATUS,
         Constants.ToolStatus.SUCCESS,
         "task_id",
-        taskId,
+        task.getTaskId(),
         "new_status",
         resolvedStatus.getValue());
   }

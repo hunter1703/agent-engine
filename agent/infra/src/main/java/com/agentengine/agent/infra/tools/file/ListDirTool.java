@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -30,18 +31,21 @@ public final class ListDirTool extends BaseFileTool {
   private static final int DEFAULT_LIMIT = 100;
   private static final int DEFAULT_DEPTH = 2;
   private static final int MAX_ENTRY_LENGTH = 500;
+  private static final Set<String> DEFAULT_IGNORED_DIRS =
+      Set.of(".git", ".gradle", "node_modules", "build", "target", ".idea", ".vscode", "__pycache__");
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           TOOL_NAME,
-          "Lists the contents of a directory, optionally traversing subdirectories up to a configurable depth. "
-              + "Use to understand directory structure, discover what files are present, or browse for files "
-              + "by name when you do not know the exact path. For searching file contents by pattern, use the "
-              + "search tool instead. Entries are sorted alphabetically at each level and include their type "
-              + "(file or directory), relative path, depth level, and file size in bytes (files only). "
-              + "Supports pagination for large directories. "
-              + "Returns: { entries: [{name, path, type, depth, size_bytes?}], dir_path, offset, limit, "
-              + "total_entries, entries_returned, has_more, next_offset (when has_more is true) }.",
+          """
+          Lists the contents of a directory, optionally traversing subdirectories up to a configurable depth.
+          Use to understand directory structure, discover what files are present, or browse for files
+          by name when you do not know the exact path. Hidden entries (starting with '.' or '_') and
+          common dependency/build directories (node_modules, build, target, etc.) are skipped by default.
+          For searching file contents by pattern, use the search tool instead. Entries are sorted alphabetically
+          at each level and include their type (file or directory), relative path, depth level, and file size in bytes (files only).
+          Returns: { entries: [{name, path, type, depth, size_bytes?}], entries_returned,
+          total_entries, has_more, next_offset (when has_more is true) }.""",
           Map.of(),
           ToolRiskLevel.LOW);
 
@@ -53,8 +57,9 @@ public final class ListDirTool extends BaseFileTool {
       @ToolArg(
               name = "dir_path",
               description =
-                  "Absolute or relative path to the directory to list. Relative paths are resolved "
-                      + "against the process working directory.")
+                  """
+                  Absolute or relative path to the directory to list. Relative paths are resolved
+                  against the process working directory.""")
           String dirPath,
       @ToolArg(
               name = "offset",
@@ -71,10 +76,19 @@ public final class ListDirTool extends BaseFileTool {
       @ToolArg(
               name = "depth",
               description =
-                  "Maximum recursion depth into subdirectories. 0 lists only the immediate contents of "
-                      + "dir_path. Defaults to 2. Capped at 10.",
+                  """
+                  Maximum recursion depth into subdirectories. 0 lists only the immediate contents of
+                  dir_path. Defaults to 2. Capped at 10.""",
               optional = true)
-          Integer depth) {
+          Integer depth,
+      @ToolArg(
+              name = "show_hidden",
+              description =
+                  """
+                  Whether to include hidden files/directories (starting with '.' or '_') and common
+                  build/dependency directories (node_modules, .git, build, target). Defaults to false.""",
+              optional = true)
+          Boolean showHidden) {
 
     if (dirPath == null || dirPath.isBlank()) {
       return ToolOutput.direct(Map.of("error", "dir_path is required"));
@@ -83,6 +97,7 @@ public final class ListDirTool extends BaseFileTool {
     int startOffset = offset != null ? Math.max(1, offset) : DEFAULT_OFFSET;
     int maxEntries = limit != null ? Math.max(1, Math.min(limit, 1000)) : DEFAULT_LIMIT;
     int maxDepth = depth != null ? Math.max(0, Math.min(depth, 10)) : DEFAULT_DEPTH;
+    boolean includeHidden = Boolean.TRUE.equals(showHidden);
 
     try {
       Path dir = resolvePath(dirPath);
@@ -95,7 +110,7 @@ public final class ListDirTool extends BaseFileTool {
         return ToolOutput.direct(Map.of("error", "Not a directory: " + dirPath));
       }
 
-      List<DirectoryEntry> allEntries = getEntries(dir, dir, 0, maxDepth);
+      List<DirectoryEntry> allEntries = getEntries(dir, dir, 0, maxDepth, includeHidden);
 
       int totalEntries = allEntries.size();
       int startIndex = Math.max(0, startOffset - 1);
@@ -138,11 +153,8 @@ public final class ListDirTool extends BaseFileTool {
 
       final Map<String, Object> response = new HashMap<>();
       response.put("entries", entriesJson);
-      response.put("dir_path", dirPath);
-      response.put("offset", startOffset);
-      response.put("limit", maxEntries);
-      response.put("total_entries", totalEntries);
       response.put("entries_returned", endIndex - startIndex);
+      response.put("total_entries", totalEntries);
       response.put("has_more", hasMore);
 
       if (hasMore) {
@@ -160,7 +172,8 @@ public final class ListDirTool extends BaseFileTool {
   }
 
   private List<DirectoryEntry> getEntries(
-      Path rootDir, Path currentDir, int currentDepth, int maxDepth) throws IOException {
+      Path rootDir, Path currentDir, int currentDepth, int maxDepth, boolean includeHidden)
+      throws IOException {
     List<DirectoryEntry> entries = new ArrayList<>();
     if (currentDepth > maxDepth) {
       return entries;
@@ -170,6 +183,11 @@ public final class ListDirTool extends BaseFileTool {
       List<Path> paths = stream.sorted().toList();
 
       for (Path path : paths) {
+        final String fileName = path.getFileName().toString();
+        if (!includeHidden && shouldIgnore(fileName)) {
+          continue;
+        }
+
         String relativePath = rootDir.relativize(path).toString();
         boolean isDirectory = Files.isDirectory(path);
         long size = isDirectory ? 0 : Files.size(path);
@@ -179,11 +197,18 @@ public final class ListDirTool extends BaseFileTool {
                 path.getFileName().toString(), relativePath, isDirectory, size, currentDepth));
 
         if (isDirectory && currentDepth < maxDepth) {
-          entries.addAll(getEntries(rootDir, path, currentDepth + 1, maxDepth));
+          entries.addAll(getEntries(rootDir, path, currentDepth + 1, maxDepth, includeHidden));
         }
       }
     }
     return entries;
+  }
+
+  private static boolean shouldIgnore(final String name) {
+    if (name.startsWith(".") || name.startsWith("_")) {
+      return true;
+    }
+    return DEFAULT_IGNORED_DIRS.contains(name.toLowerCase());
   }
 
   private Map<String, Object> entryToMap(DirectoryEntry entry) {

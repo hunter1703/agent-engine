@@ -49,16 +49,17 @@ public final class ApplyPatchTool extends BaseFileTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           TOOL_NAME,
-          "Applies a patch to a file, modifying it in-place. Supports two hunk header formats:\n"
-              + "1. Standard unified diff: @@ -line,count +line,count @@ — requires exact line numbers.\n"
-              + "2. Context-anchor: @@ context: <anchor text> — locates each hunk by searching for a "
-              + "distinctive surrounding line, tolerating line-number drift from earlier edits in the same "
-              + "turn. Prefer context-anchor for multi-hunk patches or when line numbers may be unreliable.\n"
-              + "Both formats may be mixed in one patch string.\n"
-              + "Optionally accepts a content hash to guard against stale patches. File writes are atomic. "
-              + "Maximum patch size: 100,000 characters.\n"
-              + "Returns: { success, file_path, additions, deletions, hunks, message } on success, "
-              + "or { error, validation_failed?, rolled_back? } on failure.",
+          """
+          Applies a patch to a file, modifying it in-place. Supports two hunk header formats:
+          1. Standard unified diff: @@ -line,count +line,count @@ — requires exact line numbers.
+          2. Context-anchor: @@ context: <anchor text> — locates each hunk by searching for a
+          distinctive surrounding line, tolerating line-number drift from earlier edits in the same
+          turn. Prefer context-anchor for multi-hunk patches or when line numbers may be unreliable.
+          Both formats may be mixed in one patch string.
+          Optionally accepts a content hash to guard against stale patches. File writes are atomic.
+          Maximum patch size: 100,000 characters.
+          Returns: { success, additions, deletions, hunks, message } on success,
+          or { error, validation_failed?, rolled_back? } on failure.""",
           Map.of(),
           ToolRiskLevel.MEDIUM);
 
@@ -81,7 +82,7 @@ public final class ApplyPatchTool extends BaseFileTool {
       @ToolArg(
               name = "expected_hash",
               description =
-                  "Optional content hash representing the expected file state before patching. When provided, "
+                  "Content hash representing the expected file state before patching. When provided, "
                       + "the patch is rejected if the file has been modified since this hash was recorded, "
                       + "preventing accidental modification of an already-changed file.",
               optional = true)
@@ -179,7 +180,6 @@ public final class ApplyPatchTool extends BaseFileTool {
 
         final Map<String, Object> response = new HashMap<>();
         response.put("success", true);
-        response.put("file_path", filePath);
         response.put("additions", additions);
         response.put("deletions", deletions);
         response.put("hunks", hunkCount);

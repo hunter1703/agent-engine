@@ -23,8 +23,12 @@ public final class WebSearchTool extends ConnectorTool {
   static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           "web_research",
-          "Query a live web search service and return a synthesised summary of results for a"
-              + " given query.",
+          """
+          Queries a live web search service and returns a synthesised summary of relevant results for a given query.
+          Best for retrieving external facts, documentation, current events, or third-party library details.
+          Formulate clear, specific keyword queries rather than conversational questions or sentences.
+          Do NOT automatically append years (e.g., '2024', '2025', '2026') unless the user explicitly requested
+          recent or time-bound information.""",
           Map.of(),
           ToolRiskLevel.MEDIUM);
 

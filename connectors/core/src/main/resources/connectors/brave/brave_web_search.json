@@ -15,10 +15,6 @@
       "search_lang": {
         "type": "string",
         "description": "Search language code"
-      },
-      "maximum_number_of_tokens": {
-        "type": "integer",
-        "description": "Maximum number of tokens in the summarised response"
       }
     },
     "required": ["query"]

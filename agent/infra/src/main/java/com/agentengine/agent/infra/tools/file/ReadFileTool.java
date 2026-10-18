@@ -29,16 +29,17 @@ public final class ReadFileTool extends BaseFileTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           TOOL_NAME,
-          "Reads the UTF-8 text content of a file with optional line-range pagination. Use when you have a "
-              + "specific file path and need to examine or extract its content. For locating files or "
-              + "searching across multiple files, use the directory listing or search tools instead. Returns "
-              + "the selected lines along with metadata including total line count, pagination state, and a "
-              + "content hash representing the file's current state at the time of reading. Lines exceeding "
-              + "500 characters are truncated. Tab characters are expanded to 4 spaces. "
-              + "Returns: { content, file_path, offset, limit, total_lines, lines_read, has_more, "
-              + "content_hash (a fingerprint of the file at read time — retain this if you intend to "
-              + "modify the file, to detect whether it changed since you read it), "
-              + "next_offset (when has_more is true), truncated (when any line was cut) }.",
+          """
+          Reads the UTF-8 text content of a file with optional line-range pagination. Use when you have a
+          specific file path and need to examine or extract its content. For locating files or
+          searching across multiple files, use the directory listing or search tools instead. Returns
+          the selected lines along with metadata including total line count, pagination state, and a
+          content hash representing the file's current state at the time of reading. Lines exceeding
+          500 characters are truncated. Tab characters are expanded to 4 spaces.
+          Returns: { content, lines_read, total_lines,
+          content_hash (a fingerprint of the file at read time — retain this if you intend to
+          modify the file, to detect whether it changed since you read it),
+          has_more, next_offset (when has_more is true), truncated (when any line was cut) }.""",
           Map.of(),
           ToolRiskLevel.LOW);
 
@@ -55,23 +56,32 @@ public final class ReadFileTool extends BaseFileTool {
       @ToolArg(
               name = "offset",
               description =
-                  "1-indexed line number to begin reading from. Line 1 is the first line of the file. "
-                      + "Defaults to 1. Use the next_offset value from a prior response to paginate forward.",
+                  """
+                  1-indexed line number to begin reading from. Line 1 is the first line of the file.
+                  Defaults to 1. Use the next_offset value from a prior response to paginate forward.""",
               optional = true)
           Integer offset,
       @ToolArg(
               name = "limit",
               description =
-                  "Maximum number of lines to return. When specified, capped at 1,000. Defaults to 2,000.",
+                  "Maximum number of lines to return. Capped at 2,000. Defaults to 2,000.",
               optional = true)
-          Integer limit) {
+          Integer limit,
+      @ToolArg(
+              name = "with_line_numbers",
+              description =
+                  """
+                  Whether to prefix each line with its 1-indexed line number (e.g. '1 | content').
+                  Defaults to true for accurate line reference in patch and edit authoring.""",
+              optional = true)
+          Boolean withLineNumbers) {
 
     if (filePath == null || filePath.isBlank()) {
       return ToolOutput.direct(Map.of("error", "file_path is required"));
     }
 
-    offset = offset != null ? Math.max(0, offset) : DEFAULT_OFFSET;
-    limit = limit != null ? Math.max(1, Math.min(limit, 1000)) : DEFAULT_LIMIT;
+    offset = offset != null ? Math.max(1, offset) : DEFAULT_OFFSET;
+    limit = limit != null ? Math.max(1, Math.min(limit, DEFAULT_LIMIT)) : DEFAULT_LIMIT;
 
     Path path = resolvePath(filePath);
 
@@ -84,17 +94,24 @@ public final class ReadFileTool extends BaseFileTool {
     }
 
     final FileDetails fileDetails = readFile(path, offset, limit);
-    List<String> selectedLines = fileDetails.content();
-    StringBuilder content = new StringBuilder();
+    final List<String> selectedLines = fileDetails.content();
+    final StringBuilder content = new StringBuilder();
+    final boolean showLineNumbers = withLineNumbers == null || withLineNumbers;
     boolean truncated = false;
 
+    int currentLine = offset;
     for (String line : selectedLines) {
       line = line.replace("\t", " ".repeat(TAB_WIDTH));
       if (line.length() > MAX_LINE_LENGTH) {
         line = truncate(line, MAX_LINE_LENGTH);
         truncated = true;
       }
-      content.append(line).append("\n");
+      if (showLineNumbers) {
+        content.append(currentLine).append(" | ").append(line).append("\n");
+      } else {
+        content.append(line).append("\n");
+      }
+      currentLine++;
     }
 
     String result = content.toString();
@@ -102,11 +119,8 @@ public final class ReadFileTool extends BaseFileTool {
 
     final Map<String, Object> response = new HashMap<>();
     response.put("content", result);
-    response.put("file_path", filePath);
-    response.put("offset", offset);
-    response.put("limit", limit);
-    response.put("total_lines", fileDetails.numLines());
     response.put("lines_read", fileDetails.content().size());
+    response.put("total_lines", fileDetails.numLines());
     response.put("has_more", hasMore);
     response.put("content_hash", fileDetails.hash());
 

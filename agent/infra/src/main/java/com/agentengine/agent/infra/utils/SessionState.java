@@ -68,7 +68,7 @@ public final class SessionState {
         new Reminder(
             Reminder.GROUP_NOTEBOOK_ACCESS,
             Reminder.ID_NOTEBOOK_ACCESS,
-            "**When a tool asks for a notebook id or a note title, use the one shown here VERBATIM — any changes to it will NOT resolve and the tool call will FAIL.**\n"
+            "**Accessible Notebooks and Notes:**\n"
                 + summary));
   }
 

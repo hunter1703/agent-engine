@@ -11,8 +11,7 @@ public record AgentFileDetails(
   public AgentFileDetails(
       @ToolArg(
               name = "name",
-              description =
-                  "Display name for the file, e.g. photo.jpg. Optional — leave blank if unknown.",
+              description = "Display name for the file, e.g. photo.jpg. Leave blank if unknown.",
               optional = true)
           final String name,
       @ToolArg(
@@ -23,8 +22,7 @@ public record AgentFileDetails(
       @ToolArg(
               name = "type",
               description =
-                  "Where the file is stored — NOT the file format. This is not a MIME type.",
-              enums = {"CLOUDSTORAGE", "URL", "LOCAL", "UNKNOWN"})
+                  "Where the file is stored — NOT the file format. This is not a MIME type.")
           final StorageType type,
       @ToolArg(
               name = "mimeType",
