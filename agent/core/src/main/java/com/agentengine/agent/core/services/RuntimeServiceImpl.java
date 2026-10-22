@@ -20,19 +20,23 @@ import com.agentengine.agent.core.session.commands.ExternalCommand.StopCommand;
 import com.agentengine.agent.core.session.commands.ParentCommand.InitializeCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.state.SessionTopology;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.RequestContentUtils;
+import com.agentengine.agent.infra.utils.ResponseUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.AgentSchedule;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.agents.beans.config.OrchestratorAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.cloudstorage.FileService;
@@ -95,6 +99,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   private final FileService fileService;
   private final AgentScheduleRepository agentScheduleRepository;
   private final SchedulerService schedulerService;
+  private final NotebookService notebookService;
   private final RunnerFactory runnerFactory;
 
   @Inject
@@ -108,6 +113,7 @@ public class RuntimeServiceImpl implements RuntimeService {
       final FileService fileService,
       final AgentScheduleRepository agentScheduleRepository,
       final SchedulerService schedulerService,
+      final NotebookService notebookService,
       RunnerFactory runnerFactory) {
     this.sessionActorFactory = sessionActorFactory;
     this.eventChannel = eventChannel;
@@ -118,6 +124,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     this.fileService = fileService;
     this.agentScheduleRepository = agentScheduleRepository;
     this.schedulerService = schedulerService;
+    this.notebookService = notebookService;
     this.runnerFactory = runnerFactory;
   }
 
@@ -165,6 +172,7 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   @Override
   public Map<String, Object> sendTemp(String agentId, UserMessage userMessage) {
+    requireCanRunTemporarily(agentId);
     final Content userContent =
         RequestContentUtils.buildTempUserContent(
             RequestContentUtils.textParts(userMessage.parts()),
@@ -175,28 +183,45 @@ public class RuntimeServiceImpl implements RuntimeService {
     final String userId = Context.currentUserId().orElse(Caller.SYSTEM_NAME);
     final String sessionId = UUID.randomUUID().toString();
     final Runner runner = runnerFactory.getOrBuildTemp(agentId);
+    final Context sessionContext =
+        Context.require().userCaller().isPresent()
+            ? Context.require().actingAs(AgentSession.principal(agentId, sessionId))
+            : Context.require();
     final String responseText =
-        runner
-            .runAsync(
-                userId,
-                sessionId,
-                userContent,
-                RunConfig.builder().autoCreateSession(true).build(),
-                stateDelta)
-            .doFinally(
-                () ->
-                    runner
-                        .sessionService()
-                        .deleteSession(runner.appName(), userId, sessionId)
-                        .blockingAwait())
-            .filter(event -> event.content().isPresent())
-            .map(event -> event.content().orElseThrow().text())
-            .lastElement()
-            .blockingGet();
+        sessionContext.get(
+            () ->
+                runner
+                    .runAsync(
+                        userId,
+                        sessionId,
+                        userContent,
+                        RunConfig.builder().autoCreateSession(true).build(),
+                        stateDelta)
+                    .doFinally(
+                        () -> {
+                          runner
+                              .sessionService()
+                              .deleteSession(runner.appName(), userId, sessionId)
+                              .blockingAwait();
+                          notebookService.deleteSessionNotebooks(sessionId);
+                        })
+                    .filter(
+                        event ->
+                            ResponseUtils.isFinalAnswer(event)
+                                && ContentUtils.hasVisibleText(event.content().orElse(null)))
+                    .map(event -> event.content().orElseThrow().text())
+                    .lastElement()
+                    .blockingGet());
+    if (responseText == null) {
+      // A throwaway session has no actor to resume it, so a run that stops to ask for input or
+      // confirmation ends without an answer.
+      throw new IllegalStateException(
+          "Agent " + agentId + " ended without a response, possibly waiting for input");
+    }
     try {
       return JsonUtils.fromLenientJson(responseText, new TypeReference<>() {});
     } catch (Exception e) {
-      return Map.of("response", Objects.requireNonNull(responseText));
+      return Map.of("response", responseText);
     }
   }
 
@@ -224,6 +249,21 @@ public class RuntimeServiceImpl implements RuntimeService {
         .toCompletableFuture()
         .join(); // block until the session is persisted
     return resolvedSessionId;
+  }
+
+  /**
+   * Throws unless the agent can run in a throwaway session. An orchestrator works through other
+   * agents' sessions, started and waited on by the session's actor, which a throwaway session has
+   * none of.
+   *
+   * @throws IllegalArgumentException when the agent is an orchestrator
+   */
+  private void requireCanRunTemporarily(final String agentId) {
+    requireAgentAccess(agentId);
+    if (agentCache.get(agentId) instanceof OrchestratorAgentConfig) {
+      throw new IllegalArgumentException(
+          "Agent " + agentId + " is an orchestrator, which a temporary run cannot run");
+    }
   }
 
   private void requireAgentAccess(final String agentId) {
@@ -277,7 +317,11 @@ public class RuntimeServiceImpl implements RuntimeService {
     LOG.debug(
         "Resuming session {} with interrupt id '{}'", sessionId, resumeRequest.getInterruptId());
     requireCanUseSession(sessionId);
-    requireAgentAccess(sessionCache.get(sessionId).getAgentId());
+    final AgentSession session = sessionCache.get(sessionId);
+    if (session == null) {
+      throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
+    }
+    requireAgentAccess(session.getAgentId());
     final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
     ref.<ResumeResult>ask(
             replyTo -> new ResumeCommand(resumeRequest, replyTo), SessionActorFactory.ASK_TIMEOUT)
@@ -306,17 +350,9 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
   }
 
-  /**
-   * Retires the session's actor first, so no run starts while it goes, then has tenancy forget what
-   * was shared with the session, then deletes its record.
-   */
+  /** Stops the session's actor, and with it any run in progress. */
   @Override
   public void stopSession(final String sessionId) {
-    final AgentSession session =
-        Context.require().asSystemCaller().get(() -> sessionCache.get(sessionId));
-    if (session == null) {
-      return;
-    }
     sessionActorFactory
         .entityRef(sessionId)
         .<Done>ask(StopCommand::new, SessionActorFactory.ASK_TIMEOUT)
@@ -327,7 +363,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   @Override
   public AgentSchedule saveSchedule(final AgentSchedule schedule) {
     requireAgentAccess(schedule.getAgentId());
-    final AgentSchedule saved = agentScheduleRepository.saveIgnoringVersion(schedule);
+    final AgentSchedule saved = agentScheduleRepository.save(schedule);
     final JobDefinition existingJob = schedulerService.getJob(saved.getId());
     schedulerService.schedule(
         invokeAgentJob(existingJob == null ? new JobDefinition() : existingJob, saved));
@@ -469,12 +505,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     // replay() records every event from connect() time; when liveFlow is eventually subscribed
     // (after history and turn events are exhausted), it replays the buffered events first and
     // then continues live. The dedup set eliminates any overlap with history/turn events.
-    final ConnectableFlowable<SessionEvent> liveSource =
-        Flowable.fromPublisher(
-                eventChannel.subscribe(rootSessionId).toCompletableFuture().join().publisher())
-            .map(SequencedEvent::payload)
-            .cast(SessionEvent.class)
-            .replay();
+    final ConnectableFlowable<SessionEvent> liveSource = liveEvents(rootSessionId).replay();
     final Disposable liveConnection = liveSource.connect();
 
     //  re-check status after connect(). The initial status check and connect() are
@@ -599,15 +630,20 @@ public class RuntimeServiceImpl implements RuntimeService {
     // double-counted by SessionEventUtils.compactEventStream's naive text concatenation.
     final Set<String> seen = ConcurrentHashMap.newKeySet();
     final ConnectableFlowable<SessionEvent> liveSource =
-        Flowable.fromPublisher(
-                eventChannel.subscribe(rootSessionId).toCompletableFuture().join().publisher())
-            .map(SequencedEvent::payload)
-            .cast(SessionEvent.class)
+        liveEvents(rootSessionId)
             .filter(event -> seen.add(event.getId()))
             .takeWhile(event -> !event.isTerminal())
             .replay();
     final Disposable connection = liveSource.connect();
     return liveSource.doFinally(connection::dispose);
+  }
+
+  /** The events published to the session tree from now on, as they arrive. */
+  private Flowable<SessionEvent> liveEvents(final String rootSessionId) {
+    return Flowable.fromPublisher(
+            eventChannel.subscribe(rootSessionId).toCompletableFuture().join().publisher())
+        .map(SequencedEvent::payload)
+        .cast(SessionEvent.class);
   }
 
   private List<SessionEvent> getCurrentTurnEvents(final String sessionId) {

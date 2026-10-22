@@ -1,6 +1,5 @@
 package com.agentengine.agent.infra.utils;
 
-import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
 import com.agentengine.util.common.utils.CollectionUtils;
 import java.util.List;
 import java.util.Map;
@@ -18,13 +17,16 @@ import java.util.Objects;
  * into it, rather than each add overwriting the last. Not rendered directly; {@code message} is
  * what the brief shows.
  *
+ * <p>A group that holds a single reminder uses one constant as both its group and its id, e.g.
+ * {@link #ID_ACTIVE_PLAN}. Two reminders are equal when their group and id are.
+ *
  * <p>Well-known groups:
  *
  * <ul>
- *   <li>{@code spawned_agents} — child sessions spawned but not yet awaited; id = child session ID
- *   <li>{@code knowledge_ids} — ids of {@code Knowledge} items granted, each accessed with {@code
- *       search_knowledge}; id = the knowledge id itself
- *   <li>{@code active_plan} — current plan state; id = {@link #ID_ACTIVE_PLAN}
+ *   <li>{@code spawned_agents} — child sessions spawned, awaited or not, which stay reachable for follow-up messages; id = child session ID
+ *   <li>{@code knowledge_ids} — ids of non-indexed {@code Knowledge} items granted; id = the
+ *       knowledge id itself
+ *   <li>{@link #ID_USER_CONTEXT}, {@link #ID_ACTIVE_PLAN}, {@link #ID_NOTEBOOK_ACCESS} — singletons
  * </ul>
  *
  * @param group snake_case category; controls which section this appears under in the brief
@@ -69,19 +71,16 @@ public record Reminder(String group, String id, String message, Map<String, Obje
           ID_ACTIVE_PLAN,
           new GroupInfo("Active Plan"),
           GROUP_SPAWNED_AGENTS,
-          new GroupInfo("Pending Child Sessions"),
+          new GroupInfo("Child Sessions"),
           ID_NOTEBOOK_ACCESS,
           new GroupInfo("Notebook Access"),
           GROUP_KNOWLEDGE_IDS,
           new GroupInfo(
               "Non-Indexed Knowledge",
               "This list contains only non-indexed knowledge items. "
-                  + "To read any of these in full, call "
-                  + SearchKnowledgeTool.DESCRIPTOR.name()
-                  + " with its knowledge ID and omit the query. "
-                  + "Indexed knowledge is not listed here; search it by calling "
-                  + SearchKnowledgeTool.DESCRIPTOR.name()
-                  + " with a query."));
+                  + "To read any of these in full, use the knowledge search tool with its "
+                  + "knowledge ID and no query. Indexed knowledge is not listed here; search it "
+                  + "with a query."));
 
   /** The section title a group renders as in the brief (see {@code ReminderPlugin}). */
   public static String title(final String group) {

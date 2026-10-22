@@ -4,6 +4,7 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.CommunityExpertsService;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.util.agents.Constants;
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.codec.JsonUtils;
@@ -54,7 +55,8 @@ public class MemoryService implements BaseMemoryService {
 
   private static final Logger LOG = LoggerFactory.getLogger(MemoryService.class);
 
-  private static final int MAX_EXISTING_MEMORIES = 15;
+  private static final int EXISTING_MEMORIES_SHOWN = 15;
+  private static final int MEMORIES_RECALLED = 15;
   private static final int MAX_CONVERSATION_CHARS = 8000;
   private static final int EVENTS_PAGE_SIZE = 50;
   private static final String TEXT_VECTOR =
@@ -80,18 +82,23 @@ public class MemoryService implements BaseMemoryService {
    * Extracts memories from the session's conversation. Runs as the session, for the user whose turn
    * it was — new memories belong to the session's agent, for that user.
    */
-  @Override
-  public Completable addSessionToMemory(final Session session) {
+  public Completable addSessionToMemory(final String sessionId, final String agentId) {
     return Completable.fromAction(
         () -> {
-          final String conversation = buildConversationText(session.id());
+          final String conversation = buildConversationText(sessionId);
           if (StringUtils.isBlank(conversation)) {
             return;
           }
           final List<Memory> existing = findExistingMemories(conversation);
           final MemoryDecisions decisions = invokeMemoryAgent(conversation, existing);
-          applyDecisions(session.appName(), existing, decisions);
+          applyDecisions(agentId, existing, decisions);
         });
+  }
+
+  /** ADK names a session's agent by its app name; for a memory that is the agent's id. */
+  @Override
+  public Completable addSessionToMemory(final Session session) {
+    return addSessionToMemory(session.id(), session.appName());
   }
 
   /**
@@ -104,7 +111,7 @@ public class MemoryService implements BaseMemoryService {
     return Single.fromCallable(
         () -> {
           final List<MemoryEntry> entries =
-              semanticMemorySearch(query, MAX_EXISTING_MEMORIES).stream()
+              semanticMemorySearch(query, MEMORIES_RECALLED).stream()
                   .map(
                       memory ->
                           MemoryEntry.builder()
@@ -117,7 +124,7 @@ public class MemoryService implements BaseMemoryService {
 
   private List<Memory> findExistingMemories(final String conversationText) {
     try {
-      return semanticMemorySearch(conversationText, MAX_EXISTING_MEMORIES);
+      return semanticMemorySearch(conversationText, EXISTING_MEMORIES_SHOWN);
     } catch (final Exception e) {
       LOG.warn("Failed to retrieve existing memories", e);
       return List.of();
@@ -145,57 +152,58 @@ public class MemoryService implements BaseMemoryService {
     return parseDecisions(response);
   }
 
+  /**
+   * Applies the decisions: nothing is written unless the new texts could be embedded, then each
+   * write stands alone.
+   */
   private void applyDecisions(
       final String agentId, final List<Memory> existing, final MemoryDecisions decisions) {
     final Map<String, Memory> existingById =
         CollectionUtils.transformToMap(existing, Memory::getId, Function.identity());
     final List<Memory> toAdd = new ArrayList<>();
     final List<Memory> toUpdate = new ArrayList<>();
+    final List<Memory> toDelete = new ArrayList<>();
     for (final MemoryDecision decision : decisions.decisions()) {
-      try {
-        switch (decision.operation()) {
-          case "ADD" -> {
-            if (StringUtils.isBlank(decision.text())) {
-              continue;
-            }
-            final Memory memory = new Memory();
-            memory.setId(UUID.randomUUID().toString());
-            memory.setAgentId(agentId);
-            memory.setText(decision.text());
-            toAdd.add(memory);
+      final Memory memory = decision.id() == null ? null : existingById.get(decision.id());
+      switch (MemoryOperation.valueOfOrDefault(decision.operation())) {
+        case ADD -> {
+          if (StringUtils.isNotBlank(decision.text())) {
+            final Memory added = new Memory();
+            added.setId(UUID.randomUUID().toString());
+            added.setAgentId(agentId);
+            added.setText(decision.text());
+            toAdd.add(added);
           }
-          case "UPDATE" -> {
-            if (StringUtils.isBlank(decision.id()) || StringUtils.isBlank(decision.text())) {
-              continue;
-            }
-            final Memory memory = existingById.get(decision.id());
-            if (memory == null) {
-              continue;
-            }
+        }
+        case UPDATE -> {
+          if (memory != null && StringUtils.isNotBlank(decision.text())) {
             memory.setText(decision.text());
             toUpdate.add(memory);
           }
-          case "DELETE" -> {
-            if (StringUtils.isBlank(decision.id())) {
-              continue;
-            }
-            final Memory memory = existingById.get(decision.id());
-            if (memory != null && !memoryRepository.delete(memory)) {
-              LOG.info("Memory {} changed or went since it was read; not deleted", memory.getId());
-            }
-          }
-          case "NOOP" -> {}
-          default -> LOG.warn("Unrecognised memory operation: {}", decision.operation());
         }
-      } catch (final Exception e) {
-        LOG.warn("Failed to apply memory decision: {}", decision, e);
+        case DELETE -> {
+          if (memory != null) {
+            toDelete.add(memory);
+          }
+        }
+        case NOOP -> {}
+        case UNKNOWN -> LOG.warn("Unrecognised memory operation: {}", decision.operation());
       }
     }
     try {
       embedTexts(Stream.concat(toAdd.stream(), toUpdate.stream()).toList());
     } catch (final Exception e) {
-      LOG.warn("Failed to embed {} memories", toAdd.size() + toUpdate.size(), e);
+      LOG.warn("Failed to embed {} memories; no decision applied", toAdd.size() + toUpdate.size(), e);
       return;
+    }
+    for (final Memory memory : toDelete) {
+      try {
+        if (!memoryRepository.delete(memory)) {
+          LOG.info("Memory {} changed or went since it was read; not deleted", memory.getId());
+        }
+      } catch (final Exception e) {
+        LOG.warn("Failed to delete memory {}", memory.getId(), e);
+      }
     }
     for (final Memory memory : toUpdate) {
       try {
@@ -246,7 +254,7 @@ public class MemoryService implements BaseMemoryService {
       for (int i = 0; i < page.size(); i++) {
         final Content content = page.get(i).getContent();
         final String text = content == null ? null : content.text();
-        if (StringUtils.isBlank(text)) {
+        if (StringUtils.isBlank(text) || ContentUtils.isSystemNotice(content)) {
           continue;
         }
         final String role =

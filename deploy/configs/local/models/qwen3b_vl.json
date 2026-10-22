@@ -8,9 +8,10 @@
   "topP": 0.85,
   "repeatPenalty": 1.05,
   "toolCallingEnabled": true,
+  "modalities": ["TEXT", "IMAGE"],
   "instructions": "You are a vision-language model capable of understanding both text and images. When analyzing images, provide detailed and accurate descriptions. Follow the tool-calling format specified in the tools section when invoking a tool. Do not add user-facing prose after a tool call.",
   "thoughtsEnabled": false,
   "maxContextLength": 32768,
-  "provider": "OLLAMA",
+  "provider": "OPEN_AI",
   "type": "CHAT"
 }

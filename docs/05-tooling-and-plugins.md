@@ -68,7 +68,7 @@ Descriptor resolution:
 - `run_cmd` (`ShellCommandTool`) — execute shell commands; see §5.5 for the safety surface
 
 **Web**
-- `web_research` (`WebSearchTool` via the connectors framework; quick DuckDuckGo lookup or detailed Brave Search)
+- `web_search` (`WebSearchTool` via the connectors framework; quick DuckDuckGo lookup or detailed Brave Search)
 
 **File operations** (suite name: `file_tools`)
 - `read_file` — read file contents with pagination (`offset` / `limit`)

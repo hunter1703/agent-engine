@@ -1,6 +1,5 @@
 package com.agentengine.agent.infra.guardrails;
 
-import com.agentengine.agent.infra.utils.GuardrailUtils;
 import com.agentengine.util.agents.beans.config.GuardrailStage;
 import com.agentengine.util.agents.beans.config.TextContentGuardrailRule;
 import com.agentengine.util.common.utils.CollectionUtils;
@@ -8,41 +7,49 @@ import com.agentengine.util.common.utils.StringUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * Enforces text content constraints on input and output: maximum length and blocked patterns.
  *
- * <p><b>Behavior:</b> Evaluates text in two sequential checks:
+ * <p>Evaluates text in two sequential checks: if a max length applies and is exceeded, the
+ * configured action is returned with the actual and the maximum length; else if any blocked pattern
+ * (a regex, case-insensitive) matches, the configured action is returned.
  *
- * <ol>
- *   <li>If a max length is configured and exceeded, the configured action (BLOCK/WARN) is returned
- *       with details on actual vs. max length.
- *   <li>If any configured blocked pattern (regex) matches the text, the configured action is
- *       returned.
- * </ol>
+ * <p>The max length is the configured one. A rule on the INPUT stage that configures neither a max
+ * length nor any pattern limits input to 12,000 characters. Output has no limit unless configured.
  *
- * <p><b>Defaults:</b> INPUT stage has a 12,000-character default limit (unless explicitly
- * configured). OUTPUT stage has no length limit by default. INPUT stage ignores custom blocked
- * patterns if none are configured (using an empty default). OUTPUT stage respects custom patterns.
- *
- * <p><b>Use cases:</b> Protect against excessively long inputs (DoS), prevent injection of specific
- * patterns (e.g., code snippets, sensitive keywords), and enforce output format constraints.
+ * <p><b>Use cases:</b> protect against excessively long inputs, prevent specific patterns (such as
+ * sensitive keywords) in input or output.
  */
 public final class TextContentGuardrail implements Guardrail {
   private static final int DEFAULT_MAX_INPUT = 12_000;
-  private static final List<String> DEFAULT_INPUT_BLOCK_PATTERNS = List.of();
 
   private final TextContentGuardrailRule rule;
-  private final String id;
+  private final List<Pattern> blockedPatterns;
+  private final int maxTextLength;
 
+  /**
+   * @throws IllegalArgumentException when a blocked pattern is not a valid regex
+   */
   public TextContentGuardrail(final TextContentGuardrailRule rule) {
     this.rule = Objects.requireNonNull(rule);
-    this.id = rule.getId();
+    this.blockedPatterns =
+        CollectionUtils.nullSafeList(rule.getBlockedPatterns()).stream()
+            .filter(StringUtils::isNotBlank)
+            .map(
+                pattern ->
+                    Pattern.compile(pattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE))
+            .toList();
+    this.maxTextLength =
+        rule.getMaxTextLength() != null
+            ? rule.getMaxTextLength()
+            : stage() == GuardrailStage.INPUT && blockedPatterns.isEmpty() ? DEFAULT_MAX_INPUT : -1;
   }
 
   @Override
   public String id() {
-    return id;
+    return rule.getId();
   }
 
   @Override
@@ -53,14 +60,9 @@ public final class TextContentGuardrail implements Guardrail {
   @Override
   public GuardrailDecision evaluate(final GuardrailContext context) {
     final String text = context.text();
-
-    final GuardrailStage stage = stage();
-    final int maxTextLength = resolveMaxTextLength(stage);
     if (maxTextLength > 0 && text.length() > maxTextLength) {
-      return GuardrailUtils.fromAction(
-          rule.actionEnum(),
-          code(stage, "length"),
-          defaultMessage(stage, "length"),
+      return violation(
+          Kind.LENGTH,
           Map.of(
               GuardrailConstants.DetailKey.RULE,
               rule.getId(),
@@ -69,54 +71,32 @@ public final class TextContentGuardrail implements Guardrail {
               GuardrailConstants.DetailKey.MAX_LENGTH,
               maxTextLength));
     }
-
-    final List<String> blockedPatterns =
-        CollectionUtils.isEmpty(rule.getBlockedPatterns()) && stage == GuardrailStage.INPUT
-            ? DEFAULT_INPUT_BLOCK_PATTERNS
-            : CollectionUtils.nullSafeList(rule.getBlockedPatterns());
-    if (GuardrailUtils.containsPattern(text, blockedPatterns)) {
-      return GuardrailUtils.fromAction(
-          rule.actionEnum(),
-          code(stage, "pattern"),
-          defaultMessage(stage, "pattern"),
-          Map.of(GuardrailConstants.DetailKey.RULE, rule.getId()));
+    if (blockedPatterns.stream().anyMatch(pattern -> pattern.matcher(text).find())) {
+      return violation(Kind.PATTERN, Map.of(GuardrailConstants.DetailKey.RULE, rule.getId()));
     }
-
     return GuardrailDecision.allow();
   }
 
-  private int resolveMaxTextLength(final GuardrailStage stage) {
-    if (rule.getMaxTextLength() != null) {
-      return rule.getMaxTextLength();
-    }
-    if (stage == GuardrailStage.INPUT) {
-      return DEFAULT_MAX_INPUT;
-    }
-    return -1;
+  private GuardrailDecision violation(final Kind kind, final Map<String, Object> details) {
+    final boolean input = stage() == GuardrailStage.INPUT;
+    final String code =
+        kind == Kind.LENGTH
+            ? input ? GuardrailConstants.Code.INPUT_LENGTH : GuardrailConstants.Code.OUTPUT_LENGTH
+            : input ? GuardrailConstants.Code.INPUT_PATTERN : GuardrailConstants.Code.OUTPUT_PATTERN;
+    final String message =
+        StringUtils.isNotBlank(rule.getMessage())
+            ? rule.getMessage()
+            : "%s %s."
+                .formatted(
+                    input ? "Input" : "Output",
+                    kind == Kind.LENGTH
+                        ? "exceeded the configured max length"
+                        : "matched a blocked pattern");
+    return GuardrailUtils.fromAction(rule.actionEnum(), code, message, details);
   }
 
-  private String defaultMessage(final GuardrailStage stage, final String kind) {
-    if (StringUtils.isNotBlank(rule.getMessage())) {
-      return rule.getMessage();
-    }
-    if ("length".equals(kind)) {
-      return stage == GuardrailStage.INPUT
-          ? "Input exceeded the configured max length."
-          : "Output exceeded the configured max length.";
-    }
-    return stage == GuardrailStage.INPUT
-        ? "Input matched a blocked pattern."
-        : "Output matched a blocked pattern.";
-  }
-
-  private static String code(final GuardrailStage stage, final String suffix) {
-    if ("length".equals(suffix)) {
-      return stage == GuardrailStage.INPUT
-          ? GuardrailConstants.Code.INPUT_LENGTH
-          : GuardrailConstants.Code.OUTPUT_LENGTH;
-    }
-    return stage == GuardrailStage.INPUT
-        ? GuardrailConstants.Code.INPUT_PATTERN
-        : GuardrailConstants.Code.OUTPUT_PATTERN;
+  private enum Kind {
+    LENGTH,
+    PATTERN
   }
 }

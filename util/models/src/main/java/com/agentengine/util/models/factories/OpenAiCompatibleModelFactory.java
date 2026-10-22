@@ -4,7 +4,6 @@ import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.config.ChatModelConfig;
 import com.agentengine.util.models.config.KeyValuePair;
 import com.agentengine.util.models.llm.LangChain4jModel;
-import com.agentengine.util.models.llm.ToolsOffMode;
 import com.google.adk.models.BaseLlm;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -27,16 +26,7 @@ public abstract class OpenAiCompatibleModelFactory extends DelegatingModelFactor
     return new LangChain4jModel(
         buildOpenAI(chatConfig),
         buildOpenAIStreaming(chatConfig),
-        chatConfig.getModel(),
-        toolsOffMode());
-  }
-
-  /**
-   * How this provider is told not to call tools on a turn; see {@link ToolsOffMode}. The OpenAI
-   * standard, {@code tool_choice: none}, unless the provider overrides it.
-   */
-  protected ToolsOffMode toolsOffMode() {
-    return ToolsOffMode.SEND_TOOL_CHOICE_NONE;
+        chatConfig.getModel());
   }
 
   /**

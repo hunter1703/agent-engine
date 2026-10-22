@@ -46,7 +46,6 @@ import com.agentengine.util.tenancy.PermissionedCache;
 import com.google.adk.events.Event;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.flows.llmflows.Functions;
-import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
@@ -1484,12 +1483,7 @@ public final class SessionActor
       if (session == null) {
         return;
       }
-      final Session adkSession =
-          Session.builder(rootSessionId)
-              .appName(session.getAgentId())
-              .userId(session.getCreatedBy())
-              .build();
-      memoryService.addSessionToMemory(adkSession).blockingAwait();
+      memoryService.addSessionToMemory(rootSessionId, session.getAgentId()).blockingAwait();
     } catch (final Exception e) {
       LOG.warn("Failed to update session memory for session {}", rootSessionId, e);
     }

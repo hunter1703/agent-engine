@@ -1,6 +1,7 @@
 package com.agentengine.agent.infra.tools;
 
 import com.agentengine.agent.infra.utils.*;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
@@ -85,6 +86,17 @@ public abstract class Tool extends BaseTool {
         PARAMETER_BINDINGS_CACHE.computeIfAbsent(executeMethod, Tool::buildParameterBindings);
   }
 
+  /**
+   * Why {@code action} was refused because it needs a person's approval that this run cannot ask
+   * for, and what the agent can do instead.
+   */
+  protected static String approvalUnavailable(final String action) {
+    return action
+        + " needs a person's approval, and no one is available to give it in this run, so it was"
+        + " not carried out. Reach the goal another way that needs no approval, or say in your"
+        + " answer what could not be done.";
+  }
+
   public ToolDescriptor descriptor() {
     return toolDescriptor;
   }
@@ -104,6 +116,9 @@ public abstract class Tool extends BaseTool {
       final ToolRiskLevel toolRiskLevel = descriptor().riskLevel();
       if (toolRiskLevel == ToolRiskLevel.HIGH || toolRiskLevel == ToolRiskLevel.CRITICAL) {
         if (toolContext.toolConfirmation().isEmpty()) {
+          if (!SessionUtils.isResumable(toolContext.invocationContext())) {
+            return Single.just(ImmutableMap.of("error", approvalUnavailable("This tool call")));
+          }
           toolContext.requestConfirmation(
               String.format(
                   "Please approve or reject the tool call %s() by responding with a"

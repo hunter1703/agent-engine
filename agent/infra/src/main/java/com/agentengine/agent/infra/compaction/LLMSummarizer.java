@@ -61,7 +61,7 @@ public final class LLMSummarizer implements BaseEventSummarizer {
     parts.add(
         Part.fromText(
             """
-            Note: Earlier conversation turns have been compacted into the summary above. If you need detailed context, intermediate drafts, or past calculations in your notebooks, use `read_note` to inspect the notes to find the lay of the land."""
+            Note: Earlier conversation turns have been compacted into the summary above. If you need detailed context, intermediate drafts, or past calculations in your notebooks, read the notes in your notebooks to find the lay of the land."""
                 .trim()));
     return EventUtils.withCompactedContent(event, ContentUtils.userMessage(parts));
   }

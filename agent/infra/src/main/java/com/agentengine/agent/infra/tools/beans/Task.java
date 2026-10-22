@@ -14,9 +14,8 @@ public class Task {
 
   @ToolArg(
       description =
-          "Name of the parent task ONLY when decomposing a single composite task into internal sub-components. "
-              + "DO NOT use 'parent' for sequence, prerequisites, or dependencies. "
-              + "Sequential phases (e.g. Phase 1, Phase 2, Synthesis/Conclusion) must ALL be top-level tasks with parent omitted.",
+          "Name of the task this one is a part of, when it splits a larger task into pieces. "
+              + "Leave empty for tasks that follow one another.",
       optional = true)
   private String parent;
 
@@ -40,6 +39,15 @@ public class Task {
   private String description;
 
   public Task() {}
+
+  public Task(final Task task) {
+    this.name = task.name;
+    this.parent = task.parent;
+    this.goal = task.goal;
+    this.status = task.status;
+    this.result = task.result;
+    this.description = task.description;
+  }
 
   public Task(String name, String goal) {
     this.name = name;

@@ -28,7 +28,7 @@ import java.util.Map;
  *       highest-severity decision prevails (ESCALATE > BLOCK > WARN > ALLOW). A single blocking
  *       guardrail prevents session even if others allow.
  *   <li><b>Non-null action:</b> Action defaults to {@code ALLOW} if null.
- *   <li><b>Non-null args map:</b> {@code toolArgs} is never null — it's an empty map if absent.
+ *   <li><b>Non-null details map:</b> {@code details} is never null — it's an empty map if absent.
  * </ul>
  */
 public record GuardrailDecision(

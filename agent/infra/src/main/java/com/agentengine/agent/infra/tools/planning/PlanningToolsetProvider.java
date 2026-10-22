@@ -2,7 +2,6 @@ package com.agentengine.agent.infra.tools.planning;
 
 import com.agentengine.agent.infra.tools.AbstractToolsetProvider;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
-import com.agentengine.util.common.validation.ValidationService;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
@@ -15,14 +14,13 @@ public final class PlanningToolsetProvider extends AbstractToolsetProvider {
       new ToolDescriptor("planning", "Tools for agent planning and task management.", Map.of());
 
   @Inject
-  public PlanningToolsetProvider(
-      final ValidationService validationService,
-      final PlanningValidator planningValidator) {
+  public PlanningToolsetProvider(final PlanningValidator planningValidator) {
     super(
         TOOLSET_DESCRIPTOR,
         List.of(
-            new ToolDefinition(CreatePlanTool.DESCRIPTOR, () -> new CreatePlanTool(validationService)),
+            new ToolDefinition(CreatePlanTool.DESCRIPTOR, () -> new CreatePlanTool(planningValidator)),
             new ToolDefinition(AddTaskTool.DESCRIPTOR, () -> new AddTaskTool(planningValidator)),
-            new ToolDefinition(CompleteTaskTool.DESCRIPTOR, () -> new CompleteTaskTool(planningValidator))));
+            new ToolDefinition(CompleteTaskTool.DESCRIPTOR, () -> new CompleteTaskTool(planningValidator)),
+            new ToolDefinition(AbandonPlanTool.DESCRIPTOR, AbandonPlanTool::new)));
   }
 }

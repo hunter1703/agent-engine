@@ -1,10 +1,12 @@
 package com.agentengine.agent.infra.agents.flow;
 
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.agents.processors.request.CompactionProcessor;
 import com.agentengine.agent.infra.agents.processors.request.SignalProcessor;
 import com.agentengine.agent.infra.utils.EventUtils;
+import com.agentengine.agent.infra.utils.ResponseUtils;
 import com.agentengine.agent.infra.utils.RunState;
-import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
@@ -41,12 +43,15 @@ import org.slf4j.LoggerFactory;
  * <ul>
  *   <li><b>PAUSED:</b> An {@code adk_request_confirmation} event is present — boundary carries
  *       {@code turnComplete=true}, no {@code finishReason}.
- *   <li><b>TERMINAL:</b> Turn limit reached, final answer (without continuation), or {@code
+ *   <li><b>TERMINAL:</b> Final answer (without continuation), or {@code
  *       endInvocation=true} — boundary carries {@code turnComplete=true} and {@code
  *       finishReason=STOP}.
  *   <li><b>CONTINUE:</b> Tool-call step or continuation-driven retry — boundary carries {@code
  *       turnComplete=true}, no {@code finishReason}. Loop recurses.
  * </ul>
+ *
+ * <p>A final answer ends the run only when no signal asks for a correction. A run that would go on
+ * after its step limit ends with an error instead.
  */
 public final class BaseFlow extends SingleFlow {
   private static final Logger LOG = LoggerFactory.getLogger(BaseFlow.class);
@@ -63,12 +68,17 @@ public final class BaseFlow extends SingleFlow {
   }
 
   private Flowable<Event> runLoop(final InvocationContext invocationContext) {
-    final RunState runState = RunUtils.getRunState(invocationContext);
+    final RunState runState = SessionUtils.getSessionState(invocationContext).runState();
     final boolean mayContinue = runState.consumeTurn(maxSteps);
     if (!mayContinue) {
-      return Flowable.empty();
+      // The previous step asked to go on (a tool call, or a signal that wants a correction), so
+      // the run is cut off before it finished.
+      return Flowable.error(
+          new IllegalStateException(
+              "The run stopped after reaching its limit of " + maxSteps + " steps without finishing."));
     }
 
+    runState.releaseText();
     final AtomicBoolean endInvocation = new AtomicBoolean();
     // Reset per-turn flags so a final answer from a previous continuation turn
     // does not bleed into the current turn's outcome resolution.
@@ -108,18 +118,29 @@ public final class BaseFlow extends SingleFlow {
               if (event.actions().endInvocation().orElse(false)) {
                 endInvocation.set(true);
               }
-              // Only model/agent events count as a final answer — user events (e.g. signal
-              // messages injected by SignalProcessor) and tool events must not set this flag.
-              if (EventUtils.isModelEvent(event) && event.finalResponse()) {
+              // The plugins that correct a final answer use the same test.
+              if (ResponseUtils.isFinalAnswer(event)) {
                 foundFinalAnswer.set(true);
               }
               // Strip turnComplete and finishReason — the synthetic boundary event is the
               // sole authoritative commit point for the turn.
-              return event.toBuilder()
-                  .content(content.toBuilder().parts(filteredParts).build())
-                  .turnComplete(null)
-                  .finishReason(null)
-                  .build();
+              final Event forwarded =
+                  event.toBuilder()
+                      .content(content.toBuilder().parts(filteredParts).build())
+                      .turnComplete(null)
+                      .finishReason(null)
+                      .build();
+              // The complete response carries the same text, so the user is shown it then.
+              if (forwarded.partial().orElse(false)
+                  && runState.holdsBackText()
+                  && ContentUtils.hasVisibleText(forwarded.content().orElse(null))) {
+                EventUtils.markAsInternal(forwarded);
+              }
+              // A final answer that is to be corrected is kept from the user; the model still sees it.
+              if (ResponseUtils.isFinalAnswer(forwarded) && runState.correctionRequested()) {
+                EventUtils.markAsInternal(forwarded);
+              }
+              return forwarded;
             })
         .concatWith(
             Flowable.defer(

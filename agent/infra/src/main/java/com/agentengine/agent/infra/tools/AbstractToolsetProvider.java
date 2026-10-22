@@ -28,19 +28,19 @@ public abstract class AbstractToolsetProvider implements ToolsetProvider {
 
   @Override
   public BaseToolset create(final Map<String, Object> toolConfig) {
-    return new Toolset(toolDefinitions);
+    // Each tool builds its schema when it is made, so they are made once for the toolset, not for
+    // every model request.
+    return new Toolset(
+        toolDefinitions.stream().<BaseTool>map(definition -> definition.factory().get()).toList());
   }
 
   public record ToolDefinition(ToolDescriptor descriptor, Supplier<? extends BaseTool> factory) {}
 
-  private record Toolset(List<ToolDefinition> toolDefinitions) implements BaseToolset {
+  private record Toolset(List<BaseTool> tools) implements BaseToolset {
 
     @Override
     public Flowable<BaseTool> getTools(final ReadonlyContext context) {
-      return Flowable.fromIterable(toolDefinitions)
-          .map(ToolDefinition::factory)
-          .map(Supplier::get)
-          .cast(BaseTool.class);
+      return Flowable.fromIterable(tools);
     }
 
     @Override

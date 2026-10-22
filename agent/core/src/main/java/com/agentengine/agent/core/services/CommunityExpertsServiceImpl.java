@@ -3,9 +3,12 @@ package com.agentengine.agent.core.services;
 import com.agentengine.agent.api.model.MessagePart;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.CommunityExpertsService;
-import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
+import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.plugins.InitPlugin;
+import com.agentengine.agent.infra.plugins.PluginGroup;
+import com.agentengine.agent.infra.reminders.ReminderSyncService;
+import com.agentengine.agent.infra.tools.planning.PlanningValidator;
 import com.agentengine.agent.infra.plugins.ResponseValidationPlugin;
 import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
@@ -15,6 +18,7 @@ import com.agentengine.util.common.utils.ExceptionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.context.Caller;
 import com.agentengine.util.context.Context;
+import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.apps.App;
 import com.google.adk.runner.Runner;
@@ -45,6 +49,9 @@ public final class CommunityExpertsServiceImpl implements CommunityExpertsServic
 
   private final LazyLoader<List<BaseAgentConfig>> experts;
   private final AgentProvider agentProvider;
+  private final NotebookService notebookService;
+  private final PlanningValidator planningValidator;
+  private final ReminderSyncService reminderSyncService;
 
   /**
    * A local, per-instance cache — not the distributed model cache {@code ModelProvider} uses —
@@ -57,8 +64,15 @@ public final class CommunityExpertsServiceImpl implements CommunityExpertsServic
    */
   private final Cache<ExpertKey, BaseAgentConfig> resolvedConfigs;
 
-  public CommunityExpertsServiceImpl(final AgentProvider agentProvider) {
+  public CommunityExpertsServiceImpl(
+      final AgentProvider agentProvider,
+      final NotebookService notebookService,
+      final PlanningValidator planningValidator,
+      final ReminderSyncService reminderSyncService) {
     this.agentProvider = agentProvider;
+    this.notebookService = notebookService;
+    this.planningValidator = planningValidator;
+    this.reminderSyncService = reminderSyncService;
     this.experts = new LazyLoader<>(this::loadExperts);
     this.resolvedConfigs =
         new Cache<>(
@@ -79,7 +93,7 @@ public final class CommunityExpertsServiceImpl implements CommunityExpertsServic
   public String invokeExpert(final String id, final String modelId, final UserMessage userMessage) {
     final BaseAgentConfig config = resolvedConfigs.get(new ExpertKey(id, modelId));
     try {
-      final Agent agent = agentProvider.create(config);
+      final BaseAgent agent = agentProvider.create(config);
       final InMemorySessionService sessionService = new InMemorySessionService();
       final String sessionId = UUID.randomUUID().toString();
       final String appName = AgentUtils.appName(config.getId());
@@ -88,7 +102,13 @@ public final class CommunityExpertsServiceImpl implements CommunityExpertsServic
           Runner.builder()
               .app(
                   App.builder()
-                      .plugins(List.of(new InitPlugin(), new ResponseValidationPlugin()))
+                      .plugins(
+                          List.of(
+                              new PluginGroup(
+                                  "expert",
+                                  List.of(
+                                      new InitPlugin(notebookService, planningValidator, reminderSyncService),
+                                      new ResponseValidationPlugin()))))
                       .rootAgent(agent)
                       .name(appName)
                       .build())

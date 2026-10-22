@@ -11,6 +11,7 @@ public interface Constants {
     String CREATE_PLAN = "create_plan";
     String ADD_TASK = "add_task";
     String COMPLETE_TASK = "complete_task";
+    String ABANDON_PLAN = "abandon_plan";
     String CREATE_NOTEBOOK = "create_notebook";
     String CREATE_OR_UPDATE_NOTE = "create_or_update_note";
     String APPEND_TO_NOTE = "append_to_note";
@@ -29,7 +30,8 @@ public interface Constants {
     static boolean isPlanningTool(String toolName) {
       return CREATE_PLAN.equals(toolName)
           || ADD_TASK.equals(toolName)
-          || COMPLETE_TASK.equals(toolName);
+          || COMPLETE_TASK.equals(toolName)
+          || ABANDON_PLAN.equals(toolName);
     }
   }
 
@@ -46,10 +48,14 @@ public interface Constants {
     String NOTEBOOK_IDS = "notebook_ids";
     String NOTEBOOK_DESCRIPTION = "description";
     String NOTE_TITLE = "note_title";
+    String NOTE_CONTENT = "content";
     String CONTINUATION = "continuation";
     String KNOWLEDGE_IDS = "knowledge_ids";
     String PARENT = "parent";
     String TASK = "task";
+    String TASK_RESULT = "result";
+    String REASON = "reason";
+    String TASK_STATUS = "status";
   }
 
   interface HitlArgs {
@@ -68,7 +74,6 @@ public interface Constants {
     String SUCCESS = "success";
     String PENDING = "pending";
     String CANCELLED = "cancelled";
-    String ANSWERED = "answered";
   }
 
   interface Toolsets {

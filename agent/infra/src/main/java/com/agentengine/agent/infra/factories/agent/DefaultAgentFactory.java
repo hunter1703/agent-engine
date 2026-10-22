@@ -1,18 +1,18 @@
 package com.agentengine.agent.infra.factories.agent;
 
-import com.agentengine.agent.infra.agents.Agent;
-import com.agentengine.agent.infra.agents.DelegatedAgent;
+import com.agentengine.agent.infra.agents.LLMAgent;
 import com.agentengine.agent.infra.factories.context.CompactorProvider;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.models.factories.ModelProvider;
+import com.google.adk.agents.BaseAgent;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
 @Singleton
 @Named("defaultAgentFactory")
-public class DefaultAgentFactory extends AbstractAgentFactory<BaseAgentConfig, Agent> {
+public class DefaultAgentFactory extends AbstractAgentFactory<BaseAgentConfig, BaseAgent> {
 
   @Inject
   public DefaultAgentFactory(
@@ -23,7 +23,7 @@ public class DefaultAgentFactory extends AbstractAgentFactory<BaseAgentConfig, A
   }
 
   @Override
-  public DelegatedAgent build(final BaseAgentConfig config) {
+  public BaseAgent build(final BaseAgentConfig config) {
     return createLlmAgentBuilder(config).build();
   }
 

@@ -12,7 +12,6 @@ import com.agentengine.util.agents.beans.config.GuardrailStage;
  * <h3>Guarantees</h3>
  *
  * <ul>
- *   <li><b>Deterministic evaluation:</b> Same context always produces the same decision.
  *   <li><b>Decision semantics:</b> The returned {@link GuardrailDecision} has an action
  *       (ALLOW/WARN/BLOCK/ESCALATE) with a code and message explaining the decision.
  *   <li><b>Severity merging:</b> When multiple guardrails evaluate the same context, the
@@ -26,8 +25,9 @@ import com.agentengine.util.agents.beans.config.GuardrailStage;
  *       allow()}, {@code warn()}, {@code block()}, {@code escalate()}) for consistency.
  *   <li>For blocking/escalation decisions, provide a clear {@code code} and {@code message} for the
  *       model to understand why content was rejected.
- *   <li>Avoid expensive operations (external API calls, DB queries) in {@code evaluate()}.
- *       Guardrails runState in the hot path.
+ *   <li>{@code evaluate()} runs on the model's path, so it should be cheap; a guardrail that
+ *       calls a model says so in its own documentation.
+ *   <li>An exception thrown by {@code evaluate()} is handled by the policy's error mode.
  * </ul>
  */
 public interface Guardrail {

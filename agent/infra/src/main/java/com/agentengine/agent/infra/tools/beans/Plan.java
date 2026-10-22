@@ -7,7 +7,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class Plan {
   @NotBlank private String title;
@@ -19,7 +21,12 @@ public class Plan {
   public Plan() {}
 
   public Plan(Plan plan) {
-    this(plan.title, plan.goal, plan.tasks, plan.status, plan.result);
+    this(
+        plan.title,
+        plan.goal,
+        CollectionUtils.nullSafeList(plan.tasks).stream().map(Task::new).toList(),
+        plan.status,
+        plan.result);
   }
 
   public Plan(String title, String goal, List<Task> tasks) {
@@ -62,21 +69,19 @@ public class Plan {
     if (StringUtils.isBlank(name)) {
       return null;
     }
-    return tasks.stream().filter(task -> Objects.equals(task.getName(), name)).findFirst().orElse(null);
+    final String wanted = name.trim();
+    return tasks.stream()
+        .filter(task -> task.getName() != null && task.getName().trim().equalsIgnoreCase(wanted))
+        .findFirst()
+        .orElse(null);
   }
 
-  public boolean addTask(final Task task) {
-    if (task != null) {
-      Task existing = getTask(task.getName());
-      if (existing != null) {
-        return false;
-      }
-      final List<Task> updatedTasks = CollectionUtils.nullSafeMutableList(tasks);
-      updatedTasks.add(task);
-      setTasks(buildPostOrder(updatedTasks));
-      return true;
-    }
-    return false;
+  /** This plan with {@code task} added, in its place in the task order. */
+  public Plan addTask(final Task task) {
+    final List<Task> updatedTasks = CollectionUtils.nullSafeMutableList(tasks);
+    updatedTasks.add(task);
+    setTasks(buildPostOrder(updatedTasks));
+    return this;
   }
 
   public PlanStatus getStatus() {
@@ -93,6 +98,18 @@ public class Plan {
 
   public void setResult(String result) {
     this.result = result;
+  }
+
+  /** This plan abandoned, with each of its open tasks, for {@code reason}. */
+  public Plan abandon(final String reason) {
+    for (final Task task : tasks) {
+      if (!task.getStatus().isTerminal()) {
+        task.setStatus(TaskStatus.ABANDONED);
+        task.setResult("Abandoned with the plan.");
+      }
+    }
+    finish(PlanStatus.ABANDONED, reason);
+    return this;
   }
 
   public void finish(PlanStatus status, String result) {

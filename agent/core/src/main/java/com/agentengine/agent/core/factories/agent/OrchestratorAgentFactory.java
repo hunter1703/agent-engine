@@ -3,8 +3,7 @@ package com.agentengine.agent.core.factories.agent;
 import com.agentengine.agent.core.tools.agent.AwaitAgentTool;
 import com.agentengine.agent.core.tools.agent.SendMessageTool;
 import com.agentengine.agent.core.tools.agent.SpawnAgentTool;
-import com.agentengine.agent.infra.agents.Agent;
-import com.agentengine.agent.infra.agents.DelegatedAgent;
+import com.agentengine.agent.infra.agents.LLMAgent;
 import com.agentengine.agent.infra.agents.ParallelOrchestratorAgent;
 import com.agentengine.agent.infra.factories.agent.AbstractAgentFactory;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
@@ -18,13 +17,13 @@ import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.tenancy.AccessControlService;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.agents.beans.config.OrchestrationMode;
 import com.agentengine.util.agents.beans.config.OrchestratorAgentConfig;
 import com.agentengine.util.agents.beans.config.OrchestratorParallelConfig;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.agentengine.util.models.factories.ModelProvider;
 import com.agentengine.util.pekko.ActorSystemProvider;
+import com.google.adk.agents.BaseAgent;
 import io.quarkus.arc.WithCaching;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -33,9 +32,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Singleton
-public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorAgentConfig, Agent> {
+public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorAgentConfig, BaseAgent> {
   private final AgentService agentService;
-  protected final Instance<AgentProvider> agentProviderInstance;
+  private final Instance<AgentProvider> agentProviderInstance;
   private final ActorSystemProvider actorSystemProvider;
   private final NotebookService notebookService;
   private final KnowledgeService knowledgeService;
@@ -65,27 +64,21 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
   }
 
   @Override
-  public Agent build(final OrchestratorAgentConfig config) {
-    OrchestrationMode mode = config.orchestrationModeEnum();
-    if (mode == OrchestrationMode.UNKNOWN) {
-      mode = OrchestrationMode.MANAGER;
-    }
-    switch (mode) {
-      case MANAGER:
-        return buildManager(config);
-      case PARALLEL:
-        return buildParallel(config);
-      default:
-        throw new IllegalArgumentException(
-            "Unsupported orchestration mode: " + mode + " for agent_id=" + config.getId());
-    }
+  public BaseAgent build(final OrchestratorAgentConfig config) {
+    return switch (config.orchestrationModeEnum()) {
+      case PARALLEL -> buildParallel(config);
+      case MANAGER, UNKNOWN -> buildManager(config);
+      case SEQUENTIAL ->
+          throw new IllegalArgumentException(
+              "Unsupported orchestration mode: SEQUENTIAL for agent_id=" + config.getId());
+    };
   }
 
-  private List<? extends Agent> buildSubAgents(final List<String> subAgentIds) {
+  private List<? extends BaseAgent> buildSubAgents(final List<String> subAgentIds) {
     if (CollectionUtils.isEmpty(subAgentIds)) {
       return List.of();
     }
-    final List<Agent> subAgents = new ArrayList<>();
+    final List<BaseAgent> subAgents = new ArrayList<>();
     for (final String subAgentId : subAgentIds) {
       if (StringUtils.isBlank(subAgentId)) {
         continue;
@@ -100,7 +93,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
   }
 
   private ParallelOrchestratorAgent buildParallel(final OrchestratorAgentConfig config) {
-    final List<? extends Agent> subAgents = buildSubAgents(config.getSubAgentIds());
+    final List<? extends BaseAgent> subAgents = buildSubAgents(config.getSubAgentIds());
     if (CollectionUtils.isEmpty(subAgents)) {
       throw new IllegalArgumentException(
           "orchestrator mode PARALLEL requires non-empty subAgentIds for agent_id="
@@ -116,7 +109,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
         .build();
   }
 
-  private DelegatedAgent buildManager(final OrchestratorAgentConfig config) {
+  private BaseAgent buildManager(final OrchestratorAgentConfig config) {
     final List<String> subAgentIds = CollectionUtils.nullSafeList(config.getSubAgentIds());
     final BaseLlmAgentBuilder builder = createLlmAgentBuilder(config);
     builder.appendTools(
@@ -134,9 +127,9 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
                 knowledgeService,
                 accessControlService,
                 reminderSyncService),
-            new AwaitAgentTool(actorSystemProvider)));
+            new AwaitAgentTool(actorSystemProvider, reminderSyncService)));
 
-    final List<? extends Agent> transferableSubAgents =
+    final List<? extends BaseAgent> transferableSubAgents =
         buildSubAgents(config.getTransferableSubAgentIds());
     if (CollectionUtils.isNotEmpty(transferableSubAgents)) {
       builder.subAgents(transferableSubAgents);

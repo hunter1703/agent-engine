@@ -4,10 +4,10 @@ import com.agentengine.agent.api.model.MessagePart;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartChildResult;
-import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.StartChildCommand;
 import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.reminders.ReminderSyncService;
+import com.agentengine.agent.infra.utils.SessionState;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
 import com.agentengine.knowledge.api.services.KnowledgeService;
@@ -35,36 +35,31 @@ import java.util.Optional;
  * SendMessageTool} to send follow-up messages while preserving its context. Both tools require the
  * child_session_id returned by this tool. This tool is injected per-run; it is not a CDI singleton.
  */
-public final class SpawnAgentTool extends AbstractAgentTool {
+public final class SpawnAgentTool extends DelegationTool {
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.SPAWN_AGENT,
           """
-          Creates a new child agent session and starts it with the given message. The child runs with its \
-          own isolated context and has access only to resources (notebooks, knowledge) explicitly granted to it. \
-          To continue an existing child session, use send_message instead.
-          Returns: { child_session_id, result } if awaited, { child_session_id, status: "started" } if not, or { error } on failure.""",
+          Starts a child agent on a message. The child works in its own context and sees only the \
+          message and the notebooks and knowledge you grant it. To continue with a child you already \
+          have, send it a message instead.
+          Returns: { child_session_id, result } when you wait and the child produced output, { child_session_id, status: "completed" } when it finished without output, { child_session_id, error } if it failed, { child_session_id, status: "started" } when you do not wait, or { error } if it could not be started.""",
           Map.of());
 
   private static final Schema KNOWLEDGE_IDS_SCHEMA =
       ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
           .description(
-              "Knowledge ids to grant the spawned agent. Source material you have access to "
-                  + "is not automatically visible to the child — pass the ids of any documents "
-                  + "or references the child's work depends on. A child working from your "
-                  + "paraphrase of source material produces weaker work than one reading the "
-                  + "source directly.")
+              "Ids of knowledge to grant the child. It sees none of yours unless you pass it here, "
+                  + "and it works better from the source than from your paraphrase of it.")
           .build();
 
   private static final Schema NOTEBOOK_IDS_SCHEMA =
       ToolUtils.buildSchemaFromType(new TypeReference<List<String>>() {}.getType()).toBuilder()
           .description(
-              "Notebook IDs to grant the spawned agent. Notebooks you have access to are "
-                  + "not automatically visible to the child — pass every notebook the child's "
-                  + "work depends on, including the shared workspace if the team is using one. "
-                  + "A child spawned without the notebooks it needs may proceed "
-                  + "silently with incomplete context.")
+              "Ids of notebooks to grant the child, including a shared workspace if the team uses "
+                  + "one. A child without the notebooks it needs carries on with incomplete "
+                  + "context without saying so.")
           .build();
 
   private final List<String> subAgentIds;
@@ -97,7 +92,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
       @ToolArg(name = Constants.ToolArgs.AGENT_ID) final String childAgentId,
-      @ToolArg(name = "message") String message,
+      @ToolArg(name = "message") final String message,
       @ToolArg(name = "goal") final String goal,
       @ToolArg(name = "await_completion", optional = true) Boolean awaitCompletion,
       @ToolArg(name = Constants.ToolArgs.KNOWLEDGE_IDS, optional = true)
@@ -119,21 +114,14 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                   + "'. Must be one of: "
                   + String.join(", ", subAgentIds)));
     }
-    message = buildFullMessage(goal, message);
-
-    final List<MessagePart> parts = List.of(new MessagePart.TextPart(message));
-    final ToolOutput<Map<String, Object>> violationOutput =
-        validateGrants(notebookIds, knowledgeIds);
-    if (violationOutput != null) {
-      return violationOutput;
-    }
-    final UserMessage userMessage = new UserMessage(parts);
+    final UserMessage userMessage =
+        new UserMessage(List.of(new MessagePart.TextPart(buildFullMessage(goal, message))));
     final String childSessionId = SessionUtils.newSessionId();
-    // Granted before the child starts, so its first run can already reach them.
-    final ToolOutput<Map<String, Object>> grantError =
-        issueGrants(childAgentId, childSessionId, notebookIds, knowledgeIds);
-    if (grantError != null) {
-      return grantError;
+    try {
+      // Granted before the child starts, so its first run can already reach them.
+      grantAccess(childAgentId, childSessionId, notebookIds, knowledgeIds);
+    } catch (final GrantRefused refused) {
+      return ToolOutput.direct(Map.of("error", refused.getMessage()));
     }
 
     final StartChildResult startChildResult =
@@ -146,47 +134,32 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .toCompletableFuture()
             .join();
 
-    final StartSessionResult result = startChildResult.result();
-    return switch (result) {
-      case StartSessionResult.Accepted ignored -> {
-        awaitCompletion = awaitCompletion == null || awaitCompletion;
-        SessionUtils.getSessionState(toolContext.invocationContext())
-            .addSpawnedAgent(childSessionId, childAgentId, goal, awaitCompletion);
-        if (awaitCompletion) {
-          yield awaitChild(toolContext, childSessionId);
-        } else {
-          yield ToolOutput.direct(
-              Map.of(Constants.ToolArgs.CHILD_SESSION_ID, childSessionId, "status", "started"));
-        }
-      }
-      case StartSessionResult.Rejected(String r) ->
-          ToolOutput.direct(Map.of("error", "Failed to spawn agent: " + r));
-      case StartSessionResult.Queued(int position) ->
-          ToolOutput.direct(
-              Map.of(
-                  "error",
-                  "Failed to spawn agent: unexpected queued response",
-                  "queue_position",
-                  position));
-      default -> ToolOutput.direct(Map.of("error", "Failed to spawn agent: unknown response"));
-    };
+    final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
+    final boolean await = waitsForChild(awaitCompletion);
+    return afterDelivery(
+        toolContext,
+        childSessionId,
+        startChildResult.result(),
+        await,
+        () -> sessionState.addSpawnedAgent(childSessionId, childAgentId, goal, await),
+        Map.of(Constants.ToolArgs.CHILD_SESSION_ID, childSessionId, "status", "started"),
+        "Failed to spawn agent");
   }
 
   private static FunctionDeclaration buildDeclaration(final List<String> subAgentIds) {
-    final String agentList = String.join(", ", subAgentIds);
     final Map<String, Schema> properties = new LinkedHashMap<>();
     properties.put(
         "agent_id",
         Schema.builder()
             .type(Known.STRING)
             .enum_(subAgentIds)
-            .description("ID of the agent to spawn. Available agents: %s.".formatted(agentList))
+            .description("The id of the agent to start.")
             .build());
     properties.put(
         "message",
         Schema.builder()
             .type(Known.STRING)
-            .description("Initial message to send to the spawned agent.")
+            .description("The message to start the child with.")
             .build());
     properties.put(
         Constants.ToolArgs.GOAL,
@@ -210,7 +183,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .build();
     return FunctionDeclaration.builder()
         .name(Constants.ToolNames.SPAWN_AGENT)
-        .description(DESCRIPTOR.description() + " Available agents: " + agentList + ".")
+        .description(DESCRIPTOR.description())
         .parameters(params)
         .build();
   }

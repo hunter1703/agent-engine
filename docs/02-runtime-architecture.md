@@ -32,7 +32,7 @@ Because sessions are sharded entities, lifecycle (activation, passivation, recov
 
 `AgentProvider` selects an `AgentFactory` by agent type:
 
-- `default` → standard LLM agent (`DelegatedAgent` wrapping an ADK `LlmAgent`)
+- `default` → standard LLM agent (`DelegatingAgent` wrapping an ADK `LlmAgent`)
 - `orchestrator` → `OrchestratorAgentFactory`
 
 Orchestrator branches:

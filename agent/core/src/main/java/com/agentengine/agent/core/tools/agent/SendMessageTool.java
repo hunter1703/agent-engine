@@ -32,15 +32,16 @@ import java.util.Map;
  *
  * <p>This tool is injected per-run by the framework; it is not a CDI singleton.
  */
-public final class SendMessageTool extends AbstractAgentTool {
+public final class SendMessageTool extends DelegationTool {
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.SEND_MESSAGE,
           """
-          Delivers a follow-up message to an existing child sub-agent session, allowing back-and-forth dialogue while preserving the child's full conversation history. Use this to continue a sub-agent task, provide missing information, grant additional access, or issue corrections to a spawned sub-agent. Do NOT use this tool for messaging end users or external communication — it is strictly for coordinating with child sub-agents. The child session must have completed its previous turn before a new message is accepted.
-
-          Returns: { child_session_id, result } if awaited, { child_session_id, status: "started" } if not, or { error } on failure.""",
+          Delivers a follow-up message to a child you spawned, which keeps its whole conversation. \
+          Use it to continue the child's work, add information or access, or correct it. The child \
+          must have finished its previous turn.
+          Returns: { child_session_id, result } when you wait and the child produced output, { child_session_id, status: "completed" } when it finished without output, { child_session_id, error } if it failed, { status: "started" } when you do not wait, or { error } if the message could not be delivered.""",
           Map.of());
 
   public SendMessageTool(
@@ -64,32 +65,32 @@ public final class SendMessageTool extends AbstractAgentTool {
       @ToolArg(
               name = Constants.ToolArgs.CHILD_SESSION_ID,
               description =
-                  "The session identifier of an existing child agent to deliver the message to.")
+                  "The id of the child, as returned when you spawned it.")
           final String childSessionId,
       @ToolArg(
               name = "message",
               description =
-                  "The message content to deliver as the next conversation turn to the child session.")
-          String message,
+                  "The follow-up message.")
+          final String message,
       @ToolArg(name = Constants.ToolArgs.GOAL, description = GOAL_SCHEMA_DESCRIPTION)
           final String goal,
       @ToolArg(
               name = Constants.ToolArgs.AWAIT_COMPLETION,
               description =
-                  "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been sent the message.",
+                  "If true (the default), waits for the child to finish and returns its result; if false, returns as soon as the child has the message.",
               optional = true)
-          Boolean awaitCompletion,
+          final Boolean awaitCompletion,
       @ToolArg(
               name = Constants.ToolArgs.KNOWLEDGE_IDS,
               description =
-                  "Knowledge ids to grant the child, on top of whatever it already has from earlier calls — grants accumulate, so omit ids it can already access and list only new ones. "
+                  "Ids of knowledge to grant the child on top of what it has; list only new ones. "
                       + KNOWLEDGES_ACCESS_DESCRIPTION,
               optional = true)
           final List<String> knowledgeIds,
       @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_IDS,
               description =
-                  "Ids of existing notebooks to grant the child, on top of whatever it already has from earlier calls — grants accumulate, so omit ids it can already access and list only new ones. "
+                  "Ids of notebooks to grant the child on top of what it has; list only new ones. "
                       + NOTEBOOKS_ACCESS_DESCRIPTION,
               optional = true)
           final List<String> notebookIds) {
@@ -105,18 +106,12 @@ public final class SendMessageTool extends AbstractAgentTool {
       return ToolOutput.direct(
           Map.of("error", "Unknown child session: " + childSessionId + ". Spawn an agent first."));
     }
-    message = buildFullMessage(goal, message);
-    final List<MessagePart> parts = List.of(new MessagePart.TextPart(message));
-    final ToolOutput<Map<String, Object>> violationOutput =
-        validateGrants(notebookIds, knowledgeIds);
-    if (violationOutput != null) {
-      return violationOutput;
-    }
-    final UserMessage userMessage = new UserMessage(parts);
-    final ToolOutput<Map<String, Object>> grantError =
-        issueGrants(childAgentId, childSessionId, notebookIds, knowledgeIds);
-    if (grantError != null) {
-      return grantError;
+    final UserMessage userMessage =
+        new UserMessage(List.of(new MessagePart.TextPart(buildFullMessage(goal, message))));
+    try {
+      grantAccess(childAgentId, childSessionId, notebookIds, knowledgeIds);
+    } catch (final GrantRefused refused) {
+      return ToolOutput.direct(Map.of("error", refused.getMessage()));
     }
 
     final StartSessionResult result =
@@ -128,26 +123,14 @@ public final class SendMessageTool extends AbstractAgentTool {
                 SessionActorFactory.ASK_TIMEOUT)
             .toCompletableFuture()
             .join();
-    return switch (result) {
-      case StartSessionResult.Accepted ignored -> {
-        awaitCompletion = awaitCompletion == null || awaitCompletion;
-        sessionState.updateSpawnedAgent(childSessionId, goal, awaitCompletion);
-        if (awaitCompletion) {
-          yield awaitChild(toolContext, childSessionId);
-        } else {
-          yield ToolOutput.direct(Map.of("child_session_id", childSessionId, "status", "started"));
-        }
-      }
-      case StartSessionResult.Rejected(String reason) ->
-          ToolOutput.direct(Map.of("error", "Failed to send message: " + reason));
-      case StartSessionResult.Queued(int position) ->
-          ToolOutput.direct(
-              Map.of(
-                  "error",
-                  "Failed to send message: unexpected queued response",
-                  "queue_position",
-                  position));
-      default -> ToolOutput.direct(Map.of("error", "Failed to send message: unknown response"));
-    };
+    final boolean await = waitsForChild(awaitCompletion);
+    return afterDelivery(
+        toolContext,
+        childSessionId,
+        result,
+        await,
+        () -> sessionState.updateSpawnedAgent(childSessionId, goal, await),
+        Map.of("status", "started"),
+        "Failed to send message");
   }
 }

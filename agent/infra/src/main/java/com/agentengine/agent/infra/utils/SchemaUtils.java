@@ -3,6 +3,7 @@ package com.agentengine.agent.infra.utils;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.google.genai.types.Schema;
 import com.google.genai.types.Type;
+import com.networknt.schema.InputFormat;
 import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
 import io.vertx.json.schema.common.dsl.ArraySchemaBuilder;
@@ -145,7 +146,7 @@ public final class SchemaUtils {
   public static com.networknt.schema.Schema buildSchema(final Map<String, Object> schemaMap) {
     try {
       return SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7)
-          .getSchema(JsonUtils.toJsonNode(schemaMap));
+          .getSchema(JsonUtils.toJson(schemaMap), InputFormat.JSON);
     } catch (Exception ex) {
       LOG.warn("Failed to build JSON schema for validation — skipping enforcement", ex);
       return null;

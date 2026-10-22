@@ -1,13 +1,13 @@
 package com.agentengine.agent.core.tools.agent;
 
 import com.agentengine.agent.core.session.events.RunResult;
+import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
-import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -23,15 +23,15 @@ public final class AwaitAgentTool extends AbstractAgentTool {
       new ToolDescriptor(
           Constants.ToolNames.AWAIT_AGENT,
           """
-          Blocks until a child agent session finishes processing its current message and returns the result. Call when you need the child's output before you can proceed — either to use it as input to the next step, or to confirm successful completion before taking a dependent action. If the child has already finished, the result is returned immediately; otherwise this tool waits for it to finish. Times out after 30 minutes.
-
-          Returns: { child_session_id, result } on success with output; { child_session_id, status: "completed" } on success without output; { child_session_id, status: "failed", error } on failure.""",
+          Waits for a child to finish its current message and returns its result; your run pauses \
+          until then. If it already finished, the result comes back at once.
+          Returns: { child_session_id, result } when the child produced output; { child_session_id, status: "completed" } when it finished without output; { child_session_id, error } when it failed.""",
           Map.of());
 
-  private static final Duration AWAIT_TIMEOUT = Duration.ofMinutes(30);
-
-  public AwaitAgentTool(final ActorSystemProvider actorSystemProvider) {
-    super(DESCRIPTOR, actorSystemProvider);
+  public AwaitAgentTool(
+      final ActorSystemProvider actorSystemProvider,
+      final ReminderSyncService reminderSyncService) {
+    super(DESCRIPTOR, actorSystemProvider, reminderSyncService);
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -40,8 +40,7 @@ public final class AwaitAgentTool extends AbstractAgentTool {
       @ToolArg(
               name = Constants.ToolArgs.CHILD_SESSION_ID,
               description =
-                  """
-                  The opaque identifier of the child agent session to wait for, as returned when the session was created or last messaged.""")
+                  "The id of the child, as returned when you spawned it.")
           final String childSessionId) {
     return awaitChild(toolContext, childSessionId);
   }
@@ -49,13 +48,11 @@ public final class AwaitAgentTool extends AbstractAgentTool {
   public static Map<String, Object> buildCompletedResponseMap(
       final String childSessionId, final RunResult result) {
     if (result.isFailure()) {
-      return Map.of(
-          "child_session_id", childSessionId, "status", "failed", "error", result.failureMessage());
+      return Map.of("child_session_id", childSessionId, "error", result.failureMessage());
     }
 
     if (result.output() != null) {
-      return Map.of(
-          "child_session_id", childSessionId, "status", "completed", "result", result.output());
+      return Map.of("child_session_id", childSessionId, "result", result.output());
     }
 
     return Map.of("child_session_id", childSessionId, "status", "completed");

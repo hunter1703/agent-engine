@@ -1,12 +1,12 @@
 package com.agentengine.agent.infra.factories.agent;
 
-import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.agent.infra.factories.context.CompactorProvider;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.agent.infra.utils.PromptUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.google.adk.agents.BaseAgent;
 import com.agentengine.util.agents.beans.config.ToolsConfig;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.utils.CollectionUtils;
@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends Agent>
+public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends BaseAgent>
     implements AgentFactory<C, A> {
   protected final ModelProvider modelProvider;
   protected final ToolFactory toolFactory;
@@ -82,7 +82,6 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
             PromptUtils.renderSystemPrompt(
                 config.getSystemPrompt(),
                 config.getName(),
-                config.getResponseFormat(),
                 hasTools,
                 isResumable))
         .appendTools(tools)

@@ -27,14 +27,12 @@ public final class HumanInTheLoopTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.HITL,
-          "Pauses execution to request clarification, missing information, user decisions, or approval. "
-              + "Use when: (1) key evaluation criteria, definitions, or user preferences are ambiguous or underspecified and "
-              + "guessing would yield an arbitrary or misaligned result; "
-              + "(2) a required input is absent and cannot be derived from context; "
-              + "(3) presenting alternatives, choices, or suggestions for the user to decide between (provide the choices in options; supports both single-selection and multi-selection via isMultiSelect); or "
-              + "(4) a destructive or irreversible action requires explicit approval. "
-              + "Deliver any preliminary analysis or context in your regular text response BEFORE calling this tool. "
-              + "Keep the question argument strictly to the direct question itself.",
+          "Pauses the run to ask the user for something only they can give: missing information, a "
+              + "choice between alternatives, or approval of a destructive or irreversible action. "
+              + "Do not ask for what you can work out or look up. Give any analysis in your normal "
+              + "reply before calling it; the call carries only the question. "
+              + "Returns { answer }, { decision: ALLOW or DISALLOW } for an approval, or "
+              + "{ status: cancelled }.",
           Map.of());
 
   public HumanInTheLoopTool() {
@@ -47,48 +45,38 @@ public final class HumanInTheLoopTool extends Tool {
       @ToolArg(
               name = QUESTION,
               description =
-                  "The direct question asking for clarification, missing information, or a decision. "
-                      + "Deliver all preliminary analysis, context, and reasoning in your text response before calling this tool. "
-                      + "Do NOT include greetings, acknowledgments, or analysis here. "
-                      + "Never embed choices, alternatives, or parenthetical suggestions (e.g., '(e.g., ...)') in this string; put them in options instead. "
-                      + "Do NOT restate the user's request.")
+                  "The question itself and nothing else. Put the choices in options, not here.")
           final String question,
       @ToolArg(
               name = KIND,
               description =
-                  "Type of input required: TEXT for answers or multiple-choice selections; DECISION for binary approval (ALLOW/DISALLOW).",
+                  "TEXT for an answer or a choice; DECISION for an approval (ALLOW or DISALLOW).",
               enums = {"TEXT", "DECISION"})
           final String kind,
       @ToolArg(
               name = RESPONSE_OPTIONS,
               description =
-                  "Used when kind is TEXT. A list of user-selectable options, suggestions, or alternatives (e.g., ['Option A', 'Option B']). "
-                      + "MUST be populated whenever asking the user to choose between alternatives or whenever providing candidate suggestions or common choices for the user to select from in the UI. "
-                      + "Supports both single-choice (default) and multi-choice selections (set isMultiSelect to true to allow multiple selections). "
-                      + "If open-ended input is also allowed alongside options, set allowCustomAnswer to true.",
+                  "With kind TEXT: the choices to offer, e.g. ['Option A', 'Option B']. Leave empty for an open question.",
               optional = true)
           List<String> options,
       @ToolArg(
               name = "allowCustomAnswer",
               description =
-                  "Used when kind is TEXT. If true, allows the user to provide a free-form text answer. Defaults to true when options are empty. MUST be false or omitted if the user is strictly required to select from the provided options.",
+                  "With options: also accept a free-text answer. Defaults to true when there are no options.",
               optional = true)
           final Boolean allowCustomAnswer,
       @ToolArg(
               name = "isMultiSelect",
-              description =
-                  "Used when kind is TEXT and options are provided. Set to true to allow the user to select multiple choices from the options list (multi-selection). Defaults to false (single selection where exactly one choice is selected).",
+              description = "With options: allow choosing several. Defaults to one choice.",
               optional = true)
           final Boolean isMultiSelect,
       @ToolArg(
               name = CONTEXT,
-              description =
-                  "Structured metadata describing why user input is required, what is blocked, and what decision is pending. For machine-readable state only. Do NOT place user-facing explanations or final answers here.",
+              description = "Machine-readable state about what is pending. It is not shown to the user.",
               optional = true)
           final Map<String, Object> context) {
     if (toolContext == null) {
-      return ToolOutput.direct(
-          Map.of("message", "Invocation context is not available for request_human_input."));
+      return ToolOutput.direct(Map.of("error", "Invocation context is not available."));
     }
     final InterruptKind pauseKind = InterruptKind.valueOfOrDefault(kind);
     final boolean effectiveAllowCustomAnswer =
@@ -192,11 +180,7 @@ public final class HumanInTheLoopTool extends Tool {
         final String answer =
             CollectionUtils.getStringValueFromMap(
                 (Map<String, Object>) confirmation.payload(), "answer");
-        yield Map.of(
-            Constants.ToolStatus.STATUS,
-            Constants.ToolStatus.ANSWERED,
-            "answer",
-            Objects.requireNonNull(answer));
+        yield Map.of("answer", Objects.requireNonNull(answer));
       }
       case UNKNOWN -> // noinspection unchecked
           CollectionUtils.nullSafeMap((Map<String, Object>) confirmation.payload());

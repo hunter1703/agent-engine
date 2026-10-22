@@ -1,9 +1,8 @@
 package com.agentengine.agent.infra.utils;
 
-import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.NotebookService;
-import com.agentengine.agent.infra.notebook.ScratchpadNotebook;
 import com.agentengine.agent.infra.tools.beans.Plan;
+import com.agentengine.agent.infra.tools.planning.PlanningValidator;
 import com.agentengine.agent.infra.tools.planning.PlanningUtils;
 import com.agentengine.knowledge.api.beans.IndexingStatus;
 import com.agentengine.knowledge.api.beans.Knowledge;
@@ -23,7 +22,15 @@ import com.google.genai.types.Part;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 public final class SessionState {
 
@@ -36,19 +43,17 @@ public final class SessionState {
   // The child sessions this session spawned, each with its agent and the goal it was given.
   private final Map<String, SpawnedAgent> childSessionIdVsSpawnedAgent = new HashMap<>();
   private Plan plan;
-  private ScratchpadNotebook scratchpadNotebook;
+  private String scratchpadSummary = "";
 
-  public static SessionState buildFrom(final Session session) {
+  public static SessionState buildFrom(final Session session, final PlanningValidator planningValidator) {
     final SessionState state = new SessionState();
     if (session == null) {
       return state;
     }
-    state.getOrCreateScratchpad(session.id());
     final List<Event> events = session.events();
     state.setRunState(RunState.buildFrom(events));
-    state.updatePlan(PlanningUtils.buildFrom(events));
+    state.updatePlan(PlanningUtils.recoverPlan(events, planningValidator));
     state.addRemindersFrom(events);
-    state.addScratchpadNotesFrom(events);
     return state;
   }
 
@@ -72,27 +77,20 @@ public final class SessionState {
 
   public void syncNotebookReminder(final NotebookService notebookService) {
     groupVsSharedReminders.remove(Reminder.ID_NOTEBOOK_ACCESS);
-    final String sharedSummary = notebookService != null ? notebookService.summary(true) : null;
-    if (StringUtils.isNotBlank(sharedSummary)) {
-      addReminder(new Reminder(Reminder.ID_NOTEBOOK_ACCESS, "shared_notebooks", sharedSummary));
-    }
+    notebookService
+        .summaries(true)
+        .forEach(
+            (notebookId, text) ->
+                addReminder(new Reminder(Reminder.ID_NOTEBOOK_ACCESS, notebookId, text)));
+    syncScratchpadReminder(notebookService);
   }
 
-  public void getOrCreateScratchpad(final String sessionId) {
-    if (scratchpadNotebook == null && StringUtils.isNotBlank(sessionId)) {
-      scratchpadNotebook = new ScratchpadNotebook(sessionId);
-    }
-  }
-
-  public ScratchpadNotebook scratchpadNotebook() {
-    return scratchpadNotebook;
-  }
-
-  public boolean isScratchpad(final String notebookId) {
-    if (StringUtils.isBlank(notebookId) || scratchpadNotebook == null) {
-      return false;
-    }
-    return ScratchpadNotebook.ID.equalsIgnoreCase(NotebookUtils.notebookNameOf(notebookId));
+  /**
+   * Refreshes the scratchpad's reminder from its local copy. The scratchpad is written only by this
+   * session, so its reminder is kept apart from the notebooks that are re-read from storage.
+   */
+  public void syncScratchpadReminder(final NotebookService notebookService) {
+    scratchpadSummary = notebookService.scratchpadSummary();
   }
 
   /** Remembers a child session this session spawned. */
@@ -161,14 +159,7 @@ public final class SessionState {
 
   public String formatCurrentTimeInUserZone() {
     final ZoneId zone = userTime != null ? userTime.getZone() : ZoneId.of("UTC");
-    final ZonedDateTime now = ZonedDateTime.now(zone);
-    String utcOffset = zone.getRules().getOffset(now.toInstant()).getId();
-    if ("Z".equals(utcOffset)) {
-      utcOffset = "+00:00";
-    }
-    final String formattedZone =
-        zone.getId().equals("UTC") ? "UTC" + utcOffset : zone.getId() + ", UTC" + utcOffset;
-    return TIME_FORMAT.format(now) + " (" + formattedZone + ")";
+    return formatTime(ZonedDateTime.now(zone));
   }
 
   public List<Reminder> localReminders() {
@@ -186,10 +177,7 @@ public final class SessionState {
     for (final SpawnedAgent spawned : childSessionIdVsSpawnedAgent.values()) {
       local.add(spawnedAgentReminder(spawned));
     }
-    if (scratchpadNotebook != null) {
-      local.add(
-          new Reminder(Reminder.ID_NOTEBOOK_ACCESS, "scratchpad", scratchpadNotebook.summarize()));
-    }
+    local.add(new Reminder(Reminder.ID_NOTEBOOK_ACCESS, "scratchpad", scratchpadSummary));
     return List.copyOf(local);
   }
 
@@ -216,18 +204,18 @@ public final class SessionState {
   }
 
   private static Reminder userContextReminder(final ZonedDateTime time) {
+    return new Reminder(
+        Reminder.ID_USER_CONTEXT,
+        Reminder.ID_USER_CONTEXT,
+        "Current date and time: " + formatTime(time));
+  }
+
+  private static String formatTime(final ZonedDateTime time) {
     final ZoneId zone = time.getZone();
-
-    String utcOffset = zone.getRules().getOffset(time.toInstant()).getId();
-    if ("Z".equals(utcOffset)) {
-      utcOffset = "+00:00";
-    }
-    final String formattedZone =
-        zone.getId().equals("UTC") ? "UTC" + utcOffset : zone.getId() + ", UTC" + utcOffset;
-
-    final String text =
-        "Current date and time: " + TIME_FORMAT.format(time) + " (" + formattedZone + ")";
-    return new Reminder(Reminder.ID_USER_CONTEXT, Reminder.ID_USER_CONTEXT, text);
+    final String offset = time.getOffset().getId().replace("Z", "+00:00");
+    final String zoneLabel =
+        zone.getId().equals("UTC") ? "UTC" + offset : zone.getId() + ", UTC" + offset;
+    return TIME_FORMAT.format(time) + " (" + zoneLabel + ")";
   }
 
   private void addRemindersFrom(final List<Event> events) {
@@ -277,10 +265,15 @@ public final class SessionState {
           || response.name().orElse("").equals(Constants.ToolNames.SEND_MESSAGE)) {
         final Boolean await =
             CollectionUtils.getBooleanValueFromMap(callArgs, Constants.ToolArgs.AWAIT_COMPLETION);
+        final boolean spawn = response.name().orElse("").equals(Constants.ToolNames.SPAWN_AGENT);
         final String sessionId =
-            CollectionUtils.getStringValueFromMap(result, Constants.ToolArgs.CHILD_SESSION_ID);
+            CollectionUtils.getStringValueFromMap(
+                spawn ? result : callArgs, Constants.ToolArgs.CHILD_SESSION_ID);
+        if (StringUtils.isBlank(sessionId)) {
+          continue;
+        }
         sessionIdVsAwaited.put(sessionId, await == null || await);
-        if (response.name().orElse("").equals(Constants.ToolNames.SPAWN_AGENT)) {
+        if (spawn) {
           sessionIdVsAgentId.put(
               sessionId,
               CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.AGENT_ID));
@@ -304,53 +297,6 @@ public final class SessionState {
     }
   }
 
-  private void addScratchpadNotesFrom(final List<Event> events) {
-    String noteTitle = null;
-    boolean isAppend = false;
-
-    for (final Event event : CollectionUtils.nullSafeList(events)) {
-      final Content content = event.content().orElse(null);
-      if (content == null) {
-        continue;
-      }
-      for (final Part part : content.parts().orElse(List.of())) {
-        final FunctionCall call = part.functionCall().orElse(null);
-        if (call != null) {
-          final String name = call.name().orElse("");
-          final Map<String, Object> args = call.args().orElse(Map.of());
-          final String notebookId =
-              CollectionUtils.getStringValueFromMap(args, Constants.ToolArgs.NOTEBOOK_ID);
-          if (Constants.ToolNames.DELETE_NOTE.equals(name)) {
-            if (isScratchpad(notebookId)) {
-              scratchpadNotebook.deleteNote(
-                  CollectionUtils.getStringValueFromMap(args, Constants.ToolArgs.NOTE_TITLE));
-              noteTitle = null;
-            }
-          } else if (Constants.ToolNames.CREATE_OR_UPDATE_NOTE.equals(name)
-              || Constants.ToolNames.APPEND_TO_NOTE.equals(name)) {
-            if (isScratchpad(notebookId)) {
-              noteTitle =
-                  CollectionUtils.getStringValueFromMap(args, Constants.ToolArgs.NOTE_TITLE);
-              isAppend = Constants.ToolNames.APPEND_TO_NOTE.equals(name);
-            }
-          }
-        }
-      }
-
-      if (noteTitle != null && "model".equalsIgnoreCase(content.role().orElse(""))) {
-        final String text = content.text() != null ? content.text().trim() : "";
-        if (StringUtils.isNotBlank(text)) {
-          if (isAppend) {
-            scratchpadNotebook.appendNote(noteTitle, text);
-          } else {
-            scratchpadNotebook.saveNote(noteTitle, text);
-          }
-          noteTitle = null;
-        }
-      }
-    }
-  }
-
   private void setRunState(RunState runState) {
     this.runState = runState;
   }
@@ -360,12 +306,8 @@ public final class SessionState {
         spawnedAgent.awaited()
             ? "[AWAITED] agent : '%s', session_id : '%s', goal : '%s'"
                 .formatted(spawnedAgent.agentId(), spawnedAgent.sessionId(), spawnedAgent.goal())
-            : "[NOT AWAITED] agent : '%s', session_id : '%s', goal : '%s'. Use %s when you need its result."
-                .formatted(
-                    spawnedAgent.agentId(),
-                    spawnedAgent.sessionId(),
-                    spawnedAgent.goal(),
-                    Constants.ToolNames.AWAIT_AGENT);
+            : "[NOT AWAITED] agent : '%s', session_id : '%s', goal : '%s'. Await it when you need its result."
+                .formatted(spawnedAgent.agentId(), spawnedAgent.sessionId(), spawnedAgent.goal());
     return new Reminder(Reminder.GROUP_SPAWNED_AGENTS, spawnedAgent.sessionId(), message);
   }
 

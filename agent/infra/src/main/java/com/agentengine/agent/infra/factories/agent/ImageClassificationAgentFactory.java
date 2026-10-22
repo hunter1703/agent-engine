@@ -1,6 +1,5 @@
 package com.agentengine.agent.infra.factories.agent;
 
-import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.agents.ImageClassificationAgent;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.knowledge.api.services.KnowledgeService;
@@ -9,6 +8,7 @@ import com.agentengine.util.agents.beans.config.ImageClassificationAgentConfig;
 import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.models.factories.ModelProvider;
+import com.google.adk.agents.BaseAgent;
 import io.quarkus.arc.WithCaching;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -42,7 +42,7 @@ public class ImageClassificationAgentFactory
 
   @Override
   public ImageClassificationAgent build(final ImageClassificationAgentConfig config) {
-    final List<Agent> classifiers = new ArrayList<>();
+    final List<BaseAgent> classifiers = new ArrayList<>();
     for (final String subAgentId : CollectionUtils.nullSafeList(config.getSubAgentIds())) {
       final BaseAgentConfig subAgentConfig = agentService.getAgent(subAgentId);
       if (subAgentConfig == null) {

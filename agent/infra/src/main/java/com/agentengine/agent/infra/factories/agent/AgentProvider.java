@@ -1,7 +1,7 @@
 package com.agentengine.agent.infra.factories.agent;
 
-import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.google.adk.agents.BaseAgent;
 import com.agentengine.util.common.utils.CollectionUtils;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -26,7 +26,7 @@ public class AgentProvider {
     this.defaultAgentFactory = defaultAgentFactory;
   }
 
-  public <C extends BaseAgentConfig, A extends Agent> A create(final C config) {
+  public <C extends BaseAgentConfig, A extends BaseAgent> A create(final C config) {
     // noinspection unchecked
     final AgentFactory<C, A> factory =
         (AgentFactory<C, A>) typeVsFactory.getOrDefault(config.getType(), defaultAgentFactory);

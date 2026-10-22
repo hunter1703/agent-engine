@@ -68,18 +68,6 @@ public final class EventUtils {
 
   private EventUtils() {}
 
-  // not adding condition on event.finishReason() as ADK agentic loop ignores this
-  // for termination
-  // detection
-  public static boolean isTerminal(final Event event) {
-    if (event == null) {
-      return false;
-    }
-    final boolean endInvocation =
-        event.actions() != null && event.actions().endInvocation().orElse(false);
-    return event.finalResponse() || endInvocation;
-  }
-
   /**
    * Marks an event as internal so it is excluded from end-user-facing output (e.g. AG-UI events)
    * while remaining fully visible to the LLM as session history.
@@ -104,29 +92,6 @@ public final class EventUtils {
     event.setActions(actions.toBuilder().stateDelta(delta).build());
   }
 
-  /**
-   * Scans events in reverse chronological order and returns the most recent value for {@code key}.
-   * Returns {@code null} if the key has never been set or was explicitly removed via {@link
-   * State#REMOVED}.
-   */
-  public static Object latestDeltaValue(final List<Event> events, final String key) {
-    if (CollectionUtils.isEmpty(events) || StringUtils.isBlank(key)) {
-      return null;
-    }
-    for (final Event event : events.reversed()) {
-      if (event == null || event.actions() == null) {
-        continue;
-      }
-      final Map<String, Object> delta = event.actions().stateDelta();
-      if (CollectionUtils.isEmpty(delta) || !delta.containsKey(key)) {
-        continue;
-      }
-      final Object value = delta.get(key);
-      return State.REMOVED.equals(value) ? null : value;
-    }
-    return null;
-  }
-
   public static String recentUser(final List<Event> events, final int max) {
     if (events == null || events.isEmpty()) {
       return "";
@@ -134,7 +99,9 @@ public final class EventUtils {
     final List<String> intents = new ArrayList<>();
     for (int i = events.size() - 1; i >= 0 && intents.size() < max; i--) {
       final Content content = events.get(i).content().orElse(null);
-      if (content == null || !Constants.AUTHOR_USER.equals(content.role().orElse(""))) {
+      if (content == null
+          || ContentUtils.isSystemNotice(content)
+          || !Constants.AUTHOR_USER.equals(content.role().orElse(""))) {
         continue;
       }
       final String text = content.text();
@@ -232,22 +199,14 @@ public final class EventUtils {
     final StringBuilder body = new StringBuilder();
     for (final Violation violation : violations) {
       body.append("\n- ").append(violation.message());
-      for (final Map.Entry<String, Object> detail :
-          CollectionUtils.nullSafeMap(violation.details()).entrySet()) {
-        body.append("\n  - ").append(detail.getKey()).append(": ").append(detail.getValue());
-      }
     }
     final String prompt =
-        """
-                Violations were detected in your previous response. Please resolve or correct them.
-
-                > Your previous reply violated protocol constraints. Your earlier tool calls \
-                and results are already recorded in the conversation — do not repeat completed work. \
-                Follow the instructions below to proceed.
-
-                ## Violations
-                """
-            + body;
+        ContentUtils.systemNotice(
+            """
+            Your previous response had problems to correct. Your earlier tool calls and results are \
+            already recorded in the conversation, so do not repeat completed work.
+            """
+                + body);
 
     final Content correctiveContent =
         Content.builder().role(Constants.AUTHOR_USER).parts(List.of(Part.fromText(prompt))).build();
@@ -255,29 +214,35 @@ public final class EventUtils {
     final ConcurrentHashMap<String, Object> stateDelta = new ConcurrentHashMap<>();
     stateDelta.put(VIOLATION_KEY, violations);
     final EventActions actions = EventActions.builder().stateDelta(stateDelta).build();
-    return Event.builder()
-        .id(Event.generateEventId())
-        .invocationId(context.invocationId())
-        .author(correctiveContent.role().orElseThrow())
-        .branch(context.branch().orElse(null))
-        .actions(actions)
-        .content(correctiveContent)
-        .build();
+    final Event event =
+        Event.builder()
+            .id(Event.generateEventId())
+            .invocationId(context.invocationId())
+            .author(correctiveContent.role().orElseThrow())
+            .branch(context.branch().orElse(null))
+            .actions(actions)
+            .content(correctiveContent)
+            .build();
+    markAsInternal(event);
+    return event;
   }
 
   public static Event buildUserTextEvent(final InvocationContext context, final String message) {
     final Content updateContent =
         Content.builder()
             .role(Constants.AUTHOR_USER)
-            .parts(List.of(Part.fromText(message)))
+            .parts(List.of(Part.fromText(ContentUtils.systemNotice(message))))
             .build();
-    return Event.builder()
-        .id(Event.generateEventId())
-        .invocationId(context.invocationId())
-        .author(updateContent.role().orElseThrow())
-        .branch(context.branch().orElse(null))
-        .content(updateContent)
-        .build();
+    final Event event =
+        Event.builder()
+            .id(Event.generateEventId())
+            .invocationId(context.invocationId())
+            .author(updateContent.role().orElseThrow())
+            .branch(context.branch().orElse(null))
+            .content(updateContent)
+            .build();
+    markAsInternal(event);
+    return event;
   }
 
   public static List<AgentFileDetails> getAttachments(final Event event) {

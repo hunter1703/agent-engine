@@ -74,7 +74,7 @@ flowchart TB
     REST -- gRPC --> Catalog["Catalog Service<br/>config + schema"]
     REST -- gRPC --> Knowledge["Knowledge Service<br/>indexing + search"]
 
-    Agent -- "tools (HTTP)" --> Connectors["Connectors<br/>web_research, ..."]
+    Agent -- "tools (HTTP)" --> Connectors["Connectors<br/>web_search, ..."]
 
     Agent -- "sessions" --> Mongo[("MongoDB")]
     Catalog -- "configs" --> Mongo
@@ -93,7 +93,7 @@ flowchart TB
 
 ### Supporting modules
 
-- **`connectors:core`** — a config-driven HTTP connector framework (templating, auth, pagination, retry) used by tools such as `web_research`.
+- **`connectors:core`** — a config-driven HTTP connector framework (templating, auth, pagination, retry) used by tools such as `web_search`.
 - **`agent:api`, `catalog:api`, `knowledge:api`** — service contracts and shared models that decouple transport from implementation.
 - **`util:*`** — shared utilities: `common`, `mongodb`, `vectordb`, `cloudstorage`, `ms` (microservice transport), `agents`, `pekko`.
 
@@ -195,7 +195,7 @@ Tools are provided through `ToolProvider` / `ToolsetProvider` CDI beans plus aut
 | `agent_tools` | `spawn_agent`, `send_message`, `await_agent`, `lookup_expert` |
 | `file_tools` | `read_file`, `list_dir`, `grep_files`, `apply_patch` |
 | Shell | `run_cmd` (sandboxed; `rm` blocked, output-capped, `HIGH` risk) |
-| Web | `web_research` (DuckDuckGo quick lookup or Brave detailed search via the connectors framework) |
+| Web | `web_search` (DuckDuckGo quick lookup or Brave detailed search via the connectors framework) |
 | Knowledge | `search_knowledge` (semantic search over indexed chunks) |
 | Utility | `echo` |
 | Internal | `request_human_input` (auto-injected for pause/resume flows) |

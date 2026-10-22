@@ -14,9 +14,10 @@ import java.util.*;
 public final class RunState {
   private final List<ToolCallSignature> lastToolCalls = new ArrayList<>();
   private int offTopicRetries;
+  private boolean inputGuardrailsEvaluated;
   private int turnsUsed;
+  private boolean textHeldBack;
   private final Set<Signal<?>> signals = new HashSet<>();
-  private PendingNote pendingNote;
 
   public RunState() {}
 
@@ -105,6 +106,13 @@ public final class RunState {
     return events;
   }
 
+  /** Whether this is the first time this run asks to evaluate input guardrails. */
+  public boolean startInputGuardrails() {
+    final boolean first = !inputGuardrailsEvaluated;
+    inputGuardrailsEvaluated = true;
+    return first;
+  }
+
   public int incrementOffTopicRetries() {
     offTopicRetries += 1;
     return offTopicRetries;
@@ -112,6 +120,19 @@ public final class RunState {
 
   public void resetOffTopicRetries() {
     offTopicRetries = 0;
+  }
+
+  /** Asks that the visible text of the model's streamed response is kept from the user until it is complete. */
+  public void holdBackText() {
+    textHeldBack = true;
+  }
+
+  public void releaseText() {
+    textHeldBack = false;
+  }
+
+  public boolean holdsBackText() {
+    return textHeldBack;
   }
 
   public boolean consumeTurn(final int limit) {
@@ -126,22 +147,10 @@ public final class RunState {
     return signals.stream().anyMatch(Signal::requiresContinuation);
   }
 
-  public void startNote(final String notebookId, final String noteTitle) {
-    startNote(notebookId, noteTitle, false);
-  }
-
-  public void startNote(final String notebookId, final String noteTitle, final boolean append) {
-    this.pendingNote = new PendingNote(notebookId, noteTitle, append);
-  }
-
-  public boolean isNoteStarted() {
-    return pendingNote != null;
-  }
-
-  public PendingNote finishNote() {
-    final PendingNote result = pendingNote;
-    pendingNote = null;
-    return result;
+  /** Whether any currently-queued violation wants the model to answer again. */
+  public boolean correctionRequested() {
+    return signals.stream()
+        .anyMatch(signal -> signal.requiresContinuation() && signal.context() instanceof Violation);
   }
 
   /**
@@ -214,8 +223,6 @@ public final class RunState {
       addSignal(signal);
     }
   }
-
-  public record PendingNote(String notebookId, String noteTitle, boolean append) {}
 
   public record ToolCallSignature(String name, Map<String, Object> args) {
     public ToolCallSignature {

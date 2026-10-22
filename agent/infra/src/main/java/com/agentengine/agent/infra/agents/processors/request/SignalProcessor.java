@@ -1,7 +1,7 @@
 package com.agentengine.agent.infra.agents.processors.request;
 
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.utils.RunState;
-import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
@@ -55,7 +55,7 @@ public final class SignalProcessor implements RequestProcessor {
   @Override
   public Single<RequestProcessingResult> processRequest(
       final InvocationContext context, final LlmRequest request) {
-    final RunState runState = RunUtils.getRunState(context);
+    final RunState runState = SessionUtils.getSessionState(context).runState();
     final List<Event> signalEvents = runState.deliverSignals(context);
     if (CollectionUtils.isEmpty(signalEvents)) {
       return Single.just(RequestProcessingResult.create(request, List.of()));

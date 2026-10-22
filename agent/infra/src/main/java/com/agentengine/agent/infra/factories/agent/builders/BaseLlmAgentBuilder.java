@@ -1,7 +1,6 @@
 package com.agentengine.agent.infra.factories.agent.builders;
 
 import com.agentengine.agent.infra.agents.Agent;
-import com.agentengine.agent.infra.agents.DelegatedAgent;
 import com.agentengine.agent.infra.agents.LLMAgent;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.adk.agents.LlmAgent;
@@ -11,7 +10,7 @@ import com.google.adk.tools.BaseToolset;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, DelegatedAgent> {
+public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, LLMAgent> {
   private String systemInstructions;
   private final List<BaseTool> tools = new ArrayList<>();
   private final List<BaseToolset> toolSets = new ArrayList<>();
@@ -59,7 +58,7 @@ public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, Dele
   }
 
   @Override
-  public DelegatedAgent build() {
+  public LLMAgent build() {
     final List<Object> toolsAndToolsets = new ArrayList<>();
     toolsAndToolsets.addAll(tools);
     toolsAndToolsets.addAll(toolSets);
@@ -70,7 +69,6 @@ public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, Dele
             .subAgents(subAgents())
             .instruction(systemInstructions)
             .tools(toolsAndToolsets);
-    final LlmAgent llmAgent = new LLMAgent(builder, closeHook(), compactor);
-    return new DelegatedAgent(llmAgent, agentConfig());
+    return new LLMAgent(builder, agentConfig(), closeHook(), compactor);
   }
 }

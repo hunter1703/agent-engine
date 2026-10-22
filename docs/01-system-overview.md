@@ -33,7 +33,7 @@ Practical meaning:
 - `agent`, `agent:core`, and `agent:infra` implement execution behavior, model/agent builders, guardrails, tools, and session actors.
 - `catalog` handles config CRUD, validation, the asset catalog, schema contracts, and AG-UI event mapping.
 - `interfaces:rest` exposes the HTTP/SSE API and maps runtime events to client event protocols.
-- `connectors:core` is an independent config-driven HTTP connector framework used by tools (for example `web_research`).
+- `connectors:core` is an independent config-driven HTTP connector framework used by tools (for example `web_search`).
 - `knowledge` implements the text-file indexing and semantic search pipeline backed by Qdrant.
 
 The four deployable services are `agent`, `catalog`, `knowledge`, and `rest`. Only `interfaces:rest` is wired as an interface module; `interfaces:local` exists on disk but is not included in `settings.gradle`.

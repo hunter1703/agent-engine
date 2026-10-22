@@ -1,7 +1,7 @@
 package com.agentengine.agent.infra.agents;
 
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.factories.agent.builders.ParallelOrchestratorAgentBuilder;
-import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.agents.beans.config.ParallelAggregationPolicy;
 import com.agentengine.util.agents.beans.config.ParallelStoppingPolicy;
@@ -83,7 +83,7 @@ public final class ParallelOrchestratorAgent extends Agent {
   protected Flowable<Event> runAsyncImpl(final InvocationContext invocationContext) {
     final Result result = executeBranches(invocationContext);
     if (result.fallbackUsed()) {
-      RunUtils.getRunState(invocationContext)
+      SessionUtils.getSessionState(invocationContext).runState()
           .addSignal(
               new Signal<>(
                   ParallelOrchestrationConstants.ViolationCode.POLICY_FALLBACK,

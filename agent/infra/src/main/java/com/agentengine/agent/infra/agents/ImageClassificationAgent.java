@@ -19,6 +19,7 @@ import com.agentengine.util.common.utils.StructuredConcurrencyUtils.TaskOutcome;
 import com.agentengine.util.models.embedding.ConfiguredEmbeddingModel;
 import com.agentengine.util.models.factories.EmbeddingUtils;
 import com.agentengine.util.models.factories.ModelProvider;
+import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
@@ -58,18 +59,18 @@ public class ImageClassificationAgent extends Agent {
   private static final int MAX_TAGS = 50;
 
   private final ImageClassificationAgentConfig config;
-  private final List<? extends Agent> classifiers;
+  private final List<? extends BaseAgent> classifiers;
   private final KnowledgeService knowledgeService;
   private final ModelProvider modelProvider;
   private final FileService fileService;
 
   public ImageClassificationAgent(
       final ImageClassificationAgentConfig config,
-      final List<? extends Agent> classifiers,
+      final List<? extends BaseAgent> classifiers,
       final KnowledgeService knowledgeService,
       final ModelProvider modelProvider,
       final FileService fileService) {
-    super(config.getName(), config.getDescription(), classifiers, config, List.of(), List.of());
+    super(config.getName(), config.getDescription(), classifiers, config);
     this.config = config;
     this.classifiers = classifiers;
     this.knowledgeService = knowledgeService;
@@ -101,7 +102,7 @@ public class ImageClassificationAgent extends Agent {
     if (StringUtils.isNotBlank(config.getModelId())) {
       asks.add(() -> classify(imageAttachments(ctx)));
     }
-    for (final Agent classifier : classifiers) {
+    for (final BaseAgent classifier : classifiers) {
       asks.add(() -> answerOf(classifier, ctx));
     }
     final List<List<LabelMatch>> answers = new ArrayList<>();
@@ -215,7 +216,7 @@ public class ImageClassificationAgent extends Agent {
     return (System.nanoTime() - startNanos) / 1_000_000;
   }
 
-  private static List<LabelMatch> answerOf(final Agent classifier, final InvocationContext ctx) {
+  private static List<LabelMatch> answerOf(final BaseAgent classifier, final InvocationContext ctx) {
     final List<Event> events = classifier.runAsync(ctx).toList().blockingGet();
     for (final Event event : events.reversed()) {
       final String text = event.content().map(Content::text).orElse(null);

@@ -1,7 +1,6 @@
 package com.agentengine.agent.infra.tools.notebook;
 
 import com.agentengine.agent.infra.notebook.NotebookService;
-import com.agentengine.agent.infra.notebook.ScratchpadNotebook;
 import com.agentengine.agent.infra.utils.SessionState;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
@@ -16,16 +15,12 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.DELETE_NOTE,
           """
-          Permanently deletes a note in a notebook you created or were granted.
-
-          Returns: { status: "success" } or { error }.""",
+          Permanently deletes a note.
+          Returns: { status: "success" }, or { error } on failure.""",
           Map.of());
 
-  private final NotebookService notebookService;
-
   public DeleteNoteTool(final NotebookService notebookService) {
-    super(DESCRIPTOR);
-    this.notebookService = notebookService;
+    super(DESCRIPTOR, notebookService);
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -34,28 +29,21 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
       @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_ID,
               description =
-                  "The ID of the notebook the note is in. Use 'scratchpad' for your private working memory, or the exact notebook ID from your active notebook list.")
+                  "The exact ID of the notebook the note is in, as shown in your notebook list.")
           final String notebookId,
       @ToolArg(
               name = Constants.ToolArgs.NOTE_TITLE,
               description = "The title of the note to delete.")
           final String noteTitle) {
     final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
-    if (sessionState.isScratchpad(notebookId)) {
-      final ScratchpadNotebook scratchpad = sessionState.scratchpadNotebook();
-      if (!scratchpad.deleteNote(noteTitle)) {
-        return ToolOutput.direct(
-            accessDeniedError(
-                notebookService, "No such note '%s' in this notebook.".formatted(noteTitle)));
-      }
+    if (!notebookService.deleteNote(notebookId, noteTitle)) {
+      return ToolOutput.direct(
+          accessDeniedError("No such note '%s' in this notebook, or you aren't allowed to delete it."
+                  .formatted(noteTitle)));
+    }
+    if (notebookService.isScratchpad(notebookId)) {
+      sessionState.syncScratchpadReminder(notebookService);
     } else {
-      if (!notebookService.deleteNote(notebookId, noteTitle)) {
-        return ToolOutput.direct(
-            accessDeniedError(
-                notebookService,
-                "No such note '%s' in this notebook, or you aren't allowed to delete it."
-                    .formatted(noteTitle)));
-      }
       sessionState.syncNotebookReminder(notebookService);
     }
     return ToolOutput.direct(Map.of(Constants.ToolStatus.STATUS, Constants.ToolStatus.SUCCESS));

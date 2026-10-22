@@ -10,14 +10,12 @@ import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.tools.ToolArg;
 import com.agentengine.util.agents.tools.ToolConstructor;
 import com.agentengine.util.cloudstorage.CloudStorageService;
-import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.utils.FileUtils;
-import com.agentengine.util.common.utils.MarkdownUtils;
+import com.agentengine.util.common.utils.HttpUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.tools.ToolContext;
 import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
@@ -30,23 +28,18 @@ public final class GetWebpageTool extends Tool {
       new ToolDescriptor(
           TOOL_NAME,
           """
-          Fetches a web page from the provided URL, converts its content to Markdown, and returns it.
-          If the converted content exceeds 25,000 characters, it is automatically indexed as knowledge
-          to conserve context, and the tool returns a knowledgeId with guidance on how to query its content
-          using semantic knowledge search.
-          Returns: { markdown, chars_read } when within limit, or { knowledge_id, hint } when indexed as knowledge, or { error } on failure.""");
+          Fetches a web page and returns it as Markdown. A page too long to return is indexed as \
+          knowledge instead, to be searched with the knowledge search tool.
+          Returns: { markdown }, { knowledge_id, hint } for a page indexed as knowledge, or { error } on failure.""");
 
-  private final FileService fileService;
   private final KnowledgeService knowledgeService;
   private final CloudStorageService cloudStorageService;
 
   @ToolConstructor
   public GetWebpageTool(
-      final FileService fileService,
       final KnowledgeService knowledgeService,
       final CloudStorageService cloudStorageService) {
     super(DESCRIPTOR);
-    this.fileService = fileService;
     this.knowledgeService = knowledgeService;
     this.cloudStorageService = cloudStorageService;
   }
@@ -54,31 +47,28 @@ public final class GetWebpageTool extends Tool {
   public ToolOutput<?> execute(
       @ToolArg(
               name = "url",
-              description = "The URL of the web page to fetch. Must be a valid HTTP or HTTPS URL.")
+              description = "The page's http or https URL; https is assumed when there is no scheme.")
           String url,
       ToolContext toolContext) {
     if (StringUtils.isBlank(url)) {
       return ToolOutput.direct(Map.of("error", "URL cannot be null or empty"));
     }
-    if (!url.startsWith("http")) {
-      url = "https://" + url;
-    }
+    final String fetchedUrl = HttpUtils.withScheme(url);
 
-    final String html;
-    try (InputStream content = fileService.getContent(FileDetails.fromUrl(url))) {
-      html = new String(content.readAllBytes(), StandardCharsets.UTF_8);
+    final String markdown;
+    try {
+      markdown = HttpUtils.fetchAsText(fetchedUrl);
     } catch (final Exception ex) {
       return ToolOutput.direct(Map.of("error", "Failed to fetch URL: " + ex.getMessage()));
     }
-    final String markdown = MarkdownUtils.fromHtml(html);
 
     if (markdown.length() <= DEFAULT_MAX_LENGTH) {
-      return ToolOutput.direct(Map.of("markdown", markdown, "chars_read", markdown.length()));
+      return ToolOutput.direct(Map.of("markdown", markdown));
     }
 
     try {
       final byte[] markdownBytes = markdown.getBytes(StandardCharsets.UTF_8);
-      final String fileName = FileUtils.deriveFileName(url, "webpage.md");
+      final String fileName = FileUtils.deriveFileName(fetchedUrl, "webpage.md");
       final FileDetails fileDetails =
           cloudStorageService.upload(
               fileName,
@@ -88,21 +78,17 @@ public final class GetWebpageTool extends Tool {
 
       final IndexRequest request = new IndexRequest();
       request.setFileDetails(fileDetails);
-      request.setTitle(url);
+      request.setTitle(fetchedUrl);
       request.setWaitForCompletion(true);
       final Knowledge knowledge = knowledgeService.index(request);
 
       final String hint =
-          "Webpage content from '%s' (%d characters) exceeded 25,000 characters and was automatically indexed as knowledge to conserve context. Query its content using semantic knowledge search (filtered by knowledge ID '%s')."
-              .formatted(url, markdown.length(), knowledge.getId());
+          "Webpage '%s' (%d characters) is too long to return, so it was indexed as knowledge. Search it with the knowledge search tool, restricted to this knowledge id."
+              .formatted(fetchedUrl, markdown.length());
       return ToolOutput.knowledge(knowledge.getId(), hint);
     } catch (final Exception ex) {
       return ToolOutput.direct(
-          Map.of(
-              "error",
-              "Failed to index webpage as knowledge: " + ex.getMessage(),
-              "chars_read",
-              markdown.length()));
+          Map.of("error", "Failed to index webpage as knowledge: " + ex.getMessage()));
     }
   }
 }

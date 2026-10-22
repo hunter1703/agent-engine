@@ -5,6 +5,7 @@ import com.agentengine.agent.infra.guardrails.GuardrailConstants;
 import com.agentengine.agent.infra.guardrails.GuardrailContext;
 import com.agentengine.agent.infra.guardrails.GuardrailDecision;
 import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
+import com.agentengine.agent.infra.guardrails.GuardrailUtils;
 import com.agentengine.agent.infra.utils.*;
 import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.agents.beans.Signal;
@@ -45,17 +46,23 @@ public final class GuardrailPlugin extends BasePlugin {
       final CallbackContext callbackContext, final LlmRequest.Builder llmRequestBuilder) {
     final InvocationContext invocationContext = callbackContext.invocationContext();
     final GuardrailPolicyFactory.GuardrailPolicy policy = resolvePolicy(invocationContext);
+    if (CollectionUtils.isNotEmpty(policy.guardrails(GuardrailStage.OUTPUT))) {
+      // The reply is judged once it is complete, so its text is kept from the user until then.
+      SessionUtils.getSessionState(invocationContext).runState().holdBackText();
+    }
     final List<Guardrail> guardrails = policy.guardrails(GuardrailStage.INPUT);
-    if (CollectionUtils.isEmpty(guardrails)) {
+    // The input is the run's message, so it is judged once however many model calls the run makes.
+    if (CollectionUtils.isEmpty(guardrails)
+        || !SessionUtils.getSessionState(invocationContext).runState().startInputGuardrails()) {
       return Maybe.empty();
     }
-    final String text = ContentUtils.extractLatestUserText(llmRequestBuilder.build().contents());
+    final String text = ContentUtils.extractLatestUserSentText(llmRequestBuilder.build().contents());
     if (StringUtils.isBlank(text)) {
       return Maybe.empty();
     }
     final GuardrailDecision decision =
         GuardrailUtils.evaluate(
-            new GuardrailContext(text, invocationContext), guardrails, policy.errorMode());
+            new GuardrailContext(text, invocationContext, false), guardrails, policy.errorMode());
     return handleInputDecision(callbackContext, decision);
   }
 
@@ -78,7 +85,8 @@ public final class GuardrailPlugin extends BasePlugin {
 
     final GuardrailDecision decision =
         GuardrailUtils.evaluate(
-            new GuardrailContext(content.text(), invocationContext),
+            new GuardrailContext(
+                content.text(), invocationContext, ResponseUtils.isFinalAnswer(llmResponse)),
             guardrails,
             policy.errorMode());
     return handleOutputDecision(callbackContext, llmResponse, content, decision);
@@ -90,19 +98,17 @@ public final class GuardrailPlugin extends BasePlugin {
       return Maybe.empty();
     }
     final InvocationContext invocationContext = callbackContext.invocationContext();
-    final Violation violation = GuardrailUtils.buildViolation(invocationContext, decision);
-    if (decision.action() == GuardrailAction.WARN) {
-      RunUtils.getRunState(invocationContext)
-          .addSignal(callbackContext, new Signal<>(violation.id(), violation, false));
-      return Maybe.empty();
-    }
-
-    RunUtils.getRunState(invocationContext)
+    final Violation violation = GuardrailUtils.buildViolation(decision);
+    SessionUtils.getSessionState(invocationContext).runState()
         .addSignal(callbackContext, new Signal<>(violation.id(), violation, false));
-    if (decision.action() == GuardrailAction.ESCALATE) {
-      return Maybe.just(ResponseUtils.requestHumanToDecide(decision.message()));
-    }
-    return Maybe.just(GuardrailUtils.buildGuardrailResponse(decision.message()));
+    return switch (decision.action()) {
+      case ESCALATE ->
+          SessionUtils.isResumable(invocationContext)
+              ? Maybe.just(ResponseUtils.requestHumanToDecide(decision.message()))
+              : Maybe.just(GuardrailUtils.buildGuardrailResponse(decision.message()));
+      case BLOCK -> Maybe.just(GuardrailUtils.buildGuardrailResponse(decision.message()));
+      default -> Maybe.empty();
+    };
   }
 
   private static Maybe<LlmResponse> handleOutputDecision(
@@ -114,21 +120,17 @@ public final class GuardrailPlugin extends BasePlugin {
       return Maybe.empty();
     }
     final InvocationContext invocationContext = callbackContext.invocationContext();
-    final Violation violation = GuardrailUtils.buildViolation(invocationContext, decision);
-    if (decision.action() == GuardrailAction.WARN) {
-      if (violation != null) {
-        RunUtils.getRunState(invocationContext)
-            .addSignal(
-                callbackContext,
-                new Signal<>(violation.id(), violation, requiresRegeneration(decision)));
-      }
+    final Violation violation = GuardrailUtils.buildViolation(decision);
+    final boolean warn = decision.action() == GuardrailAction.WARN;
+    SessionUtils.getSessionState(invocationContext).runState()
+        .addSignal(
+            callbackContext,
+            new Signal<>(violation.id(), violation, warn && requiresRegeneration(decision)));
+    if (warn) {
       return Maybe.empty();
-    } else if (violation != null) {
-      RunUtils.getRunState(invocationContext)
-          .addSignal(callbackContext, new Signal<>(violation.id(), violation, false));
     }
-
-    if (decision.action() == GuardrailAction.ESCALATE) {
+    if (decision.action() == GuardrailAction.ESCALATE
+        && SessionUtils.isResumable(invocationContext)) {
       return Maybe.just(ResponseUtils.requestHumanToDecide(decision.message()));
     }
     final String blockMessage =

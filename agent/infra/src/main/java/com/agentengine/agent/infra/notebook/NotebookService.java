@@ -4,7 +4,9 @@ import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.DuplicateAssetException;
+import com.agentengine.util.common.exception.StaleStateException;
 import com.agentengine.util.common.exception.UnauthorizedException;
+import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.Query;
@@ -20,6 +22,8 @@ import com.agentengine.util.tenancy.Permission;
 import com.agentengine.util.tenancy.SharingChange;
 import com.agentengine.util.tenancy.StandardRole;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.ArrayList;
@@ -28,6 +32,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -39,10 +44,19 @@ import java.util.concurrent.TimeUnit;
 public class NotebookService {
 
   private static final String SUMMARY_CACHE = "NOTEBOOK_SUMMARY";
+  private static final String SCRATCHPAD_ID = "scratchpad";
+  private static final String SCRATCHPAD_NAME = "Scratchpad";
+  private static final String SCRATCHPAD_DESCRIPTION =
+      "Your own working notes for this task: intermediate findings, calculations and drafts you"
+          + " will need again later. Not for the deliverable itself, or for anything another"
+          + " agent or a later session needs to find.";
+  private static final Notebook SCRATCHPAD_LISTING = scratchpadListing();
+  private static final int MAX_APPEND_ATTEMPTS = 3;
 
   private final NotebookRepository notebookRepository;
   private final NotesRepository notesRepository;
-  private final DistributedCache<String> summaryCache;
+  private final DistributedCache<Map<String, String>> summaryCache;
+  private final LoadingCache<String, Map<String, Note>> scratchpadNotes;
 
   @Inject
   public NotebookService(
@@ -52,11 +66,15 @@ public class NotebookService {
     this.notebookRepository = notebookRepository;
     this.notesRepository = notesRepository;
     this.summaryCache =
-        new DistributedCache.Builder<String>(SUMMARY_CACHE, cacheManager)
+        new DistributedCache.Builder<Map<String, String>>(SUMMARY_CACHE, cacheManager)
             .scope(CacheScope.CUSTOMER)
             .localCache(CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES))
-            .loader(this::loadSummary)
+            .loader(this::loadSummaries)
             .build();
+    this.scratchpadNotes =
+        CacheBuilder.newBuilder()
+            .expireAfterAccess(1, TimeUnit.HOURS)
+            .build(CacheLoader.from(this::loadScratchpadNotes));
   }
 
   /**
@@ -68,88 +86,201 @@ public class NotebookService {
     return created;
   }
 
-  public boolean deleteNotebook(final String notebookId) {
+  /**
+   * Makes sure session {@code sessionId} has its scratchpad: a notebook like any other, named after
+   * the session so there is one per session.
+   */
+  public void ensureScratchpad(final String sessionId) {
+    final String scratchpadId = NotebookUtils.notebookId(sessionId, SCRATCHPAD_NAME);
+    if (scratchpadNotes.getIfPresent(scratchpadId) != null
+        || notebookRepository.findById(scratchpadId) != null) {
+      return;
+    }
+    final Notebook scratchpad = new Notebook(sessionId, SCRATCHPAD_NAME, SCRATCHPAD_DESCRIPTION);
+    scratchpad.setId(scratchpadId);
+    try {
+      createNotebook(scratchpad);
+    } catch (final DuplicateAssetException alreadyCreated) {
+      // Created meanwhile by another agent of the session.
+    }
+  }
+
+  /** Deletes the notebooks session {@code sessionId} made, scratchpad included, with their notes. */
+  public void deleteSessionNotebooks(final String sessionId) {
+    final List<String> notebookIds =
+        notebookRepository
+            .findByQuery(
+                new Query()
+                    .withFilter(Filters.eq(Notebook.FIELD_AUTHOR, sessionId))
+                    .withPage(Page.UNBOUNDED))
+            .getItems()
+            .stream()
+            .map(Notebook::getId)
+            .toList();
+    if (notebookIds.isEmpty()) {
+      return;
+    }
+    notesRepository.deleteByFilterIgnoringVersion(Filters.in(Note.FIELD_NOTEBOOK_ID, notebookIds));
+    notebookRepository.deleteByFilterIgnoringVersion(Filters.in(BaseEntity.FIELD_ID, notebookIds));
+    notebookIds.forEach(scratchpadNotes::invalidate);
+    invalidateCurrentSessionCache();
+  }
+
+  public boolean deleteNotebook(final String logicalNotebookId) {
+    final String notebookId = physicalNotebookId(logicalNotebookId);
     final Notebook notebook = notebookRepository.findById(notebookId);
     if (notebook == null
-        || !notebookRepository.hasPermission(notebook, Permission.DELETE)
-        || NotebookType.SCRATCHPAD.name().equalsIgnoreCase(notebook.getType())) {
+        || !notebookRepository.hasPermission(notebook, Permission.DELETE)) {
       return false;
     }
     final boolean deleted = notebookRepository.deleteByIdIgnoringVersion(notebookId);
     if (deleted) {
       notesRepository.deleteByFilterIgnoringVersion(Filters.eq(Note.FIELD_NOTEBOOK_ID, notebookId));
       invalidateNotebookCache(notebook);
+      scratchpadNotes.invalidate(notebookId);
     }
     return deleted;
   }
 
   /** The note, when it exists and the caller may read its notebook; null otherwise. */
-  public Note getNote(final String notebookId, final String noteTitle) {
+  public Note getNote(final String logicalNotebookId, final String noteTitle) {
+    final String notebookId = physicalNotebookId(logicalNotebookId);
+    final String noteId = NotebookUtils.noteId(notebookId, noteTitle);
+    if (isScratchpad(logicalNotebookId)) {
+      return scratchpadNotes.getUnchecked(notebookId).get(noteId);
+    }
     return notebookRepository.hasPermission(notebookId, Permission.READ)
-        ? notesRepository.findById(NotebookUtils.noteId(notebookId, noteTitle))
+        ? notesRepository.findById(noteId)
         : null;
   }
 
   /** Whether the caller may add, change and delete notes in the notebook. */
-  public boolean canWriteNotes(final String notebookId) {
-    return notebookRepository.hasPermission(notebookId, Permission.EDIT);
+  public boolean canWriteNotes(final String logicalNotebookId) {
+    final String notebookId = physicalNotebookId(logicalNotebookId);
+    return isScratchpad(logicalNotebookId) || notebookRepository.hasPermission(notebookId, Permission.EDIT);
   }
 
   /**
-   * Writes the note's content, creating the note or replacing an existing one's.
+   * Writes the note's content, creating the note or replacing an existing one's, provided the note
+   * is still at {@code expectedVersion} (null when it was not there).
    *
    * @throws UnauthorizedException when the caller may not write notes in the notebook
+   * @throws StaleStateException when the note changed since that version
+   * @throws DuplicateAssetException when the note was created since
    */
-  public Note saveNote(final String notebookId, final String noteTitle, final String content) {
+  public Note saveNote(
+      final String logicalNotebookId,
+      final String noteTitle,
+      final String content,
+      final Long expectedVersion) {
+    final String notebookId = physicalNotebookId(logicalNotebookId);
+    final Note replacement = new Note(notebookId, noteTitle, content);
+    replacement.setVersion(expectedVersion);
+    if (isScratchpad(logicalNotebookId)) {
+      return cacheScratchpadNote(notebookId, notesRepository.save(replacement));
+    }
     final Notebook notebook = notebookRepository.findById(notebookId);
     if (notebook == null || !notebookRepository.hasPermission(notebook, Permission.EDIT)) {
       throw new UnauthorizedException(AssetClass.NOTEBOOK, notebookId);
     }
-    // A note is set to the content given, whatever was written to it before.
-    final Note saved =
-        notesRepository.saveIgnoringVersion(new Note(notebookId, noteTitle, content));
+    final Note saved = notesRepository.save(replacement);
     invalidateNotebookCache(notebook);
     return saved;
   }
 
   /**
-   * Appends content to an existing note, or creates the note if it does not exist yet.
+   * Appends content to a note, creating the note if it does not exist yet. An append that races
+   * with another write to the note is read and applied again.
    *
    * @throws UnauthorizedException when the caller may not write notes in the notebook
    */
   public Note appendNote(
-      final String notebookId, final String noteTitle, final String contentToAppend) {
-    final Notebook notebook = notebookRepository.findById(notebookId);
-    if (notebook == null || !notebookRepository.hasPermission(notebook, Permission.EDIT)) {
+      final String logicalNotebookId, final String noteTitle, final String contentToAppend) {
+    final String notebookId = physicalNotebookId(logicalNotebookId);
+    final boolean scratchpad = isScratchpad(logicalNotebookId);
+    final Notebook notebook = scratchpad ? null : notebookRepository.findById(notebookId);
+    if (!scratchpad
+        && (notebook == null || !notebookRepository.hasPermission(notebook, Permission.EDIT))) {
       throw new UnauthorizedException(AssetClass.NOTEBOOK, notebookId);
     }
-    final Note existing = notesRepository.findById(NotebookUtils.noteId(notebookId, noteTitle));
-    final String newContent;
-    if (existing == null || StringUtils.isBlank(existing.getContent())) {
-      newContent = contentToAppend;
-    } else {
-      newContent = existing.getContent() + "\n\n" + contentToAppend;
+    final String noteId = NotebookUtils.noteId(notebookId, noteTitle);
+    for (int attempt = 1; ; attempt++) {
+      try {
+        final Note existing =
+            scratchpad
+                ? scratchpadNotes.getUnchecked(notebookId).get(noteId)
+                : notesRepository.findById(noteId);
+        final Note appended =
+            existing == null ? new Note(notebookId, noteTitle, contentToAppend) : existing;
+        if (existing != null) {
+          appended.setContent(
+              StringUtils.isBlank(existing.getContent())
+                  ? contentToAppend
+                  : existing.getContent() + "\n\n" + contentToAppend);
+        }
+        final Note saved = notesRepository.save(appended);
+        if (scratchpad) {
+          return cacheScratchpadNote(notebookId, saved);
+        }
+        invalidateNotebookCache(notebook);
+        return saved;
+      } catch (final StaleStateException | DuplicateAssetException raced) {
+        if (scratchpad) {
+          scratchpadNotes.invalidate(notebookId);
+        }
+        if (attempt == MAX_APPEND_ATTEMPTS) {
+          throw raced;
+        }
+      }
     }
-    final Note saved =
-        notesRepository.saveIgnoringVersion(new Note(notebookId, noteTitle, newContent));
-    invalidateNotebookCache(notebook);
-    return saved;
   }
 
   /**
    * Deletes the note; false when there is none, or the caller may not write notes in its notebook.
    */
-  public boolean deleteNote(final String notebookId, final String noteTitle) {
+  public boolean deleteNote(final String logicalNotebookId, final String noteTitle) {
+    final String notebookId = physicalNotebookId(logicalNotebookId);
+    final String noteId = NotebookUtils.noteId(notebookId, noteTitle);
+    if (isScratchpad(logicalNotebookId)) {
+      final boolean deleted = notesRepository.deleteByIdIgnoringVersion(noteId);
+      if (deleted) {
+        scratchpadNotes.getUnchecked(notebookId).remove(noteId);
+      }
+      return deleted;
+    }
     final Notebook notebook = notebookRepository.findById(notebookId);
     if (notebook == null || !notebookRepository.hasPermission(notebook, Permission.EDIT)) {
       return false;
     }
-    final boolean deleted =
-        notesRepository.deleteByIdIgnoringVersion(NotebookUtils.noteId(notebookId, noteTitle));
+    final boolean deleted = notesRepository.deleteByIdIgnoringVersion(noteId);
     if (deleted) {
       invalidateNotebookCache(notebook);
     }
     return deleted;
+  }
+
+  /**
+   * Whether the notebook is the current session's scratchpad: a notebook only that session writes,
+   * so its notes are read from a local copy that every write to it also updates.
+   */
+  public boolean isScratchpad(final String logicalNotebookId) {
+    return SCRATCHPAD_ID.equalsIgnoreCase(logicalNotebookId.trim());
+  }
+
+  /** The current session's scratchpad as listed in the notebook summary; empty outside a session. */
+  public String scratchpadSummary() {
+    final String sessionId = currentSessionId();
+    if (sessionId == null) {
+      return "";
+    }
+    return SCRATCHPAD_LISTING.summarize(
+        true,
+        scratchpadNotes
+            .getUnchecked(NotebookUtils.notebookId(sessionId, SCRATCHPAD_NAME))
+            .values()
+            .stream()
+            .map(Note::getNoteTitle)
+            .toList());
   }
 
   /** What prevents granting {@code notebookIds}: notebooks that don't exist. */
@@ -192,6 +323,25 @@ public class NotebookService {
     return changes;
   }
 
+  private Map<String, Note> loadScratchpadNotes(final String scratchpadId) {
+    final Map<String, Note> noteIdVsNote = new ConcurrentHashMap<>();
+    for (final Note note :
+        notesRepository
+            .findByQuery(
+                new Query()
+                    .withFilter(Filters.eq(Note.FIELD_NOTEBOOK_ID, scratchpadId))
+                    .withPage(Page.UNBOUNDED))
+            .getItems()) {
+      noteIdVsNote.put(note.getId(), note);
+    }
+    return noteIdVsNote;
+  }
+
+  private Note cacheScratchpadNote(final String scratchpadId, final Note note) {
+    scratchpadNotes.getUnchecked(scratchpadId).put(note.getId(), note);
+    return note;
+  }
+
   private void invalidateNotebookCache(final Notebook notebook) {
     invalidateCurrentSessionCache();
     if (notebook == null
@@ -207,6 +357,26 @@ public class NotebookService {
     sessionIds.forEach(summaryCache::invalidate);
   }
 
+  /** The id the notebook is stored under: the scratchpad is stored under its session's id. */
+  private String physicalNotebookId(final String logicalNotebookId) {
+    return isScratchpad(logicalNotebookId)
+        ? NotebookUtils.notebookId(currentSessionId(), SCRATCHPAD_NAME)
+        : logicalNotebookId;
+  }
+
+  private static Notebook scratchpadListing() {
+    final Notebook listing = new Notebook(null, SCRATCHPAD_NAME, SCRATCHPAD_DESCRIPTION);
+    listing.setId(SCRATCHPAD_ID);
+    return listing;
+  }
+
+  private static String currentSessionId() {
+    return Context.require()
+        .principal()
+        .flatMap(principal -> principal.assetId(AssetClass.AGENT_SESSION))
+        .orElse(null);
+  }
+
   private void invalidateCurrentSessionCache() {
     final Context context = Context.require();
     context
@@ -219,16 +389,14 @@ public class NotebookService {
             });
   }
 
-  /** Each notebook the caller can reach explicitly via their current session context. */
-  public String summary(boolean skipCache) {
-    final String sessionId =
-        Context.require()
-            .principal()
-            .flatMap(principal -> principal.assetId(AssetClass.AGENT_SESSION))
-            .orElse(null);
-
+  /**
+   * The summary of each notebook the caller can reach in the current session, by notebook id,
+   * leaving out the session's scratchpad.
+   */
+  public Map<String, String> summaries(boolean skipCache) {
+    final String sessionId = currentSessionId();
     if (sessionId == null) {
-      return "";
+      return Map.of();
     }
 
     if (skipCache) {
@@ -237,7 +405,7 @@ public class NotebookService {
     return summaryCache.get(sessionId);
   }
 
-  private String loadSummary(final String sessionId) {
+  private Map<String, String> loadSummaries(final String sessionId) {
     final List<Notebook> notebooks =
         new ArrayList<>(
             notebookRepository.findByQuery(new Query().withPage(Page.UNBOUNDED)).getItems());
@@ -247,14 +415,18 @@ public class NotebookService {
                 a.getName() == null ? "" : a.getName(), b.getName() == null ? "" : b.getName()));
 
     final Map<String, NotebookSummary> notebookIdVsSummary = new LinkedHashMap<>();
+    final String scratchpadId = NotebookUtils.notebookId(sessionId, SCRATCHPAD_NAME);
     for (final Notebook notebook : notebooks) {
+      if (scratchpadId.equals(notebook.getId())) {
+        continue;
+      }
       notebookIdVsSummary.put(
           notebook.getId(),
           new NotebookSummary(
               notebook, notebookRepository.hasPermission(notebook, Permission.EDIT)));
     }
     if (notebookIdVsSummary.isEmpty()) {
-      return "";
+      return Map.of();
     }
     for (final Note note :
         notesRepository
@@ -271,14 +443,12 @@ public class NotebookService {
         summary.noteTitles.add(note.getNoteTitle());
       }
     }
-    final StringBuilder sb = new StringBuilder();
-    for (final NotebookSummary summary : notebookIdVsSummary.values()) {
-      if (!sb.isEmpty()) {
-        sb.append("\n");
-      }
-      sb.append(summary.notebook.summarize(summary.canWrite, summary.noteTitles));
-    }
-    return sb.toString().trim();
+    final Map<String, String> notebookIdVsText = new LinkedHashMap<>();
+    notebookIdVsSummary.forEach(
+        (notebookId, summary) ->
+            notebookIdVsText.put(
+                notebookId, summary.notebook.summarize(summary.canWrite, summary.noteTitles)));
+    return notebookIdVsText;
   }
 
   private static final class NotebookSummary {

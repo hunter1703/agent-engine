@@ -1,20 +1,15 @@
 package com.agentengine.agent.infra.agents;
 
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.utils.StringUtils;
-import com.agentengine.util.context.Context;
-import com.agentengine.util.context.Principal;
 import com.google.adk.agents.BaseAgent;
-import com.google.adk.agents.Callbacks;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import io.reactivex.rxjava3.core.Flowable;
-import java.util.Collections;
 import java.util.List;
 
 /** Engine base agent — carries {@link BaseAgentConfig} and delegates runtime to subclasses. */
-public abstract class Agent extends BaseAgent {
+public abstract class Agent extends BaseAgent implements ConfiguredAgent {
   private final BaseAgentConfig agentConfig;
 
   protected Agent(Builder<?, ?> builder) {
@@ -22,44 +17,31 @@ public abstract class Agent extends BaseAgent {
         builder.name(),
         builder.description(),
         builder.subAgents(),
-        builder.agentConfig(),
-        builder.beforeAgentCallback(),
-        builder.afterAgentCallback());
+        builder.agentConfig());
   }
 
   protected Agent(
       String name,
       String description,
       List<? extends BaseAgent> subAgents,
-      BaseAgentConfig agentConfig,
-      List<? extends Callbacks.BeforeAgentCallback> beforeAgentCallbacks,
-      List<? extends Callbacks.AfterAgentCallback> afterAgentCallbacks) {
-    super(name, description, subAgents, beforeAgentCallbacks, afterAgentCallbacks);
+      BaseAgentConfig agentConfig) {
+    super(name, description, subAgents, List.of(), List.of());
     this.agentConfig = agentConfig;
   }
 
+  @Override
   public BaseAgentConfig getAgentConfig() {
     return agentConfig;
   }
 
-  /**
-   * Runs this agent with its own context added to the turn's, so whatever runs as part of it — its
-   * tools, and the plugin callbacks around it — also reaches what was shared with this agent. For
-   * the session's own agent that context is already the turn's; an agent transferred to inside the
-   * session keeps everything the session reaches and adds its own.
-   */
   @Override
   public Flowable<Event> runAsync(final InvocationContext invocationContext) {
-    return Flowable.fromPublisher(
-        subscriber ->
-            Context.require()
-                .alsoActingAs(Principal.ofAnyUser().within(AssetClass.AGENT, agentConfig.getId()))
-                .run(() -> super.runAsync(invocationContext).subscribe(subscriber)));
+    return actingAsThisAgent(() -> super.runAsync(invocationContext));
   }
 
-  public abstract static class Builder<B extends Builder<?, ?>, A extends Agent> {
+  public abstract static class Builder<B extends Builder<?, ?>, A extends BaseAgent> {
     private BaseAgentConfig agentConfig;
-    private List<? extends Agent> subAgents = List.of();
+    private List<? extends BaseAgent> subAgents = List.of();
     private Runnable closeHook;
 
     public String name() {
@@ -74,12 +56,12 @@ public abstract class Agent extends BaseAgent {
     }
 
     @SuppressWarnings("unchecked")
-    public B subAgents(List<? extends Agent> subAgents) {
+    public B subAgents(List<? extends BaseAgent> subAgents) {
       this.subAgents = subAgents;
       return (B) this;
     }
 
-    public List<? extends Agent> subAgents() {
+    public List<? extends BaseAgent> subAgents() {
       return subAgents;
     }
 
@@ -101,25 +83,6 @@ public abstract class Agent extends BaseAgent {
 
     public BaseAgentConfig agentConfig() {
       return agentConfig;
-    }
-
-    @SuppressWarnings("unchecked")
-    public B beforeAgentCallback(
-        List<? extends Callbacks.BeforeAgentCallback> beforeAgentCallback) {
-      return (B) this;
-    }
-
-    public List<? extends Callbacks.BeforeAgentCallback> beforeAgentCallback() {
-      return Collections.emptyList();
-    }
-
-    @SuppressWarnings("unchecked")
-    public B afterAgentCallback(List<? extends Callbacks.AfterAgentCallback> afterAgentCallback) {
-      return (B) this;
-    }
-
-    public List<? extends Callbacks.AfterAgentCallback> afterAgentCallback() {
-      return Collections.emptyList();
     }
 
     public abstract A build();

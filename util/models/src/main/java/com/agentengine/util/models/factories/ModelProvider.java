@@ -19,6 +19,7 @@ import com.google.genai.types.Modality;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.Optional;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -82,17 +83,27 @@ public class ModelProvider {
   }
 
   public boolean isToolCallingEnabled(final String modelId) {
+    return modelConfig(modelId)
+        .filter(ChatModelConfig.class::isInstance)
+        .map(ChatModelConfig.class::cast)
+        .map(ChatModelConfig::isToolCallingEnabled)
+        .orElse(false);
+  }
+
+  /** Whether the model takes images as input. */
+  public boolean isVisionEnabled(final String modelId) {
+    return modelConfig(modelId).map(config -> config.supports(Modality.Known.IMAGE)).orElse(false);
+  }
+
+  private Optional<ModelConfig> modelConfig(final String modelId) {
     return Context.require()
         .asSystemCaller()
         .get(
             () -> {
               final String resolvedId = resolveModelId(modelId, defaultModelIdSupplier(modelId));
-              if (StringUtils.isBlank(resolvedId)) {
-                return false;
-              }
-              final ModelConfig config = modelLookup.getModel(resolvedId);
-              return config instanceof ChatModelConfig chatConfig
-                  && chatConfig.isToolCallingEnabled();
+              return StringUtils.isBlank(resolvedId)
+                  ? Optional.empty()
+                  : Optional.ofNullable(modelLookup.getModel(resolvedId));
             });
   }
 

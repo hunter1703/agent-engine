@@ -2,6 +2,7 @@ package com.agentengine.util.cloudstorage;
 
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.codec.JsonUtils;
+import com.agentengine.util.common.utils.HttpUtils;
 import com.agentengine.util.common.utils.StringUtils;
 import jakarta.inject.Singleton;
 import java.io.ByteArrayInputStream;
@@ -10,8 +11,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URLConnection;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Path;
 import org.slf4j.Logger;
@@ -20,7 +19,6 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class FileService {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileService.class);
-  private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
   private final CloudStorageService cloudStorageService;
 
@@ -118,22 +116,15 @@ public class FileService {
 
   private static InputStream fetchUrl(final String url) {
     try {
-      return HTTP_CLIENT
-          .send(
-              HttpRequest.newBuilder(URI.create(url)).GET().build(),
-              HttpResponse.BodyHandlers.ofInputStream())
-          .body();
-    } catch (IOException | InterruptedException ex) {
-      if (ex instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
+      return HttpUtils.open(url);
+    } catch (final IOException ex) {
       throw new RuntimeException("Failed to fetch URL: " + url, ex);
     }
   }
 
   private static long fetchUrlSize(final String url) {
     try {
-      final HttpResponse<Void> response = head(url);
+      final HttpResponse<Void> response = HttpUtils.head(url);
       return response.headers().firstValueAsLong("Content-Length").orElse(0L);
     } catch (Exception ex) {
       return 0L;
@@ -147,7 +138,7 @@ public class FileService {
       if (fromName != null) {
         return fromName;
       }
-      final HttpResponse<Void> response = head(url);
+      final HttpResponse<Void> response = HttpUtils.head(url);
       if (response.statusCode() / 100 != 2) {
         return null;
       }
@@ -157,20 +148,8 @@ public class FileService {
           .map(contentType -> contentType.split(";", 2)[0].trim().toLowerCase())
           .filter(StringUtils::isNotBlank)
           .orElse(null);
-    } catch (final InterruptedException ex) {
-      Thread.currentThread().interrupt();
-      return null;
     } catch (final Exception ex) {
       return null;
     }
-  }
-
-  private static HttpResponse<Void> head(final String url)
-      throws IOException, InterruptedException {
-    return HTTP_CLIENT.send(
-        HttpRequest.newBuilder(URI.create(url))
-            .method("HEAD", HttpRequest.BodyPublishers.noBody())
-            .build(),
-        HttpResponse.BodyHandlers.discarding());
   }
 }

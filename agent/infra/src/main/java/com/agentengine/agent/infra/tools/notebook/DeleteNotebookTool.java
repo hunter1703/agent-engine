@@ -14,15 +14,13 @@ public final class DeleteNotebookTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.DELETE_NOTEBOOK,
           """
-          Permanently deletes an entire notebook and every note in it. Only the session that created the notebook can delete it — being granted the notebook does not authorize this. \
-          Returns: { status: "success" } or { error }.""",
+          Permanently deletes a notebook and every note in it. Only the session that created the \
+          notebook can delete it.
+          Returns: { status: "success" }, or { error } on failure.""",
           Map.of());
 
-  private final NotebookService notebookService;
-
   public DeleteNotebookTool(final NotebookService notebookService) {
-    super(DESCRIPTOR);
-    this.notebookService = notebookService;
+    super(DESCRIPTOR, notebookService);
   }
 
   public ToolOutput<Map<String, Object>> execute(

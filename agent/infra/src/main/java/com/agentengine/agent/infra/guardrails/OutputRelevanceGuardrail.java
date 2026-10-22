@@ -1,41 +1,42 @@
 package com.agentengine.agent.infra.guardrails;
 
-import com.agentengine.agent.infra.utils.GuardrailUtils;
+import static com.agentengine.util.agents.beans.config.RelevanceAnchorStrategy.LATEST_USER_AND_PLAN;
+import static com.agentengine.util.agents.beans.config.RelevanceAnchorStrategy.RECENT_USER;
+import static com.agentengine.util.agents.beans.config.RelevanceAnchorStrategy.UNKNOWN;
+
+import com.agentengine.agent.infra.tools.beans.Plan;
+import com.agentengine.agent.infra.tools.planning.PlanningUtils;
+import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.RunState;
-import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.beans.config.GuardrailAction;
 import com.agentengine.util.agents.beans.config.GuardrailStage;
 import com.agentengine.util.agents.beans.config.OutputRelevanceGuardrailRule;
+import com.agentengine.util.agents.beans.config.RelevanceAnchorStrategy;
 import com.agentengine.util.agents.beans.config.RelevanceMode;
+import com.agentengine.util.common.utils.StringUtils;
+import com.google.adk.agents.InvocationContext;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 /**
- * Detects and corrects output drift from the user's original request via semantic scoring.
+ * Detects and corrects drift of the model's final answer from what the user asked, by scoring it
+ * against an anchor built from the user's request (and the active plan) with a model.
  *
- * <p><b>Mechanism:</b> Scores the model's output against an anchor prompt (derived from the user's
- * original request and agent context) using semantic similarity. If the score is below the
- * configured threshold, the output is considered off-topic. The guardrail tracks consecutive
- * off-topic attempts per session and applies a configured mode to decide whether to steer (request
- * regeneration), allow anyway, or block.
- *
- * <p><b>Modes (with max steering retries):</b>
+ * <p>An answer scoring below the configured threshold is off topic. The run counts consecutive
+ * off-topic answers, and the configured mode decides what follows:
  *
  * <ul>
- *   <li><b>STEER_ONLY:</b> Always returns WARN (triggers regeneration indefinitely).
- *   <li><b>STEER_THEN_ALLOW:</b> Returns WARN for up to N retries, then ALLOW (content accepted
- *       regardless of score).
- *   <li><b>STEER_THEN_BLOCK:</b> Returns WARN for up to N retries, then BLOCK (content rejected
- *       after N attempts). Default if mode is UNKNOWN.
+ *   <li><b>STEER_ONLY:</b> always asks for a new answer.
+ *   <li><b>STEER_THEN_ALLOW:</b> asks for a new answer up to the configured number of times, then
+ *       accepts the answer whatever its score.
+ *   <li><b>STEER_THEN_BLOCK:</b> asks for a new answer up to the configured number of times, then
+ *       blocks. This is the mode when none is configured.
  * </ul>
  *
- * <p><b>Retry counter:</b> Tracks consecutive off-topic outputs per session. Resets to zero when
- * output is on-topic (score >= threshold) or when the guardrail allows the output (after max
- * retries in STEER_THEN_ALLOW mode). This prevents infinite steering loops while allowing recovery
- * if the model succeeds later.
- *
- * <p><b>Use case:</b> Prevent the model from drifting into tangential topics, maintaining focus on
- * the user's original intent when multi-turn conversations or complex prompts cause hallucination.
+ * <p>The count resets when an answer is on topic or is accepted after the retries. Only final
+ * answers are scored: text written next to a tool call is narration, not the answer.
  */
 public final class OutputRelevanceGuardrail implements Guardrail {
   private final OutputRelevanceGuardrailRule config;
@@ -59,15 +60,14 @@ public final class OutputRelevanceGuardrail implements Guardrail {
 
   @Override
   public GuardrailDecision evaluate(final GuardrailContext context) {
-    if (context.invocationContext() == null) {
+    if (!context.finalAnswer() || context.invocationContext() == null) {
       return GuardrailDecision.allow();
     }
 
-    final String anchor =
-        GuardrailUtils.buildRelevanceAnchorPrompt(context.invocationContext(), config);
-    final double score = relevanceScorer.score(anchor, context.text());
+    final double score =
+        relevanceScorer.score(anchorPrompt(context.invocationContext()), context.text());
     final double threshold = config.getRelevanceThreshold();
-    final RunState runState = RunUtils.getRunState(context.invocationContext());
+    final RunState runState = SessionUtils.getSessionState(context.invocationContext()).runState();
 
     if (score >= threshold) {
       runState.resetOffTopicRetries();
@@ -80,67 +80,70 @@ public final class OutputRelevanceGuardrail implements Guardrail {
             ? RelevanceMode.STEER_THEN_BLOCK
             : config.modeEnum();
 
-    if (mode == RelevanceMode.STEER_ONLY) {
-      return new GuardrailDecision(
+    if (mode == RelevanceMode.STEER_ONLY || attempt <= config.getMaxSteeringRetries()) {
+      return decision(
           GuardrailAction.WARN,
           GuardrailConstants.Code.RELEVANCE_STEER,
-          "Response drifted from user intent. Regenerate strictly on the active request.",
-          Map.of(
-              GuardrailConstants.DetailKey.SCORE,
-              score,
-              GuardrailConstants.DetailKey.THRESHOLD,
-              threshold,
-              GuardrailConstants.DetailKey.ATTEMPT,
-              attempt,
-              GuardrailConstants.DetailKey.RETRY_REQUIRED,
-              true));
+          "Your response is not aligned with the user's request. Answer again, strictly on the request.",
+          score,
+          threshold,
+          attempt,
+          true);
     }
-
-    if (mode == RelevanceMode.STEER_THEN_ALLOW && attempt <= config.getMaxSteeringRetries()) {
-      return new GuardrailDecision(
-          GuardrailAction.WARN,
-          GuardrailConstants.Code.RELEVANCE_STEER,
-          "Response is not aligned with the user request. Regenerate with stronger relevance.",
-          Map.of(
-              GuardrailConstants.DetailKey.SCORE,
-              score,
-              GuardrailConstants.DetailKey.THRESHOLD,
-              threshold,
-              GuardrailConstants.DetailKey.ATTEMPT,
-              attempt,
-              GuardrailConstants.DetailKey.RETRY_REQUIRED,
-              true));
-    } else if (mode == RelevanceMode.STEER_THEN_ALLOW) {
+    if (mode == RelevanceMode.STEER_THEN_ALLOW) {
       runState.resetOffTopicRetries();
       return GuardrailDecision.allow();
     }
-
-    if (mode == RelevanceMode.STEER_THEN_BLOCK && attempt <= config.getMaxSteeringRetries()) {
-      return new GuardrailDecision(
-          GuardrailAction.WARN,
-          GuardrailConstants.Code.RELEVANCE_STEER,
-          "Response is not aligned with the user request. Regenerate with stronger relevance.",
-          Map.of(
-              GuardrailConstants.DetailKey.SCORE,
-              score,
-              GuardrailConstants.DetailKey.THRESHOLD,
-              threshold,
-              GuardrailConstants.DetailKey.ATTEMPT,
-              attempt,
-              GuardrailConstants.DetailKey.RETRY_REQUIRED,
-              true));
-    }
-
-    return new GuardrailDecision(
+    return decision(
         GuardrailAction.BLOCK,
         GuardrailConstants.Code.RELEVANCE_BLOCK,
         "The response repeatedly drifted from the user request and was blocked.",
+        score,
+        threshold,
+        attempt,
+        false);
+  }
+
+  private static GuardrailDecision decision(
+      final GuardrailAction action,
+      final String code,
+      final String message,
+      final double score,
+      final double threshold,
+      final int attempt,
+      final boolean retryRequired) {
+    return new GuardrailDecision(
+        action,
+        code,
+        message,
         Map.of(
             GuardrailConstants.DetailKey.SCORE,
             score,
             GuardrailConstants.DetailKey.THRESHOLD,
             threshold,
             GuardrailConstants.DetailKey.ATTEMPT,
-            attempt));
+            attempt,
+            GuardrailConstants.DetailKey.RETRY_REQUIRED,
+            retryRequired));
+  }
+
+  private String anchorPrompt(final InvocationContext context) {
+    RelevanceAnchorStrategy strategy = config.anchorStrategyEnum();
+    if (strategy == UNKNOWN) {
+      strategy = LATEST_USER_AND_PLAN;
+    }
+    final int recency = strategy == RECENT_USER ? Math.max(1, config.getRecency()) : 1;
+    final String recentUserMessages = EventUtils.recentUser(context.session().events(), recency);
+    if (strategy == RECENT_USER) {
+      return recentUserMessages;
+    }
+    final Plan plan = SessionUtils.getSessionState(context).plan();
+    final String planAnchor =
+        plan == null
+            ? ""
+            : StringUtils.joinNonBlank(
+                List.of(
+                    PlanningUtils.buildPlanSummary(plan), PlanningUtils.buildTaskFocusPrompt(plan)));
+    return StringUtils.joinNonBlank(List.of(recentUserMessages, planAnchor));
   }
 }

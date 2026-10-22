@@ -21,11 +21,10 @@ public final class CompleteTaskTool extends Tool {
       new ToolDescriptor(
           Constants.ToolNames.COMPLETE_TASK,
           """
-          Marks a task in the active plan as completed ('done' or 'abandoned') with a concise outcome result. \
-          Completing a task automatically marks the next actionable task (and its parent lineage if nested) \
-          as 'in_progress'. When the final task is closed, the active plan is automatically marked finished. \
-          All tasks must be completed before delivering a final answer. \
-          Returns: { status: "success", completed_task, new_status, next_task?, active_lineage?, plan_finished?, message } on success, or { error } on failure.""",
+          Finishes a task of the active plan with its outcome, and starts the next one. A task made \
+          of parts can only be completed once its parts are; abandoning it abandons its open parts \
+          too. The plan finishes with its last task.
+          Returns: { next_task } naming the task now in progress, { plan_finished: true } when that was the last one, or { error } on failure.""",
           Map.of());
 
   private final PlanningValidator planningValidator;
@@ -37,18 +36,17 @@ public final class CompleteTaskTool extends Tool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolArg(name = "task", description = "Name of the task to complete in the active plan.")
+      @ToolArg(name = Constants.ToolArgs.TASK, description = "Name of the task to complete in the active plan.")
           final String task,
       @ToolArg(
-          name = "result",
+          name = Constants.ToolArgs.TASK_RESULT,
           description = "Concise description of the outcome and key findings for this completed task.")
           final String result,
       @ToolArg(
-          name = "status",
+          name = Constants.ToolArgs.TASK_STATUS,
           description =
               """
-              Terminal status for the task. 'done' indicates successful completion; 'abandoned' \
-              indicates skipped or cancelled. Defaults to 'done'.""",
+              'done' for a task carried out, 'abandoned' for one no longer needed. Defaults to 'done'.""",
           enums = {"done", "abandoned"},
           optional = true)
           final String status) {
@@ -81,7 +79,7 @@ public final class CompleteTaskTool extends Tool {
       return ToolOutput.direct(Map.of("error", "Task not found: " + task));
     }
 
-    final String validationError = planningValidator.canUpdateTask(currentPlan, existingTask, newStatus, result);
+    final String validationError = planningValidator.canUpdateTask(currentPlan, existingTask, newStatus);
     if (validationError != null) {
       return ToolOutput.direct(Map.of("error", validationError));
     }
@@ -90,42 +88,14 @@ public final class CompleteTaskTool extends Tool {
         PlanningUtils.applyTaskUpdate(currentPlan, existingTask.getName(), newStatus, result);
 
     final Map<String, Object> response = new LinkedHashMap<>();
-    response.put(Constants.ToolStatus.STATUS, Constants.ToolStatus.SUCCESS);
-    response.put("completed_task", existingTask.getName());
-    response.put("new_status", newStatus.getValue());
-
     if (updatedPlan.getStatus().isTerminal()) {
       response.put("plan_finished", true);
-      response.put("plan_status", updatedPlan.getStatus().getValue());
-      response.put(
-          "message",
-          "Task '"
-              + existingTask.getName()
-              + "' completed. All tasks finished! Active plan is complete.");
     } else {
-      final List<Task> activeLineage =
-          PlanningUtils.activateNextActionableLineage(updatedPlan);
-      if (!activeLineage.isEmpty()) {
-        final Task nextTask = activeLineage.getLast();
-        final List<String> activeLineageNames = PlanningUtils.taskNames(activeLineage);
-        response.put("next_task", nextTask.getName());
-        response.put("active_lineage", activeLineageNames);
-        final String lineageStr = String.join(" > ", activeLineageNames);
-        response.put(
-            "message",
-            "Task '"
-                + existingTask.getName()
-                + "' completed. Next active task is '"
-                + nextTask.getName()
-                + "' (active branch: "
-                + lineageStr
-                + ").");
+      final List<Task> activeLineage = PlanningUtils.activateNextActionableLineage(updatedPlan);
+      if (activeLineage.isEmpty()) {
+        response.put(Constants.ToolStatus.STATUS, Constants.ToolStatus.SUCCESS);
       } else {
-        response.put(
-            "message",
-            "Task '"
-                + existingTask.getName()
-                + "' completed.");
+        response.put("next_task", activeLineage.getLast().getName());
       }
     }
 

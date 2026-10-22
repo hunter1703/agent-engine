@@ -2,6 +2,7 @@ package com.agentengine.agent.core.session;
 
 import com.agentengine.agent.infra.session.SessionEventsRepository;
 import com.agentengine.util.agents.Constants;
+import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.RefCounted;
 import com.agentengine.util.common.query.Page;
@@ -59,7 +60,7 @@ public class SessionTitleGenerator {
         }
         final Content content = event.getContent();
         final String text = content == null ? null : content.text();
-        if (StringUtils.isNotBlank(text)) {
+        if (StringUtils.isNotBlank(text) && !ContentUtils.isSystemNotice(content)) {
           eventsToGenerateTitleOn.add(event);
         }
       }

@@ -11,17 +11,26 @@ import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
 import com.google.genai.types.Content;
 import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.core.Single;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
- * Composes an ordered list of plugins with middleware semantics:
+ * Composes an ordered list of plugins as layers of an onion: a call goes in through the layers from
+ * the outermost to the innermost, and what comes out goes back through them in reverse.
  *
  * <ul>
- *   <li><b>before*</b> callbacks run in forward order (A → B → …); first non-empty short-circuits.
- *   <li><b>after*</b> callbacks run in reverse order (… → B → A); each stage receives the output of
- *       the previous, forming a sequential pipeline.
+ *   <li><b>A rewrite chains.</b> A callback that receives something and may return a changed
+ *       version of it ({@code onUserMessage} on the way in; {@code onEvent}, {@code afterModel} and
+ *       {@code afterTool} on the way out) hands each plugin what the previous one returned. Empty
+ *       leaves it as it is.
+ *   <li><b>An answer short-circuits.</b> A callback that may answer in place of the call it comes
+ *       before ({@code beforeRun}, {@code beforeAgent}, {@code beforeModel}, {@code beforeTool}), or
+ *       add to the agent's output ({@code afterAgent}), stops at the first plugin that answers.
  * </ul>
  *
  * <p>Register plugins in logical "outer-to-inner" order. For example, {@code new
@@ -43,78 +52,49 @@ public final class PluginGroup extends BasePlugin {
     this.plugins = List.copyOf(plugins);
   }
 
-  // ── before* : forward order, first non-empty short-circuits ─────────────
+  // ── way in, forward order ────────────────────────────────────────────────
 
+  /** A rewrite: each plugin sees the message as the one before it left it. */
   @Override
   public Maybe<Content> onUserMessageCallback(
       final InvocationContext ctx, final Content userMessage) {
-    for (final BasePlugin plugin : plugins) {
-      final Content result = plugin.onUserMessageCallback(ctx, userMessage).blockingGet();
-      if (result != null) {
-        return Maybe.just(result);
-      }
-    }
-    return Maybe.empty();
+    return pipeline(
+        plugins, userMessage, (plugin, current) -> plugin.onUserMessageCallback(ctx, current));
   }
+
+  // The rest answer in place of the call they come before, so the first plugin that answers
+  // short-circuits.
 
   @Override
   public Maybe<Content> beforeRunCallback(final InvocationContext ctx) {
-    for (final BasePlugin plugin : plugins) {
-      final Content result = plugin.beforeRunCallback(ctx).blockingGet();
-      if (result != null) {
-        return Maybe.just(result);
-      }
-    }
-    return Maybe.empty();
+    return firstResult(plugin -> plugin.beforeRunCallback(ctx));
   }
 
   @Override
   public Maybe<Content> beforeAgentCallback(final BaseAgent agent, final CallbackContext ctx) {
-    for (final BasePlugin plugin : plugins) {
-      final Content result = plugin.beforeAgentCallback(agent, ctx).blockingGet();
-      if (result != null) {
-        return Maybe.just(result);
-      }
-    }
-    return Maybe.empty();
+    return firstResult(plugin -> plugin.beforeAgentCallback(agent, ctx));
   }
 
   @Override
   public Maybe<LlmResponse> beforeModelCallback(
       final CallbackContext ctx, final LlmRequest.Builder requestBuilder) {
-    for (final BasePlugin plugin : plugins) {
-      final LlmResponse result = plugin.beforeModelCallback(ctx, requestBuilder).blockingGet();
-      if (result != null) {
-        return Maybe.just(result);
-      }
-    }
-    return Maybe.empty();
+    return firstResult(plugin -> plugin.beforeModelCallback(ctx, requestBuilder));
   }
 
   @Override
   public Maybe<Map<String, Object>> beforeToolCallback(
       final BaseTool tool, final Map<String, Object> args, final ToolContext toolContext) {
-    for (final BasePlugin plugin : plugins) {
-      final Map<String, Object> result =
-          plugin.beforeToolCallback(tool, args, toolContext).blockingGet();
-      if (result != null) {
-        return Maybe.just(result);
-      }
-    }
-    return Maybe.empty();
+    return firstResult(plugin -> plugin.beforeToolCallback(tool, args, toolContext));
   }
 
+  // ── way out, reverse order ───────────────────────────────────────────────
+
+  /** A rewrite: each plugin sees the event as the one inside it left it. */
   @Override
   public Maybe<Event> onEventCallback(final InvocationContext ctx, final Event event) {
-    // forward order; first non-empty wins
-    for (final BasePlugin plugin : plugins) {
-      final Event result = plugin.onEventCallback(ctx, event).blockingGet();
-      if (result != null) return Maybe.just(result);
-    }
-    return Maybe.empty();
+    return pipeline(
+        plugins.reversed(), event, (plugin, current) -> plugin.onEventCallback(ctx, current));
   }
-
-  // ── after* : reverse order, sequential pipeline ──────────────────────────
 
   @Override
   public Maybe<Map<String, Object>> afterToolCallback(
@@ -122,43 +102,26 @@ public final class PluginGroup extends BasePlugin {
       final Map<String, Object> args,
       final ToolContext toolContext,
       final Map<String, Object> toolResult) {
-    boolean changed = false;
-    Map<String, Object> current = toolResult;
-    for (final BasePlugin plugin : plugins.reversed()) {
-      final Map<String, Object> result =
-          plugin.afterToolCallback(tool, args, toolContext, current).blockingGet();
-      if (result != null) {
-        current = result;
-        changed = true;
-      }
-    }
-    return changed ? Maybe.just(current) : Maybe.empty();
+    return pipeline(
+        plugins.reversed(),
+        toolResult,
+        (plugin, current) -> plugin.afterToolCallback(tool, args, toolContext, current));
   }
 
   @Override
   public Maybe<LlmResponse> afterModelCallback(
       final CallbackContext ctx, final LlmResponse llmResponse) {
-    boolean changed = false;
-    LlmResponse current = llmResponse;
-    for (final BasePlugin plugin : plugins.reversed()) {
-      final LlmResponse result = plugin.afterModelCallback(ctx, current).blockingGet();
-      if (result != null) {
-        current = result;
-        changed = true;
-      }
-    }
-    return changed ? Maybe.just(current) : Maybe.empty();
+    return pipeline(
+        plugins.reversed(),
+        llmResponse,
+        (plugin, current) -> plugin.afterModelCallback(ctx, current));
   }
 
   @Override
   public Maybe<Content> afterAgentCallback(final BaseAgent agent, final CallbackContext ctx) {
-    for (final BasePlugin plugin : plugins.reversed()) {
-      final Content result = plugin.afterAgentCallback(agent, ctx).blockingGet();
-      if (result != null) {
-        return Maybe.just(result);
-      }
-    }
-    return Maybe.empty();
+    return Flowable.fromIterable(plugins.reversed())
+        .concatMapMaybe(plugin -> plugin.afterAgentCallback(agent, ctx))
+        .firstElement();
   }
 
   @Override
@@ -169,4 +132,33 @@ public final class PluginGroup extends BasePlugin {
     }
     return chain;
   }
+
+  /** The first plugin's result, asking the plugins in order and stopping at the first that has one. */
+  private <T> Maybe<T> firstResult(final Function<BasePlugin, Maybe<T>> callback) {
+    return Flowable.fromIterable(plugins).concatMapMaybe(callback::apply).firstElement();
+  }
+
+  /**
+   * Hands {@code initial} through {@code ordered}, each plugin seeing what the one before returned;
+   * empty when no plugin changed it.
+   */
+  private <T> Maybe<T> pipeline(
+      final List<BasePlugin> ordered,
+      final T initial,
+      final BiFunction<BasePlugin, T, Maybe<T>> callback) {
+    Single<Stage<T>> stages = Single.just(new Stage<>(initial, false));
+    for (final BasePlugin plugin : ordered) {
+      stages =
+          stages.flatMap(
+              stage ->
+                  callback
+                      .apply(plugin, stage.value())
+                      .map(changed -> new Stage<>(changed, true))
+                      .defaultIfEmpty(stage));
+    }
+    return stages.flatMapMaybe(
+        stage -> stage.changed() ? Maybe.just(stage.value()) : Maybe.empty());
+  }
+
+  private record Stage<T>(T value, boolean changed) {}
 }

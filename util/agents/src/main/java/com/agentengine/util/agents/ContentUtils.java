@@ -13,13 +13,32 @@ import java.util.Optional;
 /** Utilities for generic content/message extraction and indexing. */
 public final class ContentUtils {
 
+  private static final String NOTICE_OPEN = "<system_notice>";
+  private static final String NOTICE_CLOSE = "</system_notice>";
+
   private ContentUtils() {}
 
-  public static String extractLatestUserText(final List<Content> contents) {
+  /** {@code text} marked as coming from the runtime, so it is not mistaken for the user's words. */
+  public static String systemNotice(final String text) {
+    return NOTICE_OPEN + "\n" + text + "\n" + NOTICE_CLOSE;
+  }
+
+  /** Whether {@code content} is a message {@link #systemNotice} made. */
+  public static boolean isSystemNotice(final Content content) {
+    return content != null
+        && content
+            .parts()
+            .flatMap(parts -> parts.stream().findFirst())
+            .flatMap(Part::text)
+            .filter(text -> text.startsWith(NOTICE_OPEN))
+            .isPresent();
+  }
+
+  public static String extractLatestUserSentText(final List<Content> contents) {
     final List<Content> safeContents = CollectionUtils.nullSafeList(contents);
     for (int i = safeContents.size() - 1; i >= 0; i--) {
       final Content content = safeContents.get(i);
-      if (content == null) {
+      if (content == null || isSystemNotice(content)) {
         continue;
       }
       final Optional<String> role = content.role();
@@ -138,7 +157,10 @@ public final class ContentUtils {
 
   /** Whether {@code content} is a user-role message rather than a tool result. */
   public static boolean isUserSentMessage(final Content content) {
-    return content != null && isUserContent(content) && getToolResponseParts(content).isEmpty();
+    return content != null
+        && isUserContent(content)
+        && !isSystemNotice(content)
+        && getToolResponseParts(content).isEmpty();
   }
 
   private static boolean isUserContent(final Content content) {

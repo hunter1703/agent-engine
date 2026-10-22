@@ -14,9 +14,9 @@ import com.agentengine.util.agents.beans.config.GuardrailRuleType;
  * <ul>
  *   <li><b>Type identification:</b> {@link #type()} identifies what rule type this provider
  *       handles.
- *   <li><b>Factory behavior:</b> {@link #create(GuardrailRule)} either returns a valid {@link
- *       Guardrail} ready to evaluate, or throws an exception if the config is invalid. Never
- *       returns null.
+ *   <li><b>Factory behavior:</b> {@link #create(GuardrailRule)} returns a valid {@link Guardrail}
+ *       ready to evaluate, null when the rule makes none (for example, it is disabled), or throws
+ *       an exception if the config is invalid.
  * </ul>
  *
  * <h3>Expectations from implementers</h3>
@@ -37,7 +37,7 @@ public interface GuardrailFactory<T extends GuardrailRule> {
    * Creates a {@link Guardrail} instance from the given rule configuration.
    *
    * @param rule the rule configuration
-   * @return a new {@link Guardrail} ready to evaluate
+   * @return a new {@link Guardrail} ready to evaluate, or null when the rule makes none
    * @throws IllegalArgumentException if rule config is invalid or incomplete
    */
   Guardrail create(T rule);

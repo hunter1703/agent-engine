@@ -42,12 +42,3 @@ dependencies {
     testImplementation libs.mockito.core
     testImplementation libs.mockito.junit.jupiter
 }
-
-configurations.all {
-    resolutionStrategy {
-        // google-adk pulls in the MCP SDK, which transitively depends on json-schema-validator 3.x
-        // (built against Jackson 3's tools.jackson package). This codebase is Jackson 2
-        // (com.fasterxml.jackson) throughout, so pin back to the 2.x line we actually use.
-        force libs.networknt.json.schema.validator
-    }
-}

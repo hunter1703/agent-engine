@@ -1,10 +1,11 @@
 package com.agentengine.agent.infra.plugins;
 
-import com.agentengine.agent.infra.agents.Agent;
-import com.agentengine.agent.infra.utils.RunUtils;
-import com.agentengine.agent.infra.utils.SchemaUtils;
+import com.agentengine.agent.infra.utils.SessionUtils;
+import com.agentengine.agent.infra.utils.ResponseUtils;
 import com.agentengine.util.agents.ContentUtils;
+import com.agentengine.agent.infra.utils.SchemaUtils;
 import com.agentengine.util.agents.beans.Signal;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
@@ -16,6 +17,7 @@ import com.google.adk.models.LlmResponse;
 import com.google.adk.plugins.BasePlugin;
 import com.google.genai.types.Content;
 import com.networknt.schema.Error;
+import com.networknt.schema.InputFormat;
 import com.networknt.schema.Schema;
 import io.reactivex.rxjava3.core.Maybe;
 import java.util.List;
@@ -47,24 +49,11 @@ public final class ResponseValidationPlugin extends BasePlugin {
       final CallbackContext callbackContext, final LlmResponse response) {
 
     final InvocationContext context = callbackContext.invocationContext();
-    if (response == null || response.partial().orElse(false)) {
+    if (!ResponseUtils.isFinalAnswer(response)) {
       return Maybe.empty();
     }
-    final boolean hasToolCalls =
-        response
-            .content()
-            .map(content -> content.parts().orElse(List.of()))
-            .orElse(List.of())
-            .stream()
-            .anyMatch(
-                part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
-    if (hasToolCalls) {
-      return Maybe.empty();
-    }
-
-    final boolean hasVisibleText = ContentUtils.hasVisibleText(response.content().orElse(null));
-    if (!hasVisibleText) {
-      RunUtils.getRunState(context)
+    if (!ContentUtils.hasVisibleText(response.content().orElse(null))) {
+      SessionUtils.getSessionState(context).runState()
           .addSignal(
               callbackContext,
               new Signal<>(
@@ -75,11 +64,12 @@ public final class ResponseValidationPlugin extends BasePlugin {
       return Maybe.empty();
     }
 
-    if (!(context.agent() instanceof Agent engineAgent)) {
+    final BaseAgentConfig agentConfig = SessionUtils.agentConfig(context);
+    if (agentConfig == null) {
       return Maybe.empty();
     }
 
-    final Map<String, Object> schemaMap = engineAgent.getAgentConfig().getResponseFormat();
+    final Map<String, Object> schemaMap = agentConfig.getResponseFormat();
     if (CollectionUtils.isEmpty(schemaMap)) {
       return Maybe.empty();
     }
@@ -91,7 +81,7 @@ public final class ResponseValidationPlugin extends BasePlugin {
     if (violationMessage != null) {
       LOG.info(
           "Response format violation for agent {}: {}", context.agent().name(), violationMessage);
-      RunUtils.getRunState(context)
+      SessionUtils.getSessionState(context).runState()
           .addSignal(
               callbackContext,
               new Signal<>(
@@ -115,7 +105,7 @@ public final class ResponseValidationPlugin extends BasePlugin {
     if (node == null) {
       return "Empty response, not a json";
     }
-    final List<Error> errors = schema.validate(node);
+    final List<Error> errors = schema.validate(text, InputFormat.JSON);
     if (CollectionUtils.isEmpty(errors)) {
       return null;
     }

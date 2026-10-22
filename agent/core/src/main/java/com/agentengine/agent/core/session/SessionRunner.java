@@ -15,7 +15,11 @@ import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.cloudstorage.FileService;
 import com.agentengine.util.common.beans.FileDetails;
-import com.agentengine.util.common.utils.*;
+import com.agentengine.util.common.utils.CollectionUtils;
+import com.agentengine.util.common.utils.ExceptionUtils;
+import com.agentengine.util.common.utils.FileUtils;
+import com.agentengine.util.common.utils.StringUtils;
+import com.agentengine.util.common.utils.StructuredConcurrencyUtils;
 import com.agentengine.util.common.utils.StructuredConcurrencyUtils.TaskOutcome;
 import com.agentengine.util.context.Context;
 import com.google.adk.agents.RunConfig;
@@ -111,7 +115,7 @@ public final class SessionRunner {
       final Map<String, Object> stateDelta) {
     // ADK appends its own user event to the session without emitting it, and the stream's leading
     // event is what is stored. The delta puts when it was sent on ADK's event, which is what
-    // InitPlugin stamps the model's view from.
+    // ReminderPlugin renders the current time from.
     publish(leading, runner.runAsync(createdBy, sessionId, userContent, RUN_CONFIG, stateDelta));
   }
 
@@ -195,14 +199,14 @@ public final class SessionRunner {
         .get(
             () -> {
               final List<AgentFileDetails> toIndex = new ArrayList<>();
-              final List<AgentFileDetails> knowledgeCreatedFor = new ArrayList<>();
+              final List<AgentFileDetails> resolved = new ArrayList<>();
               for (final AgentFileDetails fileDetails : attachments) {
                 if (StringUtils.isNotBlank(fileDetails.knowledgeId())) {
-                  knowledgeCreatedFor.add(fileDetails);
+                  resolved.add(fileDetails);
                 } else if (needsIndexing(fileDetails)) {
                   toIndex.add(fileDetails);
                 } else {
-                  knowledgeCreatedFor.add(createUnindexedKnowledge(fileDetails));
+                  resolved.add(createUnindexedKnowledge(fileDetails));
                 }
               }
 
@@ -218,7 +222,7 @@ public final class SessionRunner {
 
                 for (final TaskOutcome<String> outcome : outcomes) {
                   if (outcome.state() == Subtask.State.SUCCESS) {
-                    knowledgeCreatedFor.add(
+                    resolved.add(
                         toIndex.get(outcome.index()).withKnowledgeId(outcome.value()));
                   } else {
                     LOG.warn(
@@ -229,7 +233,7 @@ public final class SessionRunner {
                 }
               }
 
-              return new UserMessage(message.parts(), knowledgeCreatedFor);
+              return new UserMessage(message.parts(), resolved);
             });
   }
 

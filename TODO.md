@@ -1,28 +1,6 @@
 # TODO
 
 
-## Access control: seeding does not share anything
-
-`deploy/scripts/ci/seed_app.py` logs in and creates connections, models and agents, and the REST
-API has the user (`/v1/user`) and role and sharing (`/v1/governance`) endpoints, but no step
-shares what it seeds. Provisioning only creates roles. So nothing shares tenant-wide connections
-such as `default_brave_connection` (used by `WebSearchTool`) with the `Agent` principal, and agents
-may not be able to read them. Needed: a seed step that shares the seeded connections and models
-through `/v1/governance/share`, and a check that an agent can then use them.
-
-
-## Provisioning: Docs Out of Date
-
-`docs/08-deployment-and-operations.md` §Provisioning still describes the earlier design. Update it for:
-- the request shape (`typeVsServer` with `defaultServerId` / `clientTypeVsServerId`, not `servers.<family>`);
-- `infra.default-server.<server type>` keys (e.g. `MONGO_SERVER`, `ENCRYPTION_KEY`) instead of family names;
-- `infra.vector.size` no longer existing;
-- server configs going through the single `/internal/infra-config` endpoint with per-type setup hooks;
-- microservice servers defaulting to `<service>-default`;
-- provisioning stopping at the first failed step;
-- default models being per-customer (`DefaultModels` in the customer's AGENT store, set from `defaultModels` in `customers.json`), replacing the `DEFAULT_MODELS` infra config in §3.9 of `03-configuration-reference.md`, `01-system-overview.md` and §8.4 of `08-deployment-and-operations.md`.
-
-
 ## Chaos Testing: Open Design Questions Carried From the Original Spec
 
 Tracked while implementing `.kiro/specs/chaos-testing/` (see the plan's Phase 1-5 breakdown):
@@ -115,7 +93,7 @@ Write an `EventCompactor` that keeps the latest events up to a `keepLastTokens` 
 ## Models: carry thinking signatures through `LangChain4jModel`
 
 `LangChain4jModel` maps a model turn's thought parts to `AiMessage.thinking()` and back, but drops a
-part's `thoughtSignature`. That is safe for the providers it serves today (`OPEN_AI`, `OLLAMA`,
+part's `thoughtSignature`. That is safe for the providers it serves today (`OPEN_AI`,
 `Z_AI`), whose OpenAI-compatible APIs have no signatures; Gemini goes through ADK's own adapter,
 which keeps them. A provider that signs its reasoning and needs it back unchanged in tool-calling
 turns (e.g. Anthropic, whose LangChain4j module keeps the signature in `AiMessage.attributes()`)
@@ -136,3 +114,49 @@ state; record the zoned time with the stored resume events as with user messages
 after a rebuild; and, only when the zone changed, deliver a stored runtime message to the model
 ("The user's time zone is now X (it was Y)"). A resume's events are confirmation responses, which
 ADK leaves out of the model's request, so that message cannot ride on them.
+
+
+## Planning: tasks cannot be reordered
+
+A plan's tasks run in the order they were created, and `add_task` only appends. A model that finds
+the order wrong can only abandon the remaining tasks and add them again in the order it wants.
+Needs a way to move a not-yet-started task, with the same tree validation `add_task` has.
+
+
+## Knowledge: a long non-indexed item cannot be read past its first 50,000 characters
+
+The knowledge search tool returns the first 50,000 characters of a non-indexed text item with its
+`total_chars`, but takes no offset to read the rest. It needs the same `offset` / `next_offset`
+paging the notebook read has.
+
+
+## Tool results: file tools still use the earlier shape
+
+`read_file`, `list_dir` and `grep_files` return `has_more` and counts next to `next_offset`. Bring
+them to the shape in the tool design guidelines (`next_offset` present while more remains).
+
+
+## Logging: debug messages build JSON even when debug is off
+
+`LOG.debug("…", JsonUtils.toJson(event))` computes the JSON on every call whatever the log level.
+It is in `BaseFlow` (every event, twice), `SessionActor.publishEvent` and the topology dumps around
+it. `LangChain4jModel` also logs the whole converted request at INFO on every model call. Guard
+these with `isDebugEnabled()` or log cheap arguments.
+
+
+## Some violations are corrected after the user has seen the bad reply
+
+The text of a reply is held back until the reply is complete while an output guardrail is enabled
+or a plan has open tasks. A reply that breaks any other rule (JSON that does not match the response
+format, an off-topic reply) is still streamed and stored first; the violation then reaches the model
+as a notice and it answers again, so the user sees both. Such a reply should be kept out of the
+user's stream, the way compaction events are (`EventUtils.markAsInternal`), while the model still
+sees it.
+
+## Note notices are delivered again after the session actor restarts
+
+When the session actor restarts during a run, the signals of notes already written are delivered
+to the model a second time ("Write note 'X' now as plain text", "Note 'Y' saved"), which can make it
+write a note again. Seen after a Mongo write failure restarted the actor mid-run: the notices for
+two earlier notes reached the model in the next model call. The delivered-signal record does not
+survive the restart.

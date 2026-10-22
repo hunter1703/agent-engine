@@ -105,17 +105,14 @@ public final class LangChain4jModel extends BaseLlm {
 
   private final ChatModel chatModel;
   private final StreamingChatModel streamingChatModel;
-  private final ToolsOffMode toolsOffMode;
 
   public LangChain4jModel(
       final ChatModel chatModel,
       final StreamingChatModel streamingChatModel,
-      final String modelName,
-      final ToolsOffMode toolsOffMode) {
+      final String modelName) {
     super(Objects.requireNonNull(modelName, "model name cannot be null"));
     this.chatModel = chatModel;
     this.streamingChatModel = streamingChatModel;
-    this.toolsOffMode = toolsOffMode;
   }
 
   @Override
@@ -272,15 +269,8 @@ public final class LangChain4jModel extends BaseLlm {
     final List<ToolSpecification> toolSpecifications = toToolSpecifications(llmRequest);
     builder.toolSpecifications(toolSpecifications);
     llmRequest.config().ifPresent(config -> applyConfig(builder, config, toolSpecifications));
-    // A model whose tool definitions are left out still sees its earlier calls in the history and
-    // tends to write a new one out as text, so those calls are shown as plain messages describing
-    // what was done.
-    final List<Content> contents =
-        removesToolDefinitions(llmRequest)
-            ? withToolCallsAsMessages(llmRequest.contents())
-            : llmRequest.contents();
     final ChatRequest chatRequest =
-        builder.messages(toMessages(llmRequest.getSystemInstructions(), contents)).build();
+        builder.messages(toMessages(llmRequest.getSystemInstructions(), llmRequest.contents())).build();
     LOGGER.info("Converted llmRequest : {}", JsonUtils.toJson(llmRequest));
     return chatRequest;
   }
@@ -556,23 +546,9 @@ public final class LangChain4jModel extends BaseLlm {
                                                 .toList()));
                           } else if (FunctionCallingConfigMode.Known.NONE.equals(
                               mode.knownEnum())) {
-                            switch (toolsOffMode) {
-                              case SEND_TOOL_CHOICE_NONE -> builder.toolChoice(ToolChoice.NONE);
-                              case REMOVE_TOOL_DEFINITIONS -> builder.toolSpecifications(List.of());
-                            }
+                            builder.toolChoice(ToolChoice.NONE);
                           }
                         }));
-  }
-
-  private boolean removesToolDefinitions(final LlmRequest llmRequest) {
-    return toolsOffMode == ToolsOffMode.REMOVE_TOOL_DEFINITIONS
-        && llmRequest
-            .config()
-            .flatMap(GenerateContentConfig::toolConfig)
-            .flatMap(ToolConfig::functionCallingConfig)
-            .flatMap(FunctionCallingConfig::mode)
-            .map(mode -> FunctionCallingConfigMode.Known.NONE.equals(mode.knownEnum()))
-            .orElse(false);
   }
 
   private static List<ChatMessage> toMessages(
@@ -612,29 +588,31 @@ public final class LangChain4jModel extends BaseLlm {
   private static List<ChatMessage> toUserOrToolResultMessages(final Content content) {
     final List<Part> parts = content.parts().orElse(List.of());
 
-    // ADK encodes tool results as user-role Content with FunctionResponse parts.
-    // When present, each becomes a separate ToolExecutionResultMessage; otherwise
-    // it is a UserMessage.
-    final List<ChatMessage> toolResults =
-        parts.stream()
-            .filter(part -> part.functionResponse().isPresent())
-            .map(
-                part -> {
-                  final FunctionResponse functionResponse = part.functionResponse().get();
-                  return (ChatMessage)
-                      ToolExecutionResultMessage.from(
-                          functionResponse.id().orElseThrow(),
-                          functionResponse.name().orElseThrow(),
-                          JsonUtils.toJson(functionResponse.response().orElseThrow()));
-                })
-            .toList();
-    if (!toolResults.isEmpty()) {
-      return toolResults;
+    // ADK encodes tool results as user-role Content with FunctionResponse parts. Each becomes a
+    // separate ToolExecutionResultMessage, which carries text only, so the content's other parts
+    // follow as a UserMessage.
+    final List<ChatMessage> messages =
+        new ArrayList<>(
+            parts.stream()
+                .filter(part -> part.functionResponse().isPresent())
+                .map(
+                    part -> {
+                      final FunctionResponse functionResponse = part.functionResponse().get();
+                      return (ChatMessage)
+                          ToolExecutionResultMessage.from(
+                              functionResponse.id().orElseThrow(),
+                              functionResponse.name().orElseThrow(),
+                              JsonUtils.toJson(functionResponse.response().orElseThrow()));
+                    })
+                .toList());
+    final List<Part> otherParts =
+        parts.stream().filter(part -> part.functionResponse().isEmpty()).toList();
+    if (messages.isEmpty() || !otherParts.isEmpty()) {
+      messages.add(
+          UserMessage.from(
+              mergeTextContents(otherParts.stream().map(LangChain4jModel::toUserContent).toList())));
     }
-
-    return List.of(
-        UserMessage.from(
-            mergeTextContents(parts.stream().map(LangChain4jModel::toUserContent).toList())));
+    return messages;
   }
 
   // Merge consecutive text runs so adapters that don't support multi-part text still work.
@@ -860,59 +838,4 @@ public final class LangChain4jModel extends BaseLlm {
     return StringUtils.isBlank(description) ? suffix : description + " " + suffix;
   }
 
-  private static List<Content> withToolCallsAsMessages(final List<Content> contents) {
-    final List<Content> rewritten = new ArrayList<>();
-    for (final Content content : contents) {
-      final List<Part> parts = new ArrayList<>();
-      for (final Part part : content.parts().orElse(List.of())) {
-        if (part.functionCall().isPresent()) {
-          parts.add(Part.fromText(actionCallMessage(part.functionCall().get())));
-        } else if (part.functionResponse().isPresent()) {
-          parts.add(Part.fromText(actionResultMessage(part.functionResponse().get())));
-        } else {
-          parts.add(part);
-        }
-      }
-      if (!parts.isEmpty()) {
-        rewritten.add(content.toBuilder().parts(parts).build());
-      }
-    }
-    return rewritten;
-  }
-
-  private static String actionCallMessage(final FunctionCall call) {
-    final StringBuilder message = new StringBuilder("Action: ").append(call.name().orElse(""));
-    call.id()
-        .filter(StringUtils::isNotBlank)
-        .ifPresent(id -> message.append(" [call id: ").append(id).append("]"));
-    message.append("\nInputs:").append(keyValueLines(call.args().orElse(Map.of())));
-    return message.toString();
-  }
-
-  private static String actionResultMessage(final FunctionResponse response) {
-    final StringBuilder message =
-        new StringBuilder("Action ").append(response.name().orElse("")).append(" result");
-    response
-        .id()
-        .filter(StringUtils::isNotBlank)
-        .ifPresent(id -> message.append(" [call id: ").append(id).append("]"));
-    message.append(":").append(keyValueLines(response.response().orElse(Map.of())));
-    return message.toString();
-  }
-
-  // One "- key: value" line per entry; a string value is shown as is, any other value as JSON.
-  private static String keyValueLines(final Map<String, Object> values) {
-    if (values.isEmpty()) {
-      return " none";
-    }
-    final StringBuilder lines = new StringBuilder();
-    values.forEach(
-        (key, value) ->
-            lines
-                .append("\n- ")
-                .append(key)
-                .append(": ")
-                .append(value instanceof String text ? text : JsonUtils.toJson(value)));
-    return lines.toString();
-  }
 }

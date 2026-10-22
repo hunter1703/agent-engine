@@ -433,6 +433,24 @@ that call site chose it.
    - Ground choices in signal-to-noise ratio, distraction avoidance, and phased problem-solving rather
      than system accounting metrics.
 
+10. **Tool results carry only what the model cannot already know**: a result is either data or
+    `{ error }`, never both. Leave out a `status: "success"` and a `message` that restate the call,
+    inputs echoed back (the call record already holds them), counts and flags that follow from what
+    is returned (`has_more` when `next_offset` is present, `results_count` for a list), and
+    anything the model can deduce without effort (the ancestors of the task it was told is now in
+    progress). Keep a value the model could only derive with real effort or not at all (which task
+    the system started next, an id the system generated). A call that has nothing to report returns
+    `{ status: "success" }`; a two-step call that is waiting returns `{ status: "pending" }`, the
+    instruction for the next step being delivered where that step happens. Name keys in snake_case,
+    the same way everywhere, and state the shape in the descriptor's `Returns:` line.
+
+11. **Put an instruction at the narrowest layer it applies to**: guidance about one nested field
+    goes in that field's description; guidance about several fields of a tool, or about how the
+    tool behaves, goes in the tool's description; guidance about when to reach for a group of tools
+    goes with the toolset or in the agent's prompt. Say a thing once, where it applies, and do not
+    repeat it in another layer (a descriptor, a reminder and a runtime message saying the same
+    rule drift apart).
+
 ## Agent Prompt Authoring Guidelines
 
 These apply when writing or editing an agent's `systemPrompt`, or any other agent-facing

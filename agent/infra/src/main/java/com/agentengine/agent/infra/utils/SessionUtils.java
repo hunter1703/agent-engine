@@ -2,22 +2,23 @@ package com.agentengine.agent.infra.utils;
 
 import static com.agentengine.agent.infra.utils.AgentUtils.getAgentIdFromContext;
 
-import com.agentengine.util.agents.ContentUtils;
-import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.agent.infra.agents.ConfiguredAgent;
+import com.agentengine.agent.infra.tools.planning.PlanningValidator;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.utils.CollectionUtils;
+import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
+import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.sessions.Session;
-import java.time.Instant;
+import io.reactivex.rxjava3.core.Flowable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public final class SessionUtils {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SessionUtils.class);
+  private static final String SESSION_STATES_KEY = "SESSION_STATES";
 
   private SessionUtils() {}
 
@@ -29,12 +30,27 @@ public final class SessionUtils {
     return getSessionState(context, true);
   }
 
-  public static SessionState getOrInitSessionState(final InvocationContext context) {
+  /**
+   * Whether the run can be paused and resumed later. A run that cannot be resumed has nobody to
+   * ask, so what would need a person's decision is refused instead.
+   */
+  public static boolean isResumable(final InvocationContext context) {
+    final BaseAgentConfig config = agentConfig(context);
+    return config == null || config.getRuntime().isResumable();
+  }
+
+  /** The config of the agent a callback runs in; null when it is not built from one. */
+  public static BaseAgentConfig agentConfig(final InvocationContext context) {
+    return context.agent() instanceof ConfiguredAgent agent ? agent.getAgentConfig() : null;
+  }
+
+  public static SessionState getOrInitSessionState(
+      final InvocationContext context, final PlanningValidator planningValidator) {
     final SessionState existing = getSessionState(context, false);
     if (existing != null) {
       return existing;
     }
-    final SessionState sessionState = SessionState.buildFrom(context.session());
+    final SessionState sessionState = SessionState.buildFrom(context.session(), planningValidator);
     final Map<String, Object> state = state(context);
     if (state != null) {
       // a session can have multiple agent states because a session can be shared by multiple
@@ -43,17 +59,10 @@ public final class SessionUtils {
       ConcurrentMap<String, SessionState> sessionStates =
           (ConcurrentMap<String, SessionState>)
               state.computeIfAbsent(
-                  "SESSION_STATES", _ -> new ConcurrentHashMap<String, SessionState>());
+                  SESSION_STATES_KEY, _ -> new ConcurrentHashMap<String, SessionState>());
       sessionStates.put(getAgentIdFromContext(context), sessionState);
     }
     return sessionState;
-  }
-
-  public static boolean isNewRun(final InvocationContext context) {
-    return context
-        .userContent()
-        .map(content -> !ContentUtils.isResumeContent(content))
-        .orElse(true);
   }
 
   public static String newSessionId() {
@@ -67,18 +76,22 @@ public final class SessionUtils {
     return context.session().state();
   }
 
-  public static Session toSession(final AgentSession agentSession, final List<Event> events) {
-    if (agentSession == null) {
-      return null;
-    }
-    final ConcurrentMap<String, Object> sessionState =
-        new ConcurrentHashMap<>(CollectionUtils.nullSafeMap(agentSession.getState()));
-    return Session.builder(agentSession.getId())
-        .appName(agentSession.getAgentId())
-        .userId(agentSession.getCreatedBy())
-        .state(sessionState)
-        .events(events == null ? new ArrayList<>() : new ArrayList<>(events))
-        .lastUpdateTime(Instant.ofEpochMilli(agentSession.getUpdatedTime()))
+  /**
+   * A context of no real run whose session state is {@code sessionState}, for driving tools outside
+   * one.
+   */
+  public static InvocationContext throwawayContext(final SessionState sessionState) {
+    final BaseAgent agent = new ThrowawayAgent();
+    final ConcurrentMap<String, SessionState> sessionStates = new ConcurrentHashMap<>();
+    sessionStates.put(agent.name(), sessionState);
+    final ConcurrentMap<String, Object> state = new ConcurrentHashMap<>();
+    state.put(SESSION_STATES_KEY, sessionStates);
+    final Session session =
+        Session.builder("throwaway").appName(agent.name()).userId("throwaway").state(state).build();
+    return InvocationContext.builder()
+        .sessionService(new InMemorySessionService())
+        .agent(agent)
+        .session(session)
         .build();
   }
 
@@ -90,7 +103,7 @@ public final class SessionUtils {
     SessionState sessionState = null;
     if (state != null) {
       Map<String, SessionState> sessionStates =
-          CollectionUtils.getMapFromMap(state, "SESSION_STATES");
+          CollectionUtils.getMapFromMap(state, SESSION_STATES_KEY);
       sessionState = CollectionUtils.getValueFromMap(sessionStates, agentId);
     }
 
@@ -103,5 +116,21 @@ public final class SessionUtils {
           "Session state not created for session : " + context.session().id());
     }
     return null;
+  }
+
+  private static final class ThrowawayAgent extends BaseAgent {
+    private ThrowawayAgent() {
+      super("throwaway", "", List.of(), List.of(), List.of());
+    }
+
+    @Override
+    protected Flowable<Event> runAsyncImpl(final InvocationContext invocationContext) {
+      return Flowable.empty();
+    }
+
+    @Override
+    protected Flowable<Event> runLiveImpl(final InvocationContext invocationContext) {
+      return Flowable.empty();
+    }
   }
 }

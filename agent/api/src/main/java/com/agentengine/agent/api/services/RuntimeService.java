@@ -51,10 +51,7 @@ public interface RuntimeService {
 
   void rollbackSession(String sessionId, String runId);
 
-  /**
-   * Stops the session: its actor refuses every command from then on, so its id can never be used
-   * again, and whatever was shared with it is forgotten.
-   */
+  /** Stops the session's actor, and with it any run in progress. */
   void stopSession(String sessionId);
 
   /** Creates or replaces an agent schedule, and the scheduler job that fires it. */

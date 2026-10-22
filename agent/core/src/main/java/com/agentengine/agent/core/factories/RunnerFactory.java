@@ -6,17 +6,19 @@ import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.SessionRunner;
 import com.agentengine.agent.core.session.commands.SessionCommand;
-import com.agentengine.agent.infra.agents.Agent;
+import com.agentengine.agent.infra.agents.ConfiguredAgent;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
 import com.agentengine.agent.infra.notebook.NotebookService;
 import com.agentengine.agent.infra.plugins.*;
 import com.agentengine.agent.infra.reminders.ReminderSyncService;
 import com.agentengine.agent.infra.session.SessionEventsRepository;
+import com.agentengine.agent.infra.tools.planning.PlanningValidator;
 import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.knowledge.api.services.KnowledgeService;
+import com.agentengine.knowledge.api.services.MediaService;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -33,6 +35,7 @@ import com.google.adk.runner.Runner;
 import com.google.adk.sessions.BaseSessionService;
 import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.sessions.Session;
+import com.agentengine.util.models.factories.ModelProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.*;
@@ -51,6 +54,9 @@ public class RunnerFactory {
   private final MemoryService memoryService;
   private final NotebookService notebookService;
   private final ReminderSyncService reminderSyncService;
+  private final PlanningValidator planningValidator;
+  private final MediaService mediaService;
+  private final ModelProvider modelProvider;
   private final DistributedCache<SessionRunner> runnersCache;
   private final DistributedCache<Runner> tempRunnersCache;
   private final FileService fileService;
@@ -66,6 +72,9 @@ public class RunnerFactory {
       final MemoryService memoryService,
       final NotebookService notebookService,
       final ReminderSyncService reminderSyncService,
+      final PlanningValidator planningValidator,
+      final MediaService mediaService,
+      final ModelProvider modelProvider,
       final DistributedCacheManager cacheManager,
       FileService fileService) {
     this.agentService = agentService;
@@ -77,6 +86,9 @@ public class RunnerFactory {
     this.memoryService = memoryService;
     this.notebookService = notebookService;
     this.reminderSyncService = reminderSyncService;
+    this.planningValidator = planningValidator;
+    this.mediaService = mediaService;
+    this.modelProvider = modelProvider;
     this.runnersCache =
         new DistributedCache.Builder<SessionRunner>(RuntimeService.RUNNER_CACHE, cacheManager)
             .removalListener(SessionRunner::stop)
@@ -108,7 +120,8 @@ public class RunnerFactory {
                 .get(
                     () -> {
                       final BaseAgentConfig config = agentService.getAgent(agentId);
-                      final Agent agent = agentProvider.create(config);
+                      config.getRuntime().setResumable(false);
+                      final BaseAgent agent = agentProvider.create(config);
                       final App app =
                           App.builder()
                               .plugins(buildPlugins(agent))
@@ -134,7 +147,7 @@ public class RunnerFactory {
   private SessionRunner build(
       final String agentId, final String sessionId, final ActorRef<SessionCommand> actor) {
     final BaseAgentConfig config = agentService.getAgent(agentId);
-    final Agent agent = agentProvider.create(config);
+    final BaseAgent agent = agentProvider.create(config);
     final App app =
         App.builder()
             .plugins(buildPlugins(agent))
@@ -182,37 +195,34 @@ public class RunnerFactory {
         .toList();
   }
 
-  private List<BasePlugin> buildPlugins(final Agent rootAgent) {
-    final Queue<Agent> queue = new ArrayDeque<>();
+  private List<BasePlugin> buildPlugins(final BaseAgent rootAgent) {
+    final Queue<BaseAgent> queue = new ArrayDeque<>();
     queue.add(rootAgent);
     final Set<String> visited = new HashSet<>();
     final Map<String, GuardrailPolicyFactory.GuardrailPolicy> policies = new LinkedHashMap<>();
 
     while (!queue.isEmpty()) {
-      final Agent agent = queue.poll();
-      if (!visited.add(agent.name())) {
+      final BaseAgent agent = queue.poll();
+      if (!(agent instanceof ConfiguredAgent configured) || !visited.add(agent.name())) {
         continue;
       }
       final GuardrailPolicyFactory.GuardrailPolicy policy =
-          guardrailPolicyFactory.build(agent.getAgentConfig().getGuardrails());
+          guardrailPolicyFactory.build(configured.getAgentConfig().getGuardrails());
       if (policy.enabled()) {
         policies.put(agent.name(), policy);
       }
       for (final BaseAgent subAgent : CollectionUtils.nullSafeList(agent.subAgents())) {
-        if (subAgent instanceof Agent nestedAgent) {
-          queue.add(nestedAgent);
-        }
+        queue.add(subAgent);
       }
     }
 
     final List<BasePlugin> plugins =
         List.of(
-            new InitPlugin(reminderSyncService),
+            new InitPlugin(notebookService, planningValidator, reminderSyncService),
             new GuardrailPlugin(policies),
             new ReminderPlugin(),
-            new ToolTimingPlugin(),
-            new NotebookPlugin(notebookService),
-            new PlanningPlugin(),
+            new ToolResultPlugin(knowledgeService, fileService, mediaService, modelProvider),
+            new PlanningPlugin(planningValidator),
             new ResponseValidationPlugin());
     return List.of(new PluginGroup("engine", plugins), AddEventMetadataPlugin.INSTANCE);
   }

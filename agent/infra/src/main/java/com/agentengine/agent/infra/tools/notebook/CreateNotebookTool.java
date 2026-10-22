@@ -17,15 +17,12 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.CREATE_NOTEBOOK,
           """
-          Creates a new empty notebook for storing titled notes. \
-          Returns: { status: "success", notebook_id }, or { error } if the name is already in use.""",
+          Creates an empty notebook for titled notes.
+          Returns: { notebook_id }, or { error } on failure.""",
           Map.of());
 
-  private final NotebookService notebookService;
-
   public CreateNotebookTool(final NotebookService notebookService) {
-    super(DESCRIPTOR);
-    this.notebookService = notebookService;
+    super(DESCRIPTOR, notebookService);
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -41,7 +38,7 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
               name = Constants.ToolArgs.NOTEBOOK_DESCRIPTION,
               description =
                   """
-                  What this notebook is for, so other agents granted access can understand its purpose without you having to explain it again.""",
+                  Describes the notebook for anyone choosing among notebooks: its purpose, the kind of notes it holds, and what does not belong in it.""",
               optional = true)
           final String description) {
     if (StringUtils.isBlank(name)) {
@@ -58,12 +55,6 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
     SessionUtils.getSessionState(toolContext.invocationContext())
         .syncNotebookReminder(notebookService);
     return ToolOutput.direct(
-        Map.of(
-            Constants.ToolStatus.STATUS,
-            Constants.ToolStatus.SUCCESS,
-            Constants.ToolArgs.NOTEBOOK_ID,
-            notebook.getId(),
-            "message",
-            "Notebook '%s' successfully created".formatted(notebook.getId())));
+        Map.of(Constants.ToolArgs.NOTEBOOK_ID, notebook.getId()));
   }
 }

@@ -7,7 +7,6 @@ import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.cloudstorage.CloudStorageService;
-import com.agentengine.util.cloudstorage.FileService;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
@@ -28,7 +27,6 @@ public final class WebToolsetProvider extends AbstractToolsetProvider {
       final ConnectionService connectionService,
       final ConnectorCacheService connectorCacheService,
       final ConnectorToolDeclarationCache connectorToolDeclarationCache,
-      final FileService fileService,
       final KnowledgeService knowledgeService,
       final CloudStorageService cloudStorageService) {
     super(
@@ -41,6 +39,6 @@ public final class WebToolsetProvider extends AbstractToolsetProvider {
                         connectionService, connectorCacheService, connectorToolDeclarationCache)),
             new ToolDefinition(
                 GetWebpageTool.DESCRIPTOR,
-                () -> new GetWebpageTool(fileService, knowledgeService, cloudStorageService))));
+                () -> new GetWebpageTool(knowledgeService, cloudStorageService))));
   }
 }

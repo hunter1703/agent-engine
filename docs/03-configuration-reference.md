@@ -63,17 +63,30 @@ For each vector found in the input, the store groups the indexed images at least
 ## 3.4 Context Strategy Configs
 
 The strategy type is selected by the config subtype. An agent without one uses `compaction` with
-its defaults. It runs ADK's `TailRetentionEventCompactor`: once the history since the last
-compaction passes `tokenThreshold` estimated tokens, everything but the last `keepLastEvents` events
-is replaced, and the replacement is stored as a compaction event in the session, so it is never
+its defaults. Once the context passes the trigger threshold, the latest events that fit the recency
+threshold are kept as they are and everything older, including an earlier summary, is replaced by
+one summary. The replacement is stored as a compaction event in the session, so it is never
 recomputed on resume or restart.
+
+The context size is the prompt of the latest model response, that response, and what came after
+it; right after a compaction it is estimated from the remaining history.
+
+A tool call is never summarized without its result: when the result lies in the latest events, the
+summary reaches on to include it, so the events kept can be fewer than the recency threshold allows.
+A call still waiting for its result (a long-running or asynchronous tool) is kept, with everything
+after it, even beyond the recency threshold, so the result lands next to its call when it arrives.
 
 ### `compaction` (`CompactionContextStrategyConfig`)
 
 Replaces older events with a model-written summary, sent as a user message.
 
-- `tokenThreshold` (default `12000`)
-- `keepLastEvents` (default `20`)
+- `thresholdUnit` (default `PERCENT`): `PERCENT` measures both thresholds as a percentage of the
+  agent model's `maxContextLength`; `TOKENS` measures both in tokens
+- `triggerThreshold` (default `95`): the context size past which the history is compacted
+- `recencyThreshold` (default `10`): the most the latest events may take after a compaction; it
+  must be above 0 and below `triggerThreshold`, which is at most 100 for `PERCENT`. A model needs
+  headroom for its reply and for the next tool result, so a model with a long maximum output is
+  better set below the default (e.g. `80`)
 - `modelId` (optional override for the compaction model)
 - `promptTemplate` (optional; ADK's `LlmEventSummarizer` template, with `{conversation_history}`
   standing for the events being summarized)
@@ -107,7 +120,7 @@ Rule base fields:
 Model config is polymorphic, discriminated by `type`:
 
 - `type`: `CHAT` (`ChatModelConfig`) or `EMBEDDING` (`EmbeddingModelConfig`)
-- `provider`: `OPEN_AI`, `OLLAMA`, `Z_AI`, `GEMINI`. `OPEN_AI` is the default for any provider that follows the OpenAI API as is (OpenAI, Groq, Mistral, NVIDIA, LLM7, llama.cpp and so on). `OLLAMA`, `Z_AI` and `GEMINI` each have a provider of their own because they differ: Ollama ignores `tool_choice`, Z.ai has a `thinking` field and accepts only `tool_choice: auto`, and Gemini has its own client. A server reached through `OPEN_AI` or `OLLAMA` needs a base URL ending in `/v1`.
+- `provider`: `OPEN_AI`, `Z_AI`, `GEMINI`. `OPEN_AI` is the default for any provider that follows the OpenAI API as is (OpenAI, Groq, Mistral, NVIDIA, LLM7, Ollama, llama.cpp and so on). `Z_AI` and `GEMINI` each have a provider of their own because they differ: Z.ai has a `thinking` field and accepts only `tool_choice: auto`, and Gemini has its own client. A server reached through `OPEN_AI` needs a base URL ending in `/v1`.
 
 ### Base fields (all model types)
 

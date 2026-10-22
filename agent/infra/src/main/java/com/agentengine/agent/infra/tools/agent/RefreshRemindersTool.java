@@ -18,10 +18,9 @@ public class RefreshRemindersTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.REFRESH_REMINDERS,
-          "Returns your current reminders: the notebooks, knowledge and anything else they list"
-              + " that you can work with. Call it if you suspect they changed in the background, or"
-              + " if access to something you should be able to reach fails. Each result replaces"
-              + " the reminders shown earlier, and earlier results are marked expired.");
+          "Returns your reminders as they are now: the notebooks, knowledge and anything else they"
+              + " list. Call it when you suspect they changed elsewhere, or when access to something"
+              + " you should have fails. Each result replaces the earlier ones.");
 
   private final ReminderSyncService reminderSyncService;
 
@@ -39,10 +38,6 @@ public class RefreshRemindersTool extends Tool {
 
     return ToolOutput.direct(
         Map.of(
-            "status",
-            "success",
-            "message",
-            "Your current reminders. They replace any shown earlier.",
             "reminders",
             formattedReminders == null ? "You have no reminders right now." : formattedReminders));
   }

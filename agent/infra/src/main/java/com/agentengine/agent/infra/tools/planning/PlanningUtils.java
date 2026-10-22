@@ -1,20 +1,26 @@
 package com.agentengine.agent.infra.tools.planning;
 
+import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.beans.PlanStatus;
 import com.agentengine.agent.infra.tools.beans.Task;
 import com.agentengine.agent.infra.tools.beans.TaskStatus;
+import com.agentengine.agent.infra.utils.SessionState;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.common.codec.JsonUtils;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.agentengine.util.common.utils.StringUtils;
-import com.google.adk.events.Event;
-import com.google.genai.types.Content;
-import com.google.genai.types.FunctionCall;
-import com.google.genai.types.FunctionResponse;
-import com.google.genai.types.Part;
 
-import java.util.*;
+import com.google.adk.events.Event;
+import com.google.adk.tools.ToolContext;
+import com.google.genai.types.FunctionCall;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public final class PlanningUtils {
 
@@ -63,24 +69,16 @@ public final class PlanningUtils {
     if (StringUtils.isNotBlank(task.getResult())) {
       sb.append("\n  Result: ").append(task.getResult());
     }
-    return sb.toString();
+    return sb.append('\n').toString();
   }
 
   public static String buildTaskFocusPrompt(final Plan plan) {
     final Task activeLeaf = getActiveLeaf(plan);
     if (activeLeaf != null) {
-      return "TASK LOOP: Continue until all tasks are done or abandoned. FOCUS TASK:\n- "
-          + formatTaskFocus(activeLeaf)
-          + "\nWork only on this task until it is completed. Do not start working on other tasks "
-          + "before marking this one complete and advancing to the next task.";
+      return "Active task:\n- " + formatTaskFocus(activeLeaf);
     }
     final Task nextTodo = findNextTodoTask(plan);
-    if (nextTodo != null) {
-      return "TASK LOOP: Continue until all tasks are done or abandoned. NEXT TASK:\n- "
-          + formatTaskFocus(nextTodo)
-          + "\nStart working on this task now. Do not start other tasks before completing it.";
-    }
-    return "";
+    return nextTodo == null ? "" : "Next task:\n- " + formatTaskFocus(nextTodo);
   }
 
   /**
@@ -96,57 +94,30 @@ public final class PlanningUtils {
     return StringUtils.joinNonBlank(List.of(summary, focus));
   }
 
-  public static Plan buildFrom(final List<Event> events) {
-    final Map<String, FunctionCall> pendingCallsByCallId = new HashMap<>();
+  /**
+   * The plan {@code events} left, found by running their recorded planning calls again, in order,
+   * through the planning tools in a context of no real run. A call that failed when it was made
+   * fails again and changes nothing.
+   */
+  public static Plan recoverPlan(final List<Event> events, final PlanningValidator validator) {
+    final Map<String, Tool> nameVsTool =
+        Map.of(
+            Constants.ToolNames.CREATE_PLAN, new CreatePlanTool(validator),
+            Constants.ToolNames.ADD_TASK, new AddTaskTool(validator),
+            Constants.ToolNames.COMPLETE_TASK, new CompleteTaskTool(validator),
+            Constants.ToolNames.ABANDON_PLAN, new AbandonPlanTool());
+    final SessionState recovered = new SessionState();
+    final ToolContext toolContext =
+        ToolContext.builder(SessionUtils.throwawayContext(recovered)).build();
     for (final Event event : CollectionUtils.nullSafeList(events)) {
-      final Content content = event.content().orElse(null);
-      if (content == null) {
-        continue;
-      }
-      for (final Part part : content.parts().orElse(List.of())) {
-        final FunctionCall call = part.functionCall().orElse(null);
-        if (call == null) {
-          continue;
+      for (final FunctionCall call : event.functionCalls()) {
+        final Tool tool = nameVsTool.get(call.name().orElse(null));
+        if (tool != null) {
+          tool.runAsync(call.args().orElse(Map.of()), toolContext).blockingGet();
         }
-        final String toolName = call.name().orElse(null);
-        if (!Constants.ToolNames.isPlanningTool(toolName)) {
-          continue;
-        }
-        final String callId = call.id().orElse(null);
-        if (callId == null) {
-          continue;
-        }
-        pendingCallsByCallId.put(callId, call);
       }
     }
-    Plan plan = null;
-    for (final Event event : CollectionUtils.nullSafeList(events)) {
-      final Content content = event.content().orElse(null);
-      if (content == null) {
-        continue;
-      }
-      for (final Part part : content.parts().orElse(List.of())) {
-        final FunctionResponse response = part.functionResponse().orElse(null);
-        if (response == null) {
-          continue;
-        }
-        final String callId = response.id().orElse(null);
-        final FunctionCall pendingCall = callId == null ? null : pendingCallsByCallId.get(callId);
-        if (pendingCall == null) {
-          continue;
-        }
-        final Map<String, Object> responseMap = response.response().orElse(Map.of());
-        if (responseMap.containsKey("error")) {
-          continue;
-        }
-        plan = applyReplayedEvent(
-            plan,
-            pendingCall.name().orElse(""),
-            pendingCall.args().orElse(Map.of()),
-            responseMap);
-      }
-    }
-    return plan;
+    return recovered.plan();
   }
 
   public static Plan applyTaskUpdate(
@@ -164,10 +135,77 @@ public final class PlanningUtils {
     }
     task.setStatus(newStatus);
     task.setResult(result);
+    if (newStatus == TaskStatus.ABANDONED) {
+      abandonOpenDescendants(task, getTaskVsChildren(updatedPlan.getTasks()));
+    }
     if (updatedPlan.allTasksTerminal()) {
       updatedPlan.finish(PlanStatus.DONE, result);
     }
     return updatedPlan;
+  }
+
+  /**
+   * {@code tasks} as a plan holds them: all to do, and each parent named as the plan's task of that
+   * name (whatever the case it was given in).
+   */
+  public static List<Task> normalizedTasks(final List<Task> tasks) {
+    final List<Task> planTasks = CollectionUtils.nullSafeList(tasks);
+    final Map<String, String> loweredNameVsName = new HashMap<>();
+    for (final Task task : planTasks) {
+      if (StringUtils.isNotBlank(task.getName())) {
+        loweredNameVsName.put(task.getName().trim().toLowerCase(), task.getName());
+      }
+      task.setStatus(TaskStatus.TODO);
+      task.setResult(null);
+    }
+    for (final Task task : planTasks) {
+      if (StringUtils.isNotBlank(task.getParent())) {
+        final String resolved = loweredNameVsName.get(task.getParent().trim().toLowerCase());
+        if (resolved != null) {
+          task.setParent(resolved);
+        }
+      }
+    }
+    return planTasks;
+  }
+
+  /** The plan of {@code tasks}, which {@link #normalizedTasks} made and are valid: the first actionable task, with its ancestors, in progress. */
+  public static Plan buildPlan(final String title, final String goal, final List<Task> tasks) {
+    final Plan plan = new Plan(title, goal, tasks);
+    activateNextActionableLineage(plan);
+    return plan;
+  }
+
+  /**
+   * A to-do task for {@code plan}, its parent named as the plan names it (whatever the case it was
+   * given in); a parent the plan lacks is kept as given, for the validator to report.
+   */
+  public static Task buildTask(
+      final Plan plan,
+      final String name,
+      final String parent,
+      final String goal,
+      final String description) {
+    final Task task = new Task(name, goal);
+    if (StringUtils.isNotBlank(parent)) {
+      final Task existingParent = findTaskByName(plan, parent);
+      task.setParent(existingParent != null ? existingParent.getName() : parent);
+    }
+    if (StringUtils.isNotBlank(description)) {
+      task.setDescription(description);
+    }
+    return task;
+  }
+
+  private static void abandonOpenDescendants(
+      final Task task, final Map<String, List<Task>> parentVsChildren) {
+    for (final Task child : CollectionUtils.nullSafeList(parentVsChildren.get(task.getName()))) {
+      if (!isTerminalStatus(taskStatus(child))) {
+        child.setStatus(TaskStatus.ABANDONED);
+        child.setResult("Abandoned with its parent task '" + task.getName() + "'.");
+      }
+      abandonOpenDescendants(child, parentVsChildren);
+    }
   }
 
   /**
@@ -275,38 +313,6 @@ public final class PlanningUtils {
 
   public static String describeTask(final Task task) {
     return "task '" + task.getName() + "'";
-  }
-
-  private static Plan applyReplayedEvent(
-      Plan currentPlan,
-      final String toolName,
-      final Map<String, Object> args,
-      final Map<String, Object> responseMap) {
-    if (Constants.ToolNames.CREATE_PLAN.equals(toolName)) {
-      return JsonUtils.fromMap(
-          CollectionUtils.getMapFromMap(responseMap, "createdPlan"), Plan.class);
-    }
-    if (Constants.ToolNames.ADD_TASK.equals(toolName)) {
-      currentPlan = AddTaskTool.applyAddTask(
-          currentPlan,
-          CollectionUtils.getStringValueFromMap(args, Constants.ToolArgs.PARENT),
-          CollectionUtils.getStringValueFromMap(args, "name"),
-          CollectionUtils.getStringValueFromMap(args, "goal"),
-          CollectionUtils.getStringValueFromMap(args, "description"));
-    } else if (Constants.ToolNames.COMPLETE_TASK.equals(toolName)) {
-      final String task = CollectionUtils.getStringValueFromMap(args, "task");
-      final String taskResult = CollectionUtils.getStringValueFromMap(args, "result");
-      final String rawStatus = CollectionUtils.getStringValueFromMap(args, "status");
-      final TaskStatus taskStatus =
-          StringUtils.isNotBlank(rawStatus)
-              ? TaskStatus.valueOfOrDefault(rawStatus)
-              : TaskStatus.DONE;
-      currentPlan = applyTaskUpdate(currentPlan, task, taskStatus, taskResult);
-      if (isTerminalStatus(taskStatus) && !currentPlan.getStatus().isTerminal()) {
-        activateNextActionableLineage(currentPlan);
-      }
-    }
-    return currentPlan;
   }
 
   private static String formatTaskFocus(final Task task) {

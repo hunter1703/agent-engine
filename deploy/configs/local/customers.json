@@ -6,7 +6,7 @@
     "defaultModels": {
       "smartModelId": "gemma4",
       "visionModelId": "gemma4",
-      "fastModelId": "gemma4",
+      "fastModelId": "zai-glm-4-5-flash",
       "modalityVsEmbeddingModelId": {
         "TEXT": "nomic-embed-text",
         "IMAGE": "arcface-image-embed"

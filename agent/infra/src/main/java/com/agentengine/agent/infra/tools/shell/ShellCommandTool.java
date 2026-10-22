@@ -2,6 +2,7 @@ package com.agentengine.agent.infra.tools.shell;
 
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.tools.Tool;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
@@ -76,6 +77,9 @@ public final class ShellCommandTool extends Tool {
     }
     if (BLOCKED.matcher(command).find()) {
       if (toolContext.toolConfirmation().isEmpty()) {
+        if (!SessionUtils.isResumable(toolContext.invocationContext())) {
+          return ToolOutput.direct(Map.of("error", approvalUnavailable("This command")));
+        }
         toolContext.requestConfirmation(
             String.format("Should the command `%s` be executed?", command),
             Map.of("command", command));

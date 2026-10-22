@@ -2,12 +2,12 @@ package com.agentengine.agent.infra.utils;
 
 import com.agentengine.agent.infra.tools.HumanInTheLoopTool;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.agents.ContentUtils;
 import com.agentengine.util.agents.beans.InterruptKind;
 import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.flows.llmflows.ResponseProcessor.ResponseProcessingResult;
+import com.google.adk.events.Event;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -20,38 +20,29 @@ public final class ResponseUtils {
 
   private ResponseUtils() {}
 
-  /* Mirrors {@code Event.finalResponse()} semantics at the LLM-response level. */
+  /**
+   * Whether {@code response} is the model's answer: complete, with no tool call. It may be empty;
+   * text written next to a tool call is narration, not the answer.
+   */
   public static boolean isFinalAnswer(final LlmResponse response) {
-    if (!hasVisibleText(response) || response.partial().orElse(false)) {
-      return false;
-    }
-    final List<Part> parts =
-        response.content().map(content -> content.parts().orElse(List.of())).orElse(List.of());
-    return parts.stream()
-        .noneMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
+    return response != null && !response.partial().orElse(false) && !hasToolCall(response);
+  }
+
+  /** The same test for the event a response became, which must be the model's own. */
+  public static boolean isFinalAnswer(final Event event) {
+    return EventUtils.isModelEvent(event)
+        && !event.partial().orElse(false)
+        && event.functionCalls().isEmpty()
+        && event.functionResponses().isEmpty();
+  }
+
+  private static boolean hasToolCall(final LlmResponse response) {
+    return response.content().map(content -> content.parts().orElse(List.<Part>of())).orElse(List.of()).stream()
+        .anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
   }
 
   public static Single<ResponseProcessingResult> single(final LlmResponse response) {
     return Single.just(ResponseProcessingResult.create(response, List.of()));
-  }
-
-  private static boolean hasVisibleText(final LlmResponse response) {
-    if (response == null || response.content().isEmpty()) {
-      return false;
-    }
-    return ContentUtils.hasVisibleText(response.content().orElse(null));
-  }
-
-  /** {@code response} with a call to {@code toolName}, without arguments, added after its parts. */
-  public static LlmResponse withFunctionCall(final LlmResponse response, final String toolName) {
-    final Content content =
-        response.content().orElseGet(() -> Content.builder().role("model").build());
-    final List<Part> parts = new ArrayList<>(content.parts().orElse(List.of()));
-    parts.add(
-        Part.builder()
-            .functionCall(FunctionCall.builder().name(toolName).args(Map.of()).build())
-            .build());
-    return response.toBuilder().content(content.toBuilder().parts(parts).build()).build();
   }
 
   public static ToolConfirmation buildToolConfirmation(

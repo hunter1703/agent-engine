@@ -10,6 +10,7 @@
   "repeatPenalty": 1.05,
   "maxContextLength": 32768,
   "toolCallingEnabled": true,
+  "modalities": ["TEXT", "IMAGE"],
   "thoughtsEnabled": true,
   "provider": "OPEN_AI",
   "type": "CHAT"
