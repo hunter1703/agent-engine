@@ -1,7 +1,6 @@
 package com.agentengine.agent.infra.agents.flow;
 
 import com.agentengine.agent.infra.utils.SessionUtils;
-import com.agentengine.agent.infra.agents.processors.request.CompactionProcessor;
 import com.agentengine.agent.infra.agents.processors.request.SignalProcessor;
 import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.ResponseUtils;
@@ -13,7 +12,8 @@ import com.agentengine.util.common.utils.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.*;
-import com.google.adk.summarizer.EventCompactor;
+import com.agentengine.agent.infra.agents.processors.request.CompactionProcessor;
+import com.agentengine.agent.infra.compaction.EventCompactor;
 import com.google.common.collect.ImmutableList;
 import com.google.genai.types.Content;
 import com.google.genai.types.FinishReason;
@@ -22,6 +22,7 @@ import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import io.vertx.core.impl.ConcurrentHashSet;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,6 +127,12 @@ public final class BaseFlow extends SingleFlow {
               // sole authoritative commit point for the turn.
               final Event forwarded =
                   event.toBuilder()
+                      // ADK's events of one model call share one actions object; a copy keeps what
+                      // is set on this event, such as the internal mark below, from reaching them.
+                      .actions(
+                          event.actions().toBuilder()
+                              .stateDelta(new ConcurrentHashMap<>(event.actions().stateDelta()))
+                              .build())
                       .content(content.toBuilder().parts(filteredParts).build())
                       .turnComplete(null)
                       .finishReason(null)

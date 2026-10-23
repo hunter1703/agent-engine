@@ -5,6 +5,7 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.CommunityExpertsService;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.agent.infra.notebook.NotebookService;
+import com.agentengine.agent.infra.plugins.RequestPlugin;
 import com.agentengine.agent.infra.plugins.InitPlugin;
 import com.agentengine.agent.infra.plugins.PluginGroup;
 import com.agentengine.agent.infra.reminders.ReminderSyncService;
@@ -108,7 +109,8 @@ public final class CommunityExpertsServiceImpl implements CommunityExpertsServic
                                   "expert",
                                   List.of(
                                       new InitPlugin(notebookService, planningValidator, reminderSyncService),
-                                      new ResponseValidationPlugin()))))
+                                      new ResponseValidationPlugin(),
+                                      new RequestPlugin()))))
                       .rootAgent(agent)
                       .name(appName)
                       .build())

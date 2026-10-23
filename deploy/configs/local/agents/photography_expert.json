@@ -10,7 +10,7 @@
     "photography_editor"
   ],
   "contextStrategy": {
-    "type": "COMPACTION"
+    "type": "DEFAULT"
   },
   "tools": [
     {

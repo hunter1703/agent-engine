@@ -62,21 +62,32 @@ For each vector found in the input, the store groups the indexed images at least
 
 ## 3.4 Context Strategy Configs
 
-The strategy type is selected by the config subtype. An agent without one uses `compaction` with
+The strategy type is selected by the config subtype. An agent without one uses `DEFAULT` with
 its defaults. Once the context passes the trigger threshold, the latest events that fit the recency
-threshold are kept as they are and everything older, including an earlier summary, is replaced by
-one summary. The replacement is stored as a compaction event in the session, so it is never
-recomputed on resume or restart.
+threshold are kept as they are and every older event no summary covers yet is replaced by a
+summary. An event is summarized at most once and a summary is never summarized again, so the
+summaries stay in the context beside the events they do not cover. Each is stored as a compaction
+event in the session, so it is never recomputed on resume or restart.
 
 The context size is the prompt of the latest model response, that response, and what came after
-it; right after a compaction it is estimated from the remaining history.
+it; right after a compaction it is estimated from the summaries and the events no summary covers.
+
+The summary is asked from the model by sending it the agent's last model request again with one
+more message, an instruction to summarize, when the compaction model is the agent's own model. A
+provider that caches the start of a prompt then has all of it cached, and the summary may mention the
+latest events, which are kept as well. A different compaction model is sent the messages and the
+instruction alone and reads them in full. The compaction is made right before the history of a
+model request is built, and its event is stored and shown to no user. A run's first model call is
+never compacted, since there is no earlier request to summarize.
 
 A tool call is never summarized without its result: when the result lies in the latest events, the
 summary reaches on to include it, so the events kept can be fewer than the recency threshold allows.
 A call still waiting for its result (a long-running or asynchronous tool) is kept, with everything
 after it, even beyond the recency threshold, so the result lands next to its call when it arrives.
+Summaries are never made smaller, so an agent whose summaries alone pass the trigger threshold
+cannot be compacted further.
 
-### `compaction` (`CompactionContextStrategyConfig`)
+### `DEFAULT` (`CompactionContextStrategyConfig`)
 
 Replaces older events with a model-written summary, sent as a user message.
 
@@ -88,8 +99,8 @@ Replaces older events with a model-written summary, sent as a user message.
   headroom for its reply and for the next tool result, so a model with a long maximum output is
   better set below the default (e.g. `80`)
 - `modelId` (optional override for the compaction model)
-- `promptTemplate` (optional; ADK's `LlmEventSummarizer` template, with `{conversation_history}`
-  standing for the events being summarized)
+- `promptTemplate` (optional; the instruction to summarize, with `{conversation_history}` standing
+  for the conversation above)
 
 ## 3.5 Agent Runtime Config
 

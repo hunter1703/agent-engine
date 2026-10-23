@@ -80,15 +80,12 @@ shared with the orchestrator instead of what was shared with each sub-agent. Dec
 sub-agent acts (its own child session, as MANAGER-mode sub-agents get, or the transferred-agent model)
 and make the build and the runtime context follow it.
 
-## Compaction: keep the latest history by tokens, not by event count
+## Deploy: `deployae deploy` goes on after a failed build
 
-The `COMPACTION` strategy uses ADK's `TailRetentionEventCompactor`, which keeps the last
-`keepLastEvents` events as they are and summarizes the rest. A count does not bound size: when the
-kept events alone exceed `tokenThreshold` (e.g. a few long notes), nothing older is left to
-summarize, or every request compacts again without the prompt ever getting under the threshold.
-Write an `EventCompactor` that keeps the latest events up to a `keepLastTokens` smaller than
-`tokenThreshold`, never cutting between a tool call and its result, and reuses ADK's summarizer and
-`EventCompaction` handling; `EventUtils.keepCallsWithResults` then goes away.
+When the Gradle build step fails (e.g. a compile error), `deployae deploy` still rolls out and reports
+completion, with the pods left on the previous image. Stop the deploy at the first failed step.
+Also, an image tag taken from the git commit is reused for a dirty working tree, so the pods are not
+replaced; a tag that follows the working tree's content would avoid it.
 
 ## Models: carry thinking signatures through `LangChain4jModel`
 
@@ -152,11 +149,3 @@ format, an off-topic reply) is still streamed and stored first; the violation th
 as a notice and it answers again, so the user sees both. Such a reply should be kept out of the
 user's stream, the way compaction events are (`EventUtils.markAsInternal`), while the model still
 sees it.
-
-## Note notices are delivered again after the session actor restarts
-
-When the session actor restarts during a run, the signals of notes already written are delivered
-to the model a second time ("Write note 'X' now as plain text", "Note 'Y' saved"), which can make it
-write a note again. Seen after a Mongo write failure restarted the actor mid-run: the notices for
-two earlier notes reached the model in the next model call. The delivered-signal record does not
-survive the restart.

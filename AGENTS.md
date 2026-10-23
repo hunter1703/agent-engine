@@ -268,6 +268,13 @@ the reader and the runtime equally.
 4. Name a method that gets one thing by its id `get`, not `find`, `fetch` or `lookup` — e.g.
    `InfraConfigService.get(id)`. Reserve `find` for searches that match by a query or condition
    and may return several results.
+5. Name by grammar. A variable, field or parameter is a noun (or a noun phrase, whose adjectives
+   qualify the noun): `uncoveredEvents`, `pendingCompaction`, never a bare adjective or participle
+   standing in for the thing (`uncovered`, `summarized`, `kept`, `toSummarize`). A method is a verb
+   for what it does (`summarize`, `compact`), or, when it only returns something, a noun phrase for
+   exactly what it returns (`compactionEvent(events, summary)`), never a word that names the process
+   or a property instead of the thing (`compaction(...)`, `covered(...)`). Booleans keep the
+   `is`/`has`/`can`-style phrase that reads as a question.
 
 ### Code Structure Conventions
 

@@ -20,6 +20,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -82,12 +83,27 @@ public class ModelProvider {
         .acquire();
   }
 
+  /** The id of the model {@code modelId} names, which a default model sentinel resolves to. */
+  public String resolveId(final String modelId) {
+    return resolveModelId(modelId, defaultModelIdSupplier(modelId));
+  }
+
   public boolean isToolCallingEnabled(final String modelId) {
     return modelConfig(modelId)
         .filter(ChatModelConfig.class::isInstance)
         .map(ChatModelConfig.class::cast)
         .map(ChatModelConfig::isToolCallingEnabled)
         .orElse(false);
+  }
+
+  /** The model's context length in tokens; empty when the model has none configured. */
+  public OptionalInt getMaxContextLength(final String modelId) {
+    return modelConfig(modelId)
+        .filter(ChatModelConfig.class::isInstance)
+        .map(ChatModelConfig.class::cast)
+        .map(ChatModelConfig::getMaxContextLength)
+        .map(OptionalInt::of)
+        .orElse(OptionalInt.empty());
   }
 
   /** Whether the model takes images as input. */

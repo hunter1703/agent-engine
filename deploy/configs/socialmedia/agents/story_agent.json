@@ -13,7 +13,7 @@
     "story_phase_4_writer"
   ],
   "contextStrategy": {
-    "type": "COMPACTION"
+    "type": "DEFAULT"
   },
   "tools": []
 }

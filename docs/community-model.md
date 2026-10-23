@@ -16,7 +16,7 @@ Experts are regular agent configs stored in `configs/agents/community/experts/` 
   "capabilities": ["title_generation", "summarization"],
   "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
   "systemPrompt": "...",
-  "contextStrategy": { "type": "COMPACTION" },
+  "contextStrategy": { "type": "DEFAULT" },
   "tools": []
 }
 ```

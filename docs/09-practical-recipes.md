@@ -29,7 +29,7 @@ curl -s -X POST http://localhost:18080/v1/agent/upsert \
     "name":"Echo Agent",
     "modelId":"local-qwen",
     "systemPrompt":"You are concise.",
-    "contextStrategy":{"type":"COMPACTION"},
+    "contextStrategy":{"type":"DEFAULT"},
     "tools":[{"toolName":"echo","configs":{"prefix":"ok-"}}]
   }'
 ```
@@ -91,7 +91,7 @@ curl -s http://localhost:18080/schemas/model | jq .
     "stoppingPolicy": "QUORUM",
     "quorum": 2
   },
-  "contextStrategy": { "type": "COMPACTION" }
+  "contextStrategy": { "type": "DEFAULT" }
 }
 ```
 

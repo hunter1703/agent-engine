@@ -13,7 +13,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
     oneOf = {CompactionContextStrategyConfig.class},
     discriminatorProperty = "type",
     discriminatorMapping = {
-      @DiscriminatorMapping(value = "COMPACTION", schema = CompactionContextStrategyConfig.class)
+      @DiscriminatorMapping(value = "DEFAULT", schema = CompactionContextStrategyConfig.class)
     })
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
@@ -21,7 +21,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
     property = "type",
     visible = true)
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = CompactionContextStrategyConfig.class, name = "COMPACTION")
+  @JsonSubTypes.Type(value = CompactionContextStrategyConfig.class, name = "DEFAULT")
 })
 @BsonDiscriminator
 public abstract class ContextStrategyConfig {
@@ -45,7 +45,7 @@ public abstract class ContextStrategyConfig {
 
   public enum ContextStrategyType {
     UNKNOWN,
-    COMPACTION;
+    DEFAULT;
 
     public String type() {
       return name();

@@ -26,7 +26,6 @@ import com.google.genai.types.Part;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -268,44 +267,6 @@ public final class EventUtils {
             })
         .filter(Objects::nonNull)
         .toList();
-  }
-
-  /**
-   * {@code compactionEvent} with its range ended before the earliest call it covers whose result
-   * comes after the range, so a call and its result are never split across it; null when no events
-   * remain in the range.
-   */
-  public static Event keepCallsWithResults(final Event compactionEvent, final List<Event> events) {
-    final EventCompaction compaction = compactionEvent.actions().compaction().orElseThrow();
-    final Map<String, Long> callIdVsTimestamp = new HashMap<>();
-    long earliestSplitCall = Long.MAX_VALUE;
-    for (final Event event : events) {
-      if (isCompactionEvent(event) || event.timestamp() < compaction.startTimestamp()) {
-        continue;
-      }
-      if (event.timestamp() <= compaction.endTimestamp()) {
-        event
-            .functionCalls()
-            .forEach(
-                call -> call.id().ifPresent(id -> callIdVsTimestamp.put(id, event.timestamp())));
-        continue;
-      }
-      for (final FunctionResponse response : event.functionResponses()) {
-        final Long callTimestamp = response.id().map(callIdVsTimestamp::get).orElse(null);
-        if (callTimestamp != null) {
-          earliestSplitCall = Math.min(earliestSplitCall, callTimestamp);
-        }
-      }
-    }
-    if (earliestSplitCall == Long.MAX_VALUE) {
-      return compactionEvent;
-    }
-    final long endTimestamp = earliestSplitCall - 1;
-    if (endTimestamp < compaction.startTimestamp()) {
-      return null;
-    }
-    return withCompaction(
-        compactionEvent, compaction.startTimestamp(), endTimestamp, compaction.compactedContent());
   }
 
   public static Event withCompactedContent(final Event compactedEvent, final Content content) {

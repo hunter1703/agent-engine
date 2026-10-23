@@ -4,7 +4,7 @@ import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.agents.LLMAgent;
 import com.agentengine.util.common.utils.CollectionUtils;
 import com.google.adk.agents.LlmAgent;
-import com.google.adk.summarizer.EventCompactor;
+import com.agentengine.agent.infra.compaction.EventCompactor;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;
 import java.util.ArrayList;

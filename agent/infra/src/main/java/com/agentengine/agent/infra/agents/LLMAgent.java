@@ -6,7 +6,7 @@ import com.google.adk.agents.InvocationContext;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.BaseLlmFlow;
-import com.google.adk.summarizer.EventCompactor;
+import com.agentengine.agent.infra.compaction.EventCompactor;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Flowable;
 
@@ -31,6 +31,10 @@ public final class LLMAgent extends LlmAgent implements ConfiguredAgent {
     return agentConfig;
   }
 
+  public EventCompactor getCompactor() {
+    return compactor;
+  }
+
   @Override
   public Flowable<Event> runAsync(final InvocationContext invocationContext) {
     return actingAsThisAgent(() -> super.runAsync(invocationContext));
@@ -40,7 +44,8 @@ public final class LLMAgent extends LlmAgent implements ConfiguredAgent {
   protected BaseLlmFlow determineLlmFlow() {
     // LlmAgent builds its flow while it is being constructed, before this class's fields are set,
     // so the compactor is looked up each time the flow compacts.
-    return new BaseFlow(maxSteps().orElse(null), compactor);
+    return new BaseFlow(
+        maxSteps().orElse(null), (context, request) -> compactor.compact(context, request));
   }
 
   @Override

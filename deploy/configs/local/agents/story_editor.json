@@ -12,8 +12,10 @@
     "story_writer"
   ],
   "contextStrategy": {
-    "type": "COMPACTION",
-    "tokenThreshold": 100000
+    "type": "DEFAULT",
+    "thresholdUnit": "TOKENS",
+    "triggerThreshold": 100000,
+    "recencyThreshold": 10000
   },
   "tools": []
 }

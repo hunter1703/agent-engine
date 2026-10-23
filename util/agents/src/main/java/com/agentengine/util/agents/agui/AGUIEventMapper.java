@@ -95,7 +95,8 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
 
   private Flowable<Event> mapEventInternal(final SessionEvent event) {
     if (SessionEventUtils.isInternal(event)) {
-      return Flowable.empty();
+      // The user is not shown the event, but its model call still counts toward the session's usage.
+      return mapTokenUsage(event);
     }
     Flowable<Event> flowable = startStepIfNeeded();
     if (SessionEventUtils.isCorrectionEvent(event)) {

@@ -4,7 +4,7 @@ import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
 import com.agentengine.util.common.utils.CollectionUtils;
-import com.google.adk.summarizer.EventCompactor;
+import com.agentengine.agent.infra.compaction.EventCompactor;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -21,7 +21,7 @@ public class CompactorProvider {
   @Inject
   public CompactorProvider(
       final Instance<CompactorFactory<?>> allFactories,
-      final LLMCompactorFactory llmCompactorFactory) {
+      final DefaultCompactorFactory llmCompactorFactory) {
     this.typeVsFactory =
         CollectionUtils.transformToMap(
             allFactories.stream().toList(), CompactorFactory::type, Function.identity());

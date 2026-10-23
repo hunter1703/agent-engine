@@ -8,6 +8,7 @@ import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.events.EventActions;
+import com.google.adk.models.LlmRequest;
 import com.google.genai.types.FunctionCall;
 import java.util.*;
 
@@ -18,6 +19,7 @@ public final class RunState {
   private int turnsUsed;
   private boolean textHeldBack;
   private final Set<Signal<?>> signals = new HashSet<>();
+  private volatile LlmRequest lastRequest;
 
   public RunState() {}
 
@@ -133,6 +135,16 @@ public final class RunState {
 
   public boolean holdsBackText() {
     return textHeldBack;
+  }
+
+  /** Remembers the request of the model call just made. */
+  public void rememberRequest(final LlmRequest request) {
+    lastRequest = request;
+  }
+
+  /** The request of the latest model call; null before the first call. */
+  public LlmRequest lastRequest() {
+    return lastRequest;
   }
 
   public boolean consumeTurn(final int limit) {

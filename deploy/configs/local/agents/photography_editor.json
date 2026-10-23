@@ -9,7 +9,7 @@
     "resumable": false
   },
   "contextStrategy": {
-    "type": "COMPACTION"
+    "type": "DEFAULT"
   },
   "tools": [
     {

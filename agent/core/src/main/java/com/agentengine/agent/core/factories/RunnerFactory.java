@@ -223,7 +223,8 @@ public class RunnerFactory {
             new ReminderPlugin(),
             new ToolResultPlugin(knowledgeService, fileService, mediaService, modelProvider),
             new PlanningPlugin(planningValidator),
-            new ResponseValidationPlugin());
+            new ResponseValidationPlugin(),
+            new RequestPlugin());
     return List.of(new PluginGroup("engine", plugins), AddEventMetadataPlugin.INSTANCE);
   }
 }
