@@ -102,4 +102,9 @@ public final class CompleteTaskTool extends Tool {
     sessionState.updatePlan(updatedPlan);
     return ToolOutput.direct(response);
   }
+
+  @Override
+  protected boolean citesTask() {
+    return false;
+  }
 }

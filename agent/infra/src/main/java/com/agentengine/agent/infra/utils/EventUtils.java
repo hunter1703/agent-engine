@@ -65,6 +65,17 @@ public final class EventUtils {
    */
   public static final String SIGNAL_DELIVERED_KEY = State.TEMP_PREFIX + "delivered_signal_ids";
 
+  /**
+   * Prefix of the stateDelta key that marks a function call the harness refused to run, as the
+   * prefix followed by the call's id; the value is true. A refused call is not part of what the
+   * agent did.
+   *
+   * <p>Each call has a key of its own because the responses of calls made in the same step are
+   * merged into one event, and ADK keeps, for a key that more than one of them sets, only the
+   * last value when it is not a map. With one key per call, none of the marks is lost.
+   */
+  public static final String REFUSED_CALL_KEY_PREFIX = State.TEMP_PREFIX + "refused_call:";
+
   private EventUtils() {}
 
   /**

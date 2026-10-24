@@ -17,6 +17,7 @@ import com.agentengine.util.models.factories.ModelProvider;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.genai.types.Content;
+import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import com.google.adk.agents.CallbackContext;
@@ -25,6 +26,8 @@ import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +60,10 @@ import java.util.Optional;
  * result, pauses included: a call that waited for a child session or a user answer reports
  * the whole wait. A result that already has a field of one of these names keeps it, and an empty
  * result stays empty, since an empty result is how a tool that raises an interrupt answers.
+ *
+ * <p><b>Refused calls.</b> A call the harness refused to run is shown with no arguments, in the
+ * whole history. A refused call that kept its arguments, such as the text of a note, would read as
+ * work that was done.
  *
  * <p><b>Attached media.</b> A result marked {@link SearchKnowledgeTool#ATTACHED} names an image,
  * audio or other binary knowledge item that the model should look at. Tool results carry text
@@ -98,28 +105,24 @@ public final class ToolResultPlugin extends BasePlugin {
   public Maybe<LlmResponse> beforeModelCallback(
       final CallbackContext callbackContext, final LlmRequest.Builder requestBuilder) {
     final List<Content> contents = requestBuilder.build().contents();
+    final Set<String> refusedCallIds =
+        refusedCallIds(callbackContext.invocationContext().session().events());
     final int userMessageIndex =
         CollectionUtils.findLastIndexAfter(contents, -1, ContentUtils::isUserSentMessage);
-    if (userMessageIndex < 0) {
-      return Maybe.empty();
-    }
-    final boolean vision = isVisionModel(callbackContext.invocationContext());
-    final List<Content> updated = new ArrayList<>(contents.subList(0, userMessageIndex + 1));
+    final boolean vision = userMessageIndex >= 0 && isVisionModel(callbackContext.invocationContext());
+    final List<Content> updatedContents = new ArrayList<>(contents.size());
     boolean changed = false;
-    for (final Content content : contents.subList(userMessageIndex + 1, contents.size())) {
-      final List<Part> parts = new ArrayList<>(content.parts().orElse(List.of()));
-      for (final FunctionResponse response :
-          ContentUtils.getFunctionResponses(content, Constants.ToolNames.SEARCH_KNOWLEDGE)) {
-        if (Boolean.TRUE.equals(response.response().orElse(Map.of()).get(SearchKnowledgeTool.ATTACHED))) {
-          parts.addAll(attachmentParts(response.response().orElseThrow(), vision));
-        }
+    for (int index = 0; index < contents.size(); index++) {
+      final Content content = contents.get(index);
+      Content updatedContent = withoutRefusedCallArgs(content, refusedCallIds);
+      if (userMessageIndex >= 0 && index > userMessageIndex) {
+        updatedContent = withAttachments(updatedContent, vision);
       }
-      final boolean attached = parts.size() > content.parts().orElse(List.of()).size();
-      updated.add(attached ? content.toBuilder().parts(parts).build() : content);
-      changed |= attached;
+      updatedContents.add(updatedContent);
+      changed |= updatedContent != content;
     }
     if (changed) {
-      requestBuilder.contents(updated);
+      requestBuilder.contents(updatedContents);
     }
     return Maybe.empty();
   }
@@ -167,6 +170,62 @@ public final class ToolResultPlugin extends BasePlugin {
     return hours > 0
         ? "%dh %dm %ds".formatted(hours, minutes, seconds)
         : "%dm %ds".formatted(minutes, seconds);
+  }
+
+  /** The ids of the calls marked as refused in the state changes of {@code events}. */
+  private static Set<String> refusedCallIds(final List<Event> events) {
+    final Set<String> ids = new HashSet<>();
+    for (final Event event : events) {
+      for (final String key : event.actions().stateDelta().keySet()) {
+        if (key.startsWith(EventUtils.REFUSED_CALL_KEY_PREFIX)) {
+          ids.add(key.substring(EventUtils.REFUSED_CALL_KEY_PREFIX.length()));
+        }
+      }
+    }
+    return ids;
+  }
+
+  private static boolean isRefusedCall(final Part part, final Set<String> refusedCallIds) {
+    return part.functionCall()
+        .flatMap(FunctionCall::id)
+        .map(refusedCallIds::contains)
+        .orElse(false);
+  }
+
+  private static Content withoutRefusedCallArgs(
+      final Content content, final Set<String> refusedCallIds) {
+    final List<Part> parts = content.parts().orElse(List.of());
+    if (parts.stream().noneMatch(part -> isRefusedCall(part, refusedCallIds))) {
+      return content;
+    }
+    return content.toBuilder()
+        .parts(
+            parts.stream()
+                .map(
+                    part ->
+                        isRefusedCall(part, refusedCallIds)
+                            ? part.toBuilder()
+                                .functionCall(
+                                    part.functionCall().orElseThrow().toBuilder()
+                                        .args(Map.of())
+                                        .build())
+                                .build()
+                            : part)
+                .toList())
+        .build();
+  }
+
+  private Content withAttachments(final Content content, final boolean vision) {
+    final List<Part> parts = new ArrayList<>(content.parts().orElse(List.of()));
+    for (final FunctionResponse response :
+        ContentUtils.getFunctionResponses(content, Constants.ToolNames.SEARCH_KNOWLEDGE)) {
+      if (Boolean.TRUE.equals(response.response().orElse(Map.of()).get(SearchKnowledgeTool.ATTACHED))) {
+        parts.addAll(attachmentParts(response.response().orElseThrow(), vision));
+      }
+    }
+    return parts.size() > content.parts().orElse(List.of()).size()
+        ? content.toBuilder().parts(parts).build()
+        : content;
   }
 
   private boolean isVisionModel(final InvocationContext context) {

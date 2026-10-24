@@ -7,11 +7,9 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.utils.CollectionUtils;
-import com.google.genai.types.FunctionDeclaration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /** {@link ConnectorTool} hardwired to the brave_web_search connector. */
 @DiscoverableTool
@@ -53,11 +51,6 @@ public final class WebSearchTool extends ConnectorTool {
   }
 
   @Override
-  public Optional<FunctionDeclaration> declaration() {
-    return baseDeclaration();
-  }
-
-  @Override
   public ToolOutput<Map<String, Object>> execute(Map<String, Object> input) {
     input = new HashMap<>(CollectionUtils.nullSafeMap(input));
     input.putIfAbsent("country", DEFAULT_COUNTRY);
@@ -72,5 +65,10 @@ public final class WebSearchTool extends ConnectorTool {
             ? PREFERRED_CONNECTION_ID
             : connectionIds.getFirst();
     return super.execute(Map.of("input", input, "connectionId", connectionId));
+  }
+
+  @Override
+  protected boolean choosesConnection() {
+    return false;
   }
 }

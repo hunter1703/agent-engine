@@ -57,14 +57,20 @@ public class ConnectorTool extends Tool {
     this.connectorToolDeclarationCache = connectorToolDeclarationCache;
   }
 
-  protected Optional<FunctionDeclaration> baseDeclaration() {
-    return super.declaration();
+  @Override
+  protected Optional<FunctionDeclaration> ownDeclaration() {
+    return choosesConnection()
+        ? connectorToolDeclarationCache.get(
+            connectorMetadata.appName(), connectorMetadata.connectorName())
+        : super.ownDeclaration();
   }
 
-  @Override
-  public Optional<FunctionDeclaration> declaration() {
-    return connectorToolDeclarationCache.get(
-        connectorMetadata.appName(), connectorMetadata.connectorName());
+  /**
+   * Whether the model picks the connection and passes the connector's input under {@code input}.
+   * Otherwise the model is given the connector's input arguments directly.
+   */
+  protected boolean choosesConnection() {
+    return true;
   }
 
   public ToolOutput<Map<String, Object>> execute(final Map<String, Object> args) {

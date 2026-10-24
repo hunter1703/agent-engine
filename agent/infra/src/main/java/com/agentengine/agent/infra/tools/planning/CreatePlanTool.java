@@ -78,4 +78,9 @@ public final class CreatePlanTool extends Tool {
     return ToolOutput.direct(
         Map.of("active_task", currentPlan.getNextTaskWithStatus(TaskStatus.IN_PROGRESS).getName()));
   }
+
+  @Override
+  protected boolean citesTask() {
+    return false;
+  }
 }

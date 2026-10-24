@@ -1,7 +1,10 @@
 package com.agentengine.agent.infra.tools;
 
+import com.agentengine.agent.infra.tools.beans.Task;
+import com.agentengine.agent.infra.tools.planning.PlanningUtils;
 import com.agentengine.agent.infra.utils.*;
 import com.agentengine.agent.infra.utils.SessionUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
@@ -106,13 +109,33 @@ public abstract class Tool extends BaseTool {
   }
 
   @Override
-  public Optional<FunctionDeclaration> declaration() {
+  public final Optional<FunctionDeclaration> declaration() {
+    return ownDeclaration().map(this::withTaskCitation);
+  }
+
+  /** The declaration of the tool's own arguments, before the framework adds its own. */
+  protected Optional<FunctionDeclaration> ownDeclaration() {
     return Optional.of(declaration);
+  }
+
+  /**
+   * Whether a call of this tool names the task of the active plan it is for. While a plan is
+   * active, a call that names another task, or none, is refused.
+   */
+  protected boolean citesTask() {
+    return true;
   }
 
   @Override
   public Single<Map<String, Object>> runAsync(Map<String, Object> args, ToolContext toolContext) {
     try {
+      final String taskCitationError = taskCitationError(args, toolContext);
+      if (taskCitationError != null) {
+        toolContext
+            .functionCallId()
+            .ifPresent(id -> toolContext.state().put(EventUtils.REFUSED_CALL_KEY_PREFIX + id, true));
+        return Single.just(ImmutableMap.of("error", taskCitationError));
+      }
       final ToolRiskLevel toolRiskLevel = descriptor().riskLevel();
       if (toolRiskLevel == ToolRiskLevel.HIGH || toolRiskLevel == ToolRiskLevel.CRITICAL) {
         if (toolContext.toolConfirmation().isEmpty()) {
@@ -136,12 +159,77 @@ public abstract class Tool extends BaseTool {
       // ADK emits both confirmation event and function response event. BaseFlow filters out
       // empty function responses when confirmation is requested, preventing placeholder results
       // from reaching the LLM. On resume, tool is called again and returns actual result.
-      return call(CollectionUtils.nullSafeMap(args), toolContext).defaultIfEmpty(ImmutableMap.of());
+      return call(withoutTaskCitation(args), toolContext).defaultIfEmpty(ImmutableMap.of());
     } catch (Exception exception) {
       LOG.error(
           "Exception occurred while calling function tool: {}", executeMethod.getName(), exception);
       return Single.just(ImmutableMap.of("error", ExceptionUtils.getErrorMessage(exception)));
     }
+  }
+
+  private FunctionDeclaration withTaskCitation(final FunctionDeclaration source) {
+    if (!citesTask()) {
+      return source;
+    }
+    final Schema parameters =
+        source.parameters().orElseGet(() -> Schema.builder().type("OBJECT").build());
+    // First, so that the arguments the model writes after it follow from the task.
+    final Map<String, Schema> properties = new LinkedHashMap<>();
+    properties.put(
+        Constants.ToolArgs.TASK_CITATION,
+        ToolUtils.applySchemaMetadata(
+            Schema.builder().type("STRING").build(),
+            "The task of the active plan this call is made for, written exactly as the plan names it."
+                + " Fill it in before the other arguments. Write "
+                + Constants.ToolArgs.TASK_CITATION_WITHOUT_PLAN
+                + " when there is no active plan, for a call that serves the user's request directly.",
+            true,
+            List.of()));
+    properties.putAll(parameters.properties().orElse(Map.of()));
+    final List<String> required = new ArrayList<>();
+    required.add(Constants.ToolArgs.TASK_CITATION);
+    required.addAll(parameters.required().orElse(List.of()));
+    return source.toBuilder()
+        .parameters(parameters.toBuilder().properties(properties).required(required).build())
+        .build();
+  }
+
+  private String taskCitationError(final Map<String, Object> args, final ToolContext toolContext) {
+    if (!citesTask()) {
+      return null;
+    }
+    final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
+    final Task activeTask =
+        sessionState.hasActivePlan() ? PlanningUtils.activeTask(sessionState.plan()) : null;
+    if (activeTask == null) {
+      return null;
+    }
+    final Object cited = CollectionUtils.nullSafeMap(args).get(Constants.ToolArgs.TASK_CITATION);
+    if (cited != null && activeTask.getName().trim().equalsIgnoreCase(cited.toString().trim())) {
+      return null;
+    }
+    final Task otherTask = cited == null ? null : sessionState.plan().getTask(cited.toString());
+    if (otherTask != null) {
+      return ("This call was not run: it is for the task '%s', and the task in progress is '%s'"
+              + " (goal: %s). A task stays in progress until it is completed in the plan with its"
+              + " outcome; having done its work does not complete it. If the work of '%s' is done,"
+              + " complete it, and the next task then starts. If it is not, carry on with it and make"
+              + " the calls it needs, naming it.")
+          .formatted(
+              otherTask.getName(), activeTask.getName(), activeTask.getGoal(), activeTask.getName());
+    }
+    return ("This call was not run: it did not name the task in progress, '%s' (goal: %s). If it is"
+            + " part of that task, make it again naming that task. If it was meant for something"
+            + " else, carry on with the task in progress and make the calls it needs. If that task"
+            + " is finished or no longer needed, complete or abandon it first; the next task then"
+            + " starts.")
+        .formatted(activeTask.getName(), activeTask.getGoal());
+  }
+
+  private static Map<String, Object> withoutTaskCitation(final Map<String, Object> args) {
+    final Map<String, Object> withoutCitation = new LinkedHashMap<>(CollectionUtils.nullSafeMap(args));
+    withoutCitation.remove(Constants.ToolArgs.TASK_CITATION);
+    return withoutCitation;
   }
 
   private Maybe<Map<String, Object>> call(Map<String, Object> args, ToolContext toolContext)

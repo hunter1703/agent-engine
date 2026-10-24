@@ -27,8 +27,8 @@ public final class PlanningUtils {
   private PlanningUtils() {}
 
   /**
-   * Builds a complete snapshot of the plan with all task details.
-   * Injected into the LLM context to help the agent track progress.
+   * Builds a snapshot of the plan: each task's status and outcome. The task in progress is
+   * described in full by {@link #buildTaskFocusPrompt}.
    */
   public static String buildPlanSummary(final Plan plan) {
     if (plan == null) {
@@ -41,7 +41,6 @@ public final class PlanningUtils {
     if (StringUtils.isNotBlank(plan.getResult())) {
       sb.append("\nResult: ").append(plan.getResult());
     }
-    // Full task tree with all details
     sb.append("\n\nTasks:\n");
     for (final Task task : plan.getTasks()) {
       sb.append(taskSummary(task));
@@ -60,20 +59,16 @@ public final class PlanningUtils {
         };
     sb.append("- ").append(marker).append(" ").append(task.getName());
     if (StringUtils.isNotBlank(task.getParent())) {
-      sb.append(" (parent: ").append(task.getParent()).append(")");
-    }
-    sb.append("\n  Goal: ").append(task.getGoal() != null ? task.getGoal() : "");
-    if (StringUtils.isNotBlank(task.getDescription())) {
-      sb.append("\n  Description: ").append(task.getDescription());
+      sb.append(" (part of: ").append(task.getParent()).append(")");
     }
     if (StringUtils.isNotBlank(task.getResult())) {
-      sb.append("\n  Result: ").append(task.getResult());
+      sb.append(" -> ").append(task.getResult());
     }
     return sb.append('\n').toString();
   }
 
   public static String buildTaskFocusPrompt(final Plan plan) {
-    final Task activeLeaf = getActiveLeaf(plan);
+    final Task activeLeaf = activeTask(plan);
     if (activeLeaf != null) {
       return "Active task:\n- " + formatTaskFocus(activeLeaf);
     }
@@ -82,7 +77,7 @@ public final class PlanningUtils {
   }
 
   /**
-   * Builds the per-turn planning reminder: the full plan summary followed by a focus statement for
+   * Builds the per-turn planning reminder: the plan summary followed by a focus statement for
    * the active task (or the next task to start).
    */
   public static String buildPlanReminder(final Plan plan) {
@@ -92,6 +87,22 @@ public final class PlanningUtils {
     final String summary = buildPlanSummary(plan);
     final String focus = buildTaskFocusPrompt(plan);
     return StringUtils.joinNonBlank(List.of(summary, focus));
+  }
+
+  /**
+   * The task being worked on: the first task in progress. A plan keeps its tasks with the parts of a
+   * task before the task, so this is the part being worked on, or a task whose parts are all done.
+   */
+  public static Task activeTask(final Plan plan) {
+    if (plan == null) {
+      return null;
+    }
+    for (final Task task : plan.getTasks()) {
+      if (taskStatus(task) == TaskStatus.IN_PROGRESS) {
+        return task;
+      }
+    }
+    return null;
   }
 
   /**
@@ -326,18 +337,6 @@ public final class PlanningUtils {
       sb.append(" | description: ").append(task.getDescription());
     }
     return sb.toString();
-  }
-
-  private static Task getActiveLeaf(final Plan plan) {
-    if (plan == null) {
-      return null;
-    }
-    for (final Task task : plan.getTasks()) {
-      if (taskStatus(task) == TaskStatus.IN_PROGRESS) {
-        return task;
-      }
-    }
-    return null;
   }
 
   private static List<Task> resolveAncestors(

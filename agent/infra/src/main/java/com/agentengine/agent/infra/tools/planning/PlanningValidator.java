@@ -111,6 +111,16 @@ public class PlanningValidator implements Validator<Plan> {
     if (PlanningUtils.isTerminalStatus(currentStatus)) {
       return describeTask(task) + " is already " + currentStatus.getValue() + ".";
     }
+    if (newStatus == TaskStatus.DONE && currentStatus != TaskStatus.IN_PROGRESS) {
+      final Task active = PlanningUtils.activeTask(plan);
+      return describeTask(task)
+          + " is "
+          + currentStatus.getValue()
+          + " and cannot be completed yet."
+          + (active == null
+              ? ""
+              : " The task in progress is " + describeTask(active) + "; work on it and complete it first.");
+    }
     if (newStatus == TaskStatus.DONE) {
       final Task open =
           PlanningUtils.findNonTerminalDescendant(

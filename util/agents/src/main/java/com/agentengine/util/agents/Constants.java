@@ -53,6 +53,8 @@ public interface Constants {
     String KNOWLEDGE_IDS = "knowledge_ids";
     String PARENT = "parent";
     String TASK = "task";
+    String TASK_CITATION = "for_task";
+    String TASK_CITATION_WITHOUT_PLAN = "user_query";
     String TASK_RESULT = "result";
     String REASON = "reason";
     String TASK_STATUS = "status";

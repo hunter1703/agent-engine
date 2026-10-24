@@ -32,4 +32,9 @@ public class RefreshRemindersTool extends Tool {
     reminderSyncService.syncAll(SessionUtils.getSessionState(toolContext.invocationContext()));
     return ToolOutput.direct(Map.of(Constants.ToolStatus.STATUS, Constants.ToolStatus.SUCCESS));
   }
+
+  @Override
+  protected boolean citesTask() {
+    return false;
+  }
 }

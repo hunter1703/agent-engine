@@ -84,7 +84,7 @@ public final class SpawnAgentTool extends DelegationTool {
   }
 
   @Override
-  public Optional<FunctionDeclaration> declaration() {
+  protected Optional<FunctionDeclaration> ownDeclaration() {
     return Optional.of(declaration);
   }
 
